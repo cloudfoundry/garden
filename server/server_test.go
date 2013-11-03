@@ -11,6 +11,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
+	"github.com/vito/garden/backend/fakebackend"
 	"github.com/vito/garden/messagereader"
 	protocol "github.com/vito/garden/protocol"
 	"github.com/vito/garden/server"
@@ -23,7 +24,9 @@ var _ = Describe("The Warden server", func() {
 
 		socketPath := path.Join(tmpdir, "warden.sock")
 
-		err = server.Start(socketPath)
+		wardenServer := server.New(socketPath, fakebackend.New())
+
+		err = wardenServer.Start()
 		Expect(err).ToNot(HaveOccured())
 
 		Eventually(ErrorDialingUnix(socketPath)).ShouldNot(HaveOccured())
@@ -34,10 +37,13 @@ var _ = Describe("The Warden server", func() {
 			tmpfile, err := ioutil.TempFile(os.TempDir(), "warden-server-test")
 			Expect(err).ToNot(HaveOccured())
 
-			// weird scenario: /foo/X/warden.sock with X being a file
-			socketPath := path.Join(tmpfile.Name(), "warden.sock")
+			wardenServer := server.New(
+				// weird scenario: /foo/X/warden.sock with X being a file
+				path.Join(tmpfile.Name(), "warden.sock"),
+				fakebackend.New(),
+			)
 
-			err = server.Start(socketPath)
+			err = wardenServer.Start()
 			Expect(err).To(HaveOccured())
 		})
 	})
@@ -51,7 +57,9 @@ var _ = Describe("The Warden server", func() {
 
 			socketPath = path.Join(tmpdir, "warden.sock")
 
-			err = server.Start(socketPath)
+			wardenServer := server.New(socketPath, fakebackend.New())
+
+			err = wardenServer.Start()
 			Expect(err).ToNot(HaveOccured())
 
 			Eventually(ErrorDialingUnix(socketPath)).ShouldNot(HaveOccured())

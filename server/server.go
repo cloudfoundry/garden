@@ -7,22 +7,35 @@ import (
 
 	"code.google.com/p/gogoprotobuf/proto"
 
+	"github.com/vito/garden/backend"
 	"github.com/vito/garden/messagereader"
 	protocol "github.com/vito/garden/protocol"
 )
 
-func Start(socketPath string) error {
-	listener, err := net.Listen("unix", socketPath)
+type WardenServer struct {
+	socketPath string
+	backend    backend.Backend
+}
+
+func New(socketPath string, backend backend.Backend) *WardenServer {
+	return &WardenServer{
+		socketPath: socketPath,
+		backend:    backend,
+	}
+}
+
+func (s *WardenServer) Start() error {
+	listener, err := net.Listen("unix", s.socketPath)
 	if err != nil {
 		return err
 	}
 
-	go handleConnections(listener)
+	go s.handleConnections(listener)
 
 	return nil
 }
 
-func handleConnections(listener net.Listener) {
+func (s *WardenServer) handleConnections(listener net.Listener) {
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
@@ -30,11 +43,11 @@ func handleConnections(listener net.Listener) {
 			continue
 		}
 
-		go serveConnection(conn)
+		go s.serveConnection(conn)
 	}
 }
 
-func serveConnection(conn net.Conn) {
+func (s *WardenServer) serveConnection(conn net.Conn) {
 	for {
 		request, err := messagereader.ReadRequest(conn)
 		if err == io.EOF {
