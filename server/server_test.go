@@ -221,6 +221,44 @@ var _ = Describe("The Warden server", func() {
 				}, 1.0)
 			})
 		})
+
+		Context("and the client sends a ListRequest", func() {
+			BeforeEach(func() {
+				_, err := serverBackend.Create(backend.ContainerSpec{Handle: "some-handle"})
+				Expect(err).ToNot(HaveOccured())
+
+				_, err = serverBackend.Create(backend.ContainerSpec{Handle: "another-handle"})
+				Expect(err).ToNot(HaveOccured())
+			})
+
+			It("sends a ListResponse containing the existing handles", func(done Done) {
+				writeMessages(&protocol.ListRequest{})
+
+				var response protocol.ListResponse
+				readResponse(&response)
+
+				Expect(response.GetHandles()).To(ContainElement("some-handle"))
+				Expect(response.GetHandles()).To(ContainElement("another-handle"))
+
+				close(done)
+			}, 1.0)
+
+			Context("when getting the containers fails", func() {
+				BeforeEach(func() {
+					serverBackend.ContainersError = errors.New("oh no!")
+				})
+
+				It("sends a WardenError response", func(done Done) {
+					writeMessages(&protocol.ListRequest{})
+
+					var response protocol.ListResponse
+					err := messagereader.ReadMessage(serverConnection, &response)
+					Expect(err).To(Equal(&messagereader.WardenError{Message: "oh no!"}))
+
+					close(done)
+				}, 1.0)
+			})
+		})
 	})
 })
 

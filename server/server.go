@@ -113,6 +113,24 @@ func (s *WardenServer) serveConnection(conn net.Conn) {
 					Message: proto.String(err.Error()),
 				}
 			}
+		case *protocol.ListRequest:
+			containers, err := s.backend.Containers()
+
+			if err == nil {
+				handles := []string{}
+
+				for _, container := range containers {
+					handles = append(handles, container.Handle())
+				}
+
+				response = &protocol.ListResponse{
+					Handles: handles,
+				}
+			} else {
+				response = &protocol.ErrorResponse{
+					Message: proto.String(err.Error()),
+				}
+			}
 		}
 
 		if response == nil {

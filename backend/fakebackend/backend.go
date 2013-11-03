@@ -7,8 +7,9 @@ import (
 )
 
 type FakeBackend struct {
-	CreateError  error
-	DestroyError error
+	CreateError     error
+	DestroyError    error
+	ContainersError error
 
 	CreatedContainers map[string]*FakeContainer
 }
@@ -52,6 +53,11 @@ func (b *FakeBackend) Destroy(handle string) error {
 }
 
 func (b *FakeBackend) Containers() (containers []backend.Container, err error) {
+	if b.ContainersError != nil {
+		err = b.ContainersError
+		return
+	}
+
 	for _, c := range b.CreatedContainers {
 		containers = append(containers, c)
 	}
