@@ -1,10 +1,8 @@
 package backend
 
-import (
-	"time"
-)
-
 type Container interface {
+	Handle() string
+
 	Destroy() error
 	Stop(background bool, kill bool) error
 
@@ -24,14 +22,6 @@ type Container interface {
 
 	NetIn(hostPort, containerPort uint32) (uint32, uint32, error)
 	NetOut(network string, port uint32) error
-}
-
-type ContainerSpec struct {
-	Handle     string
-	GraceTime  time.Duration
-	RootFSPath string
-	BindMounts []BindMount
-	Network    string
 }
 
 type JobSpec struct {

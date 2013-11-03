@@ -68,8 +68,24 @@ func (s *WardenServer) serveConnection(conn net.Conn) {
 			response = &protocol.EchoResponse{
 				Message: request.(*protocol.EchoRequest).Message,
 			}
-		default:
-			log.Println("unhandled request:", request)
+		case *protocol.CreateRequest:
+			container, err := s.backend.Create(backend.ContainerSpec{
+				Handle: request.(*protocol.CreateRequest).GetHandle(),
+			})
+
+			if err == nil {
+				response = &protocol.CreateResponse{
+					Handle: proto.String(container.Handle()),
+				}
+			} else {
+				response = &protocol.ErrorResponse{
+					Message: proto.String(err.Error()),
+				}
+			}
+		}
+
+		if response == nil {
+			log.Printf("unhandled request type: %T", request)
 			continue
 		}
 

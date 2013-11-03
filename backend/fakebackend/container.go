@@ -4,7 +4,13 @@ import (
 	"github.com/vito/garden/backend"
 )
 
-type FakeContainer struct{}
+type FakeContainer struct {
+	handle string
+}
+
+func (c *FakeContainer) Handle() string {
+	return c.handle
+}
 
 func (c *FakeContainer) Destroy() error {
 	return nil
