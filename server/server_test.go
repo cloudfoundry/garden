@@ -6,12 +6,14 @@ import (
 	"net"
 	"os"
 	"path"
+	"time"
 
 	"code.google.com/p/gogoprotobuf/proto"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
+	"github.com/vito/garden/backend"
 	"github.com/vito/garden/backend/fakebackend"
 	"github.com/vito/garden/messagereader"
 	protocol "github.com/vito/garden/protocol"
@@ -51,7 +53,7 @@ var _ = Describe("The Warden server", func() {
 
 	Context("when a client connects", func() {
 		var socketPath string
-		var backend *fakebackend.FakeBackend
+		var serverBackend *fakebackend.FakeBackend
 
 		var serverConnection net.Conn
 
@@ -60,9 +62,9 @@ var _ = Describe("The Warden server", func() {
 			Expect(err).ToNot(HaveOccured())
 
 			socketPath = path.Join(tmpdir, "warden.sock")
-			backend = fakebackend.New()
+			serverBackend = fakebackend.New()
 
-			wardenServer := server.New(socketPath, backend)
+			wardenServer := server.New(socketPath, serverBackend)
 
 			err = wardenServer.Start()
 			Expect(err).ToNot(HaveOccured())
@@ -121,21 +123,64 @@ var _ = Describe("The Warden server", func() {
 				close(done)
 			}, 1.0)
 
-			Context("when creating the container fails", func() {
-				BeforeEach(func() {
-					backend.ContainerCreationError = errors.New("oh no!")
+			It("creates the container with the spec from the request", func(done Done) {
+				var bindMountMode protocol.CreateRequest_BindMount_Mode
+
+				bindMountMode = protocol.CreateRequest_BindMount_RW
+
+				writeMessages(&protocol.CreateRequest{
+					Handle:    proto.String("some-handle"),
+					GraceTime: proto.Uint32(42),
+					Network:   proto.String("some-network"),
+					Rootfs:    proto.String("/path/to/rootfs"),
+					BindMounts: []*protocol.CreateRequest_BindMount{
+						{
+							SrcPath: proto.String("/bind/mount/src"),
+							DstPath: proto.String("/bind/mount/dst"),
+							Mode:    &bindMountMode,
+						},
+					},
 				})
 
-				It("sends a WardenError response", func() {
+				var response protocol.CreateResponse
+				readResponse(&response)
+
+				container, found := serverBackend.CreatedContainers[response.GetHandle()]
+				Expect(found).To(BeTrue())
+
+				Expect(container.Spec).To(Equal(backend.ContainerSpec{
+					Handle:     "some-handle",
+					GraceTime:  time.Duration(42 * time.Second),
+					Network:    "some-network",
+					RootFSPath: "/path/to/rootfs",
+					BindMounts: []backend.BindMount{
+						{
+							SrcPath: "/bind/mount/src",
+							DstPath: "/bind/mount/dst",
+							Mode:    backend.BindMountModeRW,
+						},
+					},
+				}))
+
+				close(done)
+			}, 1.0)
+
+			Context("when creating the container fails", func() {
+				BeforeEach(func() {
+					serverBackend.ContainerCreationError = errors.New("oh no!")
+				})
+
+				It("sends a WardenError response", func(done Done) {
 					writeMessages(&protocol.CreateRequest{
 						Handle: proto.String("some-handle"),
 					})
 
 					var response protocol.CreateResponse
 					err := messagereader.ReadMessage(serverConnection, &response)
-					Expect(err).To(HaveOccured())
 					Expect(err).To(Equal(&messagereader.WardenError{Message: "oh no!"}))
-				})
+
+					close(done)
+				}, 1.0)
 			})
 		})
 	})

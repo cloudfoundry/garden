@@ -4,6 +4,7 @@ import (
 	"io"
 	"log"
 	"net"
+	"time"
 
 	"code.google.com/p/gogoprotobuf/proto"
 
@@ -69,8 +70,26 @@ func (s *WardenServer) serveConnection(conn net.Conn) {
 				Message: request.(*protocol.EchoRequest).Message,
 			}
 		case *protocol.CreateRequest:
+			createRequest := request.(*protocol.CreateRequest)
+
+			bindMounts := []backend.BindMount{}
+
+			for _, bm := range createRequest.GetBindMounts() {
+				bindMount := backend.BindMount{
+					SrcPath: bm.GetSrcPath(),
+					DstPath: bm.GetDstPath(),
+					Mode:    backend.BindMountMode(bm.GetMode()),
+				}
+
+				bindMounts = append(bindMounts, bindMount)
+			}
+
 			container, err := s.backend.Create(backend.ContainerSpec{
-				Handle: request.(*protocol.CreateRequest).GetHandle(),
+				Handle:     createRequest.GetHandle(),
+				GraceTime:  time.Duration(createRequest.GetGraceTime()) * time.Second,
+				RootFSPath: createRequest.GetRootfs(),
+				Network:    createRequest.GetNetwork(),
+				BindMounts: bindMounts,
 			})
 
 			if err == nil {

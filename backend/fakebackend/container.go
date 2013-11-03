@@ -5,11 +5,11 @@ import (
 )
 
 type FakeContainer struct {
-	handle string
+	Spec backend.ContainerSpec
 }
 
 func (c *FakeContainer) Handle() string {
-	return c.handle
+	return c.Spec.Handle
 }
 
 func (c *FakeContainer) Destroy() error {

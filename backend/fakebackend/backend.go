@@ -6,16 +6,32 @@ import (
 
 type FakeBackend struct {
 	ContainerCreationError error
+
+	CreatedContainers map[string]*FakeContainer
 }
 
 func New() *FakeBackend {
-	return &FakeBackend{}
+	return &FakeBackend{
+		CreatedContainers: make(map[string]*FakeContainer),
+	}
 }
 
 func (b *FakeBackend) Create(spec backend.ContainerSpec) (backend.Container, error) {
-	return &FakeContainer{handle: spec.Handle}, b.ContainerCreationError
+	if b.ContainerCreationError != nil {
+		return nil, b.ContainerCreationError
+	}
+
+	container := &FakeContainer{Spec: spec}
+
+	b.CreatedContainers[container.Handle()] = container
+
+	return container, nil
 }
 
-func (b *FakeBackend) Containers() ([]backend.Container, error) {
-	return []backend.Container{}, nil
+func (b *FakeBackend) Containers() (containers []backend.Container, err error) {
+	for _, c := range b.CreatedContainers {
+		containers = append(containers, c)
+	}
+
+	return
 }
