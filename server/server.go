@@ -5,6 +5,8 @@ import (
 	"log"
 	"net"
 
+	"code.google.com/p/gogoprotobuf/proto"
+
 	"github.com/vito/garden/messagereader"
 	protocol "github.com/vito/garden/protocol"
 )
@@ -44,13 +46,20 @@ func serveConnection(conn net.Conn) {
 			continue
 		}
 
+		var response proto.Message
+
 		switch request.(type) {
 		case *protocol.PingRequest:
-			protocol.Messages(&protocol.PingResponse{}).WriteTo(conn)
+			response = &protocol.PingResponse{}
 		case *protocol.EchoRequest:
-			protocol.Messages(&protocol.EchoResponse{
+			response = &protocol.EchoResponse{
 				Message: request.(*protocol.EchoRequest).Message,
-			}).WriteTo(conn)
+			}
+		default:
+			log.Println("unhandled request:", request)
+			continue
 		}
+
+		protocol.Messages(response).WriteTo(conn)
 	}
 }
