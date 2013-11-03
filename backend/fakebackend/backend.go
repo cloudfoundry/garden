@@ -1,11 +1,14 @@
 package fakebackend
 
 import (
+	"errors"
+
 	"github.com/vito/garden/backend"
 )
 
 type FakeBackend struct {
-	ContainerCreationError error
+	CreateError  error
+	DestroyError error
 
 	CreatedContainers map[string]*FakeContainer
 }
@@ -17,8 +20,8 @@ func New() *FakeBackend {
 }
 
 func (b *FakeBackend) Create(spec backend.ContainerSpec) (backend.Container, error) {
-	if b.ContainerCreationError != nil {
-		return nil, b.ContainerCreationError
+	if b.CreateError != nil {
+		return nil, b.CreateError
 	}
 
 	container := &FakeContainer{Spec: spec}
@@ -26,6 +29,26 @@ func (b *FakeBackend) Create(spec backend.ContainerSpec) (backend.Container, err
 	b.CreatedContainers[container.Handle()] = container
 
 	return container, nil
+}
+
+func (b *FakeBackend) Destroy(handle string) error {
+	if b.DestroyError != nil {
+		return b.DestroyError
+	}
+
+	container, found := b.CreatedContainers[handle]
+	if !found {
+		return errors.New("unknown handle: " + handle)
+	}
+
+	err := container.Destroy()
+	if err != nil {
+		return err
+	}
+
+	delete(b.CreatedContainers, handle)
+
+	return nil
 }
 
 func (b *FakeBackend) Containers() (containers []backend.Container, err error) {

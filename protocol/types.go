@@ -90,7 +90,7 @@ func RequestMessageForType(t Message_Type) proto.Message {
 	case Message_Stop:
 		return &StopRequest{}
 	case Message_Destroy:
-		return &InfoRequest{}
+		return &DestroyRequest{}
 	case Message_Info:
 		return &InfoRequest{}
 

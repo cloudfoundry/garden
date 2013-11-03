@@ -167,7 +167,7 @@ var _ = Describe("The Warden server", func() {
 
 			Context("when creating the container fails", func() {
 				BeforeEach(func() {
-					serverBackend.ContainerCreationError = errors.New("oh no!")
+					serverBackend.CreateError = errors.New("oh no!")
 				})
 
 				It("sends a WardenError response", func(done Done) {
@@ -176,6 +176,44 @@ var _ = Describe("The Warden server", func() {
 					})
 
 					var response protocol.CreateResponse
+					err := messagereader.ReadMessage(serverConnection, &response)
+					Expect(err).To(Equal(&messagereader.WardenError{Message: "oh no!"}))
+
+					close(done)
+				}, 1.0)
+			})
+		})
+
+		Context("and the client sends a DestroyRequest", func() {
+			BeforeEach(func() {
+				_, err := serverBackend.Create(backend.ContainerSpec{Handle: "some-handle"})
+				Expect(err).ToNot(HaveOccured())
+			})
+
+			It("destroys the container and sends a DestroyResponse", func(done Done) {
+				writeMessages(&protocol.DestroyRequest{
+					Handle: proto.String("some-handle"),
+				})
+
+				var response protocol.DestroyResponse
+				readResponse(&response)
+
+				Expect(serverBackend.CreatedContainers).ToNot(HaveKey("some-handle"))
+
+				close(done)
+			}, 1.0)
+
+			Context("when destroying the container fails", func() {
+				BeforeEach(func() {
+					serverBackend.DestroyError = errors.New("oh no!")
+				})
+
+				It("sends a WardenError response", func(done Done) {
+					writeMessages(&protocol.DestroyRequest{
+						Handle: proto.String("some-handle"),
+					})
+
+					var response protocol.DestroyResponse
 					err := messagereader.ReadMessage(serverConnection, &response)
 					Expect(err).To(Equal(&messagereader.WardenError{Message: "oh no!"}))
 

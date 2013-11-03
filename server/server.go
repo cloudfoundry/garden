@@ -101,6 +101,18 @@ func (s *WardenServer) serveConnection(conn net.Conn) {
 					Message: proto.String(err.Error()),
 				}
 			}
+		case *protocol.DestroyRequest:
+			handle := request.(*protocol.DestroyRequest).GetHandle()
+
+			err := s.backend.Destroy(handle)
+
+			if err == nil {
+				response = &protocol.DestroyResponse{}
+			} else {
+				response = &protocol.ErrorResponse{
+					Message: proto.String(err.Error()),
+				}
+			}
 		}
 
 		if response == nil {
