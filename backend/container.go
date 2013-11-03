@@ -66,7 +66,67 @@ type BindMountMode uint8
 const BindMountModeRO BindMountMode = 0
 const BindMountModeRW BindMountMode = 1
 
-type ContainerInfo struct{}
+type ContainerInfo struct {
+	State         string
+	Events        []string
+	HostIP        string
+	ContainerIP   string
+	ContainerPath string
+	JobIDs        []uint64
+	MemoryStat    ContainerMemoryStat
+	CpuStat       ContainerCPUStat
+	DiskStat      ContainerDiskStat
+	BandwidthStat ContainerBandwidthStat
+}
+
+type ContainerMemoryStat struct {
+	Cache                   uint64
+	Rss                     uint64
+	MappedFile              uint64
+	Pgpgin                  uint64
+	Pgpgout                 uint64
+	Swap                    uint64
+	Pgfault                 uint64
+	Pgmajfault              uint64
+	InactiveAnon            uint64
+	ActiveAnon              uint64
+	InactiveFile            uint64
+	ActiveFile              uint64
+	Unevictable             uint64
+	HierarchicalMemoryLimit uint64
+	HierarchicalMemswLimit  uint64
+	TotalCache              uint64
+	TotalRss                uint64
+	TotalMappedFile         uint64
+	TotalPgpgin             uint64
+	TotalPgpgout            uint64
+	TotalSwap               uint64
+	TotalPgfault            uint64
+	TotalPgmajfault         uint64
+	TotalInactiveAnon       uint64
+	TotalActiveAnon         uint64
+	TotalInactiveFile       uint64
+	TotalActiveFile         uint64
+	TotalUnevictable        uint64
+}
+
+type ContainerCPUStat struct {
+	Usage  uint64
+	User   uint64
+	System uint64
+}
+
+type ContainerDiskStat struct {
+	BytesUsed  uint64
+	InodesUsed uint64
+}
+
+type ContainerBandwidthStat struct {
+	InRate   uint64
+	InBurst  uint64
+	OutRate  uint64
+	OutBurst uint64
+}
 
 type BandwidthLimits struct {
 	RateInBytesPerSecond      uint64
