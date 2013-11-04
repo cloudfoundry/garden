@@ -1,6 +1,7 @@
 package server
 
 import (
+	"fmt"
 	"io"
 	"log"
 	"net"
@@ -134,8 +135,11 @@ func (s *WardenServer) serveConnection(conn net.Conn) {
 		}
 
 		if response == nil {
-			log.Printf("unhandled request type: %T", request)
-			continue
+			response = &protocol.ErrorResponse{
+				Message: proto.String(
+					fmt.Sprintf("unhandled request type: %T", request),
+				),
+			}
 		}
 
 		protocol.Messages(response).WriteTo(conn)
