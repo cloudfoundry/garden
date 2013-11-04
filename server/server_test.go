@@ -258,6 +258,149 @@ var _ = Describe("The Warden server", func() {
 					close(done)
 				}, 1.0)
 			})
+
+			Context("and the client sends a CopyInRequest", func() {
+				var fakeContainer *fakebackend.FakeContainer
+
+				BeforeEach(func() {
+					container, err := serverBackend.Create(backend.ContainerSpec{Handle: "some-handle"})
+					Expect(err).ToNot(HaveOccured())
+
+					fakeContainer = container.(*fakebackend.FakeContainer)
+				})
+
+				It("copies the file in and sends a CopyInResponse", func(done Done) {
+					writeMessages(&protocol.CopyInRequest{
+						Handle:  proto.String(fakeContainer.Handle()),
+						SrcPath: proto.String("/src/path"),
+						DstPath: proto.String("/dst/path"),
+					})
+
+					var response protocol.CopyInResponse
+					readResponse(&response)
+
+					Expect(fakeContainer.CopiedIn).To(ContainElement(
+						[]string{"/src/path", "/dst/path"},
+					))
+
+					close(done)
+				}, 1.0)
+
+				Context("when the container is not found", func() {
+					BeforeEach(func() {
+						serverBackend.Destroy(fakeContainer.Handle())
+					})
+
+					It("sends a WardenError response", func(done Done) {
+						writeMessages(&protocol.CopyInRequest{
+							Handle:  proto.String(fakeContainer.Handle()),
+							SrcPath: proto.String("/src/path"),
+							DstPath: proto.String("/dst/path"),
+						})
+
+						var response protocol.CopyInResponse
+						err := messagereader.ReadMessage(serverConnection, &response)
+						Expect(err).To(Equal(&messagereader.WardenError{
+							Message: "unknown handle: some-handle",
+						}))
+
+						close(done)
+					}, 1.0)
+				})
+
+				Context("when copying in to the container fails", func() {
+					BeforeEach(func() {
+						fakeContainer.CopyInError = errors.New("oh no!")
+					})
+
+					It("sends a WardenError response", func(done Done) {
+						writeMessages(&protocol.CopyInRequest{
+							Handle:  proto.String(fakeContainer.Handle()),
+							SrcPath: proto.String("/src/path"),
+							DstPath: proto.String("/dst/path"),
+						})
+
+						var response protocol.CopyInResponse
+						err := messagereader.ReadMessage(serverConnection, &response)
+						Expect(err).To(Equal(&messagereader.WardenError{Message: "oh no!"}))
+
+						close(done)
+					}, 1.0)
+				})
+			})
+		})
+
+		Context("and the client sends a CopyOutRequest", func() {
+			var fakeContainer *fakebackend.FakeContainer
+
+			BeforeEach(func() {
+				container, err := serverBackend.Create(backend.ContainerSpec{Handle: "some-handle"})
+				Expect(err).ToNot(HaveOccured())
+
+				fakeContainer = container.(*fakebackend.FakeContainer)
+			})
+
+			It("copies the file out and sends a CopyOutResponse", func(done Done) {
+				writeMessages(&protocol.CopyOutRequest{
+					Handle:  proto.String(fakeContainer.Handle()),
+					SrcPath: proto.String("/src/path"),
+					DstPath: proto.String("/dst/path"),
+					Owner:   proto.String("someuser"),
+				})
+
+				var response protocol.CopyOutResponse
+				readResponse(&response)
+
+				Expect(fakeContainer.CopiedOut).To(ContainElement(
+					[]string{"/src/path", "/dst/path", "someuser"},
+				))
+
+				close(done)
+			}, 1.0)
+
+			Context("when the container is not found", func() {
+				BeforeEach(func() {
+					serverBackend.Destroy(fakeContainer.Handle())
+				})
+
+				It("sends a WardenError response", func(done Done) {
+					writeMessages(&protocol.CopyOutRequest{
+						Handle:  proto.String(fakeContainer.Handle()),
+						SrcPath: proto.String("/src/path"),
+						DstPath: proto.String("/dst/path"),
+						Owner:   proto.String("someuser"),
+					})
+
+					var response protocol.CopyOutResponse
+					err := messagereader.ReadMessage(serverConnection, &response)
+					Expect(err).To(Equal(&messagereader.WardenError{
+						Message: "unknown handle: some-handle",
+					}))
+
+					close(done)
+				}, 1.0)
+			})
+
+			Context("when copying out of the container fails", func() {
+				BeforeEach(func() {
+					fakeContainer.CopyOutError = errors.New("oh no!")
+				})
+
+				It("sends a WardenError response", func(done Done) {
+					writeMessages(&protocol.CopyOutRequest{
+						Handle:  proto.String(fakeContainer.Handle()),
+						SrcPath: proto.String("/src/path"),
+						DstPath: proto.String("/dst/path"),
+						Owner:   proto.String("someuser"),
+					})
+
+					var response protocol.CopyOutResponse
+					err := messagereader.ReadMessage(serverConnection, &response)
+					Expect(err).To(Equal(&messagereader.WardenError{Message: "oh no!"}))
+
+					close(done)
+				}, 1.0)
+			})
 		})
 	})
 })

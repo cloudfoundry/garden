@@ -8,6 +8,7 @@ type Backend interface {
 	Create(ContainerSpec) (Container, error)
 	Destroy(handle string) error
 	Containers() ([]Container, error)
+	Lookup(handle string) (Container, error)
 }
 
 type ContainerSpec struct {

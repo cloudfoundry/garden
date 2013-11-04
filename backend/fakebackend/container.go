@@ -5,9 +5,14 @@ import (
 )
 
 type FakeContainer struct {
-	DestroyError error
-
 	Spec backend.ContainerSpec
+
+	DestroyError error
+	CopyInError  error
+	CopyOutError error
+
+	CopiedIn  [][]string
+	CopiedOut [][]string
 }
 
 func (c *FakeContainer) Handle() string {
@@ -26,11 +31,23 @@ func (c *FakeContainer) Info() (backend.ContainerInfo, error) {
 	return backend.ContainerInfo{}, nil
 }
 
-func (c *FakeContainer) CopyIn(string, string) error {
+func (c *FakeContainer) CopyIn(src, dst string) error {
+	if c.CopyInError != nil {
+		return c.CopyInError
+	}
+
+	c.CopiedIn = append(c.CopiedIn, []string{src, dst})
+
 	return nil
 }
 
-func (c *FakeContainer) CopyOut(string, string, string) error {
+func (c *FakeContainer) CopyOut(src, dst, owner string) error {
+	if c.CopyOutError != nil {
+		return c.CopyOutError
+	}
+
+	c.CopiedOut = append(c.CopiedOut, []string{src, dst, owner})
+
 	return nil
 }
 

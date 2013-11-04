@@ -93,55 +93,95 @@ func (s *WardenServer) serveConnection(conn net.Conn) {
 				BindMounts: bindMounts,
 			})
 
-			if err == nil {
-				response = &protocol.CreateResponse{
-					Handle: proto.String(container.Handle()),
-				}
-			} else {
-				response = &protocol.ErrorResponse{
-					Message: proto.String(err.Error()),
-				}
+			if err != nil {
+				response = errorResponse(err)
+				break
+			}
+
+			response = &protocol.CreateResponse{
+				Handle: proto.String(container.Handle()),
 			}
 		case *protocol.DestroyRequest:
 			handle := request.(*protocol.DestroyRequest).GetHandle()
 
 			err := s.backend.Destroy(handle)
-
-			if err == nil {
-				response = &protocol.DestroyResponse{}
-			} else {
-				response = &protocol.ErrorResponse{
-					Message: proto.String(err.Error()),
-				}
+			if err != nil {
+				response = errorResponse(err)
+				break
 			}
+
+			response = &protocol.DestroyResponse{}
 		case *protocol.ListRequest:
 			containers, err := s.backend.Containers()
-
-			if err == nil {
-				handles := []string{}
-
-				for _, container := range containers {
-					handles = append(handles, container.Handle())
-				}
-
-				response = &protocol.ListResponse{
-					Handles: handles,
-				}
-			} else {
-				response = &protocol.ErrorResponse{
-					Message: proto.String(err.Error()),
-				}
+			if err != nil {
+				response = errorResponse(err)
+				break
 			}
+
+			handles := []string{}
+
+			for _, container := range containers {
+				handles = append(handles, container.Handle())
+			}
+
+			response = &protocol.ListResponse{
+				Handles: handles,
+			}
+		case *protocol.CopyInRequest:
+			copyIn := request.(*protocol.CopyInRequest)
+
+			handle := copyIn.GetHandle()
+			srcPath := copyIn.GetSrcPath()
+			dstPath := copyIn.GetDstPath()
+
+			container, err := s.backend.Lookup(handle)
+			if err != nil {
+				response = errorResponse(err)
+				break
+			}
+
+			err = container.CopyIn(srcPath, dstPath)
+			if err != nil {
+				response = errorResponse(err)
+				break
+			}
+
+			response = &protocol.CopyInResponse{}
+		case *protocol.CopyOutRequest:
+			copyOut := request.(*protocol.CopyOutRequest)
+
+			handle := copyOut.GetHandle()
+			srcPath := copyOut.GetSrcPath()
+			dstPath := copyOut.GetDstPath()
+			owner := copyOut.GetOwner()
+
+			container, err := s.backend.Lookup(handle)
+			if err != nil {
+				response = errorResponse(err)
+				break
+			}
+
+			err = container.CopyOut(srcPath, dstPath, owner)
+			if err != nil {
+				response = errorResponse(err)
+				break
+			}
+
+			response = &protocol.CopyOutResponse{}
 		}
 
 		if response == nil {
 			response = &protocol.ErrorResponse{
-				Message: proto.String(
-					fmt.Sprintf("unhandled request type: %T", request),
-				),
+				Message: proto.String(fmt.Sprintf("unhandled request type: %T", request)),
 			}
 		}
 
 		protocol.Messages(response).WriteTo(conn)
+	}
+}
+
+func errorResponse(err error) proto.Message {
+	return &protocol.ErrorResponse{
+		Message: proto.String(err.Error()),
 	}
 }
