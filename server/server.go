@@ -19,6 +19,14 @@ type WardenServer struct {
 	backend    backend.Backend
 }
 
+type UnhandledRequestError struct {
+	Request proto.Message
+}
+
+func (e UnhandledRequestError) Error() string {
+	return fmt.Sprintf("unhandled request type: %T", e.Request)
+}
+
 func New(socketPath string, backend backend.Backend) *WardenServer {
 	return &WardenServer{
 		socketPath: socketPath,
@@ -51,6 +59,9 @@ func (s *WardenServer) handleConnections(listener net.Listener) {
 
 func (s *WardenServer) serveConnection(conn net.Conn) {
 	for {
+		var response proto.Message
+		var err error
+
 		request, err := messagereader.ReadRequest(conn)
 		if err == io.EOF {
 			break
@@ -61,118 +72,28 @@ func (s *WardenServer) serveConnection(conn net.Conn) {
 			continue
 		}
 
-		var response proto.Message
-
 		switch request.(type) {
 		case *protocol.PingRequest:
-			response = &protocol.PingResponse{}
+			response, err = s.handlePing(request.(*protocol.PingRequest))
 		case *protocol.EchoRequest:
-			response = &protocol.EchoResponse{
-				Message: request.(*protocol.EchoRequest).Message,
-			}
+			response, err = s.handleEcho(request.(*protocol.EchoRequest))
 		case *protocol.CreateRequest:
-			createRequest := request.(*protocol.CreateRequest)
-
-			bindMounts := []backend.BindMount{}
-
-			for _, bm := range createRequest.GetBindMounts() {
-				bindMount := backend.BindMount{
-					SrcPath: bm.GetSrcPath(),
-					DstPath: bm.GetDstPath(),
-					Mode:    backend.BindMountMode(bm.GetMode()),
-				}
-
-				bindMounts = append(bindMounts, bindMount)
-			}
-
-			container, err := s.backend.Create(backend.ContainerSpec{
-				Handle:     createRequest.GetHandle(),
-				GraceTime:  time.Duration(createRequest.GetGraceTime()) * time.Second,
-				RootFSPath: createRequest.GetRootfs(),
-				Network:    createRequest.GetNetwork(),
-				BindMounts: bindMounts,
-			})
-
-			if err != nil {
-				response = errorResponse(err)
-				break
-			}
-
-			response = &protocol.CreateResponse{
-				Handle: proto.String(container.Handle()),
-			}
+			response, err = s.handleCreate(request.(*protocol.CreateRequest))
 		case *protocol.DestroyRequest:
-			handle := request.(*protocol.DestroyRequest).GetHandle()
-
-			err := s.backend.Destroy(handle)
-			if err != nil {
-				response = errorResponse(err)
-				break
-			}
-
-			response = &protocol.DestroyResponse{}
+			response, err = s.handleDestroy(request.(*protocol.DestroyRequest))
 		case *protocol.ListRequest:
-			containers, err := s.backend.Containers()
-			if err != nil {
-				response = errorResponse(err)
-				break
-			}
-
-			handles := []string{}
-
-			for _, container := range containers {
-				handles = append(handles, container.Handle())
-			}
-
-			response = &protocol.ListResponse{
-				Handles: handles,
-			}
+			response, err = s.handleList(request.(*protocol.ListRequest))
 		case *protocol.CopyInRequest:
-			copyIn := request.(*protocol.CopyInRequest)
-
-			handle := copyIn.GetHandle()
-			srcPath := copyIn.GetSrcPath()
-			dstPath := copyIn.GetDstPath()
-
-			container, err := s.backend.Lookup(handle)
-			if err != nil {
-				response = errorResponse(err)
-				break
-			}
-
-			err = container.CopyIn(srcPath, dstPath)
-			if err != nil {
-				response = errorResponse(err)
-				break
-			}
-
-			response = &protocol.CopyInResponse{}
+			response, err = s.handleCopyIn(request.(*protocol.CopyInRequest))
 		case *protocol.CopyOutRequest:
-			copyOut := request.(*protocol.CopyOutRequest)
-
-			handle := copyOut.GetHandle()
-			srcPath := copyOut.GetSrcPath()
-			dstPath := copyOut.GetDstPath()
-			owner := copyOut.GetOwner()
-
-			container, err := s.backend.Lookup(handle)
-			if err != nil {
-				response = errorResponse(err)
-				break
-			}
-
-			err = container.CopyOut(srcPath, dstPath, owner)
-			if err != nil {
-				response = errorResponse(err)
-				break
-			}
-
-			response = &protocol.CopyOutResponse{}
+			response, err = s.handleCopyOut(request.(*protocol.CopyOutRequest))
+		default:
+			err = UnhandledRequestError{request}
 		}
 
-		if response == nil {
+		if err != nil {
 			response = &protocol.ErrorResponse{
-				Message: proto.String(fmt.Sprintf("unhandled request type: %T", request)),
+				Message: proto.String(err.Error()),
 			}
 		}
 
@@ -180,8 +101,103 @@ func (s *WardenServer) serveConnection(conn net.Conn) {
 	}
 }
 
-func errorResponse(err error) proto.Message {
-	return &protocol.ErrorResponse{
-		Message: proto.String(err.Error()),
+func (s *WardenServer) handlePing(ping *protocol.PingRequest) (proto.Message, error) {
+	return &protocol.PingResponse{}, nil
+}
+
+func (s *WardenServer) handleEcho(echo *protocol.EchoRequest) (proto.Message, error) {
+	return &protocol.EchoResponse{Message: echo.Message}, nil
+}
+
+func (s *WardenServer) handleCreate(create *protocol.CreateRequest) (proto.Message, error) {
+	bindMounts := []backend.BindMount{}
+
+	for _, bm := range create.GetBindMounts() {
+		bindMount := backend.BindMount{
+			SrcPath: bm.GetSrcPath(),
+			DstPath: bm.GetDstPath(),
+			Mode:    backend.BindMountMode(bm.GetMode()),
+		}
+
+		bindMounts = append(bindMounts, bindMount)
 	}
+
+	container, err := s.backend.Create(backend.ContainerSpec{
+		Handle:     create.GetHandle(),
+		GraceTime:  time.Duration(create.GetGraceTime()) * time.Second,
+		RootFSPath: create.GetRootfs(),
+		Network:    create.GetNetwork(),
+		BindMounts: bindMounts,
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &protocol.CreateResponse{
+		Handle: proto.String(container.Handle()),
+	}, nil
+}
+
+func (s *WardenServer) handleDestroy(destroy *protocol.DestroyRequest) (proto.Message, error) {
+	handle := destroy.GetHandle()
+
+	err := s.backend.Destroy(handle)
+	if err != nil {
+		return nil, err
+	}
+
+	return &protocol.DestroyResponse{}, nil
+}
+
+func (s *WardenServer) handleList(list *protocol.ListRequest) (proto.Message, error) {
+	containers, err := s.backend.Containers()
+	if err != nil {
+		return nil, err
+	}
+
+	handles := []string{}
+
+	for _, container := range containers {
+		handles = append(handles, container.Handle())
+	}
+
+	return &protocol.ListResponse{Handles: handles}, nil
+}
+
+func (s *WardenServer) handleCopyOut(copyOut *protocol.CopyOutRequest) (proto.Message, error) {
+	handle := copyOut.GetHandle()
+	srcPath := copyOut.GetSrcPath()
+	dstPath := copyOut.GetDstPath()
+	owner := copyOut.GetOwner()
+
+	container, err := s.backend.Lookup(handle)
+	if err != nil {
+		return nil, err
+	}
+
+	err = container.CopyOut(srcPath, dstPath, owner)
+	if err != nil {
+		return nil, err
+	}
+
+	return &protocol.CopyOutResponse{}, nil
+}
+
+func (s *WardenServer) handleCopyIn(copyIn *protocol.CopyInRequest) (proto.Message, error) {
+	handle := copyIn.GetHandle()
+	srcPath := copyIn.GetSrcPath()
+	dstPath := copyIn.GetDstPath()
+
+	container, err := s.backend.Lookup(handle)
+	if err != nil {
+		return nil, err
+	}
+
+	err = container.CopyIn(srcPath, dstPath)
+	if err != nil {
+		return nil, err
+	}
+
+	return &protocol.CopyInResponse{}, nil
 }
