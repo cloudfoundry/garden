@@ -1,4 +1,4 @@
-package fakebackend
+package fake_backend
 
 import (
 	"github.com/vito/garden/backend"
@@ -7,6 +7,9 @@ import (
 type FakeContainer struct {
 	Spec backend.ContainerSpec
 
+	Started bool
+
+	StartError   error
 	CopyInError  error
 	CopyOutError error
 
@@ -14,11 +17,21 @@ type FakeContainer struct {
 	CopiedOut [][]string
 }
 
+func NewFakeContainer(spec backend.ContainerSpec) *FakeContainer {
+	return &FakeContainer{Spec: spec}
+}
+
 func (c *FakeContainer) Handle() string {
 	return c.Spec.Handle
 }
 
 func (c *FakeContainer) Start() error {
+	if c.StartError != nil {
+		return c.StartError
+	}
+
+	c.Started = true
+
 	return nil
 }
 

@@ -1,4 +1,4 @@
-package container_pool_test
+package linux_container_pool_test
 
 import (
 	"errors"
@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/vito/garden/backend"
-	"github.com/vito/garden/backend/linux_backend/container_pool"
+	"github.com/vito/garden/backend/linux_backend/linux_container_pool"
 	"github.com/vito/garden/command_runner/fake_command_runner"
 	. "github.com/vito/garden/command_runner/fake_command_runner/matchers"
 )
@@ -16,11 +16,11 @@ var _ = Describe("Creating", func() {
 	dummySpec := backend.ContainerSpec{}
 
 	var fakeRunner *fake_command_runner.FakeCommandRunner
-	var pool *container_pool.LinuxContainerPool
+	var pool *linux_container_pool.LinuxContainerPool
 
 	BeforeEach(func() {
 		fakeRunner = fake_command_runner.New()
-		pool = container_pool.New("/root/path", "/depot/path", "/rootfs/path", fakeRunner)
+		pool = linux_container_pool.New("/root/path", "/depot/path", "/rootfs/path", fakeRunner)
 	})
 
 	It("returns containers with unique IDs", func() {
@@ -77,11 +77,11 @@ var _ = Describe("Destroying", func() {
 	dummySpec := backend.ContainerSpec{}
 
 	var fakeRunner *fake_command_runner.FakeCommandRunner
-	var pool *container_pool.LinuxContainerPool
+	var pool *linux_container_pool.LinuxContainerPool
 
 	BeforeEach(func() {
 		fakeRunner = fake_command_runner.New()
-		pool = container_pool.New("/root/path", "/depot/path", "/rootfs/path", fakeRunner)
+		pool = linux_container_pool.New("/root/path", "/depot/path", "/rootfs/path", fakeRunner)
 	})
 
 	It("executes destroy.sh with the correct args and environment", func() {

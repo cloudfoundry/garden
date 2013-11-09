@@ -1,4 +1,4 @@
-package container_pool_test
+package linux_container_pool_test
 
 import (
 	. "github.com/onsi/ginkgo"

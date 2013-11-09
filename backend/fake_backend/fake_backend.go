@@ -1,4 +1,4 @@
-package fakebackend
+package fake_backend
 
 import (
 	"github.com/vito/garden/backend"

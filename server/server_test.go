@@ -14,7 +14,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/vito/garden/backend"
-	"github.com/vito/garden/backend/fakebackend"
+	"github.com/vito/garden/backend/fake_backend"
 	"github.com/vito/garden/messagereader"
 	protocol "github.com/vito/garden/protocol"
 	"github.com/vito/garden/server"
@@ -27,7 +27,7 @@ var _ = Describe("The Warden server", func() {
 
 		socketPath := path.Join(tmpdir, "warden.sock")
 
-		wardenServer := server.New(socketPath, fakebackend.New())
+		wardenServer := server.New(socketPath, fake_backend.New())
 
 		err = wardenServer.Start()
 		Expect(err).ToNot(HaveOccured())
@@ -43,7 +43,7 @@ var _ = Describe("The Warden server", func() {
 			wardenServer := server.New(
 				// weird scenario: /foo/X/warden.sock with X being a file
 				path.Join(tmpfile.Name(), "warden.sock"),
-				fakebackend.New(),
+				fake_backend.New(),
 			)
 
 			err = wardenServer.Start()
@@ -53,7 +53,7 @@ var _ = Describe("The Warden server", func() {
 
 	Context("when a client connects", func() {
 		var socketPath string
-		var serverBackend *fakebackend.FakeBackend
+		var serverBackend *fake_backend.FakeBackend
 
 		var serverConnection net.Conn
 
@@ -62,7 +62,7 @@ var _ = Describe("The Warden server", func() {
 			Expect(err).ToNot(HaveOccured())
 
 			socketPath = path.Join(tmpdir, "warden.sock")
-			serverBackend = fakebackend.New()
+			serverBackend = fake_backend.New()
 
 			wardenServer := server.New(socketPath, serverBackend)
 
@@ -260,13 +260,13 @@ var _ = Describe("The Warden server", func() {
 			})
 
 			Context("and the client sends a CopyInRequest", func() {
-				var fakeContainer *fakebackend.FakeContainer
+				var fakeContainer *fake_backend.FakeContainer
 
 				BeforeEach(func() {
 					container, err := serverBackend.Create(backend.ContainerSpec{Handle: "some-handle"})
 					Expect(err).ToNot(HaveOccured())
 
-					fakeContainer = container.(*fakebackend.FakeContainer)
+					fakeContainer = container.(*fake_backend.FakeContainer)
 				})
 
 				It("copies the file in and sends a CopyInResponse", func(done Done) {
@@ -331,13 +331,13 @@ var _ = Describe("The Warden server", func() {
 		})
 
 		Context("and the client sends a CopyOutRequest", func() {
-			var fakeContainer *fakebackend.FakeContainer
+			var fakeContainer *fake_backend.FakeContainer
 
 			BeforeEach(func() {
 				container, err := serverBackend.Create(backend.ContainerSpec{Handle: "some-handle"})
 				Expect(err).ToNot(HaveOccured())
 
-				fakeContainer = container.(*fakebackend.FakeContainer)
+				fakeContainer = container.(*fake_backend.FakeContainer)
 			})
 
 			It("copies the file out and sends a CopyOutResponse", func(done Done) {
