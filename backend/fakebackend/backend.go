@@ -43,16 +43,6 @@ func (b *FakeBackend) Destroy(handle string) error {
 		return b.DestroyError
 	}
 
-	container, err := b.Lookup(handle)
-	if err != nil {
-		return err
-	}
-
-	err = container.Destroy()
-	if err != nil {
-		return err
-	}
-
 	delete(b.CreatedContainers, handle)
 
 	return nil

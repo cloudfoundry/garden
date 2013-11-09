@@ -3,7 +3,7 @@ package backend
 type Container interface {
 	Handle() string
 
-	Destroy() error
+	Start() error
 	Stop(background bool, kill bool) error
 
 	Info() (ContainerInfo, error)
