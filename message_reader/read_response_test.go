@@ -1,4 +1,4 @@
-package messagereader_test
+package message_reader_test
 
 import (
 	"bytes"
@@ -8,7 +8,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	"github.com/vito/garden/messagereader"
+	"github.com/vito/garden/message_reader"
 	protocol "github.com/vito/garden/protocol"
 )
 
@@ -17,7 +17,7 @@ var _ = Describe("Reading response messages over the wire", func() {
 		It("populates the response object and returns no error", func() {
 			var echoResponse protocol.EchoResponse
 
-			err := messagereader.ReadMessage(
+			err := message_reader.ReadMessage(
 				protocol.Messages(&protocol.EchoRequest{
 					Message: proto.String("some message"),
 				}),
@@ -38,7 +38,7 @@ var _ = Describe("Reading response messages over the wire", func() {
 
 			bogusPayload := bytes.NewBuffer(payload.Bytes()[0 : payload.Len()-1])
 
-			err := messagereader.ReadMessage(bogusPayload, &dummyResponse)
+			err := message_reader.ReadMessage(bogusPayload, &dummyResponse)
 			Expect(err).To(HaveOccured())
 		})
 	})
@@ -47,7 +47,7 @@ var _ = Describe("Reading response messages over the wire", func() {
 		It("returns a WardenError", func() {
 			var dummyResponse protocol.PingResponse
 
-			err := messagereader.ReadMessage(
+			err := message_reader.ReadMessage(
 				protocol.Messages(&protocol.ErrorResponse{
 					Message: proto.String("some message"),
 					Data:    proto.String("some data"),
@@ -60,7 +60,7 @@ var _ = Describe("Reading response messages over the wire", func() {
 			)
 
 			Expect(err).To(Equal(
-				&messagereader.WardenError{
+				&message_reader.WardenError{
 					Message: "some message",
 					Data:    "some data",
 					Backtrace: []string{
@@ -80,13 +80,13 @@ var _ = Describe("Reading response messages over the wire", func() {
 				Message: proto.String("some message"),
 			}
 
-			err := messagereader.ReadMessage(
+			err := message_reader.ReadMessage(
 				protocol.Messages(actualResponse),
 				&dummyResponse,
 			)
 
 			Expect(err).To(Equal(
-				&messagereader.TypeMismatchError{
+				&message_reader.TypeMismatchError{
 					Expected: protocol.TypeForMessage(&dummyResponse),
 					Received: protocol.TypeForMessage(actualResponse),
 				},

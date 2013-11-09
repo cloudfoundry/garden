@@ -1,4 +1,4 @@
-package messagereader
+package message_reader
 
 import (
 	"bufio"

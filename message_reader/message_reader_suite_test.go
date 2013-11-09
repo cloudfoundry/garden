@@ -1,4 +1,4 @@
-package messagereader_test
+package message_reader_test
 
 import (
 	. "github.com/onsi/ginkgo"

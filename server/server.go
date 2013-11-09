@@ -10,7 +10,7 @@ import (
 	"code.google.com/p/gogoprotobuf/proto"
 
 	"github.com/vito/garden/backend"
-	"github.com/vito/garden/messagereader"
+	"github.com/vito/garden/message_reader"
 	protocol "github.com/vito/garden/protocol"
 )
 
@@ -62,7 +62,7 @@ func (s *WardenServer) serveConnection(conn net.Conn) {
 		var response proto.Message
 		var err error
 
-		request, err := messagereader.ReadRequest(conn)
+		request, err := message_reader.ReadRequest(conn)
 		if err == io.EOF {
 			break
 		}

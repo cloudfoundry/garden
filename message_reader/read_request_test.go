@@ -1,4 +1,4 @@
-package messagereader_test
+package message_reader_test
 
 import (
 	"bytes"
@@ -8,7 +8,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	"github.com/vito/garden/messagereader"
+	"github.com/vito/garden/message_reader"
 	protocol "github.com/vito/garden/protocol"
 )
 
@@ -19,7 +19,7 @@ var _ = Describe("Reading request messages over the wire", func() {
 				Message: proto.String("some-message"),
 			})
 
-			request, err := messagereader.ReadRequest(payload)
+			request, err := message_reader.ReadRequest(payload)
 			Expect(err).ToNot(HaveOccured())
 			Expect(request).To(Equal(
 				&protocol.EchoRequest{
@@ -35,7 +35,7 @@ var _ = Describe("Reading request messages over the wire", func() {
 
 			bogusPayload := bytes.NewBuffer(payload.Bytes()[0 : payload.Len()-1])
 
-			_, err := messagereader.ReadRequest(bogusPayload)
+			_, err := message_reader.ReadRequest(bogusPayload)
 			Expect(err).To(HaveOccured())
 		})
 	})

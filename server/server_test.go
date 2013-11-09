@@ -15,7 +15,7 @@ import (
 
 	"github.com/vito/garden/backend"
 	"github.com/vito/garden/backend/fake_backend"
-	"github.com/vito/garden/messagereader"
+	"github.com/vito/garden/message_reader"
 	protocol "github.com/vito/garden/protocol"
 	"github.com/vito/garden/server"
 )
@@ -82,7 +82,7 @@ var _ = Describe("The Warden server", func() {
 		}
 
 		readResponse := func(response proto.Message) {
-			err := messagereader.ReadMessage(serverConnection, response)
+			err := message_reader.ReadMessage(serverConnection, response)
 			Expect(err).ToNot(HaveOccured())
 		}
 
@@ -176,8 +176,8 @@ var _ = Describe("The Warden server", func() {
 					})
 
 					var response protocol.CreateResponse
-					err := messagereader.ReadMessage(serverConnection, &response)
-					Expect(err).To(Equal(&messagereader.WardenError{Message: "oh no!"}))
+					err := message_reader.ReadMessage(serverConnection, &response)
+					Expect(err).To(Equal(&message_reader.WardenError{Message: "oh no!"}))
 
 					close(done)
 				}, 1.0)
@@ -214,8 +214,8 @@ var _ = Describe("The Warden server", func() {
 					})
 
 					var response protocol.DestroyResponse
-					err := messagereader.ReadMessage(serverConnection, &response)
-					Expect(err).To(Equal(&messagereader.WardenError{Message: "oh no!"}))
+					err := message_reader.ReadMessage(serverConnection, &response)
+					Expect(err).To(Equal(&message_reader.WardenError{Message: "oh no!"}))
 
 					close(done)
 				}, 1.0)
@@ -252,8 +252,8 @@ var _ = Describe("The Warden server", func() {
 					writeMessages(&protocol.ListRequest{})
 
 					var response protocol.ListResponse
-					err := messagereader.ReadMessage(serverConnection, &response)
-					Expect(err).To(Equal(&messagereader.WardenError{Message: "oh no!"}))
+					err := message_reader.ReadMessage(serverConnection, &response)
+					Expect(err).To(Equal(&message_reader.WardenError{Message: "oh no!"}))
 
 					close(done)
 				}, 1.0)
@@ -299,8 +299,8 @@ var _ = Describe("The Warden server", func() {
 						})
 
 						var response protocol.CopyInResponse
-						err := messagereader.ReadMessage(serverConnection, &response)
-						Expect(err).To(Equal(&messagereader.WardenError{
+						err := message_reader.ReadMessage(serverConnection, &response)
+						Expect(err).To(Equal(&message_reader.WardenError{
 							Message: "unknown handle: some-handle",
 						}))
 
@@ -321,8 +321,8 @@ var _ = Describe("The Warden server", func() {
 						})
 
 						var response protocol.CopyInResponse
-						err := messagereader.ReadMessage(serverConnection, &response)
-						Expect(err).To(Equal(&messagereader.WardenError{Message: "oh no!"}))
+						err := message_reader.ReadMessage(serverConnection, &response)
+						Expect(err).To(Equal(&message_reader.WardenError{Message: "oh no!"}))
 
 						close(done)
 					}, 1.0)
@@ -372,8 +372,8 @@ var _ = Describe("The Warden server", func() {
 					})
 
 					var response protocol.CopyOutResponse
-					err := messagereader.ReadMessage(serverConnection, &response)
-					Expect(err).To(Equal(&messagereader.WardenError{
+					err := message_reader.ReadMessage(serverConnection, &response)
+					Expect(err).To(Equal(&message_reader.WardenError{
 						Message: "unknown handle: some-handle",
 					}))
 
@@ -395,8 +395,8 @@ var _ = Describe("The Warden server", func() {
 					})
 
 					var response protocol.CopyOutResponse
-					err := messagereader.ReadMessage(serverConnection, &response)
-					Expect(err).To(Equal(&messagereader.WardenError{Message: "oh no!"}))
+					err := message_reader.ReadMessage(serverConnection, &response)
+					Expect(err).To(Equal(&message_reader.WardenError{Message: "oh no!"}))
 
 					close(done)
 				}, 1.0)
