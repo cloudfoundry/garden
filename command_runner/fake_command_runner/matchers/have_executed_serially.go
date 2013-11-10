@@ -67,7 +67,7 @@ func prettyCommands(commands []*exec.Cmd) string {
 	out := ""
 
 	for _, command := range commands {
-		out += fmt.Sprintf("\n\t'%s'\n\t\twith arguments %v\n\t\tand environment %v", command.Path, command.Args, command.Env)
+		out += fmt.Sprintf("\n\t'%s'\n\t\twith arguments %v\n\t\tand environment %v", command.Path, command.Args[1:], command.Env)
 	}
 
 	return out

@@ -42,18 +42,14 @@ func (c *LinuxContainer) Handle() string {
 
 func (c *LinuxContainer) Start() error {
 	start := exec.Command(path.Join(c.path, "start.sh"))
+
 	start.Env = []string{
 		"id=" + c.id,
 		"container_iface_mtu=1500",
 		"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
 	}
 
-	err := c.runner.Run(start)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return c.runner.Run(start)
 }
 
 func (c *LinuxContainer) Stop(kill bool) error {
@@ -76,10 +72,24 @@ func (c *LinuxContainer) Info() (backend.ContainerInfo, error) {
 }
 
 func (c *LinuxContainer) CopyIn(src, dst string) error {
-	return nil
+	return c.rsync(src, "vcap@container:"+dst)
 }
 
 func (c *LinuxContainer) CopyOut(src, dst, owner string) error {
+	err := c.rsync("vcap@container:"+src, dst)
+	if err != nil {
+		return err
+	}
+
+	if owner != "" {
+		chown := exec.Command("chown", "-R", owner, dst)
+
+		err := c.runner.Run(chown)
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -117,4 +127,21 @@ func (c *LinuxContainer) NetIn(uint32, uint32) (uint32, uint32, error) {
 
 func (c *LinuxContainer) NetOut(string, uint32) error {
 	return nil
+}
+
+func (c *LinuxContainer) rsync(src, dst string) error {
+	wshPath := path.Join(c.path, "bin", "wsh")
+	sockPath := path.Join(c.path, "run", "wshd.sock")
+
+	rsync := exec.Command(
+		"rsync",
+		"-e", wshPath+" --socket "+sockPath+" --rsh",
+		"-r",
+		"-p",
+		"--links",
+		src,
+		dst,
+	)
+
+	return c.runner.Run(rsync)
 }

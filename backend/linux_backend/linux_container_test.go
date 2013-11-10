@@ -2,6 +2,7 @@ package linux_backend_test
 
 import (
 	"errors"
+	"os/exec"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -103,6 +104,169 @@ var _ = Describe("Stopping", func() {
 
 		It("returns the error", func() {
 			err := container.Stop(false)
+			Expect(err).To(Equal(nastyError))
+		})
+	})
+})
+
+var _ = Describe("Copying in", func() {
+	BeforeEach(func() {
+		fakeRunner = fake_command_runner.New()
+		container = linux_backend.NewLinuxContainer("some-id", "/depot/some-id", backend.ContainerSpec{}, fakeRunner)
+	})
+
+	It("executes rsync from src into dst via wsh --rsh", func() {
+		err := container.CopyIn("/src", "/dst")
+		Expect(err).ToNot(HaveOccured())
+
+		rsyncPath, err := exec.LookPath("rsync")
+		if err != nil {
+			rsyncPath = "rsync"
+		}
+
+		Expect(fakeRunner).To(HaveExecutedSerially(
+			fake_command_runner.CommandSpec{
+				Path: rsyncPath,
+				Args: []string{
+					"-e",
+					"/depot/some-id/bin/wsh --socket /depot/some-id/run/wshd.sock --rsh",
+					"-r",
+					"-p",
+					"--links",
+					"/src",
+					"vcap@container:/dst",
+				},
+			},
+		))
+	})
+
+	Context("when rsync fails", func() {
+		nastyError := errors.New("oh no!")
+
+		BeforeEach(func() {
+			rsyncPath, err := exec.LookPath("rsync")
+			if err != nil {
+				rsyncPath = "rsync"
+			}
+
+			fakeRunner.WhenRunning(
+				fake_command_runner.CommandSpec{
+					Path: rsyncPath,
+				}, func() error {
+					return nastyError
+				},
+			)
+		})
+
+		It("returns the error", func() {
+			err := container.CopyIn("/src", "/dst")
+			Expect(err).To(Equal(nastyError))
+		})
+	})
+})
+
+var _ = Describe("Copying out", func() {
+	BeforeEach(func() {
+		fakeRunner = fake_command_runner.New()
+		container = linux_backend.NewLinuxContainer("some-id", "/depot/some-id", backend.ContainerSpec{}, fakeRunner)
+	})
+
+	It("rsyncs from vcap@container:/src to /dst", func() {
+		err := container.CopyOut("/src", "/dst", "")
+		Expect(err).ToNot(HaveOccured())
+
+		rsyncPath, err := exec.LookPath("rsync")
+		if err != nil {
+			rsyncPath = "rsync"
+		}
+
+		Expect(fakeRunner).To(HaveExecutedSerially(
+			fake_command_runner.CommandSpec{
+				Path: rsyncPath,
+				Args: []string{
+					"-e",
+					"/depot/some-id/bin/wsh --socket /depot/some-id/run/wshd.sock --rsh",
+					"-r",
+					"-p",
+					"--links",
+					"vcap@container:/src",
+					"/dst",
+				},
+			},
+		))
+	})
+
+	Context("when an owner is given", func() {
+		It("chowns the files after rsyncing", func() {
+			err := container.CopyOut("/src", "/dst", "some-user")
+			Expect(err).ToNot(HaveOccured())
+
+			rsyncPath, err := exec.LookPath("rsync")
+			if err != nil {
+				rsyncPath = "rsync"
+			}
+
+			chownPath, err := exec.LookPath("chown")
+			if err != nil {
+				chownPath = "chown"
+			}
+
+			Expect(fakeRunner).To(HaveExecutedSerially(
+				fake_command_runner.CommandSpec{
+					Path: rsyncPath,
+				},
+				fake_command_runner.CommandSpec{
+					Path: chownPath,
+					Args: []string{"-R", "some-user", "/dst"},
+				},
+			))
+		})
+	})
+
+	Context("when rsync fails", func() {
+		nastyError := errors.New("oh no!")
+
+		BeforeEach(func() {
+			rsyncPath, err := exec.LookPath("rsync")
+			if err != nil {
+				rsyncPath = "rsync"
+			}
+
+			fakeRunner.WhenRunning(
+				fake_command_runner.CommandSpec{
+					Path: rsyncPath,
+				}, func() error {
+					return nastyError
+				},
+			)
+		})
+
+		It("returns the error", func() {
+			err := container.CopyOut("/src", "/dst", "")
+			Expect(err).To(Equal(nastyError))
+		})
+	})
+
+	Context("when chowning fails", func() {
+		nastyError := errors.New("oh no!")
+
+		BeforeEach(func() {
+			chownPath, err := exec.LookPath("chown")
+			if err != nil {
+				chownPath = "chown"
+			}
+
+			fakeRunner.WhenRunning(
+				fake_command_runner.CommandSpec{
+					Path: chownPath,
+				}, func() error {
+					return nastyError
+				},
+			)
+		})
+
+		It("returns the error", func() {
+			err := container.CopyOut("/src", "/dst", "some-user")
 			Expect(err).To(Equal(nastyError))
 		})
 	})
