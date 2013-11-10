@@ -6,6 +6,8 @@ import (
 )
 
 type FakeContainerPool struct {
+	DidSetup bool
+
 	CreateError  error
 	DestroyError error
 
@@ -17,6 +19,12 @@ type FakeContainerPool struct {
 
 func New() *FakeContainerPool {
 	return &FakeContainerPool{}
+}
+
+func (p *FakeContainerPool) Setup() error {
+	p.DidSetup = true
+
+	return nil
 }
 
 func (p *FakeContainerPool) Create(spec backend.ContainerSpec) (backend.Container, error) {

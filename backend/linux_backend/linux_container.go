@@ -16,16 +16,16 @@ func NewLinuxContainer(id string, spec backend.ContainerSpec) *LinuxContainer {
 	}
 }
 
+func (c *LinuxContainer) ID() string {
+	return c.id
+}
+
 func (c *LinuxContainer) Handle() string {
 	if c.spec.Handle != "" {
 		return c.spec.Handle
 	}
 
 	return c.ID()
-}
-
-func (c *LinuxContainer) ID() string {
-	return c.id
 }
 
 func (c *LinuxContainer) Start() error {

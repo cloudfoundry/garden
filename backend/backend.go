@@ -5,6 +5,7 @@ import (
 )
 
 type Backend interface {
+	Setup() error
 	Create(ContainerSpec) (Container, error)
 	Destroy(handle string) error
 	Containers() ([]Container, error)

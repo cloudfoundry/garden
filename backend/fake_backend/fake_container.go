@@ -21,6 +21,10 @@ func NewFakeContainer(spec backend.ContainerSpec) *FakeContainer {
 	return &FakeContainer{Spec: spec}
 }
 
+func (c *FakeContainer) ID() string {
+	return c.Spec.Handle
+}
+
 func (c *FakeContainer) Handle() string {
 	return c.Spec.Handle
 }

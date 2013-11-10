@@ -36,7 +36,30 @@ func New(rootPath, depotPath, rootFSPath string, runner command_runner.CommandRu
 	}
 }
 
-func (p *LinuxContainerPool) Create(spec backend.ContainerSpec) (*linux_backend.LinuxContainer, error) {
+func (p *LinuxContainerPool) Setup() error {
+	setup := exec.Command(path.Join(p.rootPath, "setup.sh"))
+
+	setup.Env = []string{
+		"POOL_NETWORK=10.254.0.0/24",
+		"ALLOW_NETWORKS=",
+		"DENY_NETWORKS=",
+		"CONTAINER_ROOTFS_PATH=" + p.rootFSPath,
+		"CONTAINER_DEPOT_PATH=" + p.depotPath,
+		"CONTAINER_DEPOT_MOUNT_POINT_PATH=/",
+		"DISK_QUOTA_ENABLED=true",
+
+		"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+	}
+
+	err := p.runner.Run(setup)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (p *LinuxContainerPool) Create(spec backend.ContainerSpec) (backend.Container, error) {
 	p.Lock()
 
 	id := p.generateContainerID()
@@ -67,7 +90,7 @@ func (p *LinuxContainerPool) Create(spec backend.ContainerSpec) (*linux_backend.
 	return container, nil
 }
 
-func (p *LinuxContainerPool) Destroy(container *linux_backend.LinuxContainer) error {
+func (p *LinuxContainerPool) Destroy(container backend.Container) error {
 	destroy := exec.Command(
 		path.Join(p.rootPath, "destroy.sh"),
 		path.Join(p.depotPath, container.ID()),

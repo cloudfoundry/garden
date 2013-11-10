@@ -7,6 +7,7 @@ import (
 )
 
 type ContainerPool interface {
+	Setup() error
 	Create(backend.ContainerSpec) (backend.Container, error)
 	Destroy(backend.Container) error
 }
@@ -33,6 +34,10 @@ func New(containerPool ContainerPool) *LinuxBackend {
 
 		containers: make(map[string]backend.Container),
 	}
+}
+
+func (b *LinuxBackend) Setup() error {
+	return b.containerPool.Setup()
 }
 
 func (b *LinuxBackend) Create(spec backend.ContainerSpec) (backend.Container, error) {

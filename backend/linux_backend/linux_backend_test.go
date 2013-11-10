@@ -15,6 +15,20 @@ import (
 var fakeContainerPool *fake_container_pool.FakeContainerPool
 var linuxBackend *linux_backend.LinuxBackend
 
+var _ = Describe("Setup", func() {
+	BeforeEach(func() {
+		fakeContainerPool = fake_container_pool.New()
+		linuxBackend = linux_backend.New(fakeContainerPool)
+	})
+
+	It("sets up the container pool", func() {
+		err := linuxBackend.Setup()
+		Expect(err).ToNot(HaveOccured())
+
+		Expect(fakeContainerPool.DidSetup).To(BeTrue())
+	})
+})
+
 var _ = Describe("Create", func() {
 	BeforeEach(func() {
 		fakeContainerPool = fake_container_pool.New()

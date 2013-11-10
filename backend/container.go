@@ -1,6 +1,8 @@
 package backend
 
 type Container interface {
+	ID() string
+
 	Handle() string
 
 	Start() error

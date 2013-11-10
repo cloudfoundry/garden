@@ -26,6 +26,10 @@ func New() *FakeBackend {
 	}
 }
 
+func (b *FakeBackend) Setup() error {
+	return nil
+}
+
 func (b *FakeBackend) Create(spec backend.ContainerSpec) (backend.Container, error) {
 	if b.CreateError != nil {
 		return nil, b.CreateError
