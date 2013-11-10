@@ -3,8 +3,13 @@ package main
 import (
 	"flag"
 	"log"
+	"path"
 
+	"github.com/vito/garden/backend"
 	"github.com/vito/garden/backend/fake_backend"
+	"github.com/vito/garden/backend/linux_backend"
+	"github.com/vito/garden/backend/linux_backend/linux_container_pool"
+	"github.com/vito/garden/command_runner"
 	"github.com/vito/garden/server"
 )
 
@@ -14,12 +19,66 @@ var socketFilePath = flag.String(
 	"where to put the wardern server .sock file",
 )
 
+var backendName = flag.String(
+	"backend",
+	"linux",
+	"which backend to use (linux or fake)",
+)
+
+var rootPath = flag.String(
+	"root",
+	"",
+	"directory containing backend-specific scripts (i.e. ./linux/create.sh)",
+)
+
+var depotPath = flag.String(
+	"depot",
+	"",
+	"directory in which to store containers",
+)
+
+var rootFSPath = flag.String(
+	"rootfs",
+	"",
+	"directory of the rootfs for the containers",
+)
+
 func main() {
 	flag.Parse()
 
-	wardenServer := server.New(*socketFilePath, fake_backend.New())
+	var backend backend.Backend
 
-	err := wardenServer.Start()
+	switch *backendName {
+	case "linux":
+		if *rootPath == "" {
+			log.Fatalln("must specify -root with linux backend")
+		}
+
+		if *depotPath == "" {
+			log.Fatalln("must specify -depot with linux backend")
+		}
+
+		if *rootFSPath == "" {
+			log.Fatalln("must specify -rootfs with linux backend")
+		}
+
+		runner := command_runner.New()
+
+		pool := linux_container_pool.New(path.Join(*rootPath, "linux"), *depotPath, *rootFSPath, runner)
+
+		backend = linux_backend.New(pool)
+	case "fake":
+		backend = fake_backend.New()
+	}
+
+	err := backend.Setup()
+	if err != nil {
+		log.Fatalln("failed to set up backend:", err)
+	}
+
+	wardenServer := server.New(*socketFilePath, backend)
+
+	err = wardenServer.Start()
 	if err != nil {
 		log.Fatalln("failed to start:", err)
 	}
