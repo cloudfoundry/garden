@@ -9,5 +9,5 @@ import (
 
 func TestContainer_pool(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Container_pool Suite")
+	RunSpecs(t, "Linux Container Pool Suite")
 }

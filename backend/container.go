@@ -6,7 +6,7 @@ type Container interface {
 	Handle() string
 
 	Start() error
-	Stop(background bool, kill bool) error
+	Stop(kill bool) error
 
 	Info() (ContainerInfo, error)
 

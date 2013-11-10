@@ -56,7 +56,18 @@ func (c *LinuxContainer) Start() error {
 	return nil
 }
 
-func (c *LinuxContainer) Stop(bool, bool) error {
+func (c *LinuxContainer) Stop(kill bool) error {
+	stop := exec.Command(path.Join(c.path, "stop.sh"))
+
+	if kill {
+		stop.Args = append(stop.Args, "-w", "0")
+	}
+
+	err := c.runner.Run(stop)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 

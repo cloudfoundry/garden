@@ -39,7 +39,7 @@ func (c *FakeContainer) Start() error {
 	return nil
 }
 
-func (c *FakeContainer) Stop(bool, bool) error {
+func (c *FakeContainer) Stop(bool) error {
 	return nil
 }
 
