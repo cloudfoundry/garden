@@ -25,7 +25,13 @@ Vagrant.configure("2") do |config|
 
     chef.add_recipe "garden::apt-update"
     chef.add_recipe "build-essential::default"
-    chef.add_recipe "garden::gvm"
+    chef.add_recipe "chef-golang"
     chef.add_recipe "garden::warden"
+
+    chef.json = {
+      go: {
+        version: "1.1.2",
+      },
+    }
   end
 end
