@@ -3,12 +3,14 @@ package main
 import (
 	"flag"
 	"log"
+	"net"
 	"path"
 
 	"github.com/vito/garden/backend"
 	"github.com/vito/garden/backend/fake_backend"
 	"github.com/vito/garden/backend/linux_backend"
 	"github.com/vito/garden/backend/linux_backend/linux_container_pool"
+	"github.com/vito/garden/backend/linux_backend/network_pool"
 	"github.com/vito/garden/backend/linux_backend/unix_uid_pool"
 	"github.com/vito/garden/command_runner"
 	"github.com/vito/garden/server"
@@ -64,9 +66,23 @@ func main() {
 		}
 
 		uidPool := unix_uid_pool.New(10000, 256)
+
+		_, ipNet, err := net.ParseCIDR("10.244.0.0/22")
+		if err != nil {
+			panic(err)
+		}
+
+		networkPool := network_pool.New(ipNet)
 		runner := command_runner.New()
 
-		pool := linux_container_pool.New(path.Join(*rootPath, "linux"), *depotPath, *rootFSPath, uidPool, runner)
+		pool := linux_container_pool.New(
+			path.Join(*rootPath, "linux"),
+			*depotPath,
+			*rootFSPath,
+			uidPool,
+			networkPool,
+			runner,
+		)
 
 		backend = linux_backend.New(pool)
 	case "fake":

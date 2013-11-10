@@ -2,6 +2,7 @@ package linux_container_pool
 
 import (
 	"fmt"
+	"net"
 	"os/exec"
 	"path"
 	"strconv"
@@ -18,7 +19,8 @@ type LinuxContainerPool struct {
 	depotPath  string
 	rootFSPath string
 
-	uidPool UIDPool
+	uidPool     UIDPool
+	networkPool NetworkPool
 
 	runner command_runner.CommandRunner
 
@@ -32,13 +34,19 @@ type UIDPool interface {
 	Release(uint32)
 }
 
-func New(rootPath, depotPath, rootFSPath string, uidPool UIDPool, runner command_runner.CommandRunner) *LinuxContainerPool {
+type NetworkPool interface {
+	Acquire() (net.IP, error)
+	Release(net.IP)
+}
+
+func New(rootPath, depotPath, rootFSPath string, uidPool UIDPool, networkPool NetworkPool, runner command_runner.CommandRunner) *LinuxContainerPool {
 	return &LinuxContainerPool{
 		rootPath:   rootPath,
 		depotPath:  depotPath,
 		rootFSPath: rootFSPath,
 
-		uidPool: uidPool,
+		uidPool:     uidPool,
+		networkPool: networkPool,
 
 		runner: runner,
 
@@ -75,6 +83,12 @@ func (p *LinuxContainerPool) Create(spec backend.ContainerSpec) (backend.Contain
 		return nil, err
 	}
 
+	ip, err := p.networkPool.Acquire()
+	if err != nil {
+		p.uidPool.Release(uid)
+		return nil, err
+	}
+
 	p.Lock()
 
 	id := p.generateContainerID()
@@ -94,9 +108,9 @@ func (p *LinuxContainerPool) Create(spec backend.ContainerSpec) (backend.Contain
 		"id=" + container.ID(),
 		"rootfs_path=" + p.rootFSPath,
 		fmt.Sprintf("user_uid=%d", uid),
-		// "network_host_ip=10.254.0.1",
-		// "network_container_ip=10.254.0.2",
-		// "network_netmask=255.255.255.252",
+		fmt.Sprintf("network_host_ip=%s", p.hostIP(ip)),
+		fmt.Sprintf("network_container_ip=%s", p.containerIP(ip)),
+		"network_netmask=255.255.255.252",
 
 		"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
 	}
@@ -104,6 +118,7 @@ func (p *LinuxContainerPool) Create(spec backend.ContainerSpec) (backend.Contain
 	err = p.runner.Run(create)
 	if err != nil {
 		p.uidPool.Release(uid)
+		p.networkPool.Release(ip)
 		return nil, err
 	}
 
@@ -144,4 +159,26 @@ func (p *LinuxContainerPool) generateContainerID() string {
 	}
 
 	return string(containerID)
+}
+
+func (p *LinuxContainerPool) hostIP(ip net.IP) net.IP {
+	hostIP := net.ParseIP(ip.String())
+	incIP(hostIP)
+	return hostIP
+}
+
+func (p *LinuxContainerPool) containerIP(ip net.IP) net.IP {
+	containerIP := net.ParseIP(ip.String())
+	incIP(containerIP)
+	incIP(containerIP)
+	return containerIP
+}
+
+func incIP(ip net.IP) {
+	for j := len(ip) - 1; j >= 0; j-- {
+		ip[j]++
+		if ip[j] > 0 {
+			break
+		}
+	}
 }

@@ -2,11 +2,13 @@ package linux_container_pool_test
 
 import (
 	"errors"
+	"net"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
 	"github.com/vito/garden/backend"
+	"github.com/vito/garden/backend/linux_backend/fake_network_pool"
 	"github.com/vito/garden/backend/linux_backend/fake_uid_pool"
 	"github.com/vito/garden/backend/linux_backend/linux_container_pool"
 	"github.com/vito/garden/command_runner/fake_command_runner"
@@ -16,12 +18,22 @@ import (
 var _ = Describe("Linux Container pool", func() {
 	var fakeRunner *fake_command_runner.FakeCommandRunner
 	var fakeUIDPool *fake_uid_pool.FakeUIDPool
+	var fakeNetworkPool *fake_network_pool.FakeNetworkPool
 	var pool *linux_container_pool.LinuxContainerPool
 
 	BeforeEach(func() {
-		fakeRunner = fake_command_runner.New()
 		fakeUIDPool = fake_uid_pool.New(10000)
-		pool = linux_container_pool.New("/root/path", "/depot/path", "/rootfs/path", fakeUIDPool, fakeRunner)
+		fakeNetworkPool = fake_network_pool.New(net.ParseIP("1.2.3.0"))
+		fakeRunner = fake_command_runner.New()
+
+		pool = linux_container_pool.New(
+			"/root/path",
+			"/depot/path",
+			"/rootfs/path",
+			fakeUIDPool,
+			fakeNetworkPool,
+			fakeRunner,
+		)
 	})
 
 	var _ = Describe("setup", func() {
@@ -90,6 +102,9 @@ var _ = Describe("Linux Container pool", func() {
 						"id=" + container.ID(),
 						"rootfs_path=/rootfs/path",
 						"user_uid=10000",
+						"network_host_ip=1.2.3.1",
+						"network_container_ip=1.2.3.2",
+						"network_netmask=255.255.255.252",
 
 						"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
 					},
@@ -110,6 +125,21 @@ var _ = Describe("Linux Container pool", func() {
 			})
 		})
 
+		Context("when acquiring a network fails", func() {
+			nastyError := errors.New("oh no!")
+
+			JustBeforeEach(func() {
+				fakeNetworkPool.AcquireError = nastyError
+			})
+
+			It("returns the error and releases the uid", func() {
+				_, err := pool.Create(backend.ContainerSpec{})
+				Expect(err).To(Equal(nastyError))
+
+				Expect(fakeUIDPool.Released).To(ContainElement(uint32(10000)))
+			})
+		})
+
 		Context("when executing create.sh fails", func() {
 			nastyError := errors.New("oh no!")
 
@@ -123,11 +153,12 @@ var _ = Describe("Linux Container pool", func() {
 				)
 			})
 
-			It("returns the error and releases the uid", func() {
+			It("returns the error and releases the uid and network", func() {
 				_, err := pool.Create(backend.ContainerSpec{})
 				Expect(err).To(Equal(nastyError))
 
 				Expect(fakeUIDPool.Released).To(ContainElement(uint32(10000)))
+				Expect(fakeNetworkPool.Released).To(ContainElement("1.2.3.0"))
 			})
 		})
 	})
