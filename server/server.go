@@ -5,6 +5,7 @@ import (
 	"io"
 	"log"
 	"net"
+	"os"
 	"time"
 
 	"code.google.com/p/gogoprotobuf/proto"
@@ -39,6 +40,8 @@ func (s *WardenServer) Start() error {
 	if err != nil {
 		return err
 	}
+
+	os.Chmod(s.socketPath, 0777)
 
 	go s.handleConnections(listener)
 

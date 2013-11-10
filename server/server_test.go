@@ -21,7 +21,7 @@ import (
 )
 
 var _ = Describe("The Warden server", func() {
-	It("listens on the given socket path", func() {
+	It("listens on the given socket path and chmod it to 0777", func() {
 		tmpdir, err := ioutil.TempDir(os.TempDir(), "warden-server-test")
 		Expect(err).ToNot(HaveOccured())
 
@@ -33,6 +33,11 @@ var _ = Describe("The Warden server", func() {
 		Expect(err).ToNot(HaveOccured())
 
 		Eventually(ErrorDialingUnix(socketPath)).ShouldNot(HaveOccured())
+
+		stat, err := os.Stat(socketPath)
+		Expect(err).ToNot(HaveOccured())
+
+		Expect(int(stat.Mode() & 0777)).To(Equal(0777))
 	})
 
 	Context("when starting fails", func() {
