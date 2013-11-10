@@ -119,14 +119,14 @@ var _ = Describe("Destroy", func() {
 
 		_, err = linuxBackend.Lookup(container.Handle())
 		Expect(err).To(HaveOccured())
-		Expect(err).To(Equal(linux_backend.UnknownHandleError{}))
+		Expect(err).To(Equal(linux_backend.UnknownHandleError{container.Handle()}))
 	})
 
 	Context("when the container does not exist", func() {
 		It("returns UnknownHandleError", func() {
 			err := linuxBackend.Destroy("bogus-handle")
 			Expect(err).To(HaveOccured())
-			Expect(err).To(Equal(linux_backend.UnknownHandleError{}))
+			Expect(err).To(Equal(linux_backend.UnknownHandleError{"bogus-handle"}))
 		})
 	})
 
@@ -176,7 +176,7 @@ var _ = Describe("Lookup", func() {
 			Expect(err).To(HaveOccured())
 			Expect(foundContainer).To(BeNil())
 
-			Expect(err).To(Equal(linux_backend.UnknownHandleError{}))
+			Expect(err).To(Equal(linux_backend.UnknownHandleError{"bogus-handle"}))
 		})
 	})
 })

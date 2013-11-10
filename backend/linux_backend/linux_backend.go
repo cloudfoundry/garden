@@ -58,7 +58,7 @@ func (b *LinuxBackend) Create(spec backend.ContainerSpec) (backend.Container, er
 func (b *LinuxBackend) Destroy(handle string) error {
 	container, found := b.containers[handle]
 	if !found {
-		return UnknownHandleError{}
+		return UnknownHandleError{handle}
 	}
 
 	err := b.containerPool.Destroy(container)
@@ -92,7 +92,7 @@ func (b *LinuxBackend) Lookup(handle string) (backend.Container, error) {
 
 	container, found := b.containers[handle]
 	if !found {
-		return nil, UnknownHandleError{}
+		return nil, UnknownHandleError{handle}
 	}
 
 	return container, nil
