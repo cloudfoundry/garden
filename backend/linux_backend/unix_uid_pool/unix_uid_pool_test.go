@@ -4,13 +4,13 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	"github.com/vito/garden/backend/linux_backend/uid_pool"
+	"github.com/vito/garden/backend/linux_backend/unix_uid_pool"
 )
 
 var _ = Describe("Unix UID pool", func() {
 	Describe("acquiring", func() {
 		It("returns the next available UID from the pool", func() {
-			pool := uid_pool.New(10000, 5)
+			pool := unix_uid_pool.New(10000, 5)
 
 			uid1, err := pool.Acquire()
 			Expect(err).ToNot(HaveOccured())
@@ -24,7 +24,7 @@ var _ = Describe("Unix UID pool", func() {
 
 		Context("when the pool is exhausted", func() {
 			It("returns an error", func() {
-				pool := uid_pool.New(10000, 5)
+				pool := unix_uid_pool.New(10000, 5)
 
 				for i := 0; i < 5; i++ {
 					_, err := pool.Acquire()
@@ -38,14 +38,14 @@ var _ = Describe("Unix UID pool", func() {
 
 		Context("when there is an existing user with the UID", func() {
 			It("returns an error", func() {
-				pool := uid_pool.New(0, 5)
+				pool := unix_uid_pool.New(0, 5)
 
 				_, err := pool.Acquire()
 				Expect(err).To(HaveOccured())
 			})
 
 			It("moves the uid to the end of the pool", func() {
-				pool := uid_pool.New(0, 2)
+				pool := unix_uid_pool.New(0, 2)
 
 				_, err1 := pool.Acquire()
 				Expect(err1).To(HaveOccured())
@@ -65,7 +65,7 @@ var _ = Describe("Unix UID pool", func() {
 
 	Describe("releasing", func() {
 		It("places a uid back at the end of the pool", func() {
-			pool := uid_pool.New(10000, 2)
+			pool := unix_uid_pool.New(10000, 2)
 
 			uid1, err := pool.Acquire()
 			Expect(err).ToNot(HaveOccured())
@@ -84,7 +84,7 @@ var _ = Describe("Unix UID pool", func() {
 
 		Context("when the released uid is out of the range", func() {
 			It("does not add it to the pool", func() {
-				pool := uid_pool.New(10000, 0)
+				pool := unix_uid_pool.New(10000, 0)
 
 				pool.Release(20000)
 
