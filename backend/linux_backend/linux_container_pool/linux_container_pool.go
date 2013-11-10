@@ -66,18 +66,18 @@ func (p *LinuxContainerPool) Create(spec backend.ContainerSpec) (backend.Contain
 
 	p.Unlock()
 
-	container := linux_backend.NewLinuxContainer(id, spec)
+	containerPath := path.Join(p.depotPath, id)
+
+	container := linux_backend.NewLinuxContainer(id, containerPath, spec, p.runner)
 
 	create := exec.Command(
 		path.Join(p.rootPath, "create.sh"),
-		path.Join(p.depotPath, container.ID()),
+		containerPath,
 	)
 
 	create.Env = []string{
 		"id=" + container.ID(),
 		"rootfs_path=" + p.rootFSPath,
-		"allow_nested_warden=false",
-		"container_iface_mtu=1500",
 
 		"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
 	}

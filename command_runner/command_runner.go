@@ -1,6 +1,7 @@
 package command_runner
 
 import (
+	"log"
 	"os/exec"
 )
 
@@ -15,5 +16,11 @@ func New() *RealCommandRunner {
 }
 
 func (r *RealCommandRunner) Run(cmd *exec.Cmd) error {
-	return cmd.Run()
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		log.Printf("failed to execute %#v:\n\t%s\n", cmd, string(out))
+		return err
+	}
+
+	return nil
 }

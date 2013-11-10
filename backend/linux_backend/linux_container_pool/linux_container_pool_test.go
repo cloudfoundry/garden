@@ -93,8 +93,6 @@ var _ = Describe("Creating", func() {
 				Env: []string{
 					"id=" + container.ID(),
 					"rootfs_path=/rootfs/path",
-					"allow_nested_warden=false",
-					"container_iface_mtu=1500",
 
 					"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
 				},

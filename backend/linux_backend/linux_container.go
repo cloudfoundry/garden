@@ -1,18 +1,30 @@
 package linux_backend
 
 import (
+	"os/exec"
+	"path"
+
 	"github.com/vito/garden/backend"
+	"github.com/vito/garden/command_runner"
 )
 
 type LinuxContainer struct {
 	id   string
+	path string
+
 	spec backend.ContainerSpec
+
+	runner command_runner.CommandRunner
 }
 
-func NewLinuxContainer(id string, spec backend.ContainerSpec) *LinuxContainer {
+func NewLinuxContainer(id, path string, spec backend.ContainerSpec, runner command_runner.CommandRunner) *LinuxContainer {
 	return &LinuxContainer{
 		id:   id,
+		path: path,
+
 		spec: spec,
+
+		runner: runner,
 	}
 }
 
@@ -29,6 +41,18 @@ func (c *LinuxContainer) Handle() string {
 }
 
 func (c *LinuxContainer) Start() error {
+	start := exec.Command(path.Join(c.path, "start.sh"))
+	start.Env = []string{
+		"id=" + c.id,
+		"container_iface_mtu=1500",
+		"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+	}
+
+	err := c.runner.Run(start)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
