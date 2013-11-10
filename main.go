@@ -9,6 +9,7 @@ import (
 	"github.com/vito/garden/backend/fake_backend"
 	"github.com/vito/garden/backend/linux_backend"
 	"github.com/vito/garden/backend/linux_backend/linux_container_pool"
+	"github.com/vito/garden/backend/linux_backend/unix_uid_pool"
 	"github.com/vito/garden/command_runner"
 	"github.com/vito/garden/server"
 )
@@ -62,9 +63,10 @@ func main() {
 			log.Fatalln("must specify -rootfs with linux backend")
 		}
 
+		uidPool := unix_uid_pool.New(10000, 256)
 		runner := command_runner.New()
 
-		pool := linux_container_pool.New(path.Join(*rootPath, "linux"), *depotPath, *rootFSPath, runner)
+		pool := linux_container_pool.New(path.Join(*rootPath, "linux"), *depotPath, *rootFSPath, uidPool, runner)
 
 		backend = linux_backend.New(pool)
 	case "fake":

@@ -1,6 +1,7 @@
 package linux_container_pool
 
 import (
+	"fmt"
 	"os/exec"
 	"path"
 	"strconv"
@@ -17,6 +18,8 @@ type LinuxContainerPool struct {
 	depotPath  string
 	rootFSPath string
 
+	uidPool UIDPool
+
 	runner command_runner.CommandRunner
 
 	nextContainer int64
@@ -24,11 +27,18 @@ type LinuxContainerPool struct {
 	sync.RWMutex
 }
 
-func New(rootPath, depotPath, rootFSPath string, runner command_runner.CommandRunner) *LinuxContainerPool {
+type UIDPool interface {
+	Acquire() (uint32, error)
+	Release(uint32)
+}
+
+func New(rootPath, depotPath, rootFSPath string, uidPool UIDPool, runner command_runner.CommandRunner) *LinuxContainerPool {
 	return &LinuxContainerPool{
 		rootPath:   rootPath,
 		depotPath:  depotPath,
 		rootFSPath: rootFSPath,
+
+		uidPool: uidPool,
 
 		runner: runner,
 
@@ -60,6 +70,11 @@ func (p *LinuxContainerPool) Setup() error {
 }
 
 func (p *LinuxContainerPool) Create(spec backend.ContainerSpec) (backend.Container, error) {
+	uid, err := p.uidPool.Acquire()
+	if err != nil {
+		return nil, err
+	}
+
 	p.Lock()
 
 	id := p.generateContainerID()
@@ -78,12 +93,17 @@ func (p *LinuxContainerPool) Create(spec backend.ContainerSpec) (backend.Contain
 	create.Env = []string{
 		"id=" + container.ID(),
 		"rootfs_path=" + p.rootFSPath,
+		fmt.Sprintf("user_uid=%d", uid),
+		// "network_host_ip=10.254.0.1",
+		// "network_container_ip=10.254.0.2",
+		// "network_netmask=255.255.255.252",
 
 		"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
 	}
 
-	err := p.runner.Run(create)
+	err = p.runner.Run(create)
 	if err != nil {
+		p.uidPool.Release(uid)
 		return nil, err
 	}
 
