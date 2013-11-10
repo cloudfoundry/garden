@@ -2,7 +2,6 @@ package linux_container_pool
 
 import (
 	"fmt"
-	"net"
 	"os/exec"
 	"path"
 	"strconv"
@@ -11,6 +10,7 @@ import (
 
 	"github.com/vito/garden/backend"
 	"github.com/vito/garden/backend/linux_backend"
+	"github.com/vito/garden/backend/linux_backend/network"
 	"github.com/vito/garden/command_runner"
 )
 
@@ -35,8 +35,8 @@ type UIDPool interface {
 }
 
 type NetworkPool interface {
-	Acquire() (net.IP, error)
-	Release(net.IP)
+	Acquire() (network.Network, error)
+	Release(network.Network)
 }
 
 func New(rootPath, depotPath, rootFSPath string, uidPool UIDPool, networkPool NetworkPool, runner command_runner.CommandRunner) *LinuxContainerPool {
@@ -83,7 +83,7 @@ func (p *LinuxContainerPool) Create(spec backend.ContainerSpec) (backend.Contain
 		return nil, err
 	}
 
-	ip, err := p.networkPool.Acquire()
+	network, err := p.networkPool.Acquire()
 	if err != nil {
 		p.uidPool.Release(uid)
 		return nil, err
@@ -108,8 +108,8 @@ func (p *LinuxContainerPool) Create(spec backend.ContainerSpec) (backend.Contain
 		"id=" + container.ID(),
 		"rootfs_path=" + p.rootFSPath,
 		fmt.Sprintf("user_uid=%d", uid),
-		fmt.Sprintf("network_host_ip=%s", p.hostIP(ip)),
-		fmt.Sprintf("network_container_ip=%s", p.containerIP(ip)),
+		fmt.Sprintf("network_host_ip=%s", network.HostIP()),
+		fmt.Sprintf("network_container_ip=%s", network.ContainerIP()),
 		"network_netmask=255.255.255.252",
 
 		"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
@@ -118,7 +118,7 @@ func (p *LinuxContainerPool) Create(spec backend.ContainerSpec) (backend.Contain
 	err = p.runner.Run(create)
 	if err != nil {
 		p.uidPool.Release(uid)
-		p.networkPool.Release(ip)
+		p.networkPool.Release(network)
 		return nil, err
 	}
 
@@ -159,26 +159,4 @@ func (p *LinuxContainerPool) generateContainerID() string {
 	}
 
 	return string(containerID)
-}
-
-func (p *LinuxContainerPool) hostIP(ip net.IP) net.IP {
-	hostIP := net.ParseIP(ip.String())
-	incIP(hostIP)
-	return hostIP
-}
-
-func (p *LinuxContainerPool) containerIP(ip net.IP) net.IP {
-	containerIP := net.ParseIP(ip.String())
-	incIP(containerIP)
-	incIP(containerIP)
-	return containerIP
-}
-
-func incIP(ip net.IP) {
-	for j := len(ip) - 1; j >= 0; j-- {
-		ip[j]++
-		if ip[j] > 0 {
-			break
-		}
-	}
 }

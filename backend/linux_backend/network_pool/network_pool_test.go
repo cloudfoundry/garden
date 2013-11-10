@@ -20,16 +20,16 @@ var _ = Describe("Network Pool", func() {
 	})
 
 	Describe("acquiring", func() {
-		It("takes the next /30 in the pool", func() {
+		It("takes the next network in the pool", func() {
 			network1, err := pool.Acquire()
 			Expect(err).ToNot(HaveOccured())
 
-			Expect(network1.Equal(net.IPv4(10, 244, 0, 0))).To(BeTrue())
+			Expect(network1.String()).To(Equal("10.244.0.0/30"))
 
 			network2, err := pool.Acquire()
 			Expect(err).ToNot(HaveOccured())
 
-			Expect(network2.Equal(net.IPv4(10, 244, 0, 4))).To(BeTrue())
+			Expect(network2.String()).To(Equal("10.244.0.4/30"))
 		})
 
 		Context("when the pool is exhausted", func() {
@@ -64,14 +64,23 @@ var _ = Describe("Network Pool", func() {
 
 		Context("when the released network is out of the range", func() {
 			It("does not add it to the pool", func() {
-				for i := 0; i < 256; i++ {
-					_, err := pool.Acquire()
-					Expect(err).ToNot(HaveOccured())
-				}
+				_, smallIPNet, err := net.ParseCIDR("10.255.0.0/32")
+				Expect(err).ToNot(HaveOccured())
 
-				pool.Release(net.ParseIP("127.0.0.1"))
+				kiddiePool := network_pool.New(smallIPNet)
 
-				_, err := pool.Acquire()
+				_, err = kiddiePool.Acquire()
+				Expect(err).ToNot(HaveOccured())
+
+				_, err = kiddiePool.Acquire()
+				Expect(err).To(HaveOccured())
+
+				outOfRangeNetwork, err := pool.Acquire()
+				Expect(err).ToNot(HaveOccured())
+
+				kiddiePool.Release(outOfRangeNetwork)
+
+				_, err = kiddiePool.Acquire()
 				Expect(err).To(HaveOccured())
 			})
 		})

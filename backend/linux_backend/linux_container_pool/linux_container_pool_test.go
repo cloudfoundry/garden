@@ -158,7 +158,7 @@ var _ = Describe("Linux Container pool", func() {
 				Expect(err).To(Equal(nastyError))
 
 				Expect(fakeUIDPool.Released).To(ContainElement(uint32(10000)))
-				Expect(fakeNetworkPool.Released).To(ContainElement("1.2.3.0"))
+				Expect(fakeNetworkPool.Released).To(ContainElement("1.2.3.0/30"))
 			})
 		})
 	})

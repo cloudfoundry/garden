@@ -3,14 +3,35 @@ package network_pool
 import (
 	"net"
 	"sync"
+
+	"github.com/vito/garden/backend/linux_backend/network"
 )
 
 type NetworkPool struct {
 	ipNet *net.IPNet
 
-	pool []net.IP
+	pool []*Network
 
 	sync.Mutex
+}
+
+type Network struct {
+	ipNet *net.IPNet
+
+	hostIP      net.IP
+	containerIP net.IP
+}
+
+func (n Network) String() string {
+	return n.ipNet.String()
+}
+
+func (n Network) HostIP() net.IP {
+	return n.hostIP
+}
+
+func (n Network) ContainerIP() net.IP {
+	return n.containerIP
 }
 
 type PoolExhaustedError struct{}
@@ -20,10 +41,15 @@ func (e PoolExhaustedError) Error() string {
 }
 
 func New(ipNet *net.IPNet) *NetworkPool {
-	pool := []net.IP{}
+	pool := []*Network{}
 
-	for ip := ipNet.IP; ipNet.Contains(ip); ip = nextSubnet(ip) {
-		pool = append(pool, ip)
+	_, startNet, err := net.ParseCIDR(ipNet.IP.String() + "/30")
+	if err != nil {
+		panic(err)
+	}
+
+	for subnet := startNet; ipNet.Contains(subnet.IP); subnet = nextSubnet(subnet) {
+		pool = append(pool, networkFor(subnet))
 	}
 
 	return &NetworkPool{
@@ -33,7 +59,7 @@ func New(ipNet *net.IPNet) *NetworkPool {
 	}
 }
 
-func (p *NetworkPool) Acquire() (net.IP, error) {
+func (p *NetworkPool) Acquire() (network.Network, error) {
 	p.Lock()
 	defer p.Unlock()
 
@@ -47,26 +73,47 @@ func (p *NetworkPool) Acquire() (net.IP, error) {
 	return acquired, nil
 }
 
-func (p *NetworkPool) Release(ip net.IP) {
-	if !p.ipNet.Contains(ip) {
+func (p *NetworkPool) Release(n network.Network) {
+	network := n.(*Network)
+
+	if !p.ipNet.Contains(network.ipNet.IP) {
 		return
 	}
 
 	p.Lock()
 	defer p.Unlock()
 
-	p.pool = append(p.pool, ip)
+	p.pool = append(p.pool, network)
 }
 
-func nextSubnet(ip net.IP) net.IP {
+func networkFor(ipNet *net.IPNet) *Network {
+	return &Network{
+		ipNet:       ipNet,
+		hostIP:      nextIP(ipNet.IP),
+		containerIP: nextIP(nextIP(ipNet.IP)),
+	}
+}
+
+func nextSubnet(ipNet *net.IPNet) *net.IPNet {
+	next := net.ParseIP(ipNet.IP.String())
+
+	inc(next)
+	inc(next)
+	inc(next)
+	inc(next)
+
+	_, nextNet, err := net.ParseCIDR(next.String() + "/30")
+	if err != nil {
+		panic(err)
+	}
+
+	return nextNet
+}
+
+func nextIP(ip net.IP) net.IP {
 	next := net.ParseIP(ip.String())
-
 	inc(next)
-	inc(next)
-	inc(next)
-	inc(next)
-
-	return net.IP(next)
+	return next
 }
 
 func inc(ip net.IP) {
