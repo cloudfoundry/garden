@@ -16,11 +16,5 @@ func New() *RealCommandRunner {
 }
 
 func (r *RealCommandRunner) Run(cmd *exec.Cmd) error {
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		log.Printf("failed to execute %#v:\n\t%s\n", cmd, string(out))
-		return err
-	}
-
-	return nil
+	return cmd.Run()
 }
