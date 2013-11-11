@@ -11,8 +11,8 @@ matrix:
 
 install:
   - go get -v github.com/onsi/ginkgo/ginkgo
-  - go get -v github.ocm/onsi/ginkgo
-  - go get -v github.ocm/onsi/gomega
+  - go get -v github.com/onsi/ginkgo
+  - go get -v github.com/onsi/gomega
   - go test -i ./...
 
 script:
