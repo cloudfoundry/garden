@@ -13,6 +13,7 @@ install:
   - go get -v github.com/xoebus/gocart/gocart
   - export PATH=$HOME/gopath/bin:$PATH
   - gocart install
+  - go install github.com/onsi/ginkgo/ginkgo
   - go test -i ./...
 
 script:
