@@ -1,7 +1,6 @@
 package command_runner
 
 import (
-	"log"
 	"os/exec"
 )
 
