@@ -9,12 +9,17 @@ type FakeContainer struct {
 
 	Started bool
 
-	StartError   error
+	StartError error
+
 	CopyInError  error
 	CopyOutError error
 
+	SpawnedJobID uint32
+	SpawnError   error
+
 	CopiedIn  [][]string
 	CopiedOut [][]string
+	Spawned   []backend.JobSpec
 }
 
 func NewFakeContainer(spec backend.ContainerSpec) *FakeContainer {
@@ -79,8 +84,14 @@ func (c *FakeContainer) LimitMemory(backend.MemoryLimits) (backend.MemoryLimits,
 	return backend.MemoryLimits{}, nil
 }
 
-func (c *FakeContainer) Spawn(backend.JobSpec) (uint32, error) {
-	return 0, nil
+func (c *FakeContainer) Spawn(spec backend.JobSpec) (uint32, error) {
+	if c.SpawnError != nil {
+		return 0, c.SpawnError
+	}
+
+	c.Spawned = append(c.Spawned, spec)
+
+	return c.SpawnedJobID, nil
 }
 
 func (c *FakeContainer) Stream(uint32) (<-chan backend.JobStream, error) {

@@ -263,18 +263,41 @@ var _ = Describe("The Warden server", func() {
 					close(done)
 				}, 1.0)
 			})
+		})
 
-			Context("and the client sends a CopyInRequest", func() {
-				var fakeContainer *fake_backend.FakeContainer
+		Context("and the client sends a CopyInRequest", func() {
+			var fakeContainer *fake_backend.FakeContainer
 
-				BeforeEach(func() {
-					container, err := serverBackend.Create(backend.ContainerSpec{Handle: "some-handle"})
-					Expect(err).ToNot(HaveOccured())
+			BeforeEach(func() {
+				container, err := serverBackend.Create(backend.ContainerSpec{Handle: "some-handle"})
+				Expect(err).ToNot(HaveOccured())
 
-					fakeContainer = container.(*fake_backend.FakeContainer)
+				fakeContainer = container.(*fake_backend.FakeContainer)
+			})
+
+			It("copies the file in and sends a CopyInResponse", func(done Done) {
+				writeMessages(&protocol.CopyInRequest{
+					Handle:  proto.String(fakeContainer.Handle()),
+					SrcPath: proto.String("/src/path"),
+					DstPath: proto.String("/dst/path"),
 				})
 
-				It("copies the file in and sends a CopyInResponse", func(done Done) {
+				var response protocol.CopyInResponse
+				readResponse(&response)
+
+				Expect(fakeContainer.CopiedIn).To(ContainElement(
+					[]string{"/src/path", "/dst/path"},
+				))
+
+				close(done)
+			}, 1.0)
+
+			Context("when the container is not found", func() {
+				BeforeEach(func() {
+					serverBackend.Destroy(fakeContainer.Handle())
+				})
+
+				It("sends a WardenError response", func(done Done) {
 					writeMessages(&protocol.CopyInRequest{
 						Handle:  proto.String(fakeContainer.Handle()),
 						SrcPath: proto.String("/src/path"),
@@ -282,56 +305,33 @@ var _ = Describe("The Warden server", func() {
 					})
 
 					var response protocol.CopyInResponse
-					readResponse(&response)
-
-					Expect(fakeContainer.CopiedIn).To(ContainElement(
-						[]string{"/src/path", "/dst/path"},
-					))
+					err := message_reader.ReadMessage(serverConnection, &response)
+					Expect(err).To(Equal(&message_reader.WardenError{
+						Message: "unknown handle: some-handle",
+					}))
 
 					close(done)
 				}, 1.0)
+			})
 
-				Context("when the container is not found", func() {
-					BeforeEach(func() {
-						serverBackend.Destroy(fakeContainer.Handle())
-					})
-
-					It("sends a WardenError response", func(done Done) {
-						writeMessages(&protocol.CopyInRequest{
-							Handle:  proto.String(fakeContainer.Handle()),
-							SrcPath: proto.String("/src/path"),
-							DstPath: proto.String("/dst/path"),
-						})
-
-						var response protocol.CopyInResponse
-						err := message_reader.ReadMessage(serverConnection, &response)
-						Expect(err).To(Equal(&message_reader.WardenError{
-							Message: "unknown handle: some-handle",
-						}))
-
-						close(done)
-					}, 1.0)
+			Context("when copying in to the container fails", func() {
+				BeforeEach(func() {
+					fakeContainer.CopyInError = errors.New("oh no!")
 				})
 
-				Context("when copying in to the container fails", func() {
-					BeforeEach(func() {
-						fakeContainer.CopyInError = errors.New("oh no!")
+				It("sends a WardenError response", func(done Done) {
+					writeMessages(&protocol.CopyInRequest{
+						Handle:  proto.String(fakeContainer.Handle()),
+						SrcPath: proto.String("/src/path"),
+						DstPath: proto.String("/dst/path"),
 					})
 
-					It("sends a WardenError response", func(done Done) {
-						writeMessages(&protocol.CopyInRequest{
-							Handle:  proto.String(fakeContainer.Handle()),
-							SrcPath: proto.String("/src/path"),
-							DstPath: proto.String("/dst/path"),
-						})
+					var response protocol.CopyInResponse
+					err := message_reader.ReadMessage(serverConnection, &response)
+					Expect(err).To(Equal(&message_reader.WardenError{Message: "oh no!"}))
 
-						var response protocol.CopyInResponse
-						err := message_reader.ReadMessage(serverConnection, &response)
-						Expect(err).To(Equal(&message_reader.WardenError{Message: "oh no!"}))
-
-						close(done)
-					}, 1.0)
-				})
+					close(done)
+				}, 1.0)
 			})
 		})
 
@@ -400,6 +400,83 @@ var _ = Describe("The Warden server", func() {
 					})
 
 					var response protocol.CopyOutResponse
+					err := message_reader.ReadMessage(serverConnection, &response)
+					Expect(err).To(Equal(&message_reader.WardenError{Message: "oh no!"}))
+
+					close(done)
+				}, 1.0)
+			})
+		})
+
+		Context("and the client sends a SpawnRequest", func() {
+			var fakeContainer *fake_backend.FakeContainer
+
+			BeforeEach(func() {
+				container, err := serverBackend.Create(backend.ContainerSpec{Handle: "some-handle"})
+				Expect(err).ToNot(HaveOccured())
+
+				fakeContainer = container.(*fake_backend.FakeContainer)
+			})
+
+			It("spawns a job and sends a SpawnResponse", func(done Done) {
+				fakeContainer.SpawnedJobID = 42
+
+				writeMessages(&protocol.SpawnRequest{
+					Handle:     proto.String(fakeContainer.Handle()),
+					Script:     proto.String("/some/script"),
+					Privileged: proto.Bool(true),
+				})
+
+				var response protocol.SpawnResponse
+				readResponse(&response)
+
+				Expect(response.GetJobId()).To(Equal(uint32(42)))
+
+				Expect(fakeContainer.Spawned).To(ContainElement(
+					backend.JobSpec{
+						Script:     "/some/script",
+						Privileged: true,
+					},
+				))
+
+				close(done)
+			}, 1.0)
+
+			Context("when the container is not found", func() {
+				BeforeEach(func() {
+					serverBackend.Destroy(fakeContainer.Handle())
+				})
+
+				It("sends a WardenError response", func(done Done) {
+					writeMessages(&protocol.SpawnRequest{
+						Handle: proto.String(fakeContainer.Handle()),
+						Script: proto.String("/some/script"),
+					})
+
+					var response protocol.SpawnResponse
+
+					err := message_reader.ReadMessage(serverConnection, &response)
+					Expect(err).To(Equal(&message_reader.WardenError{
+						Message: "unknown handle: some-handle",
+					}))
+
+					close(done)
+				}, 1.0)
+			})
+
+			Context("when spawning fails", func() {
+				BeforeEach(func() {
+					fakeContainer.SpawnError = errors.New("oh no!")
+				})
+
+				It("sends a WardenError response", func(done Done) {
+					writeMessages(&protocol.SpawnRequest{
+						Handle: proto.String(fakeContainer.Handle()),
+						Script: proto.String("/some/script"),
+					})
+
+					var response protocol.SpawnResponse
+
 					err := message_reader.ReadMessage(serverConnection, &response)
 					Expect(err).To(Equal(&message_reader.WardenError{Message: "oh no!"}))
 

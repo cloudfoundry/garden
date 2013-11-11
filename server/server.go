@@ -90,6 +90,8 @@ func (s *WardenServer) serveConnection(conn net.Conn) {
 			response, err = s.handleCopyIn(request.(*protocol.CopyInRequest))
 		case *protocol.CopyOutRequest:
 			response, err = s.handleCopyOut(request.(*protocol.CopyOutRequest))
+		case *protocol.SpawnRequest:
+			response, err = s.handleSpawn(request.(*protocol.SpawnRequest))
 		default:
 			err = UnhandledRequestError{request}
 		}
@@ -203,4 +205,27 @@ func (s *WardenServer) handleCopyIn(copyIn *protocol.CopyInRequest) (proto.Messa
 	}
 
 	return &protocol.CopyInResponse{}, nil
+}
+
+func (s *WardenServer) handleSpawn(spawn *protocol.SpawnRequest) (proto.Message, error) {
+	handle := spawn.GetHandle()
+	script := spawn.GetScript()
+	privileged := spawn.GetPrivileged()
+
+	container, err := s.backend.Lookup(handle)
+	if err != nil {
+		return nil, err
+	}
+
+	jobSpec := backend.JobSpec{
+		Script:     script,
+		Privileged: privileged,
+	}
+
+	jobID, err := container.Spawn(jobSpec)
+	if err != nil {
+		return nil, err
+	}
+
+	return &protocol.SpawnResponse{JobId: proto.Uint32(jobID)}, nil
 }
