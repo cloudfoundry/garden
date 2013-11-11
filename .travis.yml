@@ -1,0 +1,20 @@
+language: go
+
+go:
+  - 1.1
+  - tip
+
+
+matrix:
+  allow_failures:
+    - go: tip
+
+install:
+  - go get -v github.com/onsi/ginkgo/ginkgo
+  - go get -v github.ocm/onsi/ginkgo
+  - go get -v github.ocm/onsi/gomega
+  - go test -i ./...
+
+script:
+  - export PATH=$HOME/gopath/bin:$PATH
+  - ginkgo -r -i --randomizeAllSpecs
