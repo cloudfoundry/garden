@@ -7,19 +7,22 @@ import (
 type FakeContainer struct {
 	Spec backend.ContainerSpec
 
-	Started bool
-
 	StartError error
+	Started    bool
 
-	CopyInError  error
+	CopyInError error
+	CopiedIn    [][]string
+
 	CopyOutError error
+	CopiedOut    [][]string
 
-	SpawnedJobID uint32
 	SpawnError   error
+	SpawnedJobID uint32
+	Spawned      []backend.JobSpec
 
-	CopiedIn  [][]string
-	CopiedOut [][]string
-	Spawned   []backend.JobSpec
+	LinkError       error
+	LinkedJobResult backend.JobResult
+	Linked          []uint32
 }
 
 func NewFakeContainer(spec backend.ContainerSpec) *FakeContainer {
@@ -98,8 +101,14 @@ func (c *FakeContainer) Stream(uint32) (<-chan backend.JobStream, error) {
 	return nil, nil
 }
 
-func (c *FakeContainer) Link(uint32) (backend.JobResult, error) {
-	return backend.JobResult{}, nil
+func (c *FakeContainer) Link(jobID uint32) (backend.JobResult, error) {
+	if c.LinkError != nil {
+		return backend.JobResult{}, c.LinkError
+	}
+
+	c.Linked = append(c.Linked, jobID)
+
+	return c.LinkedJobResult, nil
 }
 
 func (c *FakeContainer) Run(backend.JobSpec) (backend.JobResult, error) {

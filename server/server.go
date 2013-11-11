@@ -92,6 +92,8 @@ func (s *WardenServer) serveConnection(conn net.Conn) {
 			response, err = s.handleCopyOut(request.(*protocol.CopyOutRequest))
 		case *protocol.SpawnRequest:
 			response, err = s.handleSpawn(request.(*protocol.SpawnRequest))
+		case *protocol.LinkRequest:
+			response, err = s.handleLink(request.(*protocol.LinkRequest))
 		default:
 			err = UnhandledRequestError{request}
 		}
@@ -228,4 +230,25 @@ func (s *WardenServer) handleSpawn(spawn *protocol.SpawnRequest) (proto.Message,
 	}
 
 	return &protocol.SpawnResponse{JobId: proto.Uint32(jobID)}, nil
+}
+
+func (s *WardenServer) handleLink(link *protocol.LinkRequest) (proto.Message, error) {
+	handle := link.GetHandle()
+	jobID := link.GetJobId()
+
+	container, err := s.backend.Lookup(handle)
+	if err != nil {
+		return nil, err
+	}
+
+	jobResult, err := container.Link(jobID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &protocol.LinkResponse{
+		ExitStatus: proto.Uint32(jobResult.ExitStatus),
+		Stdout:     proto.String(string(jobResult.Stdout)),
+		Stderr:     proto.String(string(jobResult.Stderr)),
+	}, nil
 }

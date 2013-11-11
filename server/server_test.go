@@ -484,6 +484,83 @@ var _ = Describe("The Warden server", func() {
 				}, 1.0)
 			})
 		})
+
+		Context("and the client sends a LinkRequest", func() {
+			var fakeContainer *fake_backend.FakeContainer
+
+			BeforeEach(func() {
+				container, err := serverBackend.Create(backend.ContainerSpec{Handle: "some-handle"})
+				Expect(err).ToNot(HaveOccured())
+
+				fakeContainer = container.(*fake_backend.FakeContainer)
+			})
+
+			It("links to the job and sends a LinkResponse", func(done Done) {
+				fakeContainer.LinkedJobResult = backend.JobResult{
+					ExitStatus: 42,
+					Stdout:     []byte("job out\n"),
+					Stderr:     []byte("job err\n"),
+				}
+
+				writeMessages(&protocol.LinkRequest{
+					Handle: proto.String(fakeContainer.Handle()),
+					JobId:  proto.Uint32(123),
+				})
+
+				var response protocol.LinkResponse
+				readResponse(&response)
+
+				Expect(response.GetExitStatus()).To(Equal(uint32(42)))
+				Expect(response.GetStdout()).To(Equal("job out\n"))
+				Expect(response.GetStderr()).To(Equal("job err\n"))
+
+				Expect(fakeContainer.Linked).To(ContainElement(uint32(123)))
+
+				close(done)
+			}, 1.0)
+
+			Context("when the container is not found", func() {
+				BeforeEach(func() {
+					serverBackend.Destroy(fakeContainer.Handle())
+				})
+
+				It("sends a WardenError response", func(done Done) {
+					writeMessages(&protocol.LinkRequest{
+						Handle: proto.String(fakeContainer.Handle()),
+						JobId:  proto.Uint32(123),
+					})
+
+					var response protocol.LinkResponse
+
+					err := message_reader.ReadMessage(serverConnection, &response)
+					Expect(err).To(Equal(&message_reader.WardenError{
+						Message: "unknown handle: some-handle",
+					}))
+
+					close(done)
+				}, 1.0)
+			})
+
+			Context("when linking fails", func() {
+				BeforeEach(func() {
+					fakeContainer.LinkError = errors.New("oh no!")
+				})
+
+				It("sends a WardenError response", func(done Done) {
+					writeMessages(&protocol.LinkRequest{
+						Handle: proto.String(fakeContainer.Handle()),
+						JobId:  proto.Uint32(123),
+					})
+
+					var response protocol.LinkResponse
+
+					err := message_reader.ReadMessage(serverConnection, &response)
+					Expect(err).To(Equal(&message_reader.WardenError{Message: "oh no!"}))
+
+					close(done)
+				}, 1.0)
+			})
+		})
 	})
 })
 
