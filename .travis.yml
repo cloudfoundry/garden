@@ -10,9 +10,9 @@ matrix:
     - go: tip
 
 install:
-  - go get -v github.com/onsi/ginkgo/ginkgo
-  - go get -v github.com/onsi/ginkgo
-  - go get -v github.com/onsi/gomega
+  - go get -v github.com/xoebus/gocart/gocart
+  - export PATH=$HOME/gopath/bin:$PATH
+  - gocart install
   - go test -i ./...
 
 script:
