@@ -3,6 +3,7 @@ package linux_container_pool_test
 import (
 	"errors"
 	"net"
+	"os/exec"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -66,7 +67,7 @@ var _ = Describe("Linux Container pool", func() {
 				fakeRunner.WhenRunning(
 					fake_command_runner.CommandSpec{
 						Path: "/root/path/setup.sh",
-					}, func() error {
+					}, func(*exec.Cmd) error {
 						return nastyError
 					},
 				)
@@ -147,7 +148,7 @@ var _ = Describe("Linux Container pool", func() {
 				fakeRunner.WhenRunning(
 					fake_command_runner.CommandSpec{
 						Path: "/root/path/create.sh",
-					}, func() error {
+					}, func(*exec.Cmd) error {
 						return nastyError
 					},
 				)

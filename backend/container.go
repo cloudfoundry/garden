@@ -28,15 +28,15 @@ type Container interface {
 
 type JobSpec struct {
 	Script        string
-	Priveleged    bool
+	Privileged    bool
 	Limits        ResourceLimits
 	DiscardOutput bool
 }
 
 type JobResult struct {
 	ExitStatus uint32
-	Stdout     string
-	Stderr     string
+	Stdout     []byte
+	Stderr     []byte
 	Info       ContainerInfo
 }
 

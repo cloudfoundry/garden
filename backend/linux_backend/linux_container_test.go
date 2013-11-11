@@ -3,6 +3,7 @@ package linux_backend_test
 import (
 	"errors"
 	"os/exec"
+	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -45,7 +46,7 @@ var _ = Describe("Starting", func() {
 			fakeRunner.WhenRunning(
 				fake_command_runner.CommandSpec{
 					Path: "/depot/some-id/start.sh",
-				}, func() error {
+				}, func(*exec.Cmd) error {
 					return nastyError
 				},
 			)
@@ -96,7 +97,7 @@ var _ = Describe("Stopping", func() {
 			fakeRunner.WhenRunning(
 				fake_command_runner.CommandSpec{
 					Path: "/depot/some-id/stop.sh",
-				}, func() error {
+				}, func(*exec.Cmd) error {
 					return nastyError
 				},
 			)
@@ -152,7 +153,7 @@ var _ = Describe("Copying in", func() {
 			fakeRunner.WhenRunning(
 				fake_command_runner.CommandSpec{
 					Path: rsyncPath,
-				}, func() error {
+				}, func(*exec.Cmd) error {
 					return nastyError
 				},
 			)
@@ -235,7 +236,7 @@ var _ = Describe("Copying out", func() {
 			fakeRunner.WhenRunning(
 				fake_command_runner.CommandSpec{
 					Path: rsyncPath,
-				}, func() error {
+				}, func(*exec.Cmd) error {
 					return nastyError
 				},
 			)
@@ -259,7 +260,7 @@ var _ = Describe("Copying out", func() {
 			fakeRunner.WhenRunning(
 				fake_command_runner.CommandSpec{
 					Path: chownPath,
-				}, func() error {
+				}, func(*exec.Cmd) error {
 					return nastyError
 				},
 			)
@@ -268,6 +269,132 @@ var _ = Describe("Copying out", func() {
 		It("returns the error", func() {
 			err := container.CopyOut("/src", "/dst", "some-user")
 			Expect(err).To(Equal(nastyError))
+		})
+	})
+})
+
+var _ = Describe("Spawning", func() {
+	BeforeEach(func() {
+		fakeRunner = fake_command_runner.New()
+		container = linux_backend.NewLinuxContainer("some-id", "/depot/some-id", backend.ContainerSpec{}, fakeRunner)
+	})
+
+	It("runs the /bin/bash via wsh with the given script as the input", func() {
+		_, err := container.Spawn(backend.JobSpec{
+			Script: "/some/script",
+		})
+
+		Expect(err).ToNot(HaveOccured())
+
+		Eventually(fakeRunner).Should(HaveExecutedSerially(
+			fake_command_runner.CommandSpec{
+				Path: "/depot/some-id/bin/wsh",
+				Args: []string{
+					"--socket", "/depot/some-id/run/wshd.sock",
+					"--user", "vcap",
+					"/bin/bash",
+				},
+				Stdin: "/some/script",
+			},
+		))
+	})
+
+	It("returns a unique job ID", func() {
+		jobID1, err := container.Spawn(backend.JobSpec{
+			Script: "/some/script",
+		})
+		Expect(err).ToNot(HaveOccured())
+
+		jobID2, err := container.Spawn(backend.JobSpec{
+			Script: "/some/script",
+		})
+		Expect(err).ToNot(HaveOccured())
+
+		Expect(jobID1).ToNot(Equal(jobID2))
+	})
+
+	Context("with 'privileged' true", func() {
+		It("runs with --user root", func() {
+			_, err := container.Spawn(backend.JobSpec{
+				Script:     "/some/script",
+				Privileged: true,
+			})
+
+			Expect(err).ToNot(HaveOccured())
+
+			Eventually(fakeRunner).Should(HaveExecutedSerially(
+				fake_command_runner.CommandSpec{
+					Path: "/depot/some-id/bin/wsh",
+					Args: []string{
+						"--socket", "/depot/some-id/run/wshd.sock",
+						"--user", "root",
+						"/bin/bash",
+					},
+					Stdin: "/some/script",
+				},
+			))
+		})
+	})
+})
+
+var _ = Describe("Linking", func() {
+	BeforeEach(func() {
+		fakeRunner = fake_command_runner.New()
+		container = linux_backend.NewLinuxContainer("some-id", "/depot/some-id", backend.ContainerSpec{}, fakeRunner)
+	})
+
+	Context("to a started job", func() {
+		BeforeEach(func() {
+			fakeRunner.WhenRunning(
+				fake_command_runner.CommandSpec{
+					Path:  "/depot/some-id/bin/wsh",
+					Stdin: "/some/script",
+				}, func(cmd *exec.Cmd) error {
+					cmd.Stdout.Write([]byte("hi out\n"))
+					cmd.Stderr.Write([]byte("hi err\n"))
+
+					dummyCmd := exec.Command("/bin/bash", "-c", "exit 42")
+					dummyCmd.Run()
+
+					cmd.ProcessState = dummyCmd.ProcessState
+
+					return nil
+				},
+			)
+		})
+
+		It("returns the exit status, stdout, and stderr", func() {
+			jobID, err := container.Spawn(backend.JobSpec{
+				Script: "/some/script",
+			})
+			Expect(err).ToNot(HaveOccured())
+
+			jobResult, err := container.Link(jobID)
+			Expect(err).ToNot(HaveOccured())
+			Expect(jobResult.ExitStatus).To(Equal(uint32(42)))
+			Expect(jobResult.Stdout).To(Equal([]byte("hi out\n")))
+			Expect(jobResult.Stderr).To(Equal([]byte("hi err\n")))
+		})
+	})
+
+	Context("to a job that has already completed", func() {
+		It("returns an error", func() {
+			jobID, err := container.Spawn(backend.JobSpec{
+				Script: "/some/script",
+			})
+			Expect(err).ToNot(HaveOccured())
+
+			time.Sleep(100 * time.Millisecond)
+
+			_, err = container.Link(jobID)
+			Expect(err).To(HaveOccured())
+		})
+	})
+
+	Context("to an unknown job", func() {
+		It("returns an error", func() {
+			_, err := container.Link(42)
+			Expect(err).To(HaveOccured())
 		})
 	})
 })

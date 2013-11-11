@@ -1,10 +1,12 @@
 package linux_backend
 
 import (
+	"bytes"
 	"os/exec"
 	"path"
 
 	"github.com/vito/garden/backend"
+	"github.com/vito/garden/backend/linux_backend/job_tracker"
 	"github.com/vito/garden/command_runner"
 )
 
@@ -15,6 +17,8 @@ type LinuxContainer struct {
 	spec backend.ContainerSpec
 
 	runner command_runner.CommandRunner
+
+	jobTracker *job_tracker.JobTracker
 }
 
 func NewLinuxContainer(id, path string, spec backend.ContainerSpec, runner command_runner.CommandRunner) *LinuxContainer {
@@ -25,6 +29,8 @@ func NewLinuxContainer(id, path string, spec backend.ContainerSpec, runner comma
 		spec: spec,
 
 		runner: runner,
+
+		jobTracker: job_tracker.New(runner),
 	}
 }
 
@@ -106,7 +112,21 @@ func (c *LinuxContainer) LimitMemory(backend.MemoryLimits) (backend.MemoryLimits
 }
 
 func (c *LinuxContainer) Spawn(spec backend.JobSpec) (uint32, error) {
-	return 0, nil
+	wshPath := path.Join(c.path, "bin", "wsh")
+	sockPath := path.Join(c.path, "run", "wshd.sock")
+
+	user := "vcap"
+	if spec.Privileged {
+		user = "root"
+	}
+
+	wsh := exec.Command(wshPath, "--socket", sockPath, "--user", user, "/bin/bash")
+
+	wsh.Stdin = bytes.NewBufferString(spec.Script)
+
+	jobID := c.jobTracker.Spawn(wsh)
+
+	return jobID, nil
 }
 
 func (c *LinuxContainer) Stream(uint32) (<-chan backend.JobStream, error) {
@@ -114,7 +134,16 @@ func (c *LinuxContainer) Stream(uint32) (<-chan backend.JobStream, error) {
 }
 
 func (c *LinuxContainer) Link(jobID uint32) (backend.JobResult, error) {
-	return backend.JobResult{}, nil
+	exitStatus, stdout, stderr, err := c.jobTracker.Link(jobID)
+	if err != nil {
+		return backend.JobResult{}, err
+	}
+
+	return backend.JobResult{
+		ExitStatus: exitStatus,
+		Stdout:     stdout,
+		Stderr:     stderr,
+	}, nil
 }
 
 func (c *LinuxContainer) Run(backend.JobSpec) (backend.JobResult, error) {

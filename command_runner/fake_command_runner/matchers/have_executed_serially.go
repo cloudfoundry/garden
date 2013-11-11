@@ -21,7 +21,7 @@ func (m *HaveExecutedSeriallyMatcher) Match(actual interface{}) (bool, string, e
 		return false, "", fmt.Errorf("Not a fake command runner: %#v.", actual)
 	}
 
-	executed := runner.ExecutedCommands
+	executed := runner.ExecutedCommands()
 
 	matched := false
 	startSearch := 0
@@ -57,7 +57,11 @@ func prettySpecs(specs []fake_command_runner.CommandSpec) string {
 	out := ""
 
 	for _, spec := range specs {
-		out += fmt.Sprintf("\n\t'%s'\n\t\twith arguments %v\n\t\tand environment %v", spec.Path, spec.Args, spec.Env)
+		out += fmt.Sprintf(`
+	'%s'
+		with arguments %v
+		and environment %v
+		and input '%s'`, spec.Path, spec.Args, spec.Env, spec.Stdin)
 	}
 
 	return out
@@ -67,7 +71,10 @@ func prettyCommands(commands []*exec.Cmd) string {
 	out := ""
 
 	for _, command := range commands {
-		out += fmt.Sprintf("\n\t'%s'\n\t\twith arguments %v\n\t\tand environment %v", command.Path, command.Args[1:], command.Env)
+		out += fmt.Sprintf(`
+	'%s'
+		with arguments %v
+		and environment %v`, command.Path, command.Args[1:], command.Env)
 	}
 
 	return out
