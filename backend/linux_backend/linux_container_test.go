@@ -2,7 +2,11 @@ package linux_backend_test
 
 import (
 	"errors"
+	"fmt"
+	"io/ioutil"
+	"os"
 	"os/exec"
+	"path"
 	"time"
 
 	. "github.com/onsi/ginkgo"
@@ -273,128 +277,183 @@ var _ = Describe("Copying out", func() {
 	})
 })
 
-var _ = Describe("Spawning", func() {
-	BeforeEach(func() {
-		fakeRunner = fake_command_runner.New()
-		container = linux_backend.NewLinuxContainer("some-id", "/depot/some-id", backend.ContainerSpec{}, fakeRunner)
-	})
+var _ = Describe("Jobs", func() {
+	var containerPath string
 
-	It("runs the /bin/bash via wsh with the given script as the input", func() {
-		_, err := container.Spawn(backend.JobSpec{
-			Script: "/some/script",
-		})
+	inContainer := func(x string) string {
+		return path.Join(containerPath, x)
+	}
 
-		Expect(err).ToNot(HaveOccured())
-
-		Eventually(fakeRunner).Should(HaveExecutedSerially(
+	setupSuccessfulSpawn := func() {
+		fakeRunner.WhenRunning(
 			fake_command_runner.CommandSpec{
-				Path: "/depot/some-id/bin/wsh",
-				Args: []string{
-					"--socket", "/depot/some-id/run/wshd.sock",
-					"--user", "vcap",
-					"/bin/bash",
-				},
-				Stdin: "/some/script",
+				Path: inContainer("bin/iomux-spawn"),
 			},
-		))
-	})
+			func(cmd *exec.Cmd) error {
+				cmd.Stdout.Write([]byte("ready\n"))
+				cmd.Stdout.Write([]byte("active\n"))
+				return nil
+			},
+		)
+	}
 
-	It("returns a unique job ID", func() {
-		jobID1, err := container.Spawn(backend.JobSpec{
-			Script: "/some/script",
-		})
+	BeforeEach(func() {
+		tmpdir, err := ioutil.TempDir(os.TempDir(), "some-container")
 		Expect(err).ToNot(HaveOccured())
 
-		jobID2, err := container.Spawn(backend.JobSpec{
-			Script: "/some/script",
-		})
-		Expect(err).ToNot(HaveOccured())
+		containerPath = tmpdir
 
-		Expect(jobID1).ToNot(Equal(jobID2))
+		fakeRunner = fake_command_runner.New()
+		container = linux_backend.NewLinuxContainer("some-id", containerPath, backend.ContainerSpec{}, fakeRunner)
 	})
 
-	Context("with 'privileged' true", func() {
-		It("runs with --user root", func() {
-			_, err := container.Spawn(backend.JobSpec{
-				Script:     "/some/script",
-				Privileged: true,
+	Describe("Spawning", func() {
+		It("runs the /bin/bash via wsh with the given script as the input", func() {
+			setupSuccessfulSpawn()
+
+			jobID, err := container.Spawn(backend.JobSpec{
+				Script: "/some/script",
 			})
 
 			Expect(err).ToNot(HaveOccured())
 
-			Eventually(fakeRunner).Should(HaveExecutedSerially(
+			Eventually(fakeRunner).Should(HaveStartedExecuting(
 				fake_command_runner.CommandSpec{
-					Path: "/depot/some-id/bin/wsh",
+					Path: inContainer("bin/iomux-spawn"),
 					Args: []string{
-						"--socket", "/depot/some-id/run/wshd.sock",
-						"--user", "root",
+						fmt.Sprintf(inContainer("jobs/%d"), jobID),
+						inContainer("bin/wsh"),
+						"--socket", inContainer("run/wshd.sock"),
+						"--user", "vcap",
 						"/bin/bash",
 					},
 					Stdin: "/some/script",
 				},
 			))
 		})
-	})
-})
 
-var _ = Describe("Linking", func() {
-	BeforeEach(func() {
-		fakeRunner = fake_command_runner.New()
-		container = linux_backend.NewLinuxContainer("some-id", "/depot/some-id", backend.ContainerSpec{}, fakeRunner)
-	})
+		It("returns a unique job ID", func() {
+			setupSuccessfulSpawn()
 
-	Context("to a started job", func() {
-		BeforeEach(func() {
-			fakeRunner.WhenRunning(
-				fake_command_runner.CommandSpec{
-					Path:  "/depot/some-id/bin/wsh",
-					Stdin: "/some/script",
-				}, func(cmd *exec.Cmd) error {
-					cmd.Stdout.Write([]byte("hi out\n"))
-					cmd.Stderr.Write([]byte("hi err\n"))
-
-					dummyCmd := exec.Command("/bin/bash", "-c", "exit 42")
-					dummyCmd.Run()
-
-					cmd.ProcessState = dummyCmd.ProcessState
-
-					return nil
-				},
-			)
-		})
-
-		It("returns the exit status, stdout, and stderr", func() {
-			jobID, err := container.Spawn(backend.JobSpec{
+			jobID1, err := container.Spawn(backend.JobSpec{
 				Script: "/some/script",
 			})
 			Expect(err).ToNot(HaveOccured())
 
-			jobResult, err := container.Link(jobID)
-			Expect(err).ToNot(HaveOccured())
-			Expect(jobResult.ExitStatus).To(Equal(uint32(42)))
-			Expect(jobResult.Stdout).To(Equal([]byte("hi out\n")))
-			Expect(jobResult.Stderr).To(Equal([]byte("hi err\n")))
-		})
-	})
-
-	Context("to a job that has already completed", func() {
-		It("returns an error", func() {
-			jobID, err := container.Spawn(backend.JobSpec{
+			jobID2, err := container.Spawn(backend.JobSpec{
 				Script: "/some/script",
 			})
 			Expect(err).ToNot(HaveOccured())
 
-			time.Sleep(100 * time.Millisecond)
+			Expect(jobID1).ToNot(Equal(jobID2))
+		})
 
-			_, err = container.Link(jobID)
-			Expect(err).To(HaveOccured())
+		Context("with 'privileged' true", func() {
+			BeforeEach(setupSuccessfulSpawn)
+
+			It("runs with --user root", func() {
+				jobID, err := container.Spawn(backend.JobSpec{
+					Script:     "/some/script",
+					Privileged: true,
+				})
+
+				Expect(err).ToNot(HaveOccured())
+
+				Eventually(fakeRunner).Should(HaveStartedExecuting(
+					fake_command_runner.CommandSpec{
+						Path: inContainer("bin/iomux-spawn"),
+						Args: []string{
+							fmt.Sprintf(inContainer("jobs/%d"), jobID),
+							inContainer("bin/wsh"),
+							"--socket", inContainer("run/wshd.sock"),
+							"--user", "root",
+							"/bin/bash",
+						},
+						Stdin: "/some/script",
+					},
+				))
+			})
+		})
+
+		Context("when spawning fails", func() {
+			disaster := errors.New("oh no!")
+
+			BeforeEach(func() {
+				fakeRunner.WhenRunning(
+					fake_command_runner.CommandSpec{
+						Path: inContainer("bin/iomux-spawn"),
+					}, func(*exec.Cmd) error {
+						return disaster
+					},
+				)
+			})
+
+			It("returns the error", func() {
+				_, err := container.Spawn(backend.JobSpec{
+					Script:     "/some/script",
+					Privileged: true,
+				})
+
+				Expect(err).To(Equal(disaster))
+			})
 		})
 	})
 
-	Context("to an unknown job", func() {
-		It("returns an error", func() {
-			_, err := container.Link(42)
-			Expect(err).To(HaveOccured())
+	Describe("Linking", func() {
+		BeforeEach(setupSuccessfulSpawn)
+
+		Context("to a started job", func() {
+			BeforeEach(func() {
+				fakeRunner.WhenRunning(
+					fake_command_runner.CommandSpec{
+						Path: inContainer("bin/iomux-link"),
+					}, func(cmd *exec.Cmd) error {
+						cmd.Stdout.Write([]byte("hi out\n"))
+						cmd.Stderr.Write([]byte("hi err\n"))
+
+						dummyCmd := exec.Command("/bin/bash", "-c", "exit 42")
+						dummyCmd.Run()
+
+						cmd.ProcessState = dummyCmd.ProcessState
+
+						return nil
+					},
+				)
+			})
+
+			It("returns the exit status, stdout, and stderr", func() {
+				jobID, err := container.Spawn(backend.JobSpec{
+					Script: "/some/script",
+				})
+				Expect(err).ToNot(HaveOccured())
+
+				jobResult, err := container.Link(jobID)
+				Expect(err).ToNot(HaveOccured())
+				Expect(jobResult.ExitStatus).To(Equal(uint32(42)))
+				Expect(jobResult.Stdout).To(Equal([]byte("hi out\n")))
+				Expect(jobResult.Stderr).To(Equal([]byte("hi err\n")))
+			})
+		})
+
+		Context("to a job that has already completed", func() {
+			It("returns an error", func() {
+				jobID, err := container.Spawn(backend.JobSpec{
+					Script: "/some/script",
+				})
+				Expect(err).ToNot(HaveOccured())
+
+				time.Sleep(100 * time.Millisecond)
+
+				_, err = container.Link(jobID)
+				Expect(err).To(HaveOccured())
+			})
+		})
+
+		Context("to an unknown job", func() {
+			It("returns an error", func() {
+				_, err := container.Link(42)
+				Expect(err).To(HaveOccured())
+			})
 		})
 	})
 })

@@ -1,8 +1,12 @@
 package job_tracker
 
 import (
+	"bufio"
 	"bytes"
+	"fmt"
+	"os"
 	"os/exec"
+	"path"
 	"sync"
 	"syscall"
 
@@ -10,64 +14,130 @@ import (
 )
 
 type Job struct {
-	cmd *exec.Cmd
+	id            uint32
+	containerPath string
+	cmd           *exec.Cmd
+	runner        command_runner.CommandRunner
 
-	ExitStatus uint32
-	Stdout     *bytes.Buffer
-	Stderr     *bytes.Buffer
-
-	links []chan bool
+	waitingLinks *sync.Cond
+	runningLink  *sync.Once
 
 	completed bool
 
-	sync.Mutex
+	exitStatus uint32
+	stdout     *bytes.Buffer
+	stderr     *bytes.Buffer
 }
 
-func NewJob(cmd *exec.Cmd) *Job {
+func NewJob(id uint32, containerPath string, cmd *exec.Cmd, runner command_runner.CommandRunner) *Job {
 	return &Job{
-		cmd: cmd,
+		id:            id,
+		containerPath: containerPath,
+		cmd:           cmd,
+		runner:        runner,
 
-		Stdout: new(bytes.Buffer),
-		Stderr: new(bytes.Buffer),
+		waitingLinks: sync.NewCond(&sync.Mutex{}),
+		runningLink:  &sync.Once{},
 	}
 }
 
-func (j *Job) Link() chan bool {
-	j.Lock()
-	defer j.Unlock()
+func (j *Job) Spawn() (ready, active chan error) {
+	ready = make(chan error, 1)
+	active = make(chan error, 1)
+
+	spawnPath := path.Join(j.containerPath, "bin", "iomux-spawn")
+	jobDir := path.Join(j.containerPath, "jobs", fmt.Sprintf("%d", j.id))
+
+	err := os.MkdirAll(jobDir, 0755)
+	if err != nil {
+		ready <- err
+		return
+	}
+
+	spawn := exec.Command(spawnPath, jobDir)
+	spawn.Args = append(spawn.Args, j.cmd.Args...)
+	spawn.Stdin = j.cmd.Stdin
+
+	stdout, err := spawn.StdoutPipe()
+	if err != nil {
+		ready <- err
+		return
+	}
+
+	spawnOut := bufio.NewReader(stdout)
+
+	err = j.runner.Start(spawn)
+	if err != nil {
+		ready <- err
+		return
+	}
+
+	go func() {
+		defer spawn.Wait()
+
+		_, err = spawnOut.ReadBytes('\n')
+		if err != nil {
+			ready <- err
+			return
+		}
+
+		ready <- nil
+
+		_, err = spawnOut.ReadBytes('\n')
+		if err != nil {
+			active <- err
+			return
+		}
+
+		active <- nil
+	}()
+
+	return
+}
+
+func (j *Job) Link() (uint32, []byte, []byte, error) {
+	j.waitingLinks.L.Lock()
+	defer j.waitingLinks.L.Unlock()
 
 	if j.completed {
-		link := make(chan bool, 1)
-		link <- true
-		return link
+		return j.exitStatus, j.stdout.Bytes(), j.stderr.Bytes(), nil
 	}
 
-	link := make(chan bool)
+	j.runningLink.Do(j.runLinker)
 
-	j.links = append(j.links, link)
+	if !j.completed {
+		j.waitingLinks.Wait()
+	}
 
-	return link
+	return j.exitStatus, j.stdout.Bytes(), j.stderr.Bytes(), nil
 }
 
-func (j *Job) Run(runner command_runner.CommandRunner) {
-	j.cmd.Stdout = j.Stdout
-	j.cmd.Stderr = j.Stderr
+func (j *Job) runLinker() {
+	linkPath := path.Join(j.containerPath, "bin", "iomux-link")
+	jobDir := path.Join(j.containerPath, "jobs", fmt.Sprintf("%d", j.id))
 
-	runner.Run(j.cmd)
+	link := exec.Command(linkPath, jobDir)
 
-	j.Lock()
+	stdout := new(bytes.Buffer)
+	stderr := new(bytes.Buffer)
+
+	link.Stdout = stdout
+	link.Stderr = stderr
+
+	j.runner.Run(link)
+
+	exitStatus := uint32(255)
+
+	if link.ProcessState != nil {
+		// TODO: why do I need to modulo this?
+		exitStatus = uint32(link.ProcessState.Sys().(syscall.WaitStatus) % 255)
+	}
+
+	j.exitStatus = exitStatus
+	j.stdout = stdout
+	j.stderr = stderr
 
 	j.completed = true
-	links := j.links
 
-	if j.cmd.ProcessState != nil {
-		// TODO: why do I need to modulo this?
-		j.ExitStatus = uint32(j.cmd.ProcessState.Sys().(syscall.WaitStatus) % 255)
-	}
-
-	j.Unlock()
-
-	for _, link := range links {
-		link <- true
-	}
+	j.waitingLinks.Broadcast()
 }

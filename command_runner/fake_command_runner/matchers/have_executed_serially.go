@@ -2,7 +2,6 @@ package fake_command_runner_matchers
 
 import (
 	"fmt"
-	"os/exec"
 
 	"github.com/vito/garden/command_runner/fake_command_runner"
 )
@@ -51,31 +50,4 @@ func (m *HaveExecutedSeriallyMatcher) Match(actual interface{}) (bool, string, e
 	} else {
 		return false, fmt.Sprintf("Expected to execute:%s\n\nActually executed:%s", prettySpecs(m.Specs), prettyCommands(executed)), nil
 	}
-}
-
-func prettySpecs(specs []fake_command_runner.CommandSpec) string {
-	out := ""
-
-	for _, spec := range specs {
-		out += fmt.Sprintf(`
-	'%s'
-		with arguments %v
-		and environment %v
-		and input '%s'`, spec.Path, spec.Args, spec.Env, spec.Stdin)
-	}
-
-	return out
-}
-
-func prettyCommands(commands []*exec.Cmd) string {
-	out := ""
-
-	for _, command := range commands {
-		out += fmt.Sprintf(`
-	'%s'
-		with arguments %v
-		and environment %v`, command.Path, command.Args[1:], command.Env)
-	}
-
-	return out
 }

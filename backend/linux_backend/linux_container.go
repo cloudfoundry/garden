@@ -30,7 +30,7 @@ func NewLinuxContainer(id, path string, spec backend.ContainerSpec, runner comma
 
 		runner: runner,
 
-		jobTracker: job_tracker.New(runner),
+		jobTracker: job_tracker.New(path, runner),
 	}
 }
 
@@ -124,9 +124,7 @@ func (c *LinuxContainer) Spawn(spec backend.JobSpec) (uint32, error) {
 
 	wsh.Stdin = bytes.NewBufferString(spec.Script)
 
-	jobID := c.jobTracker.Spawn(wsh)
-
-	return jobID, nil
+	return c.jobTracker.Spawn(wsh)
 }
 
 func (c *LinuxContainer) Stream(uint32) (<-chan backend.JobStream, error) {

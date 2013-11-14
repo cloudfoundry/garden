@@ -9,7 +9,8 @@ import (
 )
 
 type JobTracker struct {
-	runner command_runner.CommandRunner
+	containerPath string
+	runner        command_runner.CommandRunner
 
 	jobs      map[uint32]*Job
 	nextJobID uint32
@@ -25,29 +26,42 @@ func (e UnknownJobError) Error() string {
 	return fmt.Sprintf("unknown job: %d", e.JobID)
 }
 
-func New(runner command_runner.CommandRunner) *JobTracker {
+func New(containerPath string, runner command_runner.CommandRunner) *JobTracker {
 	return &JobTracker{
-		runner: runner,
+		containerPath: containerPath,
+		runner:        runner,
 
 		jobs: make(map[uint32]*Job),
 	}
 }
 
-func (t *JobTracker) Spawn(cmd *exec.Cmd) uint32 {
-	job := NewJob(cmd)
-
+func (t *JobTracker) Spawn(cmd *exec.Cmd) (uint32, error) {
 	t.Lock()
 
 	jobID := t.nextJobID
 	t.nextJobID++
 
+	job := NewJob(jobID, t.containerPath, cmd, t.runner)
+
 	t.jobs[jobID] = job
 
 	t.Unlock()
 
-	go t.track(jobID, job)
+	ready, active := job.Spawn()
 
-	return jobID
+	err := <-ready
+	if err != nil {
+		return 0, err
+	}
+
+	go t.Link(jobID)
+
+	err = <-active
+	if err != nil {
+		return 0, err
+	}
+
+	return jobID, nil
 }
 
 func (t *JobTracker) Link(jobID uint32) (uint32, []byte, []byte, error) {
@@ -59,15 +73,14 @@ func (t *JobTracker) Link(jobID uint32) (uint32, []byte, []byte, error) {
 		return 0, nil, nil, UnknownJobError{jobID}
 	}
 
-	<-job.Link()
+	defer t.unregister(jobID)
 
-	return job.ExitStatus, job.Stdout.Bytes(), job.Stderr.Bytes(), nil
+	return job.Link()
 }
 
-func (t *JobTracker) track(jobID uint32, job *Job) {
-	job.Run(t.runner)
-
+func (t *JobTracker) unregister(jobID uint32) {
 	t.Lock()
+	defer t.Unlock()
+
 	delete(t.jobs, jobID)
-	t.Unlock()
 }

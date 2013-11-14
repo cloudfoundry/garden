@@ -9,6 +9,7 @@ import (
 
 type FakeCommandRunner struct {
 	executedCommands []*exec.Cmd
+	startedCommands  []*exec.Cmd
 
 	commandCallbacks map[*CommandSpec]func(*exec.Cmd) error
 
@@ -78,6 +79,24 @@ func (r *FakeCommandRunner) Run(cmd *exec.Cmd) error {
 	return nil
 }
 
+func (r *FakeCommandRunner) Start(cmd *exec.Cmd) error {
+	r.RLock()
+	callbacks := r.commandCallbacks
+	r.RUnlock()
+
+	r.Lock()
+	r.startedCommands = append(r.startedCommands, cmd)
+	r.Unlock()
+
+	for spec, callback := range callbacks {
+		if spec.Matches(cmd) {
+			return callback(cmd)
+		}
+	}
+
+	return nil
+}
+
 func (r *FakeCommandRunner) WhenRunning(spec CommandSpec, callback func(*exec.Cmd) error) {
 	r.Lock()
 	defer r.Unlock()
@@ -90,4 +109,11 @@ func (r *FakeCommandRunner) ExecutedCommands() []*exec.Cmd {
 	defer r.RUnlock()
 
 	return r.executedCommands
+}
+
+func (r *FakeCommandRunner) StartedCommands() []*exec.Cmd {
+	r.RLock()
+	defer r.RUnlock()
+
+	return r.startedCommands
 }

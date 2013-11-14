@@ -1,7 +1,14 @@
 package job_tracker_test
 
 import (
+	"bytes"
+	"errors"
+	"fmt"
+	"io/ioutil"
+	"os"
 	"os/exec"
+	"path"
+	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -12,57 +19,162 @@ import (
 )
 
 var fakeRunner *fake_command_runner.FakeCommandRunner
+var containerPath string
 var jobTracker *job_tracker.JobTracker
+
+func binPath(bin string) string {
+	return path.Join(containerPath, "bin", bin)
+}
+
+func setupSuccessfulSpawn() {
+	fakeRunner.WhenRunning(
+		fake_command_runner.CommandSpec{
+			Path: binPath("iomux-spawn"),
+		},
+		func(cmd *exec.Cmd) error {
+			cmd.Stdout.Write([]byte("ready\n"))
+			cmd.Stdout.Write([]byte("active\n"))
+			return nil
+		},
+	)
+}
 
 var _ = Describe("Spawning jobs", func() {
 	BeforeEach(func() {
-		fakeRunner = fake_command_runner.New()
-		jobTracker = job_tracker.New(fakeRunner)
+		tmpdir, err := ioutil.TempDir(os.TempDir(), "some-container")
+		Expect(err).ToNot(HaveOccured())
 
-		// really run the commands
-		fakeRunner.WhenRunning(
-			fake_command_runner.CommandSpec{},
-			func(cmd *exec.Cmd) error {
-				return cmd.Run()
-			},
-		)
+		containerPath = tmpdir
+
+		fakeRunner = fake_command_runner.New()
+		jobTracker = job_tracker.New(containerPath, fakeRunner)
 	})
 
-	It("runs the command asynchronously", func() {
-		jobTracker.Spawn(exec.Command("/bin/bash", "-c", "echo hi"))
+	It("runs the command asynchronously via iomux-spawn", func() {
+		cmd := exec.Command("/bin/bash")
 
-		Eventually(fakeRunner).Should(HaveExecutedSerially(
+		cmd.Stdin = bytes.NewBufferString("echo hi")
+
+		setupSuccessfulSpawn()
+
+		jobID, _ := jobTracker.Spawn(cmd)
+
+		Eventually(fakeRunner).Should(HaveStartedExecuting(
 			fake_command_runner.CommandSpec{
-				Path: "/bin/bash",
+				Path: binPath("iomux-spawn"),
+				Args: []string{
+					path.Join(containerPath, "jobs", fmt.Sprintf("%d", jobID)),
+					"/bin/bash",
+				},
+				Stdin: "echo hi",
 			},
 		))
 	})
 
+	It("initiates a link to the job after spawn is ready", func(done Done) {
+		fakeRunner.WhenRunning(
+			fake_command_runner.CommandSpec{
+				Path: binPath("iomux-spawn"),
+			}, func(cmd *exec.Cmd) error {
+				go func() {
+					time.Sleep(100 * time.Millisecond)
+
+					Expect(fakeRunner).ToNot(HaveExecutedSerially(
+						fake_command_runner.CommandSpec{
+							Path: binPath("iomux-link"),
+						},
+					), "Executed iomux-link too early!")
+
+					if cmd.Stdout != nil {
+						cmd.Stdout.Write([]byte("xxx\n"))
+					}
+
+					Eventually(fakeRunner).Should(HaveExecutedSerially(
+						fake_command_runner.CommandSpec{
+							Path: binPath("iomux-link"),
+						},
+					))
+
+					close(done)
+				}()
+
+				return nil
+			},
+		)
+
+		jobTracker.Spawn(exec.Command("xxx"))
+	}, 10.0)
+
 	It("returns a unique job ID", func() {
-		jobID1 := jobTracker.Spawn(exec.Command("/bin/bash", "-c", "echo hi"))
-		jobID2 := jobTracker.Spawn(exec.Command("/bin/bash", "-c", "echo hi"))
+		setupSuccessfulSpawn()
+
+		jobID1, _ := jobTracker.Spawn(exec.Command("xxx"))
+		jobID2, _ := jobTracker.Spawn(exec.Command("xxx"))
 		Expect(jobID1).ToNot(Equal(jobID2))
+	})
+
+	It("creates the job's working directory", func() {
+		setupSuccessfulSpawn()
+
+		jobID, _ := jobTracker.Spawn(exec.Command("xxx"))
+
+		stat, err := os.Stat(path.Join(containerPath, "jobs", fmt.Sprintf("%d", jobID)))
+		Expect(err).ToNot(HaveOccured())
+		Expect(stat.IsDir()).To(BeTrue())
+	})
+
+	Context("when spawning fails", func() {
+		disaster := errors.New("oh no!")
+
+		BeforeEach(func() {
+			fakeRunner.WhenRunning(
+				fake_command_runner.CommandSpec{
+					Path: binPath("iomux-spawn"),
+				}, func(*exec.Cmd) error {
+					return disaster
+				},
+			)
+		})
+
+		It("returns the error", func() {
+			_, err := jobTracker.Spawn(exec.Command("xxx"))
+			Expect(err).To(Equal(disaster))
+		})
 	})
 })
 
 var _ = Describe("Linking to jobs", func() {
 	BeforeEach(func() {
-		fakeRunner = fake_command_runner.New()
-		jobTracker = job_tracker.New(fakeRunner)
+		tmpdir, err := ioutil.TempDir(os.TempDir(), "some-container")
+		Expect(err).ToNot(HaveOccured())
 
-		// really run the commands
+		containerPath = tmpdir
+
+		fakeRunner = fake_command_runner.New()
+		jobTracker = job_tracker.New(containerPath, fakeRunner)
+
+		setupSuccessfulSpawn()
+
 		fakeRunner.WhenRunning(
-			fake_command_runner.CommandSpec{},
+			fake_command_runner.CommandSpec{
+				Path: binPath("iomux-link"),
+			},
 			func(cmd *exec.Cmd) error {
-				return cmd.Run()
+				cmd.Stdout.Write([]byte("hi out\n"))
+				cmd.Stderr.Write([]byte("hi err\n"))
+
+				dummyCmd := exec.Command("/bin/bash", "-c", "exit 42")
+				dummyCmd.Run()
+
+				cmd.ProcessState = dummyCmd.ProcessState
+
+				return nil
 			},
 		)
 	})
 
 	It("returns their stdout, stderr, and exit status", func() {
-		jobID := jobTracker.Spawn(exec.Command(
-			"/bin/bash", "-c", "echo hi out; echo hi err 1>&2; exit 42",
-		))
+		jobID, _ := jobTracker.Spawn(exec.Command("xxx"))
 
 		exitStatus, stdout, stderr, err := jobTracker.Link(jobID)
 		Expect(err).ToNot(HaveOccured())
@@ -72,14 +184,38 @@ var _ = Describe("Linking to jobs", func() {
 	})
 
 	Context("when more than one link is made", func() {
-		It("returns to both", func(done Done) {
-			jobID := jobTracker.Spawn(exec.Command(
-				"/bin/bash",
-				"-c",
+		BeforeEach(func() {
+			fakeRunner.WhenRunning(
+				fake_command_runner.CommandSpec{
+					Path: binPath("iomux-spawn"),
+				},
+				func(cmd *exec.Cmd) error {
+					// give time for both goroutines to link
+					time.Sleep(100 * time.Millisecond)
+					return nil
+				},
+			)
 
-				// sleep 0.1s to give both threads time to link
-				"sleep 0.1; echo hi out; echo hi err 1>&2; exit 42",
-			))
+			fakeRunner.WhenRunning(
+				fake_command_runner.CommandSpec{
+					Path: binPath("iomux-link"),
+				},
+				func(cmd *exec.Cmd) error {
+					cmd.Stdout.Write([]byte("hi out\n"))
+					cmd.Stderr.Write([]byte("hi err\n"))
+
+					dummyCmd := exec.Command("/bin/bash", "-c", "exit 42")
+					dummyCmd.Run()
+
+					cmd.ProcessState = dummyCmd.ProcessState
+
+					return nil
+				},
+			)
+		})
+
+		It("returns to both", func(done Done) {
+			jobID, _ := jobTracker.Spawn(exec.Command("xxx"))
 
 			finishedLink := make(chan bool)
 
@@ -87,8 +223,8 @@ var _ = Describe("Linking to jobs", func() {
 				exitStatus, stdout, stderr, err := jobTracker.Link(jobID)
 				Expect(err).ToNot(HaveOccured())
 				Expect(exitStatus).To(Equal(uint32(42)))
-				Expect(stdout).To(Equal([]byte("hi out\n")))
-				Expect(stderr).To(Equal([]byte("hi err\n")))
+				Expect(string(stdout)).To(Equal("hi out\n"))
+				Expect(string(stderr)).To(Equal("hi err\n"))
 
 				finishedLink <- true
 			}()
@@ -97,8 +233,8 @@ var _ = Describe("Linking to jobs", func() {
 				exitStatus, stdout, stderr, err := jobTracker.Link(jobID)
 				Expect(err).ToNot(HaveOccured())
 				Expect(exitStatus).To(Equal(uint32(42)))
-				Expect(stdout).To(Equal([]byte("hi out\n")))
-				Expect(stderr).To(Equal([]byte("hi err\n")))
+				Expect(string(stdout)).To(Equal("hi out\n"))
+				Expect(string(stderr)).To(Equal("hi err\n"))
 
 				finishedLink <- true
 			}()
