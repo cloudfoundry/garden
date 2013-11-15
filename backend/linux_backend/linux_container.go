@@ -2,6 +2,7 @@ package linux_backend
 
 import (
 	"bytes"
+	"fmt"
 	"os/exec"
 	"path"
 
@@ -99,8 +100,20 @@ func (c *LinuxContainer) CopyOut(src, dst, owner string) error {
 	return nil
 }
 
-func (c *LinuxContainer) LimitBandwidth(backend.BandwidthLimits) (backend.BandwidthLimits, error) {
-	return backend.BandwidthLimits{}, nil
+func (c *LinuxContainer) LimitBandwidth(limits backend.BandwidthLimits) (backend.BandwidthLimits, error) {
+	limit := exec.Command(path.Join(c.path, "net_rate.sh"))
+
+	limit.Env = []string{
+		fmt.Sprintf("BURST=%d", limits.BurstRateInBytesPerSecond),
+		fmt.Sprintf("RATE=%d", limits.RateInBytesPerSecond*8),
+	}
+
+	err := c.runner.Run(limit)
+	if err != nil {
+		return backend.BandwidthLimits{}, err
+	}
+
+	return limits, nil
 }
 
 func (c *LinuxContainer) LimitDisk(backend.DiskLimits) (backend.DiskLimits, error) {

@@ -457,3 +457,55 @@ var _ = Describe("Jobs", func() {
 		})
 	})
 })
+
+var _ = Describe("Limiting bandwidth", func() {
+	BeforeEach(func() {
+		fakeRunner = fake_command_runner.New()
+		container = linux_backend.NewLinuxContainer("some-id", "/depot/some-id", backend.ContainerSpec{}, fakeRunner)
+	})
+
+	It("executes net_rate.sh with the appropriate environment", func() {
+		limits := backend.BandwidthLimits{
+			RateInBytesPerSecond:      128,
+			BurstRateInBytesPerSecond: 256,
+		}
+
+		newLimits, err := container.LimitBandwidth(limits)
+
+		Expect(err).ToNot(HaveOccured())
+
+		Expect(fakeRunner).To(HaveExecutedSerially(
+			fake_command_runner.CommandSpec{
+				Path: "/depot/some-id/net_rate.sh",
+				Env: []string{
+					"BURST=256",
+					fmt.Sprintf("RATE=%d", 128*8),
+				},
+			},
+		))
+
+		Expect(newLimits).To(Equal(limits))
+	})
+
+	Context("when net_rate.sh fails", func() {
+		nastyError := errors.New("oh no!")
+
+		BeforeEach(func() {
+			fakeRunner.WhenRunning(
+				fake_command_runner.CommandSpec{
+					Path: "/depot/some-id/net_rate.sh",
+				}, func(*exec.Cmd) error {
+					return nastyError
+				},
+			)
+		})
+
+		It("returns the error", func() {
+			_, err := container.LimitBandwidth(backend.BandwidthLimits{
+				RateInBytesPerSecond:      128,
+				BurstRateInBytesPerSecond: 256,
+			})
+			Expect(err).To(Equal(nastyError))
+		})
+	})
+})
