@@ -153,8 +153,6 @@ var _ = Describe("Linking to jobs", func() {
 		fakeRunner = fake_command_runner.New()
 		jobTracker = job_tracker.New(containerPath, fakeRunner)
 
-		setupSuccessfulSpawn()
-
 		fakeRunner.WhenRunning(
 			fake_command_runner.CommandSpec{
 				Path: binPath("iomux-link"),
@@ -174,6 +172,8 @@ var _ = Describe("Linking to jobs", func() {
 	})
 
 	It("returns their stdout, stderr, and exit status", func() {
+		setupSuccessfulSpawn()
+
 		jobID, _ := jobTracker.Spawn(exec.Command("xxx"))
 
 		exitStatus, stdout, stderr, err := jobTracker.Link(jobID)
@@ -192,6 +192,8 @@ var _ = Describe("Linking to jobs", func() {
 				func(cmd *exec.Cmd) error {
 					// give time for both goroutines to link
 					time.Sleep(100 * time.Millisecond)
+					cmd.Stdout.Write([]byte("ready\n"))
+					cmd.Stdout.Write([]byte("active\n"))
 					return nil
 				},
 			)
