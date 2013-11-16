@@ -5,8 +5,11 @@ import (
 	"fmt"
 	"os/exec"
 	"path"
+	"strconv"
+	"sync"
 
 	"github.com/vito/garden/backend"
+	"github.com/vito/garden/backend/linux_backend/cgroups_manager"
 	"github.com/vito/garden/backend/linux_backend/job_tracker"
 	"github.com/vito/garden/command_runner"
 )
@@ -17,19 +20,24 @@ type LinuxContainer struct {
 
 	spec backend.ContainerSpec
 
-	runner command_runner.CommandRunner
+	runner         command_runner.CommandRunner
+	cgroupsManager cgroups_manager.CgroupsManager
 
 	jobTracker *job_tracker.JobTracker
+
+	oomLock     sync.RWMutex
+	oomNotifier *exec.Cmd
 }
 
-func NewLinuxContainer(id, path string, spec backend.ContainerSpec, runner command_runner.CommandRunner) *LinuxContainer {
+func NewLinuxContainer(id, path string, spec backend.ContainerSpec, runner command_runner.CommandRunner, cgroupsManager cgroups_manager.CgroupsManager) *LinuxContainer {
 	return &LinuxContainer{
 		id:   id,
 		path: path,
 
 		spec: spec,
 
-		runner: runner,
+		runner:         runner,
+		cgroupsManager: cgroupsManager,
 
 		jobTracker: job_tracker.New(path, runner),
 	}
@@ -70,6 +78,8 @@ func (c *LinuxContainer) Stop(kill bool) error {
 	if err != nil {
 		return err
 	}
+
+	c.stopOomNotifier()
 
 	return nil
 }
@@ -120,8 +130,40 @@ func (c *LinuxContainer) LimitDisk(backend.DiskLimits) (backend.DiskLimits, erro
 	return backend.DiskLimits{}, nil
 }
 
-func (c *LinuxContainer) LimitMemory(backend.MemoryLimits) (backend.MemoryLimits, error) {
-	return backend.MemoryLimits{}, nil
+func (c *LinuxContainer) LimitMemory(limits backend.MemoryLimits) (backend.MemoryLimits, error) {
+	err := c.startOomNotifier()
+	if err != nil {
+		return backend.MemoryLimits{}, err
+	}
+
+	limit := fmt.Sprintf("%d", limits.LimitInBytes)
+
+	// memory.memsw.limit_in_bytes must be >= memory.limit_in_bytes
+	//
+	// however, it must be set after memory.limit_in_bytes, and if we're
+	// increasing the limit, writing memory.limit_in_bytes first will fail.
+	//
+	// so, write memory.limit_in_bytes before and after
+	c.cgroupsManager.Set("memory", "memory.limit_in_bytes", limit)
+
+	err = c.cgroupsManager.Set("memory", "memory.memsw.limit_in_bytes", limit)
+	if err != nil {
+		return backend.MemoryLimits{}, err
+	}
+
+	err = c.cgroupsManager.Set("memory", "memory.limit_in_bytes", limit)
+	if err != nil {
+		return backend.MemoryLimits{}, err
+	}
+
+	actualLimitInBytes, err := c.cgroupsManager.Get("memory", "memory.limit_in_bytes")
+
+	numericLimit, err := strconv.ParseUint(actualLimitInBytes, 10, 0)
+	if err != nil {
+		return backend.MemoryLimits{}, err
+	}
+
+	return backend.MemoryLimits{uint64(numericLimit)}, nil
 }
 
 func (c *LinuxContainer) Spawn(spec backend.JobSpec) (uint32, error) {
@@ -184,4 +226,44 @@ func (c *LinuxContainer) rsync(src, dst string) error {
 	)
 
 	return c.runner.Run(rsync)
+}
+
+func (c *LinuxContainer) startOomNotifier() error {
+	c.oomLock.Lock()
+	defer c.oomLock.Unlock()
+
+	if c.oomNotifier != nil {
+		return nil
+	}
+
+	oomPath := path.Join(c.path, "bin", "oom")
+
+	c.oomNotifier = exec.Command(oomPath, c.cgroupsManager.SubsystemPath("memory"))
+
+	err := c.runner.Start(c.oomNotifier)
+	if err != nil {
+		return err
+	}
+
+	go c.watchForOom(c.oomNotifier)
+
+	return nil
+}
+
+func (c *LinuxContainer) stopOomNotifier() {
+	c.oomLock.RLock()
+	defer c.oomLock.RUnlock()
+
+	if c.oomNotifier != nil {
+		c.runner.Kill(c.oomNotifier)
+	}
+}
+
+func (c *LinuxContainer) watchForOom(oom *exec.Cmd) {
+	err := c.runner.Wait(oom)
+	if err == nil {
+		c.Stop(false)
+	}
+
+	// TODO: handle case where oom notifier itself failed? kill container?
 }

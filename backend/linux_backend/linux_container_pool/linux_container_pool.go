@@ -10,6 +10,7 @@ import (
 
 	"github.com/vito/garden/backend"
 	"github.com/vito/garden/backend/linux_backend"
+	"github.com/vito/garden/backend/linux_backend/cgroups_manager"
 	"github.com/vito/garden/backend/linux_backend/network"
 	"github.com/vito/garden/command_runner"
 )
@@ -97,7 +98,9 @@ func (p *LinuxContainerPool) Create(spec backend.ContainerSpec) (backend.Contain
 
 	containerPath := path.Join(p.depotPath, id)
 
-	container := linux_backend.NewLinuxContainer(id, containerPath, spec, p.runner)
+	cgroupsManager := cgroups_manager.New("/tmp/warden/cgroup", id)
+
+	container := linux_backend.NewLinuxContainer(id, containerPath, spec, p.runner, cgroupsManager)
 
 	create := exec.Command(
 		path.Join(p.rootPath, "create.sh"),

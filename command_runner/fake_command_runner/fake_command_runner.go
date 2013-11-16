@@ -10,8 +10,11 @@ import (
 type FakeCommandRunner struct {
 	executedCommands []*exec.Cmd
 	startedCommands  []*exec.Cmd
+	waitedCommands   []*exec.Cmd
+	killedCommands   []*exec.Cmd
 
 	commandCallbacks map[*CommandSpec]func(*exec.Cmd) error
+	waitingCallbacks map[*CommandSpec]func(*exec.Cmd) error
 
 	sync.RWMutex
 }
@@ -58,6 +61,7 @@ func (s CommandSpec) Matches(cmd *exec.Cmd) bool {
 func New() *FakeCommandRunner {
 	return &FakeCommandRunner{
 		commandCallbacks: make(map[*CommandSpec]func(*exec.Cmd) error),
+		waitingCallbacks: make(map[*CommandSpec]func(*exec.Cmd) error),
 	}
 }
 
@@ -97,11 +101,45 @@ func (r *FakeCommandRunner) Start(cmd *exec.Cmd) error {
 	return nil
 }
 
+func (r *FakeCommandRunner) Wait(cmd *exec.Cmd) error {
+	r.RLock()
+	callbacks := r.waitingCallbacks
+	r.RUnlock()
+
+	r.Lock()
+	r.waitedCommands = append(r.waitedCommands, cmd)
+	r.Unlock()
+
+	for spec, callback := range callbacks {
+		if spec.Matches(cmd) {
+			return callback(cmd)
+		}
+	}
+
+	return nil
+}
+
+func (r *FakeCommandRunner) Kill(cmd *exec.Cmd) error {
+	r.Lock()
+	defer r.Unlock()
+
+	r.killedCommands = append(r.waitedCommands, cmd)
+
+	return nil
+}
+
 func (r *FakeCommandRunner) WhenRunning(spec CommandSpec, callback func(*exec.Cmd) error) {
 	r.Lock()
 	defer r.Unlock()
 
 	r.commandCallbacks[&spec] = callback
+}
+
+func (r *FakeCommandRunner) WhenWaitingFor(spec CommandSpec, callback func(*exec.Cmd) error) {
+	r.Lock()
+	defer r.Unlock()
+
+	r.waitingCallbacks[&spec] = callback
 }
 
 func (r *FakeCommandRunner) ExecutedCommands() []*exec.Cmd {
@@ -116,4 +154,11 @@ func (r *FakeCommandRunner) StartedCommands() []*exec.Cmd {
 	defer r.RUnlock()
 
 	return r.startedCommands
+}
+
+func (r *FakeCommandRunner) KilledCommands() []*exec.Cmd {
+	r.RLock()
+	defer r.RUnlock()
+
+	return r.killedCommands
 }

@@ -64,6 +64,7 @@ set -e
 
 cp src/wsh/wshd root/linux/skeleton/bin
 cp src/wsh/wsh root/linux/skeleton/bin
+cp src/oom/oom root/linux/skeleton/bin
 
 cp src/iomux/iomux-spawn root/linux/skeleton/bin
 cp src/iomux/iomux-spawn root/insecure/skeleton/bin
