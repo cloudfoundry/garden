@@ -32,6 +32,14 @@ type FakeContainer struct {
 
 	NetInError error
 	MappedIn [][]uint32
+
+	NetOutError error
+	PermittedOut []NetOutSpec
+}
+
+type NetOutSpec struct {
+	Network string
+	Port uint32
 }
 
 func NewFakeContainer(spec backend.ContainerSpec) *FakeContainer {
@@ -146,6 +154,12 @@ func (c *FakeContainer) NetIn(hostPort uint32, containerPort uint32) (uint32, ui
 	return hostPort, containerPort, nil
 }
 
-func (c *FakeContainer) NetOut(string, uint32) error {
+func (c *FakeContainer) NetOut(network string, port uint32) error {
+	if c.NetOutError != nil {
+		return c.NetOutError
+	}
+
+	c.PermittedOut = append(c.PermittedOut, NetOutSpec{network, port})
+
 	return nil
 }

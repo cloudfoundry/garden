@@ -272,8 +272,32 @@ func (c *LinuxContainer) NetIn(hostPort uint32, containerPort uint32) (uint32, u
 	return hostPort, containerPort, c.runner.Run(net)
 }
 
-func (c *LinuxContainer) NetOut(string, uint32) error {
-	return nil
+func (c *LinuxContainer) NetOut(network string, port uint32) error {
+	net := exec.Command(path.Join(c.path, "net.sh"), "out")
+
+	if port != 0 {
+		log.Println(
+			c.id,
+			"permitting traffic to",
+			network,
+			"with port",
+			port,
+		)
+
+		net.Env = []string{
+			"NETWORK=" + network,
+			fmt.Sprintf("PORT=%d", port),
+		}
+	} else {
+		log.Println(c.id, "permitting traffic to", network)
+
+		net.Env = []string{
+			"NETWORK=" + network,
+			"PORT=",
+		}
+	}
+
+	return c.runner.Run(net)
 }
 
 func (c *LinuxContainer) rsync(src, dst string) error {

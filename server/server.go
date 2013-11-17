@@ -100,6 +100,8 @@ func (s *WardenServer) serveConnection(conn net.Conn) {
 			response, err = s.handleLimitMemory(request.(*protocol.LimitMemoryRequest))
 		case *protocol.NetInRequest:
 			response, err = s.handleNetIn(request.(*protocol.NetInRequest))
+		case *protocol.NetOutRequest:
+			response, err = s.handleNetOut(request.(*protocol.NetOutRequest))
 		default:
 			err = UnhandledRequestError{request}
 		}
@@ -325,4 +327,22 @@ func (s *WardenServer) handleNetIn(request *protocol.NetInRequest) (proto.Messag
 		HostPort: proto.Uint32(hostPort),
 		ContainerPort: proto.Uint32(containerPort),
 	}, nil
+}
+
+func (s *WardenServer) handleNetOut(request *protocol.NetOutRequest) (proto.Message, error) {
+	handle := request.GetHandle()
+	network := request.GetNetwork()
+	port := request.GetPort()
+
+	container, err := s.backend.Lookup(handle)
+	if err != nil {
+		return nil, err
+	}
+
+	err = container.NetOut(network, port)
+	if err != nil {
+		return nil, err
+	}
+
+	return &protocol.NetOutResponse{}, nil
 }

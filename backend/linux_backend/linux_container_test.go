@@ -836,4 +836,59 @@ var _ = Describe("Linux containers", func() {
 			})
 		})
 	})
+
+	Describe("Net out", func() {
+		It("executes net.sh out with NETWORK and PORT", func() {
+			err := container.NetOut("1.2.3.4/22", 567)
+			Expect(err).ToNot(HaveOccured())
+
+			Expect(fakeRunner).To(HaveExecutedSerially(
+				fake_command_runner.CommandSpec{
+					Path: "/depot/some-id/net.sh",
+					Args: []string{"out"},
+					Env: []string{
+						"NETWORK=1.2.3.4/22",
+						"PORT=567",
+					},
+				},
+			))
+		})
+
+		Context("when port 0 is given", func() {
+			It("executes with PORT as an empty string", func() {
+				err := container.NetOut("1.2.3.4/22", 0)
+				Expect(err).ToNot(HaveOccured())
+
+				Expect(fakeRunner).To(HaveExecutedSerially(
+					fake_command_runner.CommandSpec{
+						Path: "/depot/some-id/net.sh",
+						Args: []string{"out"},
+						Env: []string{
+							"NETWORK=1.2.3.4/22",
+							"PORT=",
+						},
+					},
+				))
+			})
+		})
+
+		Context("when net.sh fails", func() {
+			disaster := errors.New("oh no!")
+
+			BeforeEach(func() {
+				fakeRunner.WhenRunning(
+					fake_command_runner.CommandSpec{
+						Path: "/depot/some-id/net.sh",
+					}, func(*exec.Cmd) error {
+						return disaster
+					},
+				)
+			})
+
+			It("returns the error", func() {
+				err := container.NetOut("1.2.3.4/22", 567)
+				Expect(err).To(Equal(disaster))
+			})
+		})
+	})
 })
