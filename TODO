@@ -1,0 +1,3 @@
+- release uid when container is destroyed
+- release network when container is destroyed
+- release ports when container is destroyed
