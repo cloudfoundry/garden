@@ -3,6 +3,7 @@ package cgroups_manager
 import (
 	"io/ioutil"
 	"path"
+	"strings"
 )
 
 type ContainerCgroupsManager struct {
@@ -24,7 +25,7 @@ func (m *ContainerCgroupsManager) Get(subsystem, name string) (string, error) {
 		return "", err
 	}
 
-	return string(body), nil
+	return strings.Trim(string(body), "\n"), nil
 }
 
 func (m *ContainerCgroupsManager) SubsystemPath(subsystem string) string {

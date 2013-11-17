@@ -26,6 +26,9 @@ type FakeContainer struct {
 
 	LimitBandwidthError error
 	LimitedBandwidth    backend.BandwidthLimits
+
+	LimitMemoryError error
+	LimitedMemory    backend.MemoryLimits
 }
 
 func NewFakeContainer(spec backend.ContainerSpec) *FakeContainer {
@@ -92,8 +95,14 @@ func (c *FakeContainer) LimitDisk(backend.DiskLimits) (backend.DiskLimits, error
 	return backend.DiskLimits{}, nil
 }
 
-func (c *FakeContainer) LimitMemory(backend.MemoryLimits) (backend.MemoryLimits, error) {
-	return backend.MemoryLimits{}, nil
+func (c *FakeContainer) LimitMemory(limits backend.MemoryLimits) (backend.MemoryLimits, error) {
+	if c.LimitMemoryError != nil {
+		return backend.MemoryLimits{}, c.LimitMemoryError
+	}
+
+	c.LimitedMemory = limits
+
+	return limits, nil
 }
 
 func (c *FakeContainer) Spawn(spec backend.JobSpec) (uint32, error) {

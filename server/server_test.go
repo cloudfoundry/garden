@@ -637,6 +637,77 @@ var _ = Describe("The Warden server", func() {
 				}, 1.0)
 			})
 		})
+
+		Context("and the client sends a LimitMemoryRequest", func() {
+			var fakeContainer *fake_backend.FakeContainer
+
+			BeforeEach(func() {
+				container, err := serverBackend.Create(backend.ContainerSpec{Handle: "some-handle"})
+				Expect(err).ToNot(HaveOccured())
+
+				fakeContainer = container.(*fake_backend.FakeContainer)
+			})
+
+			It("sets the container's memory limits and returns them", func(done Done) {
+				writeMessages(&protocol.LimitMemoryRequest{
+					Handle:       proto.String(fakeContainer.Handle()),
+					LimitInBytes: proto.Uint64(123),
+				})
+
+				var response protocol.LimitMemoryResponse
+				readResponse(&response)
+
+				Expect(fakeContainer.LimitedMemory).To(Equal(
+					backend.MemoryLimits{
+						LimitInBytes: 123,
+					},
+				))
+
+				Expect(response.GetLimitInBytes()).To(Equal(uint64(123)))
+
+				close(done)
+			}, 1.0)
+
+			Context("when the container is not found", func() {
+				BeforeEach(func() {
+					serverBackend.Destroy(fakeContainer.Handle())
+				})
+
+				It("sends a WardenError response", func(done Done) {
+					writeMessages(&protocol.LimitMemoryRequest{
+						Handle:       proto.String(fakeContainer.Handle()),
+						LimitInBytes: proto.Uint64(123),
+					})
+
+					var response protocol.LimitMemoryResponse
+					err := message_reader.ReadMessage(serverConnection, &response)
+					Expect(err).To(Equal(&message_reader.WardenError{
+						Message: "unknown handle: some-handle",
+					}))
+
+					close(done)
+				}, 1.0)
+			})
+
+			Context("when limiting the memory fails", func() {
+				BeforeEach(func() {
+					fakeContainer.LimitMemoryError = errors.New("oh no!")
+				})
+
+				It("sends a WardenError response", func(done Done) {
+					writeMessages(&protocol.LimitMemoryRequest{
+						Handle:       proto.String(fakeContainer.Handle()),
+						LimitInBytes: proto.Uint64(123),
+					})
+
+					var response protocol.LimitMemoryResponse
+					err := message_reader.ReadMessage(serverConnection, &response)
+					Expect(err).To(Equal(&message_reader.WardenError{Message: "oh no!"}))
+
+					close(done)
+				}, 1.0)
+			})
+		})
 	})
 })
 

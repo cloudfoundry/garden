@@ -96,6 +96,8 @@ func (s *WardenServer) serveConnection(conn net.Conn) {
 			response, err = s.handleLink(request.(*protocol.LinkRequest))
 		case *protocol.LimitBandwidthRequest:
 			response, err = s.handleLimitBandwidth(request.(*protocol.LimitBandwidthRequest))
+		case *protocol.LimitMemoryRequest:
+			response, err = s.handleLimitMemory(request.(*protocol.LimitMemoryRequest))
 		default:
 			err = UnhandledRequestError{request}
 		}
@@ -277,5 +279,27 @@ func (s *WardenServer) handleLimitBandwidth(request *protocol.LimitBandwidthRequ
 	return &protocol.LimitBandwidthResponse{
 		Rate:  proto.Uint64(limits.RateInBytesPerSecond),
 		Burst: proto.Uint64(limits.BurstRateInBytesPerSecond),
+	}, nil
+}
+
+func (s *WardenServer) handleLimitMemory(request *protocol.LimitMemoryRequest) (proto.Message, error) {
+	handle := request.GetHandle()
+	limitInBytes := request.GetLimitInBytes()
+
+	container, err := s.backend.Lookup(handle)
+	if err != nil {
+		return nil, err
+	}
+
+	limits, err := container.LimitMemory(backend.MemoryLimits{
+		LimitInBytes: limitInBytes,
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &protocol.LimitMemoryResponse{
+		LimitInBytes: proto.Uint64(limits.LimitInBytes),
 	}, nil
 }

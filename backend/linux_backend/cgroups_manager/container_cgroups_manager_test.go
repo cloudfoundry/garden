@@ -23,7 +23,7 @@ var _ = Describe("Container cgroups", func() {
 		cgroupsManager = cgroups_manager.New(cgroupsPath, "some-container-id")
 	})
 
-	Describe("setting and getting", func() {
+	Describe("setting", func() {
 		It("writes the value to the name under the subsytem", func() {
 			containerMemoryCgroupsPath := path.Join(cgroupsPath, "memory", "instance-some-container-id")
 			err := os.MkdirAll(containerMemoryCgroupsPath, 0755)
@@ -57,7 +57,7 @@ var _ = Describe("Container cgroups", func() {
 			err := os.MkdirAll(containerMemoryCgroupsPath, 0755)
 			Expect(err).ToNot(HaveOccured())
 
-			err = ioutil.WriteFile(path.Join(containerMemoryCgroupsPath, "memory.limit_in_bytes"), []byte("123"), 0644)
+			err = ioutil.WriteFile(path.Join(containerMemoryCgroupsPath, "memory.limit_in_bytes"), []byte("123\n"), 0644)
 			Expect(err).ToNot(HaveOccured())
 
 			val, err := cgroupsManager.Get("memory", "memory.limit_in_bytes")
