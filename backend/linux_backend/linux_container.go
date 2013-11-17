@@ -57,6 +57,8 @@ func (c *LinuxContainer) Handle() string {
 }
 
 func (c *LinuxContainer) Start() error {
+	log.Println(c.id, "starting")
+
 	start := exec.Command(path.Join(c.path, "start.sh"))
 
 	start.Env = []string{
@@ -69,6 +71,8 @@ func (c *LinuxContainer) Start() error {
 }
 
 func (c *LinuxContainer) Stop(kill bool) error {
+	log.Println(c.id, "stopping")
+
 	stop := exec.Command(path.Join(c.path, "stop.sh"))
 
 	if kill {
@@ -90,10 +94,13 @@ func (c *LinuxContainer) Info() (backend.ContainerInfo, error) {
 }
 
 func (c *LinuxContainer) CopyIn(src, dst string) error {
+	log.Println(c.id, "copying in from", src, "to", dst)
 	return c.rsync(src, "vcap@container:"+dst)
 }
 
 func (c *LinuxContainer) CopyOut(src, dst, owner string) error {
+	log.Println(c.id, "copying out from", src, "to", dst)
+
 	err := c.rsync("vcap@container:"+src, dst)
 	if err != nil {
 		return err
@@ -112,6 +119,14 @@ func (c *LinuxContainer) CopyOut(src, dst, owner string) error {
 }
 
 func (c *LinuxContainer) LimitBandwidth(limits backend.BandwidthLimits) (backend.BandwidthLimits, error) {
+	log.Println(
+		c.id,
+		"limiting bandwidth to",
+		limits.RateInBytesPerSecond,
+		"bytes per second; burst",
+		limits.BurstRateInBytesPerSecond,
+	)
+
 	limit := exec.Command(path.Join(c.path, "net_rate.sh"))
 
 	limit.Env = []string{
@@ -132,6 +147,8 @@ func (c *LinuxContainer) LimitDisk(backend.DiskLimits) (backend.DiskLimits, erro
 }
 
 func (c *LinuxContainer) LimitMemory(limits backend.MemoryLimits) (backend.MemoryLimits, error) {
+	log.Println(c.id, "limiting memory to", limits.LimitInBytes, "bytes")
+
 	err := c.startOomNotifier()
 	if err != nil {
 		return backend.MemoryLimits{}, err
@@ -168,6 +185,8 @@ func (c *LinuxContainer) LimitMemory(limits backend.MemoryLimits) (backend.Memor
 }
 
 func (c *LinuxContainer) Spawn(spec backend.JobSpec) (uint32, error) {
+	log.Println(c.id, "spawning job:", spec.Script)
+
 	wshPath := path.Join(c.path, "bin", "wsh")
 	sockPath := path.Join(c.path, "run", "wshd.sock")
 
@@ -188,6 +207,8 @@ func (c *LinuxContainer) Stream(uint32) (<-chan backend.JobStream, error) {
 }
 
 func (c *LinuxContainer) Link(jobID uint32) (backend.JobResult, error) {
+	log.Println(c.id, "linking to job", jobID)
+
 	exitStatus, stdout, stderr, err := c.jobTracker.Link(jobID)
 	if err != nil {
 		return backend.JobResult{}, err
@@ -263,7 +284,10 @@ func (c *LinuxContainer) stopOomNotifier() {
 func (c *LinuxContainer) watchForOom(oom *exec.Cmd) {
 	err := c.runner.Wait(oom)
 	if err == nil {
+		log.Println(c.id, "out of memory")
 		c.Stop(false)
+	} else {
+		log.Println(c.id, "oom failed:", err)
 	}
 
 	// TODO: handle case where oom notifier itself failed? kill container?
