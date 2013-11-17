@@ -562,6 +562,113 @@ var _ = Describe("The Warden server", func() {
 			})
 		})
 
+		Context("and the client sends a RunRequest", func() {
+			var fakeContainer *fake_backend.FakeContainer
+
+			BeforeEach(func() {
+				container, err := serverBackend.Create(backend.ContainerSpec{Handle: "some-handle"})
+				Expect(err).ToNot(HaveOccured())
+
+				fakeContainer = container.(*fake_backend.FakeContainer)
+			})
+
+			It("spawns a job, links to it, and sends a RunResponse", func(done Done) {
+				fakeContainer.SpawnedJobID = 123
+
+				fakeContainer.LinkedJobResult = backend.JobResult{
+					ExitStatus: 42,
+					Stdout:     []byte("job out\n"),
+					Stderr:     []byte("job err\n"),
+				}
+
+				writeMessages(&protocol.RunRequest{
+					Handle:     proto.String(fakeContainer.Handle()),
+					Script:     proto.String("/some/script"),
+					Privileged: proto.Bool(true),
+				})
+
+				var response protocol.RunResponse
+				readResponse(&response)
+
+				Expect(fakeContainer.Spawned).To(ContainElement(
+					backend.JobSpec{
+						Script:     "/some/script",
+						Privileged: true,
+					},
+				))
+
+				Expect(fakeContainer.Linked).To(ContainElement(uint32(123)))
+
+				Expect(response.GetExitStatus()).To(Equal(uint32(42)))
+				Expect(response.GetStdout()).To(Equal("job out\n"))
+				Expect(response.GetStderr()).To(Equal("job err\n"))
+
+				close(done)
+			}, 1.0)
+
+			Context("when the container is not found", func() {
+				BeforeEach(func() {
+					serverBackend.Destroy(fakeContainer.Handle())
+				})
+
+				It("sends a WardenError response", func(done Done) {
+					writeMessages(&protocol.RunRequest{
+						Handle: proto.String(fakeContainer.Handle()),
+						Script: proto.String("/some/script"),
+					})
+
+					var response protocol.RunResponse
+
+					err := message_reader.ReadMessage(serverConnection, &response)
+					Expect(err).To(Equal(&message_reader.WardenError{
+						Message: "unknown handle: some-handle",
+					}))
+
+					close(done)
+				}, 1.0)
+			})
+
+			Context("when spawning fails", func() {
+				BeforeEach(func() {
+					fakeContainer.SpawnError = errors.New("oh no!")
+				})
+
+				It("sends a WardenError response", func(done Done) {
+					writeMessages(&protocol.RunRequest{
+						Handle: proto.String(fakeContainer.Handle()),
+						Script: proto.String("/some/script"),
+					})
+
+					var response protocol.RunResponse
+
+					err := message_reader.ReadMessage(serverConnection, &response)
+					Expect(err).To(Equal(&message_reader.WardenError{Message: "oh no!"}))
+
+					close(done)
+				}, 1.0)
+			})
+
+			Context("when linking fails", func() {
+				BeforeEach(func() {
+					fakeContainer.LinkError = errors.New("oh no!")
+				})
+
+				It("sends a WardenError response", func(done Done) {
+					writeMessages(&protocol.RunRequest{
+						Handle: proto.String(fakeContainer.Handle()),
+						Script: proto.String("/some/script"),
+					})
+
+					var response protocol.RunResponse
+
+					err := message_reader.ReadMessage(serverConnection, &response)
+					Expect(err).To(Equal(&message_reader.WardenError{Message: "oh no!"}))
+
+					close(done)
+				}, 1.0)
+			})
+		})
+
 		Context("and the client sends a LimitBandwidthRequest", func() {
 			var fakeContainer *fake_backend.FakeContainer
 

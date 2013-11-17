@@ -20,7 +20,6 @@ type Container interface {
 	Spawn(JobSpec) (uint32, error)
 	Stream(jobID uint32) (<-chan JobStream, error)
 	Link(jobID uint32) (JobResult, error)
-	Run(JobSpec) (JobResult, error)
 
 	NetIn(hostPort, containerPort uint32) (uint32, uint32, error)
 	NetOut(network string, port uint32) error

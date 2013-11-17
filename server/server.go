@@ -94,6 +94,8 @@ func (s *WardenServer) serveConnection(conn net.Conn) {
 			response, err = s.handleSpawn(request.(*protocol.SpawnRequest))
 		case *protocol.LinkRequest:
 			response, err = s.handleLink(request.(*protocol.LinkRequest))
+		case *protocol.RunRequest:
+			response, err = s.handleRun(request.(*protocol.RunRequest))
 		case *protocol.LimitBandwidthRequest:
 			response, err = s.handleLimitBandwidth(request.(*protocol.LimitBandwidthRequest))
 		case *protocol.LimitMemoryRequest:
@@ -255,6 +257,38 @@ func (s *WardenServer) handleLink(link *protocol.LinkRequest) (proto.Message, er
 	}
 
 	return &protocol.LinkResponse{
+		ExitStatus: proto.Uint32(jobResult.ExitStatus),
+		Stdout:     proto.String(string(jobResult.Stdout)),
+		Stderr:     proto.String(string(jobResult.Stderr)),
+	}, nil
+}
+
+func (s *WardenServer) handleRun(request *protocol.RunRequest) (proto.Message, error) {
+	handle := request.GetHandle()
+	script := request.GetScript()
+	privileged := request.GetPrivileged()
+
+	container, err := s.backend.Lookup(handle)
+	if err != nil {
+		return nil, err
+	}
+
+	jobSpec := backend.JobSpec{
+		Script:     script,
+		Privileged: privileged,
+	}
+
+	jobID, err := container.Spawn(jobSpec)
+	if err != nil {
+		return nil, err
+	}
+
+	jobResult, err := container.Link(jobID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &protocol.RunResponse{
 		ExitStatus: proto.Uint32(jobResult.ExitStatus),
 		Stdout:     proto.String(string(jobResult.Stdout)),
 		Stderr:     proto.String(string(jobResult.Stderr)),

@@ -236,10 +236,6 @@ func (c *LinuxContainer) Link(jobID uint32) (backend.JobResult, error) {
 	}, nil
 }
 
-func (c *LinuxContainer) Run(backend.JobSpec) (backend.JobResult, error) {
-	return backend.JobResult{}, nil
-}
-
 func (c *LinuxContainer) NetIn(hostPort uint32, containerPort uint32) (uint32, uint32, error) {
 	if hostPort == 0 {
 		randomPort, err := c.portPool.Acquire()

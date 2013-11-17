@@ -140,10 +140,6 @@ func (c *FakeContainer) Link(jobID uint32) (backend.JobResult, error) {
 	return c.LinkedJobResult, nil
 }
 
-func (c *FakeContainer) Run(backend.JobSpec) (backend.JobResult, error) {
-	return backend.JobResult{}, nil
-}
-
 func (c *FakeContainer) NetIn(hostPort uint32, containerPort uint32) (uint32, uint32, error) {
 	if c.NetInError != nil {
 		return 0, 0, c.NetInError
