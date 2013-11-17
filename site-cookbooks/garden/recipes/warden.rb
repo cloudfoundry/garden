@@ -32,14 +32,12 @@ execute "remove all remnants of apparmor" do
 end
 
 directory "/opt/warden" do
-  owner "vagrant"
   mode 0755
   action :create
 end
 
 %w(rootfs containers stemcells).each do |dir|
   directory "/opt/warden/#{dir}" do
-    owner "vagrant"
     mode 0755
     action :create
   end
@@ -52,26 +50,4 @@ execute "Install RootFS" do
   action :run
 
   not_if "test -d /opt/warden/rootfs/usr"
-end
-
-bash "Setup Warden" do
-  cwd "/vagrant/warden/warden"
-
-  code <<-SH
-set -e
-
-(cd src/ && make clean all)
-
-cp src/wsh/wshd root/linux/skeleton/bin
-cp src/wsh/wsh root/linux/skeleton/bin
-cp src/oom/oom root/linux/skeleton/bin
-
-cp src/iomux/iomux-spawn root/linux/skeleton/bin
-cp src/iomux/iomux-spawn root/insecure/skeleton/bin
-
-cp src/iomux/iomux-link root/linux/skeleton/bin
-cp src/iomux/iomux-link root/insecure/skeleton/bin
-SH
-
-  action :run
 end
