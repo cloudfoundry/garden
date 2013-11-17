@@ -42,8 +42,8 @@ type JobResult struct {
 type JobStream struct {
 	Name       string
 	Data       []byte
-	ExitStatus uint32
-	Info       ContainerInfo
+	ExitStatus *uint32
+	Info       *ContainerInfo
 }
 
 type BindMount struct {

@@ -481,6 +481,89 @@ var _ = Describe("Linux containers", func() {
 				})
 			})
 		})
+
+		Describe("Streaming", func() {
+			BeforeEach(setupSuccessfulSpawn)
+
+			Context("a started job", func() {
+				BeforeEach(func() {
+					fakeRunner.WhenRunning(
+						fake_command_runner.CommandSpec{
+							Path: inContainer("bin/iomux-link"),
+						}, func(cmd *exec.Cmd) error {
+							time.Sleep(100 * time.Millisecond)
+
+							cmd.Stdout.Write([]byte("hi out\n"))
+
+							time.Sleep(100 * time.Millisecond)
+
+							cmd.Stderr.Write([]byte("hi err\n"))
+
+							time.Sleep(100 * time.Millisecond)
+
+							dummyCmd := exec.Command("/bin/bash", "-c", "exit 42")
+							dummyCmd.Run()
+
+							cmd.ProcessState = dummyCmd.ProcessState
+
+							return nil
+						},
+					)
+				})
+
+				It("streams stderr and stdout and exit status", func(done Done) {
+					jobID, err := container.Spawn(backend.JobSpec{
+						Script: "/some/script",
+					})
+					Expect(err).ToNot(HaveOccured())
+
+					jobStreamChannel, err := container.Stream(jobID)
+					Expect(err).ToNot(HaveOccured())
+
+					chunk1 := <-jobStreamChannel
+					Expect(chunk1.Name).To(Equal("stdout"))
+					Expect(string(chunk1.Data)).To(Equal("hi out\n"))
+					Expect(chunk1.ExitStatus).To(BeNil())
+					Expect(chunk1.Info).To(BeNil())
+
+					chunk2 := <-jobStreamChannel
+					Expect(chunk2.Name).To(Equal("stderr"))
+					Expect(string(chunk2.Data)).To(Equal("hi err\n"))
+					Expect(chunk2.ExitStatus).To(BeNil())
+					Expect(chunk2.Info).To(BeNil())
+
+					chunk3 := <-jobStreamChannel
+					Expect(chunk3.Name).To(Equal(""))
+					Expect(string(chunk3.Data)).To(Equal(""))
+					Expect(chunk3.ExitStatus).ToNot(BeNil())
+					Expect(*chunk3.ExitStatus).To(Equal(uint32(42)))
+					//Expect(chunk3.Info).ToNot(BeNil())
+
+					close(done)
+				}, 5.0)
+			})
+
+			Context("a job that has already completed", func() {
+				It("returns an error", func() {
+					jobID, err := container.Spawn(backend.JobSpec{
+						Script: "/some/script",
+					})
+					Expect(err).ToNot(HaveOccured())
+
+					time.Sleep(100 * time.Millisecond)
+
+					_, err = container.Stream(jobID)
+					Expect(err).To(HaveOccured())
+				})
+			})
+
+			Context("an unknown job", func() {
+				It("returns an error", func() {
+					_, err := container.Stream(42)
+					Expect(err).To(HaveOccured())
+				})
+			})
+		})
 	})
 
 	Describe("Limiting bandwidth", func() {

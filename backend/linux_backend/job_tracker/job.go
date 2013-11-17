@@ -11,6 +11,7 @@ import (
 	"syscall"
 
 	"github.com/vito/garden/command_runner"
+	"github.com/vito/garden/backend"
 )
 
 type Job struct {
@@ -21,6 +22,9 @@ type Job struct {
 
 	waitingLinks *sync.Cond
 	runningLink  *sync.Once
+
+	streams []chan backend.JobStream
+	streamLock *sync.RWMutex
 
 	completed bool
 
@@ -38,6 +42,7 @@ func NewJob(id uint32, containerPath string, cmd *exec.Cmd, runner command_runne
 
 		waitingLinks: sync.NewCond(&sync.Mutex{}),
 		runningLink:  &sync.Once{},
+		streamLock: &sync.RWMutex{},
 	}
 }
 
@@ -112,6 +117,10 @@ func (j *Job) Link() (uint32, []byte, []byte, error) {
 	return j.exitStatus, j.stdout.Bytes(), j.stderr.Bytes(), nil
 }
 
+func (j *Job) Stream() chan backend.JobStream {
+	return j.registerStream()
+}
+
 func (j *Job) runLinker() {
 	linkPath := path.Join(j.containerPath, "bin", "iomux-link")
 	jobDir := path.Join(j.containerPath, "jobs", fmt.Sprintf("%d", j.id))
@@ -121,8 +130,8 @@ func (j *Job) runLinker() {
 	stdout := new(bytes.Buffer)
 	stderr := new(bytes.Buffer)
 
-	link.Stdout = stdout
-	link.Stderr = stderr
+	link.Stdout = newNamedStream(j, "stdout", stdout)
+	link.Stderr = newNamedStream(j, "stderr", stderr)
 
 	j.runner.Run(link)
 
@@ -139,5 +148,37 @@ func (j *Job) runLinker() {
 
 	j.completed = true
 
+	j.sendToStreams(backend.JobStream{ExitStatus: &exitStatus})
+	j.closeStreams()
+
 	j.waitingLinks.Broadcast()
+}
+
+func (j *Job) registerStream() chan backend.JobStream {
+	j.streamLock.Lock()
+	defer j.streamLock.Unlock()
+
+	stream := make(chan backend.JobStream)
+
+	j.streams = append(j.streams, stream)
+
+	return stream
+}
+
+func (j *Job) sendToStreams(chunk backend.JobStream) {
+	j.streamLock.RLock()
+	defer j.streamLock.RUnlock()
+
+	for _, sink := range j.streams {
+		sink <- chunk
+	}
+}
+
+func (j *Job) closeStreams() {
+	j.streamLock.RLock()
+	defer j.streamLock.RUnlock()
+
+	for _, sink := range j.streams {
+		close(sink)
+	}
 }

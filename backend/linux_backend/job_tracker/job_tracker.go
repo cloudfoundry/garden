@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/vito/garden/command_runner"
+	"github.com/vito/garden/backend"
 )
 
 type JobTracker struct {
@@ -76,6 +77,18 @@ func (t *JobTracker) Link(jobID uint32) (uint32, []byte, []byte, error) {
 	defer t.unregister(jobID)
 
 	return job.Link()
+}
+
+func (t *JobTracker) Stream(jobID uint32) (chan backend.JobStream, error) {
+	t.RLock()
+	job, ok := t.jobs[jobID]
+	t.RUnlock()
+
+	if !ok {
+		return nil, UnknownJobError{jobID}
+	}
+
+	return job.Stream(), nil
 }
 
 func (t *JobTracker) unregister(jobID uint32) {

@@ -217,8 +217,9 @@ func (c *LinuxContainer) Spawn(spec backend.JobSpec) (uint32, error) {
 	return c.jobTracker.Spawn(wsh)
 }
 
-func (c *LinuxContainer) Stream(uint32) (<-chan backend.JobStream, error) {
-	return nil, nil
+func (c *LinuxContainer) Stream(jobID uint32) (<-chan backend.JobStream, error) {
+	log.Println(c.id, "streaming job", jobID)
+	return c.jobTracker.Stream(jobID)
 }
 
 func (c *LinuxContainer) Link(jobID uint32) (backend.JobResult, error) {

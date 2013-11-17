@@ -248,3 +248,88 @@ var _ = Describe("Linking to jobs", func() {
 		}, 10.0)
 	})
 })
+
+var _ = Describe("Streaming jobs", func() {
+	BeforeEach(func() {
+		tmpdir, err := ioutil.TempDir(os.TempDir(), "some-container")
+		Expect(err).ToNot(HaveOccured())
+
+		containerPath = tmpdir
+
+		fakeRunner = fake_command_runner.New()
+		jobTracker = job_tracker.New(containerPath, fakeRunner)
+
+		fakeRunner.WhenRunning(
+			fake_command_runner.CommandSpec{
+				Path: binPath("iomux-link"),
+			},
+			func(cmd *exec.Cmd) error {
+				time.Sleep(100 * time.Millisecond)
+
+				cmd.Stdout.Write([]byte("hi out\n"))
+
+				time.Sleep(100 * time.Millisecond)
+
+				cmd.Stderr.Write([]byte("hi err\n"))
+
+				time.Sleep(100 * time.Millisecond)
+
+				dummyCmd := exec.Command("/bin/bash", "-c", "exit 42")
+				dummyCmd.Run()
+
+				cmd.ProcessState = dummyCmd.ProcessState
+
+				return nil
+			},
+		)
+	})
+
+	It("streams their stdout and stderr into the channel", func(done Done) {
+		setupSuccessfulSpawn()
+
+		jobID, _ := jobTracker.Spawn(exec.Command("xxx"))
+
+		jobStreamChannel, err := jobTracker.Stream(jobID)
+		Expect(err).ToNot(HaveOccured())
+
+		chunk1 := <-jobStreamChannel
+		Expect(chunk1.Name).To(Equal("stdout"))
+		Expect(string(chunk1.Data)).To(Equal("hi out\n"))
+		Expect(chunk1.ExitStatus).To(BeNil())
+		Expect(chunk1.Info).To(BeNil())
+
+		chunk2 := <-jobStreamChannel
+		Expect(chunk2.Name).To(Equal("stderr"))
+		Expect(string(chunk2.Data)).To(Equal("hi err\n"))
+		Expect(chunk2.ExitStatus).To(BeNil())
+		Expect(chunk2.Info).To(BeNil())
+
+		close(done)
+	}, 5.0)
+
+	Context("when the job completes", func() {
+		It("yields the exit status and closes the channel", func(done Done) {
+			setupSuccessfulSpawn()
+
+			jobID, _ := jobTracker.Spawn(exec.Command("xxx"))
+
+			jobStreamChannel, err := jobTracker.Stream(jobID)
+			Expect(err).ToNot(HaveOccured())
+
+			<-jobStreamChannel
+			<-jobStreamChannel
+
+			chunk3 := <-jobStreamChannel
+			Expect(chunk3.Name).To(Equal(""))
+			Expect(string(chunk3.Data)).To(Equal(""))
+			Expect(chunk3.ExitStatus).ToNot(BeNil())
+			Expect(*chunk3.ExitStatus).To(Equal(uint32(42)))
+			//Expect(chunk3.Info).ToNot(BeNil())
+
+			_, ok := <-jobStreamChannel
+			Expect(ok).To(BeFalse(), "channel is not closed")
+
+			close(done)
+		}, 5.0)
+	})
+})

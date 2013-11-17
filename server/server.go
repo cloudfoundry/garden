@@ -94,6 +94,8 @@ func (s *WardenServer) serveConnection(conn net.Conn) {
 			response, err = s.handleSpawn(request.(*protocol.SpawnRequest))
 		case *protocol.LinkRequest:
 			response, err = s.handleLink(request.(*protocol.LinkRequest))
+		case *protocol.StreamRequest:
+			response, err = s.handleStream(conn, request.(*protocol.StreamRequest))
 		case *protocol.RunRequest:
 			response, err = s.handleRun(request.(*protocol.RunRequest))
 		case *protocol.LimitBandwidthRequest:
@@ -379,4 +381,38 @@ func (s *WardenServer) handleNetOut(request *protocol.NetOutRequest) (proto.Mess
 	}
 
 	return &protocol.NetOutResponse{}, nil
+}
+
+func (s *WardenServer) handleStream(conn net.Conn, request *protocol.StreamRequest) (proto.Message, error) {
+	handle := request.GetHandle()
+	jobID := request.GetJobId()
+
+	container, err := s.backend.Lookup(handle)
+	if err != nil {
+		return nil, err
+	}
+
+	stream, err := container.Stream(jobID)
+	if err != nil {
+		return nil, err
+	}
+
+	var response proto.Message
+
+	for chunk := range stream {
+		if chunk.ExitStatus != nil {
+			response = &protocol.StreamResponse{
+				ExitStatus: proto.Uint32(*chunk.ExitStatus),
+			}
+
+			break
+		}
+
+		protocol.Messages(&protocol.StreamResponse{
+			Name: proto.String(chunk.Name),
+			Data: proto.String(string(chunk.Data)),
+		}).WriteTo(conn)
+	}
+
+	return response, nil
 }

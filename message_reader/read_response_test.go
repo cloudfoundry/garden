@@ -2,6 +2,7 @@ package message_reader_test
 
 import (
 	"bytes"
+	"bufio"
 
 	"code.google.com/p/gogoprotobuf/proto"
 
@@ -18,9 +19,9 @@ var _ = Describe("Reading response messages over the wire", func() {
 			var echoResponse protocol.EchoResponse
 
 			err := message_reader.ReadMessage(
-				protocol.Messages(&protocol.EchoRequest{
+				bufio.NewReader(protocol.Messages(&protocol.EchoRequest{
 					Message: proto.String("some message"),
-				}),
+				})),
 				&echoResponse,
 			)
 
@@ -36,7 +37,9 @@ var _ = Describe("Reading response messages over the wire", func() {
 
 			payload := protocol.Messages(&protocol.PingRequest{})
 
-			bogusPayload := bytes.NewBuffer(payload.Bytes()[0 : payload.Len()-1])
+			bogusPayload := bufio.NewReader(
+				bytes.NewBuffer(payload.Bytes()[0 : payload.Len()-1]),
+			)
 
 			err := message_reader.ReadMessage(bogusPayload, &dummyResponse)
 			Expect(err).To(HaveOccured())
@@ -48,14 +51,14 @@ var _ = Describe("Reading response messages over the wire", func() {
 			var dummyResponse protocol.PingResponse
 
 			err := message_reader.ReadMessage(
-				protocol.Messages(&protocol.ErrorResponse{
+				bufio.NewReader(protocol.Messages(&protocol.ErrorResponse{
 					Message: proto.String("some message"),
 					Data:    proto.String("some data"),
 					Backtrace: []string{
 						"backtrace line 1",
 						"backtrace line 2",
 					},
-				}),
+				})),
 				&dummyResponse,
 			)
 
@@ -81,7 +84,7 @@ var _ = Describe("Reading response messages over the wire", func() {
 			}
 
 			err := message_reader.ReadMessage(
-				protocol.Messages(actualResponse),
+				bufio.NewReader(protocol.Messages(actualResponse)),
 				&dummyResponse,
 			)
 

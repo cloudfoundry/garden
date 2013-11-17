@@ -24,6 +24,10 @@ type FakeContainer struct {
 	LinkedJobResult backend.JobResult
 	Linked          []uint32
 
+	StreamError error
+	StreamedJobChunks []backend.JobStream
+	Streamed []uint32
+
 	LimitBandwidthError error
 	LimitedBandwidth    backend.BandwidthLimits
 
@@ -126,8 +130,22 @@ func (c *FakeContainer) Spawn(spec backend.JobSpec) (uint32, error) {
 	return c.SpawnedJobID, nil
 }
 
-func (c *FakeContainer) Stream(uint32) (<-chan backend.JobStream, error) {
-	return nil, nil
+func (c *FakeContainer) Stream(jobID uint32) (<-chan backend.JobStream, error) {
+	if c.StreamError != nil {
+		return nil, c.StreamError
+	}
+
+	c.Streamed = append(c.Streamed, jobID)
+
+	stream := make(chan backend.JobStream, len(c.StreamedJobChunks))
+
+	for _, chunk := range c.StreamedJobChunks {
+		stream <- chunk
+	}
+
+	close(stream)
+
+	return stream, nil
 }
 
 func (c *FakeContainer) Link(jobID uint32) (backend.JobResult, error) {

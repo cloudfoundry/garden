@@ -35,8 +35,8 @@ func (e *TypeMismatchError) Error() string {
 	)
 }
 
-func ReadMessage(read io.Reader, response proto.Message) error {
-	payload, err := readPayload(bufio.NewReader(read))
+func ReadMessage(read *bufio.Reader, response proto.Message) error {
+	payload, err := readPayload(read)
 	if err != nil {
 		return err
 	}
