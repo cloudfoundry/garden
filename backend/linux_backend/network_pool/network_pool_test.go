@@ -13,7 +13,7 @@ var _ = Describe("Network Pool", func() {
 	var pool *network_pool.NetworkPool
 
 	BeforeEach(func() {
-		_, ipNet, err := net.ParseCIDR("10.244.0.0/22")
+		_, ipNet, err := net.ParseCIDR("10.254.0.0/22")
 		Expect(err).ToNot(HaveOccured())
 
 		pool = network_pool.New(ipNet)
@@ -24,12 +24,12 @@ var _ = Describe("Network Pool", func() {
 			network1, err := pool.Acquire()
 			Expect(err).ToNot(HaveOccured())
 
-			Expect(network1.String()).To(Equal("10.244.0.0/30"))
+			Expect(network1.String()).To(Equal("10.254.0.0/30"))
 
 			network2, err := pool.Acquire()
 			Expect(err).ToNot(HaveOccured())
 
-			Expect(network2.String()).To(Equal("10.244.0.4/30"))
+			Expect(network2.String()).To(Equal("10.254.0.4/30"))
 		})
 
 		Context("when the pool is exhausted", func() {

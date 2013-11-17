@@ -67,7 +67,7 @@ func main() {
 
 		uidPool := unix_uid_pool.New(10000, 256)
 
-		_, ipNet, err := net.ParseCIDR("10.244.0.0/22")
+		_, ipNet, err := net.ParseCIDR("10.254.0.0/22")
 		if err != nil {
 			panic(err)
 		}
