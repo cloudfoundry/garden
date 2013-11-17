@@ -23,6 +23,9 @@ type FakeContainer struct {
 	LinkError       error
 	LinkedJobResult backend.JobResult
 	Linked          []uint32
+
+	LimitBandwidthError error
+	LimitedBandwidth    backend.BandwidthLimits
 }
 
 func NewFakeContainer(spec backend.ContainerSpec) *FakeContainer {
@@ -75,8 +78,14 @@ func (c *FakeContainer) CopyOut(src, dst, owner string) error {
 	return nil
 }
 
-func (c *FakeContainer) LimitBandwidth(backend.BandwidthLimits) (backend.BandwidthLimits, error) {
-	return backend.BandwidthLimits{}, nil
+func (c *FakeContainer) LimitBandwidth(limits backend.BandwidthLimits) (backend.BandwidthLimits, error) {
+	if c.LimitBandwidthError != nil {
+		return backend.BandwidthLimits{}, c.LimitBandwidthError
+	}
+
+	c.LimitedBandwidth = limits
+
+	return limits, nil
 }
 
 func (c *FakeContainer) LimitDisk(backend.DiskLimits) (backend.DiskLimits, error) {

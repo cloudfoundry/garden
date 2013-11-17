@@ -561,6 +561,82 @@ var _ = Describe("The Warden server", func() {
 				}, 1.0)
 			})
 		})
+
+		Context("and the client sends a LimitBandwidthRequest", func() {
+			var fakeContainer *fake_backend.FakeContainer
+
+			BeforeEach(func() {
+				container, err := serverBackend.Create(backend.ContainerSpec{Handle: "some-handle"})
+				Expect(err).ToNot(HaveOccured())
+
+				fakeContainer = container.(*fake_backend.FakeContainer)
+			})
+
+			It("sets the container's bandwidth limits and returns them", func(done Done) {
+				writeMessages(&protocol.LimitBandwidthRequest{
+					Handle: proto.String(fakeContainer.Handle()),
+					Rate:   proto.Uint64(123),
+					Burst:  proto.Uint64(456),
+				})
+
+				var response protocol.LimitBandwidthResponse
+				readResponse(&response)
+
+				Expect(fakeContainer.LimitedBandwidth).To(Equal(
+					backend.BandwidthLimits{
+						RateInBytesPerSecond:      123,
+						BurstRateInBytesPerSecond: 456,
+					},
+				))
+
+				Expect(response.GetRate()).To(Equal(uint64(123)))
+				Expect(response.GetBurst()).To(Equal(uint64(456)))
+
+				close(done)
+			}, 1.0)
+
+			Context("when the container is not found", func() {
+				BeforeEach(func() {
+					serverBackend.Destroy(fakeContainer.Handle())
+				})
+
+				It("sends a WardenError response", func(done Done) {
+					writeMessages(&protocol.LimitBandwidthRequest{
+						Handle: proto.String(fakeContainer.Handle()),
+						Rate:   proto.Uint64(123),
+						Burst:  proto.Uint64(456),
+					})
+
+					var response protocol.LimitBandwidthResponse
+					err := message_reader.ReadMessage(serverConnection, &response)
+					Expect(err).To(Equal(&message_reader.WardenError{
+						Message: "unknown handle: some-handle",
+					}))
+
+					close(done)
+				}, 1.0)
+			})
+
+			Context("when limiting the bandwidth fails", func() {
+				BeforeEach(func() {
+					fakeContainer.LimitBandwidthError = errors.New("oh no!")
+				})
+
+				It("sends a WardenError response", func(done Done) {
+					writeMessages(&protocol.LimitBandwidthRequest{
+						Handle: proto.String(fakeContainer.Handle()),
+						Rate:   proto.Uint64(123),
+						Burst:  proto.Uint64(456),
+					})
+
+					var response protocol.LimitBandwidthResponse
+					err := message_reader.ReadMessage(serverConnection, &response)
+					Expect(err).To(Equal(&message_reader.WardenError{Message: "oh no!"}))
+
+					close(done)
+				}, 1.0)
+			})
+		})
 	})
 })
 

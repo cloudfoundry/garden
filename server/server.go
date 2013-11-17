@@ -94,6 +94,8 @@ func (s *WardenServer) serveConnection(conn net.Conn) {
 			response, err = s.handleSpawn(request.(*protocol.SpawnRequest))
 		case *protocol.LinkRequest:
 			response, err = s.handleLink(request.(*protocol.LinkRequest))
+		case *protocol.LimitBandwidthRequest:
+			response, err = s.handleLimitBandwidth(request.(*protocol.LimitBandwidthRequest))
 		default:
 			err = UnhandledRequestError{request}
 		}
@@ -250,5 +252,30 @@ func (s *WardenServer) handleLink(link *protocol.LinkRequest) (proto.Message, er
 		ExitStatus: proto.Uint32(jobResult.ExitStatus),
 		Stdout:     proto.String(string(jobResult.Stdout)),
 		Stderr:     proto.String(string(jobResult.Stderr)),
+	}, nil
+}
+
+func (s *WardenServer) handleLimitBandwidth(request *protocol.LimitBandwidthRequest) (proto.Message, error) {
+	handle := request.GetHandle()
+	rate := request.GetRate()
+	burst := request.GetBurst()
+
+	container, err := s.backend.Lookup(handle)
+	if err != nil {
+		return nil, err
+	}
+
+	limits, err := container.LimitBandwidth(backend.BandwidthLimits{
+		RateInBytesPerSecond:      rate,
+		BurstRateInBytesPerSecond: burst,
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &protocol.LimitBandwidthResponse{
+		Rate:  proto.Uint64(limits.RateInBytesPerSecond),
+		Burst: proto.Uint64(limits.BurstRateInBytesPerSecond),
 	}, nil
 }
