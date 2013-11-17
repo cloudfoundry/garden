@@ -870,6 +870,13 @@ var _ = Describe("Linux containers", func() {
 					},
 				))
 			})
+
+			Context("and a network is not given", func() {
+				It("returns an error", func() {
+					err := container.NetOut("", 0)
+					Expect(err).To(HaveOccured())
+				})
+			})
 		})
 
 		Context("when net.sh fails", func() {

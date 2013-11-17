@@ -289,6 +289,10 @@ func (c *LinuxContainer) NetOut(network string, port uint32) error {
 			fmt.Sprintf("PORT=%d", port),
 		}
 	} else {
+		if network == "" {
+			return fmt.Errorf("network and/or port must be provided")
+		}
+
 		log.Println(c.id, "permitting traffic to", network)
 
 		net.Env = []string{
