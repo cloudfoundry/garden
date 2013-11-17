@@ -3,4 +3,4 @@
 
 cd warden/warden
 bundle install
-bundle exec bin/warden
+bundle exec bin/warden "$@"
