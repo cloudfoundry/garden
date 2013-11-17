@@ -21,7 +21,7 @@ import (
 )
 
 var _ = Describe("The Warden server", func() {
-	It("listens on the given socket path and chmod it to 0777", func() {
+	It("listens on the given socket path and chmods it to 0777", func() {
 		tmpdir, err := ioutil.TempDir(os.TempDir(), "warden-server-test")
 		Expect(err).ToNot(HaveOccured())
 
@@ -701,6 +701,79 @@ var _ = Describe("The Warden server", func() {
 					})
 
 					var response protocol.LimitMemoryResponse
+					err := message_reader.ReadMessage(serverConnection, &response)
+					Expect(err).To(Equal(&message_reader.WardenError{Message: "oh no!"}))
+
+					close(done)
+				}, 1.0)
+			})
+		})
+
+		Context("and the client sends a NetInRequest", func() {
+			var fakeContainer *fake_backend.FakeContainer
+
+			BeforeEach(func() {
+				container, err := serverBackend.Create(backend.ContainerSpec{Handle: "some-handle"})
+				Expect(err).ToNot(HaveOccured())
+
+				fakeContainer = container.(*fake_backend.FakeContainer)
+			})
+
+			It("maps the ports and returns them", func(done Done) {
+				writeMessages(&protocol.NetInRequest{
+					Handle:       proto.String(fakeContainer.Handle()),
+					HostPort: proto.Uint32(123),
+					ContainerPort: proto.Uint32(456),
+				})
+
+				var response protocol.NetInResponse
+				readResponse(&response)
+
+				Expect(fakeContainer.MappedIn).To(ContainElement(
+					[]uint32{123, 456},
+				))
+
+				Expect(response.GetHostPort()).To(Equal(uint32(123)))
+				Expect(response.GetContainerPort()).To(Equal(uint32(456)))
+
+				close(done)
+			}, 1.0)
+
+			Context("when the container is not found", func() {
+				BeforeEach(func() {
+					serverBackend.Destroy(fakeContainer.Handle())
+				})
+
+				It("sends a WardenError response", func(done Done) {
+					writeMessages(&protocol.NetInRequest{
+						Handle:       proto.String(fakeContainer.Handle()),
+						HostPort: proto.Uint32(123),
+						ContainerPort: proto.Uint32(456),
+					})
+
+					var response protocol.NetInResponse
+					err := message_reader.ReadMessage(serverConnection, &response)
+					Expect(err).To(Equal(&message_reader.WardenError{
+						Message: "unknown handle: some-handle",
+					}))
+
+					close(done)
+				}, 1.0)
+			})
+
+			Context("when mapping the port fails", func() {
+				BeforeEach(func() {
+					fakeContainer.NetInError = errors.New("oh no!")
+				})
+
+				It("sends a WardenError response", func(done Done) {
+					writeMessages(&protocol.NetInRequest{
+						Handle:       proto.String(fakeContainer.Handle()),
+						HostPort: proto.Uint32(123),
+						ContainerPort: proto.Uint32(456),
+					})
+
+					var response protocol.NetInResponse
 					err := message_reader.ReadMessage(serverConnection, &response)
 					Expect(err).To(Equal(&message_reader.WardenError{Message: "oh no!"}))
 

@@ -22,6 +22,7 @@ type LinuxContainerPool struct {
 
 	uidPool     UIDPool
 	networkPool NetworkPool
+	portPool linux_backend.PortPool
 
 	runner command_runner.CommandRunner
 
@@ -40,7 +41,11 @@ type NetworkPool interface {
 	Release(network.Network)
 }
 
-func New(rootPath, depotPath, rootFSPath string, uidPool UIDPool, networkPool NetworkPool, runner command_runner.CommandRunner) *LinuxContainerPool {
+func New(
+	rootPath, depotPath, rootFSPath string,
+	uidPool UIDPool, networkPool NetworkPool, portPool linux_backend.PortPool,
+	runner command_runner.CommandRunner,
+) *LinuxContainerPool {
 	return &LinuxContainerPool{
 		rootPath:   rootPath,
 		depotPath:  depotPath,
@@ -48,6 +53,7 @@ func New(rootPath, depotPath, rootFSPath string, uidPool UIDPool, networkPool Ne
 
 		uidPool:     uidPool,
 		networkPool: networkPool,
+		portPool: portPool,
 
 		runner: runner,
 
@@ -100,7 +106,14 @@ func (p *LinuxContainerPool) Create(spec backend.ContainerSpec) (backend.Contain
 
 	cgroupsManager := cgroups_manager.New("/tmp/warden/cgroup", id)
 
-	container := linux_backend.NewLinuxContainer(id, containerPath, spec, p.runner, cgroupsManager)
+	container := linux_backend.NewLinuxContainer(
+		id,
+		containerPath,
+		spec,
+		p.portPool,
+		p.runner,
+		cgroupsManager,
+	)
 
 	create := exec.Command(
 		path.Join(p.rootPath, "create.sh"),

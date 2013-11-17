@@ -16,6 +16,7 @@ import (
 	"github.com/vito/garden/backend"
 	"github.com/vito/garden/backend/linux_backend"
 	"github.com/vito/garden/backend/linux_backend/cgroups_manager/fake_cgroups_manager"
+	"github.com/vito/garden/backend/linux_backend/port_pool"
 	"github.com/vito/garden/command_runner/fake_command_runner"
 	. "github.com/vito/garden/command_runner/fake_command_runner/matchers"
 )
@@ -23,12 +24,21 @@ import (
 var fakeCgroups *fake_cgroups_manager.FakeCgroupsManager
 var fakeRunner *fake_command_runner.FakeCommandRunner
 var container *linux_backend.LinuxContainer
+var portPool *port_pool.PortPool
 
 var _ = Describe("Linux containers", func() {
 	BeforeEach(func() {
 		fakeRunner = fake_command_runner.New()
 		fakeCgroups = fake_cgroups_manager.New("/cgroups", "some-id")
-		container = linux_backend.NewLinuxContainer("some-id", "/depot/some-id", backend.ContainerSpec{}, fakeRunner, fakeCgroups)
+		portPool = port_pool.New(1000, 10)
+		container = linux_backend.NewLinuxContainer(
+			"some-id",
+			"/depot/some-id",
+			backend.ContainerSpec{},
+			portPool,
+			fakeRunner,
+			fakeCgroups,
+		)
 	})
 
 	Describe("Starting", func() {
@@ -312,9 +322,14 @@ var _ = Describe("Linux containers", func() {
 
 			containerPath = tmpdir
 
-			fakeRunner = fake_command_runner.New()
-			fakeCgroups = fake_cgroups_manager.New("/cgroups", "some-id")
-			container = linux_backend.NewLinuxContainer("some-id", containerPath, backend.ContainerSpec{}, fakeRunner, fakeCgroups)
+			container = linux_backend.NewLinuxContainer(
+				"some-id",
+				containerPath,
+				backend.ContainerSpec{},
+				portPool,
+				fakeRunner,
+				fakeCgroups,
+			)
 		})
 
 		Describe("Spawning", func() {
@@ -721,6 +736,103 @@ var _ = Describe("Linux containers", func() {
 
 				Expect(err).To(Equal(disaster))
 				Expect(limits).To(BeZero())
+			})
+		})
+	})
+
+	Describe("Net in", func() {
+		It("executes net.sh in with HOST_PORT and CONTAINER_PORT", func() {
+			hostPort, containerPort, err := container.NetIn(123, 456)
+			Expect(err).ToNot(HaveOccured())
+
+			Expect(fakeRunner).To(HaveExecutedSerially(
+				fake_command_runner.CommandSpec{
+					Path: "/depot/some-id/net.sh",
+					Args: []string{"in"},
+					Env: []string{
+						"HOST_PORT=123",
+						"CONTAINER_PORT=456",
+					},
+				},
+			))
+
+			Expect(hostPort).To(Equal(uint32(123)))
+			Expect(containerPort).To(Equal(uint32(456)))
+		})
+
+		Context("when a host port is not provided", func() {
+			It("acquires one from the port pool", func() {
+				hostPort, containerPort, err := container.NetIn(0, 456)
+				Expect(err).ToNot(HaveOccured())
+
+				Expect(hostPort).To(Equal(uint32(1000)))
+				Expect(containerPort).To(Equal(uint32(456)))
+
+				secondHostPort, _, err := container.NetIn(0, 456)
+				Expect(err).ToNot(HaveOccured())
+
+				Expect(secondHostPort).ToNot(Equal(hostPort))
+			})
+		})
+
+		Context("when a container port is not provided", func() {
+			It("defaults it to the host port", func() {
+				hostPort, containerPort, err := container.NetIn(123, 0)
+				Expect(err).ToNot(HaveOccured())
+
+				Expect(fakeRunner).To(HaveExecutedSerially(
+					fake_command_runner.CommandSpec{
+						Path: "/depot/some-id/net.sh",
+						Args: []string{"in"},
+						Env: []string{
+							"HOST_PORT=123",
+							"CONTAINER_PORT=123",
+						},
+					},
+				))
+
+				Expect(hostPort).To(Equal(uint32(123)))
+				Expect(containerPort).To(Equal(uint32(123)))
+			})
+
+			Context("and a host port is not provided either", func() {
+				It("defaults it to the same acquired port", func() {
+					hostPort, containerPort, err := container.NetIn(0, 0)
+					Expect(err).ToNot(HaveOccured())
+
+					Expect(fakeRunner).To(HaveExecutedSerially(
+						fake_command_runner.CommandSpec{
+							Path: "/depot/some-id/net.sh",
+							Args: []string{"in"},
+							Env: []string{
+								"HOST_PORT=1000",
+								"CONTAINER_PORT=1000",
+							},
+						},
+					))
+
+					Expect(hostPort).To(Equal(uint32(1000)))
+					Expect(containerPort).To(Equal(uint32(1000)))
+				})
+			})
+		})
+
+		Context("when net.sh fails", func() {
+			disaster := errors.New("oh no!")
+
+			BeforeEach(func() {
+				fakeRunner.WhenRunning(
+					fake_command_runner.CommandSpec{
+						Path: "/depot/some-id/net.sh",
+					}, func(*exec.Cmd) error {
+						return disaster
+					},
+				)
+			})
+
+			It("returns the error", func() {
+				_, _, err := container.NetIn(123, 456)
+				Expect(err).To(Equal(disaster))
 			})
 		})
 	})

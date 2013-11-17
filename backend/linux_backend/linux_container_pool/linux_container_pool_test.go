@@ -11,6 +11,7 @@ import (
 	"github.com/vito/garden/backend"
 	"github.com/vito/garden/backend/linux_backend/fake_network_pool"
 	"github.com/vito/garden/backend/linux_backend/fake_uid_pool"
+	"github.com/vito/garden/backend/linux_backend/port_pool"
 	"github.com/vito/garden/backend/linux_backend/linux_container_pool"
 	"github.com/vito/garden/command_runner/fake_command_runner"
 	. "github.com/vito/garden/command_runner/fake_command_runner/matchers"
@@ -20,12 +21,14 @@ var _ = Describe("Linux Container pool", func() {
 	var fakeRunner *fake_command_runner.FakeCommandRunner
 	var fakeUIDPool *fake_uid_pool.FakeUIDPool
 	var fakeNetworkPool *fake_network_pool.FakeNetworkPool
+	var portPool *port_pool.PortPool
 	var pool *linux_container_pool.LinuxContainerPool
 
 	BeforeEach(func() {
 		fakeUIDPool = fake_uid_pool.New(10000)
 		fakeNetworkPool = fake_network_pool.New(net.ParseIP("1.2.3.0"))
 		fakeRunner = fake_command_runner.New()
+		portPool = port_pool.New(1000, 10)
 
 		pool = linux_container_pool.New(
 			"/root/path",
@@ -33,6 +36,7 @@ var _ = Describe("Linux Container pool", func() {
 			"/rootfs/path",
 			fakeUIDPool,
 			fakeNetworkPool,
+			portPool,
 			fakeRunner,
 		)
 	})

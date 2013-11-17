@@ -12,6 +12,7 @@ import (
 	"github.com/vito/garden/backend/linux_backend/linux_container_pool"
 	"github.com/vito/garden/backend/linux_backend/network_pool"
 	"github.com/vito/garden/backend/linux_backend/unix_uid_pool"
+	"github.com/vito/garden/backend/linux_backend/port_pool"
 	"github.com/vito/garden/command_runner"
 	"github.com/vito/garden/server"
 )
@@ -73,6 +74,10 @@ func main() {
 		}
 
 		networkPool := network_pool.New(ipNet)
+
+		// TODO: base on ephemeral port range
+		portPool := port_pool.New(61000, 6501)
+
 		runner := command_runner.New()
 
 		pool := linux_container_pool.New(
@@ -81,6 +86,7 @@ func main() {
 			*rootFSPath,
 			uidPool,
 			networkPool,
+			portPool,
 			runner,
 		)
 

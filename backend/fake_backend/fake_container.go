@@ -29,6 +29,9 @@ type FakeContainer struct {
 
 	LimitMemoryError error
 	LimitedMemory    backend.MemoryLimits
+
+	NetInError error
+	MappedIn [][]uint32
 }
 
 func NewFakeContainer(spec backend.ContainerSpec) *FakeContainer {
@@ -133,8 +136,14 @@ func (c *FakeContainer) Run(backend.JobSpec) (backend.JobResult, error) {
 	return backend.JobResult{}, nil
 }
 
-func (c *FakeContainer) NetIn(uint32, uint32) (uint32, uint32, error) {
-	return 0, 0, nil
+func (c *FakeContainer) NetIn(hostPort uint32, containerPort uint32) (uint32, uint32, error) {
+	if c.NetInError != nil {
+		return 0, 0, c.NetInError
+	}
+
+	c.MappedIn = append(c.MappedIn, []uint32{hostPort, containerPort})
+
+	return hostPort, containerPort, nil
 }
 
 func (c *FakeContainer) NetOut(string, uint32) error {

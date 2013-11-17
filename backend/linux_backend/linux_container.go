@@ -21,6 +21,8 @@ type LinuxContainer struct {
 
 	spec backend.ContainerSpec
 
+	portPool PortPool
+
 	runner         command_runner.CommandRunner
 	cgroupsManager cgroups_manager.CgroupsManager
 
@@ -30,12 +32,25 @@ type LinuxContainer struct {
 	oomNotifier *exec.Cmd
 }
 
-func NewLinuxContainer(id, path string, spec backend.ContainerSpec, runner command_runner.CommandRunner, cgroupsManager cgroups_manager.CgroupsManager) *LinuxContainer {
+type PortPool interface {
+	Acquire() (uint32, error)
+	Release(uint32)
+}
+
+func NewLinuxContainer(
+	id, path string,
+	spec backend.ContainerSpec,
+	portPool PortPool,
+	runner command_runner.CommandRunner,
+	cgroupsManager cgroups_manager.CgroupsManager,
+) *LinuxContainer {
 	return &LinuxContainer{
 		id:   id,
 		path: path,
 
 		spec: spec,
+
+		portPool: portPool,
 
 		runner:         runner,
 		cgroupsManager: cgroupsManager,
@@ -225,8 +240,36 @@ func (c *LinuxContainer) Run(backend.JobSpec) (backend.JobResult, error) {
 	return backend.JobResult{}, nil
 }
 
-func (c *LinuxContainer) NetIn(uint32, uint32) (uint32, uint32, error) {
-	return 0, 0, nil
+func (c *LinuxContainer) NetIn(hostPort uint32, containerPort uint32) (uint32, uint32, error) {
+	if hostPort == 0 {
+		randomPort, err := c.portPool.Acquire()
+		if err != nil {
+			panic("x")
+		}
+
+		hostPort = randomPort
+	}
+
+	if containerPort == 0 {
+		containerPort = hostPort
+	}
+
+	log.Println(
+		c.id,
+		"mapping host port",
+		hostPort,
+		"to container port",
+		containerPort,
+	)
+
+	net := exec.Command(path.Join(c.path, "net.sh"), "in")
+
+	net.Env = []string{
+		fmt.Sprintf("HOST_PORT=%d", hostPort),
+		fmt.Sprintf("CONTAINER_PORT=%d", containerPort),
+	}
+
+	return hostPort, containerPort, c.runner.Run(net)
 }
 
 func (c *LinuxContainer) NetOut(string, uint32) error {
