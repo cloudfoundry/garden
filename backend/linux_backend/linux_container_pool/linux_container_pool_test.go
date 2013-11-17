@@ -46,7 +46,7 @@ var _ = Describe("Linux Container pool", func() {
 				fake_command_runner.CommandSpec{
 					Path: "/root/path/setup.sh",
 					Env: []string{
-						"POOL_NETWORK=10.254.0.0/24",
+						"POOL_NETWORK=10.254.0.0/22",
 						"ALLOW_NETWORKS=",
 						"DENY_NETWORKS=",
 						"CONTAINER_ROOTFS_PATH=/rootfs/path",
