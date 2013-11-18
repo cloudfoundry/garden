@@ -13,6 +13,7 @@ import (
 	"github.com/vito/garden/backend/linux_backend/network_pool"
 	"github.com/vito/garden/backend/linux_backend/unix_uid_pool"
 	"github.com/vito/garden/backend/linux_backend/port_pool"
+	"github.com/vito/garden/backend/linux_backend/quota_manager"
 	"github.com/vito/garden/command_runner"
 	"github.com/vito/garden/server"
 )
@@ -80,6 +81,11 @@ func main() {
 
 		runner := command_runner.New()
 
+		quotaManager, err := quota_manager.New(*rootPath, *depotPath, runner)
+		if err != nil {
+			panic(err)
+		}
+
 		pool := linux_container_pool.New(
 			path.Join(*rootPath, "linux"),
 			*depotPath,
@@ -88,6 +94,7 @@ func main() {
 			networkPool,
 			portPool,
 			runner,
+			quotaManager,
 		)
 
 		backend = linux_backend.New(pool)

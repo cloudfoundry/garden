@@ -11,7 +11,9 @@ import (
 
 	"github.com/vito/garden/backend"
 	"github.com/vito/garden/backend/linux_backend/cgroups_manager"
+	"github.com/vito/garden/backend/linux_backend/quota_manager"
 	"github.com/vito/garden/backend/linux_backend/job_tracker"
+	"github.com/vito/garden/backend/linux_backend/network"
 	"github.com/vito/garden/command_runner"
 )
 
@@ -21,15 +23,24 @@ type LinuxContainer struct {
 
 	spec backend.ContainerSpec
 
+	resources Resources
+
 	portPool PortPool
 
 	runner         command_runner.CommandRunner
+
 	cgroupsManager cgroups_manager.CgroupsManager
+	quotaManager quota_manager.QuotaManager
 
 	jobTracker *job_tracker.JobTracker
 
 	oomLock     sync.RWMutex
 	oomNotifier *exec.Cmd
+}
+
+type Resources struct {
+	UID uint32
+	Network network.Network
 }
 
 type PortPool interface {
@@ -40,9 +51,11 @@ type PortPool interface {
 func NewLinuxContainer(
 	id, path string,
 	spec backend.ContainerSpec,
+	resources Resources,
 	portPool PortPool,
 	runner command_runner.CommandRunner,
 	cgroupsManager cgroups_manager.CgroupsManager,
+	quotaManager quota_manager.QuotaManager,
 ) *LinuxContainer {
 	return &LinuxContainer{
 		id:   id,
@@ -50,10 +63,14 @@ func NewLinuxContainer(
 
 		spec: spec,
 
+		resources: resources,
+
 		portPool: portPool,
 
 		runner:         runner,
+
 		cgroupsManager: cgroupsManager,
+		quotaManager: quotaManager,
 
 		jobTracker: job_tracker.New(path, runner),
 	}
@@ -105,6 +122,7 @@ func (c *LinuxContainer) Stop(kill bool) error {
 }
 
 func (c *LinuxContainer) Info() (backend.ContainerInfo, error) {
+	// TODO
 	return backend.ContainerInfo{}, nil
 }
 
@@ -157,8 +175,13 @@ func (c *LinuxContainer) LimitBandwidth(limits backend.BandwidthLimits) (backend
 	return limits, nil
 }
 
-func (c *LinuxContainer) LimitDisk(backend.DiskLimits) (backend.DiskLimits, error) {
-	return backend.DiskLimits{}, nil
+func (c *LinuxContainer) LimitDisk(limits backend.DiskLimits) (backend.DiskLimits, error) {
+	err := c.quotaManager.SetLimits(c.resources.UID, limits)
+	if err != nil {
+		return backend.DiskLimits{}, err
+	}
+
+	return c.quotaManager.GetLimits(c.resources.UID)
 }
 
 func (c *LinuxContainer) LimitMemory(limits backend.MemoryLimits) (backend.MemoryLimits, error) {

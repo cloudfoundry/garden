@@ -12,6 +12,8 @@ skeleton: warden/warden
 	cp warden/warden/src/oom/oom root/linux/skeleton/bin
 	cp warden/warden/src/iomux/iomux-spawn root/linux/skeleton/bin
 	cp warden/warden/src/iomux/iomux-link root/linux/skeleton/bin
+	mkdir -p root/bin
+	cp warden/warden/src/repquota/repquota root/bin
 
 warden/warden:
 	git submodule update --init --recursive

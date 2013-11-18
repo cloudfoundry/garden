@@ -16,28 +16,43 @@ import (
 	"github.com/vito/garden/backend"
 	"github.com/vito/garden/backend/linux_backend"
 	"github.com/vito/garden/backend/linux_backend/cgroups_manager/fake_cgroups_manager"
+	"github.com/vito/garden/backend/linux_backend/quota_manager/fake_quota_manager"
 	"github.com/vito/garden/backend/linux_backend/port_pool"
 	"github.com/vito/garden/command_runner/fake_command_runner"
 	. "github.com/vito/garden/command_runner/fake_command_runner/matchers"
 )
 
 var fakeCgroups *fake_cgroups_manager.FakeCgroupsManager
+var fakeQuotaManager *fake_quota_manager.FakeQuotaManager
 var fakeRunner *fake_command_runner.FakeCommandRunner
+var containerResources linux_backend.Resources
 var container *linux_backend.LinuxContainer
 var portPool *port_pool.PortPool
 
 var _ = Describe("Linux containers", func() {
 	BeforeEach(func() {
 		fakeRunner = fake_command_runner.New()
+
 		fakeCgroups = fake_cgroups_manager.New("/cgroups", "some-id")
+
+		fakeQuotaManager = fake_quota_manager.New()
+
 		portPool = port_pool.New(1000, 10)
+
+		containerResources = linux_backend.Resources{
+			UID: 1234,
+			Network: nil,
+		}
+
 		container = linux_backend.NewLinuxContainer(
 			"some-id",
 			"/depot/some-id",
 			backend.ContainerSpec{},
+			containerResources,
 			portPool,
 			fakeRunner,
 			fakeCgroups,
+			fakeQuotaManager,
 		)
 	})
 
@@ -326,9 +341,11 @@ var _ = Describe("Linux containers", func() {
 				"some-id",
 				containerPath,
 				backend.ContainerSpec{},
+				containerResources,
 				portPool,
 				fakeRunner,
 				fakeCgroups,
+				fakeQuotaManager,
 			)
 		})
 
@@ -821,6 +838,57 @@ var _ = Describe("Linux containers", func() {
 				Expect(limits).To(BeZero())
 			})
 		})
+	})
+
+	Describe("Limiting disk", func() {
+		limits := backend.DiskLimits{
+			BlockLimit: 1,
+			Block: 2,
+			BlockSoft: 3,
+			BlockHard: 4,
+
+			InodeLimit: 11,
+			Inode: 12,
+			InodeSoft: 13,
+			InodeHard: 14,
+
+			ByteLimit: 21,
+			Byte: 22,
+			ByteSoft: 23,
+			ByteHard: 24,
+		}
+
+		It("sets the quota via the quota manager with the uid and limits", func() {
+			resultingLimits := backend.DiskLimits{
+				Block: 1234567,
+			}
+
+			fakeQuotaManager.GetLimitsResult = resultingLimits
+
+			newLimits, err := container.LimitDisk(limits)
+			Expect(err).ToNot(HaveOccured())
+
+			uid := containerResources.UID
+
+			Expect(fakeQuotaManager.Limited).To(HaveKey(uid))
+			Expect(fakeQuotaManager.Limited[uid]).To(Equal(limits))
+
+			Expect(newLimits).To(Equal(resultingLimits))
+		})
+
+		Context("when setting the quota fails", func() {
+			disaster := errors.New("oh no!")
+
+			BeforeEach(func() {
+				fakeQuotaManager.SetLimitsError = disaster
+			})
+
+			It("returns the error", func() {
+				_, err := container.LimitDisk(limits)
+				Expect(err).To(Equal(disaster))
+			})
+		})
+
 	})
 
 	Describe("Net in", func() {
