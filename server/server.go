@@ -102,6 +102,8 @@ func (s *WardenServer) serveConnection(conn net.Conn) {
 			response, err = s.handleLimitBandwidth(request.(*protocol.LimitBandwidthRequest))
 		case *protocol.LimitMemoryRequest:
 			response, err = s.handleLimitMemory(request.(*protocol.LimitMemoryRequest))
+		case *protocol.LimitDiskRequest:
+			response, err = s.handleLimitDisk(request.(*protocol.LimitDiskRequest))
 		case *protocol.NetInRequest:
 			response, err = s.handleNetIn(request.(*protocol.NetInRequest))
 		case *protocol.NetOutRequest:
@@ -341,6 +343,67 @@ func (s *WardenServer) handleLimitMemory(request *protocol.LimitMemoryRequest) (
 
 	return &protocol.LimitMemoryResponse{
 		LimitInBytes: proto.Uint64(limits.LimitInBytes),
+	}, nil
+}
+
+func (s *WardenServer) handleLimitDisk(request *protocol.LimitDiskRequest) (proto.Message, error) {
+	handle := request.GetHandle()
+	blockSoft := request.GetBlockSoft()
+	blockHard := request.GetBlockHard()
+	inodeSoft := request.GetInodeSoft()
+	inodeHard := request.GetInodeHard()
+	byteSoft := request.GetByteSoft()
+	byteHard := request.GetByteHard()
+
+	if request.Block != nil {
+		blockHard = request.GetBlock()
+	}
+
+	if request.BlockLimit != nil {
+		blockHard = request.GetBlockLimit()
+	}
+
+	if request.Inode != nil {
+		inodeHard = request.GetInode()
+	}
+
+	if request.InodeLimit != nil {
+		inodeHard = request.GetInodeLimit()
+	}
+
+	if request.Byte != nil {
+		byteHard = request.GetByte()
+	}
+
+	if request.ByteLimit != nil {
+		byteHard = request.GetByteLimit()
+	}
+
+	container, err := s.backend.Lookup(handle)
+	if err != nil {
+		return nil, err
+	}
+
+	limits, err := container.LimitDisk(backend.DiskLimits{
+		BlockSoft: blockSoft,
+		BlockHard: blockHard,
+		InodeSoft: inodeSoft,
+		InodeHard: inodeHard,
+		ByteSoft: byteSoft,
+		ByteHard: byteHard,
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &protocol.LimitDiskResponse{
+		BlockSoft: proto.Uint64(limits.BlockSoft),
+		BlockHard: proto.Uint64(limits.BlockHard),
+		InodeSoft: proto.Uint64(limits.InodeSoft),
+		InodeHard: proto.Uint64(limits.InodeHard),
+		ByteSoft: proto.Uint64(limits.ByteSoft),
+		ByteHard: proto.Uint64(limits.ByteHard),
 	}, nil
 }
 

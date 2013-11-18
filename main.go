@@ -81,7 +81,7 @@ func main() {
 
 		runner := command_runner.New()
 
-		quotaManager, err := quota_manager.New(*rootPath, *depotPath, runner)
+		quotaManager, err := quota_manager.New(*depotPath, *rootPath, runner)
 		if err != nil {
 			panic(err)
 		}

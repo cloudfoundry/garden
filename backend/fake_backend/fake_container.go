@@ -34,6 +34,10 @@ type FakeContainer struct {
 	LimitMemoryError error
 	LimitedMemory    backend.MemoryLimits
 
+	LimitDiskError error
+	LimitedDisk    backend.DiskLimits
+	LimitedDiskResult backend.DiskLimits
+
 	NetInError error
 	MappedIn [][]uint32
 
@@ -106,8 +110,18 @@ func (c *FakeContainer) LimitBandwidth(limits backend.BandwidthLimits) (backend.
 	return limits, nil
 }
 
-func (c *FakeContainer) LimitDisk(backend.DiskLimits) (backend.DiskLimits, error) {
-	return backend.DiskLimits{}, nil
+func (c *FakeContainer) LimitDisk(limits backend.DiskLimits) (backend.DiskLimits, error) {
+	if c.LimitDiskError != nil {
+		return backend.DiskLimits{}, c.LimitDiskError
+	}
+
+	c.LimitedDisk = limits
+
+	if c.LimitedDiskResult != limits {
+		return c.LimitedDiskResult, nil
+	}
+
+	return limits, nil
 }
 
 func (c *FakeContainer) LimitMemory(limits backend.MemoryLimits) (backend.MemoryLimits, error) {

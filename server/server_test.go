@@ -923,6 +923,269 @@ var _ = Describe("The Warden server", func() {
 			})
 		})
 
+		Context("and the client sends a LimitDiskRequest", func() {
+			var fakeContainer *fake_backend.FakeContainer
+
+			BeforeEach(func() {
+				container, err := serverBackend.Create(backend.ContainerSpec{Handle: "some-handle"})
+				Expect(err).ToNot(HaveOccured())
+
+				fakeContainer = container.(*fake_backend.FakeContainer)
+			})
+
+			It("sets the container's disk limits and returns them", func(done Done) {
+				fakeContainer.LimitedDiskResult = backend.DiskLimits{
+					BlockSoft: 1111,
+					BlockHard: 2222,
+
+					InodeSoft: 3333,
+					InodeHard: 4444,
+
+					ByteSoft: 5555,
+					ByteHard: 6666,
+				}
+
+				writeMessages(&protocol.LimitDiskRequest{
+					Handle:       proto.String(fakeContainer.Handle()),
+					BlockSoft: proto.Uint64(111),
+					BlockHard: proto.Uint64(222),
+					InodeSoft: proto.Uint64(333),
+					InodeHard: proto.Uint64(444),
+					ByteSoft: proto.Uint64(555),
+					ByteHard: proto.Uint64(666),
+				})
+
+				var response protocol.LimitDiskResponse
+				readResponse(&response)
+
+				Expect(fakeContainer.LimitedDisk).To(Equal(
+					backend.DiskLimits{
+						BlockSoft: 111,
+						BlockHard: 222,
+
+						InodeSoft: 333,
+						InodeHard: 444,
+
+						ByteSoft: 555,
+						ByteHard: 666,
+					},
+				))
+
+				Expect(response.GetBlockSoft()).To(Equal(uint64(1111)))
+				Expect(response.GetBlockHard()).To(Equal(uint64(2222)))
+
+				Expect(response.GetInodeSoft()).To(Equal(uint64(3333)))
+				Expect(response.GetInodeHard()).To(Equal(uint64(4444)))
+
+				Expect(response.GetByteSoft()).To(Equal(uint64(5555)))
+				Expect(response.GetByteHard()).To(Equal(uint64(6666)))
+
+				close(done)
+			}, 1.0)
+
+			Context("when Block is given", func() {
+				It("passes it as BlockHard", func() {
+					writeMessages(&protocol.LimitDiskRequest{
+						Handle:       proto.String(fakeContainer.Handle()),
+						BlockSoft: proto.Uint64(111),
+						Block: proto.Uint64(222),
+						InodeSoft: proto.Uint64(333),
+						InodeHard: proto.Uint64(444),
+					})
+
+					var response protocol.LimitDiskResponse
+					readResponse(&response)
+
+					Expect(fakeContainer.LimitedDisk).To(Equal(
+						backend.DiskLimits{
+							BlockSoft: 111,
+							BlockHard: 222,
+
+							InodeSoft: 333,
+							InodeHard: 444,
+						},
+					))
+				})
+			})
+
+			Context("when BlockLimit is given", func() {
+				It("passes it as BlockHard", func() {
+					writeMessages(&protocol.LimitDiskRequest{
+						Handle:       proto.String(fakeContainer.Handle()),
+						BlockSoft: proto.Uint64(111),
+						BlockLimit: proto.Uint64(222),
+						InodeSoft: proto.Uint64(333),
+						InodeHard: proto.Uint64(444),
+					})
+
+					var response protocol.LimitDiskResponse
+					readResponse(&response)
+
+					Expect(fakeContainer.LimitedDisk).To(Equal(
+						backend.DiskLimits{
+							BlockSoft: 111,
+							BlockHard: 222,
+
+							InodeSoft: 333,
+							InodeHard: 444,
+						},
+					))
+				})
+			})
+
+			Context("when Inode is given", func() {
+				It("passes it as InodeHard", func() {
+					writeMessages(&protocol.LimitDiskRequest{
+						Handle:       proto.String(fakeContainer.Handle()),
+						BlockSoft: proto.Uint64(111),
+						BlockHard: proto.Uint64(222),
+						InodeSoft: proto.Uint64(333),
+						Inode: proto.Uint64(444),
+					})
+
+					var response protocol.LimitDiskResponse
+					readResponse(&response)
+
+					Expect(fakeContainer.LimitedDisk).To(Equal(
+						backend.DiskLimits{
+							BlockSoft: 111,
+							BlockHard: 222,
+
+							InodeSoft: 333,
+							InodeHard: 444,
+						},
+					))
+				})
+			})
+
+			Context("when InodeLimit is given", func() {
+				It("passes it as InodeHard", func() {
+					writeMessages(&protocol.LimitDiskRequest{
+						Handle:       proto.String(fakeContainer.Handle()),
+						BlockSoft: proto.Uint64(111),
+						BlockHard: proto.Uint64(222),
+						InodeSoft: proto.Uint64(333),
+						InodeLimit: proto.Uint64(444),
+					})
+
+					var response protocol.LimitDiskResponse
+					readResponse(&response)
+
+					Expect(fakeContainer.LimitedDisk).To(Equal(
+						backend.DiskLimits{
+							BlockSoft: 111,
+							BlockHard: 222,
+
+							InodeSoft: 333,
+							InodeHard: 444,
+						},
+					))
+				})
+			})
+
+			Context("when Byte is given", func() {
+				It("passes it as ByteHard", func() {
+					writeMessages(&protocol.LimitDiskRequest{
+						Handle:       proto.String(fakeContainer.Handle()),
+						BlockSoft: proto.Uint64(111),
+						BlockHard: proto.Uint64(222),
+						InodeSoft: proto.Uint64(333),
+						InodeHard: proto.Uint64(444),
+						Byte: proto.Uint64(555),
+					})
+
+					var response protocol.LimitDiskResponse
+					readResponse(&response)
+
+					Expect(fakeContainer.LimitedDisk).To(Equal(
+						backend.DiskLimits{
+							BlockSoft: 111,
+							BlockHard: 222,
+
+							InodeSoft: 333,
+							InodeHard: 444,
+
+							ByteHard: 555,
+						},
+					))
+				})
+			})
+
+			Context("when ByteLimit is given", func() {
+				It("passes it as ByteHard", func() {
+					writeMessages(&protocol.LimitDiskRequest{
+						Handle:       proto.String(fakeContainer.Handle()),
+						BlockSoft: proto.Uint64(111),
+						BlockHard: proto.Uint64(222),
+						InodeSoft: proto.Uint64(333),
+						InodeHard: proto.Uint64(444),
+						ByteLimit: proto.Uint64(555),
+					})
+
+					var response protocol.LimitDiskResponse
+					readResponse(&response)
+
+					Expect(fakeContainer.LimitedDisk).To(Equal(
+						backend.DiskLimits{
+							BlockSoft: 111,
+							BlockHard: 222,
+
+							InodeSoft: 333,
+							InodeHard: 444,
+
+							ByteHard: 555,
+						},
+					))
+				})
+			})
+
+			Context("when the container is not found", func() {
+				BeforeEach(func() {
+					serverBackend.Destroy(fakeContainer.Handle())
+				})
+
+				It("sends a WardenError response", func(done Done) {
+					writeMessages(&protocol.LimitDiskRequest{
+						Handle:       proto.String(fakeContainer.Handle()),
+						BlockSoft: proto.Uint64(111),
+						BlockHard: proto.Uint64(222),
+						InodeSoft: proto.Uint64(333),
+						InodeHard: proto.Uint64(444),
+					})
+
+					var response protocol.LimitDiskResponse
+					err := message_reader.ReadMessage(responses, &response)
+					Expect(err).To(Equal(&message_reader.WardenError{
+						Message: "unknown handle: some-handle",
+					}))
+
+					close(done)
+				}, 1.0)
+			})
+
+			Context("when limiting the disk fails", func() {
+				BeforeEach(func() {
+					fakeContainer.LimitDiskError = errors.New("oh no!")
+				})
+
+				It("sends a WardenError response", func(done Done) {
+					writeMessages(&protocol.LimitDiskRequest{
+						Handle:       proto.String(fakeContainer.Handle()),
+						BlockSoft: proto.Uint64(111),
+						BlockHard: proto.Uint64(222),
+						InodeSoft: proto.Uint64(333),
+						InodeHard: proto.Uint64(444),
+					})
+
+					var response protocol.LimitDiskResponse
+					err := message_reader.ReadMessage(responses, &response)
+					Expect(err).To(Equal(&message_reader.WardenError{Message: "oh no!"}))
+
+					close(done)
+				}, 1.0)
+			})
+		})
+
 		Context("and the client sends a NetInRequest", func() {
 			var fakeContainer *fake_backend.FakeContainer
 
