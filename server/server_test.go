@@ -1328,6 +1328,168 @@ var _ = Describe("The Warden server", func() {
 				}, 1.0)
 			})
 		})
+
+		Context("and the client sends a InfoRequest", func() {
+			var fakeContainer *fake_backend.FakeContainer
+
+			BeforeEach(func() {
+				container, err := serverBackend.Create(backend.ContainerSpec{Handle: "some-handle"})
+				Expect(err).ToNot(HaveOccured())
+
+				fakeContainer = container.(*fake_backend.FakeContainer)
+			})
+
+			It("reports information about the container", func(done Done) {
+				fakeContainer.ReportedInfo = backend.ContainerInfo{
+					State: "active",
+					Events: []string{"oom", "party"},
+					HostIP: "host-ip",
+					ContainerIP: "container-ip",
+					ContainerPath: "/path/to/container",
+					JobIDs: []uint32{1, 2},
+					MemoryStat: backend.ContainerMemoryStat{
+						Cache:                   1,
+						Rss:                     2,
+						MappedFile:              3,
+						Pgpgin:                  4,
+						Pgpgout:                 5,
+						Swap:                    6,
+						Pgfault:                 7,
+						Pgmajfault:              8,
+						InactiveAnon:            9,
+						ActiveAnon:              10,
+						InactiveFile:            11,
+						ActiveFile:              12,
+						Unevictable:             13,
+						HierarchicalMemoryLimit: 14,
+						HierarchicalMemswLimit:  15,
+						TotalCache:              16,
+						TotalRss:                17,
+						TotalMappedFile:         18,
+						TotalPgpgin:             19,
+						TotalPgpgout:            20,
+						TotalSwap:               21,
+						TotalPgfault:            22,
+						TotalPgmajfault:         23,
+						TotalInactiveAnon:       24,
+						TotalActiveAnon:         25,
+						TotalInactiveFile:       26,
+						TotalActiveFile:         27,
+						TotalUnevictable:        28,
+					},
+					CPUStat: backend.ContainerCPUStat{
+						Usage: 1,
+						User: 2,
+						System: 3,
+					},
+					DiskStat: backend.ContainerDiskStat{
+						BytesUsed: 1,
+						InodesUsed: 2,
+					},
+					BandwidthStat: backend.ContainerBandwidthStat{
+						InRate: 1,
+						InBurst: 2,
+						OutRate: 3,
+						OutBurst: 4,
+					},
+				}
+
+				writeMessages(&protocol.InfoRequest{
+					Handle:  proto.String(fakeContainer.Handle()),
+				})
+
+				var response protocol.InfoResponse
+				readResponse(&response)
+
+				Expect(response.GetState()).To(Equal("active"))
+				Expect(response.GetEvents()).To(Equal([]string{"oom", "party"}))
+				Expect(response.GetHostIp()).To(Equal("host-ip"))
+				Expect(response.GetContainerIp()).To(Equal("container-ip"))
+				Expect(response.GetContainerPath()).To(Equal("/path/to/container"))
+				Expect(response.GetJobIds()).To(Equal([]uint64{1, 2}))
+
+				Expect(response.GetMemoryStat().GetCache()).To(Equal(uint64(1)))
+				Expect(response.GetMemoryStat().GetRss()).To(Equal(uint64(2)))
+				Expect(response.GetMemoryStat().GetMappedFile()).To(Equal(uint64(3)))
+				Expect(response.GetMemoryStat().GetPgpgin()).To(Equal(uint64(4)))
+				Expect(response.GetMemoryStat().GetPgpgout()).To(Equal(uint64(5)))
+				Expect(response.GetMemoryStat().GetSwap()).To(Equal(uint64(6)))
+				Expect(response.GetMemoryStat().GetPgfault()).To(Equal(uint64(7)))
+				Expect(response.GetMemoryStat().GetPgmajfault()).To(Equal(uint64(8)))
+				Expect(response.GetMemoryStat().GetInactiveAnon()).To(Equal(uint64(9)))
+				Expect(response.GetMemoryStat().GetActiveAnon()).To(Equal(uint64(10)))
+				Expect(response.GetMemoryStat().GetInactiveFile()).To(Equal(uint64(11)))
+				Expect(response.GetMemoryStat().GetActiveFile()).To(Equal(uint64(12)))
+				Expect(response.GetMemoryStat().GetUnevictable()).To(Equal(uint64(13)))
+				Expect(response.GetMemoryStat().GetHierarchicalMemoryLimit()).To(Equal(uint64(14)))
+				Expect(response.GetMemoryStat().GetHierarchicalMemswLimit()).To(Equal(uint64(15)))
+				Expect(response.GetMemoryStat().GetTotalCache()).To(Equal(uint64(16)))
+				Expect(response.GetMemoryStat().GetTotalRss()).To(Equal(uint64(17)))
+				Expect(response.GetMemoryStat().GetTotalMappedFile()).To(Equal(uint64(18)))
+				Expect(response.GetMemoryStat().GetTotalPgpgin()).To(Equal(uint64(19)))
+				Expect(response.GetMemoryStat().GetTotalPgpgout()).To(Equal(uint64(20)))
+				Expect(response.GetMemoryStat().GetTotalSwap()).To(Equal(uint64(21)))
+				Expect(response.GetMemoryStat().GetTotalPgfault()).To(Equal(uint64(22)))
+				Expect(response.GetMemoryStat().GetTotalPgmajfault()).To(Equal(uint64(23)))
+				Expect(response.GetMemoryStat().GetTotalInactiveAnon()).To(Equal(uint64(24)))
+				Expect(response.GetMemoryStat().GetTotalActiveAnon()).To(Equal(uint64(25)))
+				Expect(response.GetMemoryStat().GetTotalInactiveFile()).To(Equal(uint64(26)))
+				Expect(response.GetMemoryStat().GetTotalActiveFile()).To(Equal(uint64(27)))
+				Expect(response.GetMemoryStat().GetTotalUnevictable()).To(Equal(uint64(28)))
+
+				Expect(response.GetCpuStat().GetUsage()).To(Equal(uint64(1)))
+				Expect(response.GetCpuStat().GetUser()).To(Equal(uint64(2)))
+				Expect(response.GetCpuStat().GetSystem()).To(Equal(uint64(3)))
+
+				Expect(response.GetDiskStat().GetBytesUsed()).To(Equal(uint64(1)))
+				Expect(response.GetDiskStat().GetInodesUsed()).To(Equal(uint64(2)))
+
+				Expect(response.GetBandwidthStat().GetInRate()).To(Equal(uint64(1)))
+				Expect(response.GetBandwidthStat().GetInBurst()).To(Equal(uint64(2)))
+				Expect(response.GetBandwidthStat().GetOutRate()).To(Equal(uint64(3)))
+				Expect(response.GetBandwidthStat().GetOutBurst()).To(Equal(uint64(4)))
+
+				close(done)
+			}, 1.0)
+
+			Context("when the container is not found", func() {
+				BeforeEach(func() {
+					serverBackend.Destroy(fakeContainer.Handle())
+				})
+
+				It("sends a WardenError response", func(done Done) {
+					writeMessages(&protocol.InfoRequest{
+						Handle:  proto.String(fakeContainer.Handle()),
+					})
+
+					var response protocol.InfoResponse
+					err := message_reader.ReadMessage(responses, &response)
+					Expect(err).To(Equal(&message_reader.WardenError{
+						Message: "unknown handle: some-handle",
+					}))
+
+					close(done)
+				}, 1.0)
+			})
+
+			Context("when getting container info fails", func() {
+				BeforeEach(func() {
+					fakeContainer.InfoError = errors.New("oh no!")
+				})
+
+				It("sends a WardenError response", func(done Done) {
+					writeMessages(&protocol.InfoRequest{
+						Handle:  proto.String(fakeContainer.Handle()),
+					})
+
+					var response protocol.InfoResponse
+					err := message_reader.ReadMessage(responses, &response)
+					Expect(err).To(Equal(&message_reader.WardenError{Message: "oh no!"}))
+
+					close(done)
+				}, 1.0)
+			})
+		})
 	})
 })
 

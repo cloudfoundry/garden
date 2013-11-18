@@ -65,7 +65,7 @@ type ContainerInfo struct {
 	ContainerPath string
 	JobIDs        []uint32
 	MemoryStat    ContainerMemoryStat
-	CpuStat       ContainerCPUStat
+	CPUStat       ContainerCPUStat
 	DiskStat      ContainerDiskStat
 	BandwidthStat ContainerBandwidthStat
 }

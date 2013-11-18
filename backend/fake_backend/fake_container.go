@@ -43,6 +43,9 @@ type FakeContainer struct {
 
 	NetOutError  error
 	PermittedOut []NetOutSpec
+
+	InfoError error
+	ReportedInfo backend.ContainerInfo
 }
 
 type NetOutSpec struct {
@@ -77,7 +80,11 @@ func (c *FakeContainer) Stop(bool) error {
 }
 
 func (c *FakeContainer) Info() (backend.ContainerInfo, error) {
-	return backend.ContainerInfo{}, nil
+	if c.InfoError != nil {
+		return backend.ContainerInfo{}, c.InfoError
+	}
+
+	return c.ReportedInfo, nil
 }
 
 func (c *FakeContainer) CopyIn(src, dst string) error {

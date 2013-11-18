@@ -108,6 +108,8 @@ func (s *WardenServer) serveConnection(conn net.Conn) {
 			response, err = s.handleNetIn(request.(*protocol.NetInRequest))
 		case *protocol.NetOutRequest:
 			response, err = s.handleNetOut(request.(*protocol.NetOutRequest))
+		case *protocol.InfoRequest:
+			response, err = s.handleInfo(request.(*protocol.InfoRequest))
 		default:
 			err = UnhandledRequestError{request}
 		}
@@ -478,4 +480,81 @@ func (s *WardenServer) handleStream(conn net.Conn, request *protocol.StreamReque
 	}
 
 	return response, nil
+}
+
+func (s *WardenServer) handleInfo(request *protocol.InfoRequest) (proto.Message, error) {
+	handle := request.GetHandle()
+
+	container, err := s.backend.Lookup(handle)
+	if err != nil {
+		return nil, err
+	}
+
+	info, err := container.Info()
+	if err != nil {
+		return nil, err
+	}
+
+	jobIDs := make([]uint64, len(info.JobIDs))
+	for i, jobID := range info.JobIDs {
+		jobIDs[i] = uint64(jobID)
+	}
+
+	return &protocol.InfoResponse{
+		State: proto.String(info.State),
+		Events: info.Events,
+		HostIp: proto.String(info.HostIP),
+		ContainerIp: proto.String(info.ContainerIP),
+		ContainerPath: proto.String(info.ContainerPath),
+		JobIds: jobIDs,
+
+		MemoryStat: &protocol.InfoResponse_MemoryStat{
+			Cache: proto.Uint64(info.MemoryStat.Cache),
+			Rss: proto.Uint64(info.MemoryStat.Rss),
+			MappedFile: proto.Uint64(info.MemoryStat.MappedFile),
+			Pgpgin: proto.Uint64(info.MemoryStat.Pgpgin),
+			Pgpgout: proto.Uint64(info.MemoryStat.Pgpgout),
+			Swap: proto.Uint64(info.MemoryStat.Swap),
+			Pgfault: proto.Uint64(info.MemoryStat.Pgfault),
+			Pgmajfault: proto.Uint64(info.MemoryStat.Pgmajfault),
+			InactiveAnon: proto.Uint64(info.MemoryStat.InactiveAnon),
+			ActiveAnon: proto.Uint64(info.MemoryStat.ActiveAnon),
+			InactiveFile: proto.Uint64(info.MemoryStat.InactiveFile),
+			ActiveFile: proto.Uint64(info.MemoryStat.ActiveFile),
+			Unevictable: proto.Uint64(info.MemoryStat.Unevictable),
+			HierarchicalMemoryLimit: proto.Uint64(info.MemoryStat.HierarchicalMemoryLimit),
+			HierarchicalMemswLimit: proto.Uint64(info.MemoryStat.HierarchicalMemswLimit),
+			TotalCache: proto.Uint64(info.MemoryStat.TotalCache),
+			TotalRss: proto.Uint64(info.MemoryStat.TotalRss),
+			TotalMappedFile: proto.Uint64(info.MemoryStat.TotalMappedFile),
+			TotalPgpgin: proto.Uint64(info.MemoryStat.TotalPgpgin),
+			TotalPgpgout: proto.Uint64(info.MemoryStat.TotalPgpgout),
+			TotalSwap: proto.Uint64(info.MemoryStat.TotalSwap),
+			TotalPgfault: proto.Uint64(info.MemoryStat.TotalPgfault),
+			TotalPgmajfault: proto.Uint64(info.MemoryStat.TotalPgmajfault),
+			TotalInactiveAnon: proto.Uint64(info.MemoryStat.TotalInactiveAnon),
+			TotalActiveAnon: proto.Uint64(info.MemoryStat.TotalActiveAnon),
+			TotalInactiveFile: proto.Uint64(info.MemoryStat.TotalInactiveFile),
+			TotalActiveFile: proto.Uint64(info.MemoryStat.TotalActiveFile),
+			TotalUnevictable: proto.Uint64(info.MemoryStat.TotalUnevictable),
+		},
+
+		CpuStat: &protocol.InfoResponse_CpuStat{
+			Usage: proto.Uint64(info.CPUStat.Usage),
+			User: proto.Uint64(info.CPUStat.User),
+			System: proto.Uint64(info.CPUStat.System),
+		},
+
+		DiskStat: &protocol.InfoResponse_DiskStat{
+			BytesUsed: proto.Uint64(info.DiskStat.BytesUsed),
+			InodesUsed: proto.Uint64(info.DiskStat.InodesUsed),
+		},
+
+		BandwidthStat: &protocol.InfoResponse_BandwidthStat{
+			InRate: proto.Uint64(info.BandwidthStat.InRate),
+			InBurst: proto.Uint64(info.BandwidthStat.InBurst),
+			OutRate: proto.Uint64(info.BandwidthStat.OutRate),
+			OutBurst: proto.Uint64(info.BandwidthStat.OutBurst),
+		},
+	}, nil
 }
