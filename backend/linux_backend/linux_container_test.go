@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"math"
+	"net"
 	"os"
 	"os/exec"
 	"path"
@@ -16,6 +17,7 @@ import (
 	"github.com/vito/garden/backend"
 	"github.com/vito/garden/backend/linux_backend"
 	"github.com/vito/garden/backend/linux_backend/cgroups_manager/fake_cgroups_manager"
+	"github.com/vito/garden/backend/linux_backend/network_pool"
 	"github.com/vito/garden/backend/linux_backend/port_pool"
 	"github.com/vito/garden/backend/linux_backend/quota_manager/fake_quota_manager"
 	"github.com/vito/garden/command_runner/fake_command_runner"
@@ -37,11 +39,19 @@ var _ = Describe("Linux containers", func() {
 
 		fakeQuotaManager = fake_quota_manager.New()
 
+		_, ipNet, err := net.ParseCIDR("10.254.0.0/24")
+		Expect(err).ToNot(HaveOccured())
+
 		portPool = port_pool.New(1000, 10)
 
+		networkPool := network_pool.New(ipNet)
+
+		network, err := networkPool.Acquire()
+		Expect(err).ToNot(HaveOccured())
+
 		containerResources = linux_backend.Resources{
-			UID: 1234,
-			Network: nil,
+			UID:     1234,
+			Network: network,
 		}
 
 		container = linux_backend.NewLinuxContainer(
@@ -1047,6 +1057,176 @@ var _ = Describe("Linux containers", func() {
 				err := container.NetOut("1.2.3.4/22", 567)
 				Expect(err).To(Equal(disaster))
 			})
+		})
+	})
+
+	Describe("Info", func() {
+		PIt("returns the container's state", func() {})
+		PIt("returns the container's events", func() {})
+
+		It("returns the container's network info", func() {
+			info, err := container.Info()
+			Expect(err).ToNot(HaveOccured())
+
+			Expect(info.HostIP).To(Equal("10.254.0.1"))
+			Expect(info.ContainerIP).To(Equal("10.254.0.2"))
+		})
+
+		It("returns the container's path", func() {
+			info, err := container.Info()
+			Expect(err).ToNot(HaveOccured())
+			Expect(info.ContainerPath).To(Equal("/depot/some-id"))
+		})
+
+		Context("with running jobs", func() {
+			var containerPath string
+
+			inContainer := func(x string) string {
+				return path.Join(containerPath, x)
+			}
+
+			setupSuccessfulSpawn := func() {
+				fakeRunner.WhenRunning(
+					fake_command_runner.CommandSpec{
+						Path: inContainer("bin/iomux-spawn"),
+					},
+					func(cmd *exec.Cmd) error {
+						cmd.Stdout.Write([]byte("ready\n"))
+						cmd.Stdout.Write([]byte("active\n"))
+						return nil
+					},
+				)
+			}
+
+			BeforeEach(func() {
+				tmpdir, err := ioutil.TempDir(os.TempDir(), "some-container")
+				Expect(err).ToNot(HaveOccured())
+
+				containerPath = tmpdir
+
+				container = linux_backend.NewLinuxContainer(
+					"some-id",
+					containerPath,
+					backend.ContainerSpec{},
+					containerResources,
+					portPool,
+					fakeRunner,
+					fakeCgroups,
+					fakeQuotaManager,
+				)
+			})
+
+			BeforeEach(setupSuccessfulSpawn)
+
+			It("returns their job IDs", func() {
+				fakeRunner.WhenRunning(
+					fake_command_runner.CommandSpec{
+						Path: inContainer("bin/iomux-link"),
+					},
+					func(cmd *exec.Cmd) error {
+						// block forever so the job remains active
+						select {}
+
+						return nil
+					},
+				)
+
+				jobID1, err := container.Spawn(backend.JobSpec{
+					Script: "/some/script",
+				})
+				Expect(err).ToNot(HaveOccured())
+
+				jobID2, err := container.Spawn(backend.JobSpec{
+					Script: "/some/script",
+				})
+				Expect(err).ToNot(HaveOccured())
+
+				info, err := container.Info()
+				Expect(err).ToNot(HaveOccured())
+				Expect(info.JobIDs).To(Equal([]uint32{jobID1, jobID2}))
+			})
+		})
+
+		PDescribe("memory info", func() {
+			BeforeEach(func() {
+				fakeCgroups.WhenGetting("memory", "memory.limit_in_bytes", func() (string, error) {
+					return `cache 1
+rss 2
+mapped_file 3
+pgpgin 4
+pgpgout 5
+swap 6
+pgfault 7
+pgmajfault 8
+inactive_anon 9
+active_anon 10
+inactive_file 11
+active_file 12
+unevictable 13
+hierarchical_memory_limit 14
+hierarchical_memsw_limit 15
+total_cache 16
+total_rss 17
+total_mapped_file 18
+total_pgpgin 19
+total_pgpgout 20
+total_swap 21
+total_pgfault 22
+total_pgmajfault 23
+total_inactive_anon 24
+total_active_anon 25
+total_inactive_file 26
+total_active_file 27
+total_unevictable 28`, nil
+				})
+			})
+
+			It("is returned in the response", func() {
+				info, err := container.Info()
+				Expect(err).ToNot(HaveOccured())
+				Expect(info.MemoryStat).To(Equal(backend.ContainerMemoryStat{
+					Cache:                   1,
+					Rss:                     2,
+					MappedFile:              3,
+					Pgpgin:                  4,
+					Pgpgout:                 5,
+					Swap:                    6,
+					Pgfault:                 7,
+					Pgmajfault:              8,
+					InactiveAnon:            9,
+					ActiveAnon:              10,
+					InactiveFile:            11,
+					ActiveFile:              12,
+					Unevictable:             13,
+					HierarchicalMemoryLimit: 14,
+					HierarchicalMemswLimit:  15,
+					TotalCache:              16,
+					TotalRss:                17,
+					TotalMappedFile:         18,
+					TotalPgpgin:             19,
+					TotalPgpgout:            20,
+					TotalSwap:               21,
+					TotalPgfault:            22,
+					TotalPgmajfault:         23,
+					TotalInactiveAnon:       24,
+					TotalActiveAnon:         25,
+					TotalInactiveFile:       26,
+					TotalActiveFile:         27,
+					TotalUnevictable:        28,
+				}))
+			})
+		})
+
+		PDescribe("cpu info", func() {
+			It("is returned in the response", func() {})
+		})
+
+		PDescribe("disk info", func() {
+			It("is returned in the response", func() {})
+		})
+
+		PDescribe("bandwidth info", func() {
+			It("is returned in the response", func() {})
 		})
 	})
 })

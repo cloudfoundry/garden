@@ -333,3 +333,40 @@ var _ = Describe("Streaming jobs", func() {
 		}, 5.0)
 	})
 })
+
+var _ = Describe("Listing active jobs", func() {
+	BeforeEach(func() {
+		tmpdir, err := ioutil.TempDir(os.TempDir(), "some-container")
+		Expect(err).ToNot(HaveOccured())
+
+		containerPath = tmpdir
+
+		fakeRunner = fake_command_runner.New()
+		jobTracker = job_tracker.New(containerPath, fakeRunner)
+	})
+
+	It("includes running job IDs", func() {
+		setupSuccessfulSpawn()
+
+		runningJobs := []uint32{}
+
+		fakeRunner.WhenRunning(
+			fake_command_runner.CommandSpec{
+				Path: binPath("iomux-link"),
+			},
+			func(cmd *exec.Cmd) error {
+				runningJobs = append(runningJobs, jobTracker.ActiveJobs()...)
+				return nil
+			},
+		)
+
+		jobID1, err := jobTracker.Spawn(exec.Command("xxx"))
+		Expect(err).ToNot(HaveOccured())
+
+		jobID2, err := jobTracker.Spawn(exec.Command("xxx"))
+		Expect(err).ToNot(HaveOccured())
+
+		Expect(runningJobs).To(ContainElement(jobID1))
+		Expect(runningJobs).To(ContainElement(jobID2))
+	})
+})

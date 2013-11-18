@@ -91,6 +91,16 @@ func (t *JobTracker) Stream(jobID uint32) (chan backend.JobStream, error) {
 	return job.Stream(), nil
 }
 
+func (t *JobTracker) ActiveJobs() []uint32 {
+	jobs := []uint32{}
+
+	for id, _ := range t.jobs {
+		jobs = append(jobs, id)
+	}
+
+	return jobs
+}
+
 func (t *JobTracker) unregister(jobID uint32) {
 	t.Lock()
 	defer t.Unlock()

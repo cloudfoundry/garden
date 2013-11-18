@@ -63,7 +63,7 @@ type ContainerInfo struct {
 	HostIP        string
 	ContainerIP   string
 	ContainerPath string
-	JobIDs        []uint64
+	JobIDs        []uint32
 	MemoryStat    ContainerMemoryStat
 	CpuStat       ContainerCPUStat
 	DiskStat      ContainerDiskStat

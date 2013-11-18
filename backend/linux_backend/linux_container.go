@@ -122,8 +122,14 @@ func (c *LinuxContainer) Stop(kill bool) error {
 }
 
 func (c *LinuxContainer) Info() (backend.ContainerInfo, error) {
-	// TODO
-	return backend.ContainerInfo{}, nil
+	return backend.ContainerInfo{
+		State:         "active",   // TODO
+		Events:        []string{}, // TODO
+		HostIP:        c.resources.Network.HostIP().String(),
+		ContainerIP:   c.resources.Network.ContainerIP().String(),
+		ContainerPath: c.path,
+		JobIDs:        c.jobTracker.ActiveJobs(),
+	}, nil
 }
 
 func (c *LinuxContainer) CopyIn(src, dst string) error {
