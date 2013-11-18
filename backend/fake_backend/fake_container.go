@@ -24,9 +24,9 @@ type FakeContainer struct {
 	LinkedJobResult backend.JobResult
 	Linked          []uint32
 
-	StreamError error
+	StreamError       error
 	StreamedJobChunks []backend.JobStream
-	Streamed []uint32
+	Streamed          []uint32
 
 	LimitBandwidthError error
 	LimitedBandwidth    backend.BandwidthLimits
@@ -34,20 +34,20 @@ type FakeContainer struct {
 	LimitMemoryError error
 	LimitedMemory    backend.MemoryLimits
 
-	LimitDiskError error
-	LimitedDisk    backend.DiskLimits
+	LimitDiskError    error
+	LimitedDisk       backend.DiskLimits
 	LimitedDiskResult backend.DiskLimits
 
 	NetInError error
-	MappedIn [][]uint32
+	MappedIn   [][]uint32
 
-	NetOutError error
+	NetOutError  error
 	PermittedOut []NetOutSpec
 }
 
 type NetOutSpec struct {
 	Network string
-	Port uint32
+	Port    uint32
 }
 
 func NewFakeContainer(spec backend.ContainerSpec) *FakeContainer {

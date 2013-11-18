@@ -11,9 +11,9 @@ import (
 	"github.com/vito/garden/backend/linux_backend"
 	"github.com/vito/garden/backend/linux_backend/linux_container_pool"
 	"github.com/vito/garden/backend/linux_backend/network_pool"
-	"github.com/vito/garden/backend/linux_backend/unix_uid_pool"
 	"github.com/vito/garden/backend/linux_backend/port_pool"
 	"github.com/vito/garden/backend/linux_backend/quota_manager"
+	"github.com/vito/garden/backend/linux_backend/unix_uid_pool"
 	"github.com/vito/garden/command_runner"
 	"github.com/vito/garden/server"
 )

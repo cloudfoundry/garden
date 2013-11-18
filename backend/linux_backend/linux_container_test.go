@@ -16,8 +16,8 @@ import (
 	"github.com/vito/garden/backend"
 	"github.com/vito/garden/backend/linux_backend"
 	"github.com/vito/garden/backend/linux_backend/cgroups_manager/fake_cgroups_manager"
-	"github.com/vito/garden/backend/linux_backend/quota_manager/fake_quota_manager"
 	"github.com/vito/garden/backend/linux_backend/port_pool"
+	"github.com/vito/garden/backend/linux_backend/quota_manager/fake_quota_manager"
 	"github.com/vito/garden/command_runner/fake_command_runner"
 	. "github.com/vito/garden/command_runner/fake_command_runner/matchers"
 )
@@ -843,19 +843,19 @@ var _ = Describe("Linux containers", func() {
 	Describe("Limiting disk", func() {
 		limits := backend.DiskLimits{
 			BlockLimit: 1,
-			Block: 2,
-			BlockSoft: 3,
-			BlockHard: 4,
+			Block:      2,
+			BlockSoft:  3,
+			BlockHard:  4,
 
 			InodeLimit: 11,
-			Inode: 12,
-			InodeSoft: 13,
-			InodeHard: 14,
+			Inode:      12,
+			InodeSoft:  13,
+			InodeHard:  14,
 
 			ByteLimit: 21,
-			Byte: 22,
-			ByteSoft: 23,
-			ByteHard: 24,
+			Byte:      22,
+			ByteSoft:  23,
+			ByteHard:  24,
 		}
 
 		It("sets the quota via the quota manager with the uid and limits", func() {

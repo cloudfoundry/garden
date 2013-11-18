@@ -389,8 +389,8 @@ func (s *WardenServer) handleLimitDisk(request *protocol.LimitDiskRequest) (prot
 		BlockHard: blockHard,
 		InodeSoft: inodeSoft,
 		InodeHard: inodeHard,
-		ByteSoft: byteSoft,
-		ByteHard: byteHard,
+		ByteSoft:  byteSoft,
+		ByteHard:  byteHard,
 	})
 
 	if err != nil {
@@ -402,8 +402,8 @@ func (s *WardenServer) handleLimitDisk(request *protocol.LimitDiskRequest) (prot
 		BlockHard: proto.Uint64(limits.BlockHard),
 		InodeSoft: proto.Uint64(limits.InodeSoft),
 		InodeHard: proto.Uint64(limits.InodeHard),
-		ByteSoft: proto.Uint64(limits.ByteSoft),
-		ByteHard: proto.Uint64(limits.ByteHard),
+		ByteSoft:  proto.Uint64(limits.ByteSoft),
+		ByteHard:  proto.Uint64(limits.ByteHard),
 	}, nil
 }
 
@@ -423,7 +423,7 @@ func (s *WardenServer) handleNetIn(request *protocol.NetInRequest) (proto.Messag
 	}
 
 	return &protocol.NetInResponse{
-		HostPort: proto.Uint32(hostPort),
+		HostPort:      proto.Uint32(hostPort),
 		ContainerPort: proto.Uint32(containerPort),
 	}, nil
 }

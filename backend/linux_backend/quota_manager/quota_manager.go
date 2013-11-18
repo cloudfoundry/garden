@@ -1,11 +1,11 @@
 package quota_manager
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
-	"fmt"
-	"syscall"
 	"path"
+	"syscall"
 
 	"github.com/vito/garden/backend"
 	"github.com/vito/garden/command_runner"
@@ -34,7 +34,7 @@ func New(containerDepotPath, rootPath string, runner command_runner.CommandRunne
 
 	return &LinuxQuotaManager{
 		rootPath: rootPath,
-		runner: runner,
+		runner:   runner,
 
 		mountPoint: mountPoint,
 	}, nil

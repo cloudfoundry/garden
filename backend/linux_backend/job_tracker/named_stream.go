@@ -8,8 +8,8 @@ import (
 )
 
 type namedStream struct {
-	job *Job
-	name string
+	job         *Job
+	name        string
 	destination io.Writer
 
 	sync.RWMutex
@@ -17,8 +17,8 @@ type namedStream struct {
 
 func newNamedStream(job *Job, name string, destination io.Writer) *namedStream {
 	return &namedStream{
-		job: job,
-		name: name,
+		job:         job,
+		name:        name,
 		destination: destination,
 	}
 }

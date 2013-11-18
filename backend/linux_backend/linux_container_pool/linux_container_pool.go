@@ -11,8 +11,8 @@ import (
 	"github.com/vito/garden/backend"
 	"github.com/vito/garden/backend/linux_backend"
 	"github.com/vito/garden/backend/linux_backend/cgroups_manager"
-	"github.com/vito/garden/backend/linux_backend/quota_manager"
 	"github.com/vito/garden/backend/linux_backend/network"
+	"github.com/vito/garden/backend/linux_backend/quota_manager"
 	"github.com/vito/garden/command_runner"
 )
 
@@ -23,7 +23,7 @@ type LinuxContainerPool struct {
 
 	uidPool     UIDPool
 	networkPool NetworkPool
-	portPool linux_backend.PortPool
+	portPool    linux_backend.PortPool
 
 	runner command_runner.CommandRunner
 
@@ -57,7 +57,7 @@ func New(
 
 		uidPool:     uidPool,
 		networkPool: networkPool,
-		portPool: portPool,
+		portPool:    portPool,
 
 		runner: runner,
 
@@ -117,7 +117,7 @@ func (p *LinuxContainerPool) Create(spec backend.ContainerSpec) (backend.Contain
 		containerPath,
 		spec,
 		linux_backend.Resources{
-			UID: uid,
+			UID:     uid,
 			Network: network,
 		},
 		p.portPool,

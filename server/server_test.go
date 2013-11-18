@@ -581,13 +581,13 @@ var _ = Describe("The Warden server", func() {
 
 				fakeContainer.StreamedJobChunks = []backend.JobStream{
 					{
-						Name: "stdout",
-						Data: []byte("job out\n"),
+						Name:       "stdout",
+						Data:       []byte("job out\n"),
 						ExitStatus: nil,
 					},
 					{
-						Name: "stderr",
-						Data: []byte("job err\n"),
+						Name:       "stderr",
+						Data:       []byte("job err\n"),
 						ExitStatus: nil,
 					},
 					{
@@ -946,13 +946,13 @@ var _ = Describe("The Warden server", func() {
 				}
 
 				writeMessages(&protocol.LimitDiskRequest{
-					Handle:       proto.String(fakeContainer.Handle()),
+					Handle:    proto.String(fakeContainer.Handle()),
 					BlockSoft: proto.Uint64(111),
 					BlockHard: proto.Uint64(222),
 					InodeSoft: proto.Uint64(333),
 					InodeHard: proto.Uint64(444),
-					ByteSoft: proto.Uint64(555),
-					ByteHard: proto.Uint64(666),
+					ByteSoft:  proto.Uint64(555),
+					ByteHard:  proto.Uint64(666),
 				})
 
 				var response protocol.LimitDiskResponse
@@ -986,9 +986,9 @@ var _ = Describe("The Warden server", func() {
 			Context("when Block is given", func() {
 				It("passes it as BlockHard", func() {
 					writeMessages(&protocol.LimitDiskRequest{
-						Handle:       proto.String(fakeContainer.Handle()),
+						Handle:    proto.String(fakeContainer.Handle()),
 						BlockSoft: proto.Uint64(111),
-						Block: proto.Uint64(222),
+						Block:     proto.Uint64(222),
 						InodeSoft: proto.Uint64(333),
 						InodeHard: proto.Uint64(444),
 					})
@@ -1011,11 +1011,11 @@ var _ = Describe("The Warden server", func() {
 			Context("when BlockLimit is given", func() {
 				It("passes it as BlockHard", func() {
 					writeMessages(&protocol.LimitDiskRequest{
-						Handle:       proto.String(fakeContainer.Handle()),
-						BlockSoft: proto.Uint64(111),
+						Handle:     proto.String(fakeContainer.Handle()),
+						BlockSoft:  proto.Uint64(111),
 						BlockLimit: proto.Uint64(222),
-						InodeSoft: proto.Uint64(333),
-						InodeHard: proto.Uint64(444),
+						InodeSoft:  proto.Uint64(333),
+						InodeHard:  proto.Uint64(444),
 					})
 
 					var response protocol.LimitDiskResponse
@@ -1036,11 +1036,11 @@ var _ = Describe("The Warden server", func() {
 			Context("when Inode is given", func() {
 				It("passes it as InodeHard", func() {
 					writeMessages(&protocol.LimitDiskRequest{
-						Handle:       proto.String(fakeContainer.Handle()),
+						Handle:    proto.String(fakeContainer.Handle()),
 						BlockSoft: proto.Uint64(111),
 						BlockHard: proto.Uint64(222),
 						InodeSoft: proto.Uint64(333),
-						Inode: proto.Uint64(444),
+						Inode:     proto.Uint64(444),
 					})
 
 					var response protocol.LimitDiskResponse
@@ -1061,10 +1061,10 @@ var _ = Describe("The Warden server", func() {
 			Context("when InodeLimit is given", func() {
 				It("passes it as InodeHard", func() {
 					writeMessages(&protocol.LimitDiskRequest{
-						Handle:       proto.String(fakeContainer.Handle()),
-						BlockSoft: proto.Uint64(111),
-						BlockHard: proto.Uint64(222),
-						InodeSoft: proto.Uint64(333),
+						Handle:     proto.String(fakeContainer.Handle()),
+						BlockSoft:  proto.Uint64(111),
+						BlockHard:  proto.Uint64(222),
+						InodeSoft:  proto.Uint64(333),
 						InodeLimit: proto.Uint64(444),
 					})
 
@@ -1086,12 +1086,12 @@ var _ = Describe("The Warden server", func() {
 			Context("when Byte is given", func() {
 				It("passes it as ByteHard", func() {
 					writeMessages(&protocol.LimitDiskRequest{
-						Handle:       proto.String(fakeContainer.Handle()),
+						Handle:    proto.String(fakeContainer.Handle()),
 						BlockSoft: proto.Uint64(111),
 						BlockHard: proto.Uint64(222),
 						InodeSoft: proto.Uint64(333),
 						InodeHard: proto.Uint64(444),
-						Byte: proto.Uint64(555),
+						Byte:      proto.Uint64(555),
 					})
 
 					var response protocol.LimitDiskResponse
@@ -1114,7 +1114,7 @@ var _ = Describe("The Warden server", func() {
 			Context("when ByteLimit is given", func() {
 				It("passes it as ByteHard", func() {
 					writeMessages(&protocol.LimitDiskRequest{
-						Handle:       proto.String(fakeContainer.Handle()),
+						Handle:    proto.String(fakeContainer.Handle()),
 						BlockSoft: proto.Uint64(111),
 						BlockHard: proto.Uint64(222),
 						InodeSoft: proto.Uint64(333),
@@ -1146,7 +1146,7 @@ var _ = Describe("The Warden server", func() {
 
 				It("sends a WardenError response", func(done Done) {
 					writeMessages(&protocol.LimitDiskRequest{
-						Handle:       proto.String(fakeContainer.Handle()),
+						Handle:    proto.String(fakeContainer.Handle()),
 						BlockSoft: proto.Uint64(111),
 						BlockHard: proto.Uint64(222),
 						InodeSoft: proto.Uint64(333),
@@ -1170,7 +1170,7 @@ var _ = Describe("The Warden server", func() {
 
 				It("sends a WardenError response", func(done Done) {
 					writeMessages(&protocol.LimitDiskRequest{
-						Handle:       proto.String(fakeContainer.Handle()),
+						Handle:    proto.String(fakeContainer.Handle()),
 						BlockSoft: proto.Uint64(111),
 						BlockHard: proto.Uint64(222),
 						InodeSoft: proto.Uint64(333),
@@ -1198,8 +1198,8 @@ var _ = Describe("The Warden server", func() {
 
 			It("maps the ports and returns them", func(done Done) {
 				writeMessages(&protocol.NetInRequest{
-					Handle:       proto.String(fakeContainer.Handle()),
-					HostPort: proto.Uint32(123),
+					Handle:        proto.String(fakeContainer.Handle()),
+					HostPort:      proto.Uint32(123),
 					ContainerPort: proto.Uint32(456),
 				})
 
@@ -1223,8 +1223,8 @@ var _ = Describe("The Warden server", func() {
 
 				It("sends a WardenError response", func(done Done) {
 					writeMessages(&protocol.NetInRequest{
-						Handle:       proto.String(fakeContainer.Handle()),
-						HostPort: proto.Uint32(123),
+						Handle:        proto.String(fakeContainer.Handle()),
+						HostPort:      proto.Uint32(123),
 						ContainerPort: proto.Uint32(456),
 					})
 
@@ -1245,8 +1245,8 @@ var _ = Describe("The Warden server", func() {
 
 				It("sends a WardenError response", func(done Done) {
 					writeMessages(&protocol.NetInRequest{
-						Handle:       proto.String(fakeContainer.Handle()),
-						HostPort: proto.Uint32(123),
+						Handle:        proto.String(fakeContainer.Handle()),
+						HostPort:      proto.Uint32(123),
 						ContainerPort: proto.Uint32(456),
 					})
 
@@ -1271,9 +1271,9 @@ var _ = Describe("The Warden server", func() {
 
 			It("permits traffic outside of the container", func(done Done) {
 				writeMessages(&protocol.NetOutRequest{
-					Handle:       proto.String(fakeContainer.Handle()),
+					Handle:  proto.String(fakeContainer.Handle()),
 					Network: proto.String("1.2.3.4/22"),
-					Port: proto.Uint32(456),
+					Port:    proto.Uint32(456),
 				})
 
 				var response protocol.NetOutResponse
@@ -1293,9 +1293,9 @@ var _ = Describe("The Warden server", func() {
 
 				It("sends a WardenError response", func(done Done) {
 					writeMessages(&protocol.NetOutRequest{
-						Handle:       proto.String(fakeContainer.Handle()),
+						Handle:  proto.String(fakeContainer.Handle()),
 						Network: proto.String("1.2.3.4/22"),
-						Port: proto.Uint32(456),
+						Port:    proto.Uint32(456),
 					})
 
 					var response protocol.NetOutResponse
@@ -1315,9 +1315,9 @@ var _ = Describe("The Warden server", func() {
 
 				It("sends a WardenError response", func(done Done) {
 					writeMessages(&protocol.NetOutRequest{
-						Handle:       proto.String(fakeContainer.Handle()),
+						Handle:  proto.String(fakeContainer.Handle()),
 						Network: proto.String("1.2.3.4/22"),
-						Port: proto.Uint32(456),
+						Port:    proto.Uint32(456),
 					})
 
 					var response protocol.NetOutResponse

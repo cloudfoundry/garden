@@ -11,9 +11,9 @@ import (
 
 	"github.com/vito/garden/backend"
 	"github.com/vito/garden/backend/linux_backend/cgroups_manager"
-	"github.com/vito/garden/backend/linux_backend/quota_manager"
 	"github.com/vito/garden/backend/linux_backend/job_tracker"
 	"github.com/vito/garden/backend/linux_backend/network"
+	"github.com/vito/garden/backend/linux_backend/quota_manager"
 	"github.com/vito/garden/command_runner"
 )
 
@@ -27,10 +27,10 @@ type LinuxContainer struct {
 
 	portPool PortPool
 
-	runner         command_runner.CommandRunner
+	runner command_runner.CommandRunner
 
 	cgroupsManager cgroups_manager.CgroupsManager
-	quotaManager quota_manager.QuotaManager
+	quotaManager   quota_manager.QuotaManager
 
 	jobTracker *job_tracker.JobTracker
 
@@ -39,7 +39,7 @@ type LinuxContainer struct {
 }
 
 type Resources struct {
-	UID uint32
+	UID     uint32
 	Network network.Network
 }
 
@@ -67,10 +67,10 @@ func NewLinuxContainer(
 
 		portPool: portPool,
 
-		runner:         runner,
+		runner: runner,
 
 		cgroupsManager: cgroupsManager,
-		quotaManager: quotaManager,
+		quotaManager:   quotaManager,
 
 		jobTracker: job_tracker.New(path, runner),
 	}

@@ -1,8 +1,8 @@
 package message_reader_test
 
 import (
-	"bytes"
 	"bufio"
+	"bytes"
 
 	"code.google.com/p/gogoprotobuf/proto"
 

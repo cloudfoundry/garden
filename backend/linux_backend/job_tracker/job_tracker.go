@@ -5,8 +5,8 @@ import (
 	"os/exec"
 	"sync"
 
-	"github.com/vito/garden/command_runner"
 	"github.com/vito/garden/backend"
+	"github.com/vito/garden/command_runner"
 )
 
 type JobTracker struct {

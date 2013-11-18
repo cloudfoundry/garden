@@ -1,19 +1,19 @@
 package quota_manager_test
 
 import (
+	"errors"
 	"io/ioutil"
 	"os"
-	"strings"
 	"os/exec"
-	"errors"
+	"strings"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
+	"github.com/vito/garden/backend"
+	"github.com/vito/garden/backend/linux_backend/quota_manager"
 	"github.com/vito/garden/command_runner/fake_command_runner"
 	. "github.com/vito/garden/command_runner/fake_command_runner/matchers"
-	"github.com/vito/garden/backend/linux_backend/quota_manager"
-	"github.com/vito/garden/backend"
 )
 
 var _ = Describe("Linux Quota manager", func() {
@@ -36,7 +36,7 @@ var _ = Describe("Linux Quota manager", func() {
 		Expect(err).ToNot(HaveOccured())
 
 		dfOutputWords := strings.Split(string(out), " ")
-		realMountPoint = strings.Trim(dfOutputWords[len(dfOutputWords) - 1], "\n")
+		realMountPoint = strings.Trim(dfOutputWords[len(dfOutputWords)-1], "\n")
 
 		quotaManager, err = quota_manager.New(depotPath, "/root/path", fakeRunner)
 		Expect(err).ToNot(HaveOccured())
@@ -130,7 +130,7 @@ var _ = Describe("Linux Quota manager", func() {
 				fake_command_runner.CommandSpec{
 					Path: "/root/path/bin/repquota",
 					Args: []string{realMountPoint, "1234"},
-				}, func (cmd *exec.Cmd) error {
+				}, func(cmd *exec.Cmd) error {
 					cmd.Stdout.Write([]byte("1234 111 222 333 444 555 666 777\n"))
 
 					return nil
@@ -155,7 +155,7 @@ var _ = Describe("Linux Quota manager", func() {
 					fake_command_runner.CommandSpec{
 						Path: "/root/path/bin/repquota",
 						Args: []string{realMountPoint, "1234"},
-					}, func (cmd *exec.Cmd) error {
+					}, func(cmd *exec.Cmd) error {
 						return disaster
 					},
 				)
@@ -173,7 +173,7 @@ var _ = Describe("Linux Quota manager", func() {
 					fake_command_runner.CommandSpec{
 						Path: "/root/path/bin/repquota",
 						Args: []string{realMountPoint, "1234"},
-					}, func (cmd *exec.Cmd) error {
+					}, func(cmd *exec.Cmd) error {
 						cmd.Stdout.Write([]byte("abc\n"))
 
 						return nil

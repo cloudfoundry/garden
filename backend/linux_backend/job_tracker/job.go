@@ -10,8 +10,8 @@ import (
 	"sync"
 	"syscall"
 
-	"github.com/vito/garden/command_runner"
 	"github.com/vito/garden/backend"
+	"github.com/vito/garden/command_runner"
 )
 
 type Job struct {
@@ -23,7 +23,7 @@ type Job struct {
 	waitingLinks *sync.Cond
 	runningLink  *sync.Once
 
-	streams []chan backend.JobStream
+	streams    []chan backend.JobStream
 	streamLock *sync.RWMutex
 
 	completed bool
@@ -42,7 +42,7 @@ func NewJob(id uint32, containerPath string, cmd *exec.Cmd, runner command_runne
 
 		waitingLinks: sync.NewCond(&sync.Mutex{}),
 		runningLink:  &sync.Once{},
-		streamLock: &sync.RWMutex{},
+		streamLock:   &sync.RWMutex{},
 	}
 }
 
