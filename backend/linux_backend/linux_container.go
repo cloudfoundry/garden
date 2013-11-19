@@ -7,6 +7,8 @@ import (
 	"os/exec"
 	"path"
 	"strconv"
+	"strings"
+	"bufio"
 	"sync"
 
 	"github.com/vito/garden/backend"
@@ -122,6 +124,11 @@ func (c *LinuxContainer) Stop(kill bool) error {
 }
 
 func (c *LinuxContainer) Info() (backend.ContainerInfo, error) {
+	memoryStat, err := c.cgroupsManager.Get("memory", "memory.stat")
+	if err != nil {
+		return backend.ContainerInfo{}, err
+	}
+
 	return backend.ContainerInfo{
 		State:         "active",   // TODO
 		Events:        []string{}, // TODO
@@ -129,6 +136,7 @@ func (c *LinuxContainer) Info() (backend.ContainerInfo, error) {
 		ContainerIP:   c.resources.Network.ContainerIP().String(),
 		ContainerPath: c.path,
 		JobIDs:        c.jobTracker.ActiveJobs(),
+		MemoryStat: parseMemoryStat(memoryStat),
 	}, nil
 }
 
@@ -388,4 +396,87 @@ func (c *LinuxContainer) watchForOom(oom *exec.Cmd) {
 	}
 
 	// TODO: handle case where oom notifier itself failed? kill container?
+}
+
+func parseMemoryStat(contents string) (stat backend.ContainerMemoryStat) {
+	fmt.Println("PARSING", contents)
+
+	scanner := bufio.NewScanner(strings.NewReader(contents))
+
+	scanner.Split(bufio.ScanWords)
+
+	for scanner.Scan() {
+		field := scanner.Text()
+
+		fmt.Println("SCANNED:", field)
+		if !scanner.Scan() {
+			break
+		}
+
+		value, err := strconv.ParseUint(scanner.Text(), 10, 0)
+		if err != nil {
+			continue
+		}
+
+		switch field {
+		case "cache":
+			stat.Cache = value
+		case "rss":
+			stat.Rss = value
+		case "mapped_file":
+			stat.MappedFile = value
+		case "pgpgin":
+			stat.Pgpgin = value
+		case "pgpgout":
+			stat.Pgpgout = value
+		case "swap":
+			stat.Swap = value
+		case "pgfault":
+			stat.Pgfault = value
+		case "pgmajfault":
+			stat.Pgmajfault = value
+		case "inactive_anon":
+			stat.InactiveAnon = value
+		case "active_anon":
+			stat.ActiveAnon = value
+		case "inactive_file":
+			stat.InactiveFile = value
+		case "active_file":
+			stat.ActiveFile = value
+		case "unevictable":
+			stat.Unevictable = value
+		case "hierarchical_memory_limit":
+			stat.HierarchicalMemoryLimit = value
+		case "hierarchical_memsw_limit":
+			stat.HierarchicalMemswLimit = value
+		case "total_cache":
+			stat.TotalCache = value
+		case "total_rss":
+			stat.TotalRss = value
+		case "total_mapped_file":
+			stat.TotalMappedFile = value
+		case "total_pgpgin":
+			stat.TotalPgpgin = value
+		case "total_pgpgout":
+			stat.TotalPgpgout = value
+		case "total_swap":
+			stat.TotalSwap = value
+		case "total_pgfault":
+			stat.TotalPgfault = value
+		case "total_pgmajfault":
+			stat.TotalPgmajfault = value
+		case "total_inactive_anon":
+			stat.TotalInactiveAnon = value
+		case "total_active_anon":
+			stat.TotalActiveAnon = value
+		case "total_inactive_file":
+			stat.TotalInactiveFile = value
+		case "total_active_file":
+			stat.TotalActiveFile = value
+		case "total_unevictable":
+			stat.TotalUnevictable = value
+		}
+	}
+
+	return
 }

@@ -1147,9 +1147,9 @@ var _ = Describe("Linux containers", func() {
 			})
 		})
 
-		PDescribe("memory info", func() {
+		Describe("memory info", func() {
 			BeforeEach(func() {
-				fakeCgroups.WhenGetting("memory", "memory.limit_in_bytes", func() (string, error) {
+				fakeCgroups.WhenGetting("memory", "memory.stat", func() (string, error) {
 					return `cache 1
 rss 2
 mapped_file 3
@@ -1177,7 +1177,8 @@ total_inactive_anon 24
 total_active_anon 25
 total_inactive_file 26
 total_active_file 27
-total_unevictable 28`, nil
+total_unevictable 28
+`, nil
 				})
 			})
 
@@ -1214,6 +1215,19 @@ total_unevictable 28`, nil
 					TotalActiveFile:         27,
 					TotalUnevictable:        28,
 				}))
+			})
+		})
+
+		Context("when getting memory.stat fails", func() {
+			disaster := errors.New("oh no!")
+
+			BeforeEach(func() {
+				fakeCgroups.GetError = disaster
+			})
+
+			It("returns an error", func() {
+				_, err := container.Info()
+				Expect(err).To(Equal(disaster))
 			})
 		})
 
