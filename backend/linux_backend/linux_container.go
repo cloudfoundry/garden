@@ -399,8 +399,6 @@ func (c *LinuxContainer) watchForOom(oom *exec.Cmd) {
 }
 
 func parseMemoryStat(contents string) (stat backend.ContainerMemoryStat) {
-	fmt.Println("PARSING", contents)
-
 	scanner := bufio.NewScanner(strings.NewReader(contents))
 
 	scanner.Split(bufio.ScanWords)
@@ -408,7 +406,6 @@ func parseMemoryStat(contents string) (stat backend.ContainerMemoryStat) {
 	for scanner.Scan() {
 		field := scanner.Text()
 
-		fmt.Println("SCANNED:", field)
 		if !scanner.Scan() {
 			break
 		}
