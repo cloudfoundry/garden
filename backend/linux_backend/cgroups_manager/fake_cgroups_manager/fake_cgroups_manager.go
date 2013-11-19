@@ -9,7 +9,6 @@ type FakeCgroupsManager struct {
 	id          string
 
 	SetError error
-	GetError error
 
 	setValues    []SetValue
 	getCallbacks []GetCallback
@@ -58,10 +57,6 @@ func (m *FakeCgroupsManager) Set(subsystem, name, value string) error {
 }
 
 func (m *FakeCgroupsManager) Get(subsytem, name string) (string, error) {
-	if m.GetError != nil {
-		return "", m.GetError
-	}
-
 	for _, cb := range m.getCallbacks {
 		if cb.Subsystem == subsytem && cb.Name == name {
 			return cb.Callback()

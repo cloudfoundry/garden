@@ -129,6 +129,16 @@ func (c *LinuxContainer) Info() (backend.ContainerInfo, error) {
 		return backend.ContainerInfo{}, err
 	}
 
+	_, err = c.cgroupsManager.Get("cpuacct", "cpuacct.stat")
+	if err != nil {
+		return backend.ContainerInfo{}, err
+	}
+
+	_, err = c.cgroupsManager.Get("cpuacct", "cpuacct.usage")
+	if err != nil {
+		return backend.ContainerInfo{}, err
+	}
+
 	return backend.ContainerInfo{
 		State:         "active",   // TODO
 		Events:        []string{}, // TODO

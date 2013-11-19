@@ -1222,7 +1222,9 @@ total_unevictable 28
 			disaster := errors.New("oh no!")
 
 			BeforeEach(func() {
-				fakeCgroups.GetError = disaster
+				fakeCgroups.WhenGetting("memory", "memory.stat", func() (string, error) {
+					return "", disaster
+				})
 			})
 
 			It("returns an error", func() {
@@ -1233,6 +1235,36 @@ total_unevictable 28
 
 		PDescribe("cpu info", func() {
 			It("is returned in the response", func() {})
+		})
+
+		Context("when getting cpuacct/cpuacct.usage fails", func() {
+			disaster := errors.New("oh no!")
+
+			BeforeEach(func() {
+				fakeCgroups.WhenGetting("cpuacct", "cpuacct.usage", func() (string, error) {
+					return "", disaster
+				})
+			})
+
+			It("returns an error", func() {
+				_, err := container.Info()
+				Expect(err).To(Equal(disaster))
+			})
+		})
+
+		Context("when getting cpuacct/cpuacct.stat fails", func() {
+			disaster := errors.New("oh no!")
+
+			BeforeEach(func() {
+				fakeCgroups.WhenGetting("cpuacct", "cpuacct.stat", func() (string, error) {
+					return "", disaster
+				})
+			})
+
+			It("returns an error", func() {
+				_, err := container.Info()
+				Expect(err).To(Equal(disaster))
+			})
 		})
 
 		PDescribe("disk info", func() {
