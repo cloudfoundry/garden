@@ -9,10 +9,10 @@ import (
 type FakeQuotaManager struct {
 	SetLimitsError error
 	GetLimitsError error
-	GetUsageError error
+	GetUsageError  error
 
 	GetLimitsResult backend.DiskLimits
-	GetUsageResult backend.ContainerDiskStat
+	GetUsageResult  backend.ContainerDiskStat
 
 	Limited map[uint32]backend.DiskLimits
 

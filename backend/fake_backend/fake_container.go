@@ -44,7 +44,7 @@ type FakeContainer struct {
 	NetOutError  error
 	PermittedOut []NetOutSpec
 
-	InfoError error
+	InfoError    error
 	ReportedInfo backend.ContainerInfo
 }
 

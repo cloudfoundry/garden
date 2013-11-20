@@ -1251,8 +1251,8 @@ system 2
 				info, err := container.Info()
 				Expect(err).ToNot(HaveOccured())
 				Expect(info.CPUStat).To(Equal(backend.ContainerCPUStat{
-					Usage: 42,
-					User: 1,
+					Usage:  42,
+					User:   1,
 					System: 2,
 				}))
 			})
@@ -1291,7 +1291,7 @@ system 2
 		Describe("disk usage info", func() {
 			It("is returned in the response", func() {
 				fakeQuotaManager.GetUsageResult = backend.ContainerDiskStat{
-					BytesUsed: 1,
+					BytesUsed:  1,
 					InodesUsed: 2,
 				}
 
@@ -1299,7 +1299,7 @@ system 2
 				Expect(err).ToNot(HaveOccured())
 
 				Expect(info.DiskStat).To(Equal(backend.ContainerDiskStat{
-					BytesUsed: 1,
+					BytesUsed:  1,
 					InodesUsed: 2,
 				}))
 			})

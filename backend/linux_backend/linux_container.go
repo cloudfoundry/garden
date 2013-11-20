@@ -1,6 +1,7 @@
 package linux_backend
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"log"
@@ -8,7 +9,6 @@ import (
 	"path"
 	"strconv"
 	"strings"
-	"bufio"
 	"sync"
 
 	"github.com/vito/garden/backend"
@@ -151,9 +151,9 @@ func (c *LinuxContainer) Info() (backend.ContainerInfo, error) {
 		ContainerIP:   c.resources.Network.ContainerIP().String(),
 		ContainerPath: c.path,
 		JobIDs:        c.jobTracker.ActiveJobs(),
-		MemoryStat: parseMemoryStat(memoryStat),
-		CPUStat: parseCPUStat(cpuUsage, cpuStat),
-		DiskStat: diskStat,
+		MemoryStat:    parseMemoryStat(memoryStat),
+		CPUStat:       parseCPUStat(cpuUsage, cpuStat),
+		DiskStat:      diskStat,
 	}, nil
 }
 

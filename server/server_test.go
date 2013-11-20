@@ -1341,12 +1341,12 @@ var _ = Describe("The Warden server", func() {
 
 			It("reports information about the container", func(done Done) {
 				fakeContainer.ReportedInfo = backend.ContainerInfo{
-					State: "active",
-					Events: []string{"oom", "party"},
-					HostIP: "host-ip",
-					ContainerIP: "container-ip",
+					State:         "active",
+					Events:        []string{"oom", "party"},
+					HostIP:        "host-ip",
+					ContainerIP:   "container-ip",
 					ContainerPath: "/path/to/container",
-					JobIDs: []uint32{1, 2},
+					JobIDs:        []uint32{1, 2},
 					MemoryStat: backend.ContainerMemoryStat{
 						Cache:                   1,
 						Rss:                     2,
@@ -1378,24 +1378,24 @@ var _ = Describe("The Warden server", func() {
 						TotalUnevictable:        28,
 					},
 					CPUStat: backend.ContainerCPUStat{
-						Usage: 1,
-						User: 2,
+						Usage:  1,
+						User:   2,
 						System: 3,
 					},
 					DiskStat: backend.ContainerDiskStat{
-						BytesUsed: 1,
+						BytesUsed:  1,
 						InodesUsed: 2,
 					},
 					BandwidthStat: backend.ContainerBandwidthStat{
-						InRate: 1,
-						InBurst: 2,
-						OutRate: 3,
+						InRate:   1,
+						InBurst:  2,
+						OutRate:  3,
 						OutBurst: 4,
 					},
 				}
 
 				writeMessages(&protocol.InfoRequest{
-					Handle:  proto.String(fakeContainer.Handle()),
+					Handle: proto.String(fakeContainer.Handle()),
 				})
 
 				var response protocol.InfoResponse
@@ -1459,7 +1459,7 @@ var _ = Describe("The Warden server", func() {
 
 				It("sends a WardenError response", func(done Done) {
 					writeMessages(&protocol.InfoRequest{
-						Handle:  proto.String(fakeContainer.Handle()),
+						Handle: proto.String(fakeContainer.Handle()),
 					})
 
 					var response protocol.InfoResponse
@@ -1479,7 +1479,7 @@ var _ = Describe("The Warden server", func() {
 
 				It("sends a WardenError response", func(done Done) {
 					writeMessages(&protocol.InfoRequest{
-						Handle:  proto.String(fakeContainer.Handle()),
+						Handle: proto.String(fakeContainer.Handle()),
 					})
 
 					var response protocol.InfoResponse
