@@ -129,12 +129,12 @@ func (c *LinuxContainer) Info() (backend.ContainerInfo, error) {
 		return backend.ContainerInfo{}, err
 	}
 
-	_, err = c.cgroupsManager.Get("cpuacct", "cpuacct.stat")
+	cpuUsage, err := c.cgroupsManager.Get("cpuacct", "cpuacct.usage")
 	if err != nil {
 		return backend.ContainerInfo{}, err
 	}
 
-	_, err = c.cgroupsManager.Get("cpuacct", "cpuacct.usage")
+	cpuStat, err := c.cgroupsManager.Get("cpuacct", "cpuacct.stat")
 	if err != nil {
 		return backend.ContainerInfo{}, err
 	}
@@ -147,6 +147,7 @@ func (c *LinuxContainer) Info() (backend.ContainerInfo, error) {
 		ContainerPath: c.path,
 		JobIDs:        c.jobTracker.ActiveJobs(),
 		MemoryStat: parseMemoryStat(memoryStat),
+		CPUStat: parseCPUStat(cpuUsage, cpuStat),
 	}, nil
 }
 
@@ -482,6 +483,41 @@ func parseMemoryStat(contents string) (stat backend.ContainerMemoryStat) {
 			stat.TotalActiveFile = value
 		case "total_unevictable":
 			stat.TotalUnevictable = value
+		}
+	}
+
+	return
+}
+
+func parseCPUStat(usage, statContents string) (stat backend.ContainerCPUStat) {
+	cpuUsage, err := strconv.ParseUint(strings.Trim(usage, "\n"), 10, 0)
+	if err != nil {
+		return
+	}
+
+	stat.Usage = cpuUsage
+
+	scanner := bufio.NewScanner(strings.NewReader(statContents))
+
+	scanner.Split(bufio.ScanWords)
+
+	for scanner.Scan() {
+		field := scanner.Text()
+
+		if !scanner.Scan() {
+			break
+		}
+
+		value, err := strconv.ParseUint(scanner.Text(), 10, 0)
+		if err != nil {
+			continue
+		}
+
+		switch field {
+		case "user":
+			stat.User = value
+		case "system":
+			stat.System = value
 		}
 	}
 

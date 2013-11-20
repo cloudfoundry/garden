@@ -1233,8 +1233,29 @@ total_unevictable 28
 			})
 		})
 
-		PDescribe("cpu info", func() {
-			It("is returned in the response", func() {})
+		Describe("cpu info", func() {
+			BeforeEach(func() {
+				fakeCgroups.WhenGetting("cpuacct", "cpuacct.usage", func() (string, error) {
+					return `42
+`, nil
+				})
+
+				fakeCgroups.WhenGetting("cpuacct", "cpuacct.stat", func() (string, error) {
+					return `user 1
+system 2
+`, nil
+				})
+			})
+
+			It("is returned in the response", func() {
+				info, err := container.Info()
+				Expect(err).ToNot(HaveOccured())
+				Expect(info.CPUStat).To(Equal(backend.ContainerCPUStat{
+					Usage: 42,
+					User: 1,
+					System: 2,
+				}))
+			})
 		})
 
 		Context("when getting cpuacct/cpuacct.usage fails", func() {
