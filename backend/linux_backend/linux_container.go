@@ -139,6 +139,11 @@ func (c *LinuxContainer) Info() (backend.ContainerInfo, error) {
 		return backend.ContainerInfo{}, err
 	}
 
+	diskStat, err := c.quotaManager.GetUsage(c.resources.UID)
+	if err != nil {
+		return backend.ContainerInfo{}, err
+	}
+
 	return backend.ContainerInfo{
 		State:         "active",   // TODO
 		Events:        []string{}, // TODO
@@ -148,6 +153,7 @@ func (c *LinuxContainer) Info() (backend.ContainerInfo, error) {
 		JobIDs:        c.jobTracker.ActiveJobs(),
 		MemoryStat: parseMemoryStat(memoryStat),
 		CPUStat: parseCPUStat(cpuUsage, cpuStat),
+		DiskStat: diskStat,
 	}, nil
 }
 

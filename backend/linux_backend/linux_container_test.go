@@ -1288,8 +1288,34 @@ system 2
 			})
 		})
 
-		PDescribe("disk info", func() {
-			It("is returned in the response", func() {})
+		Describe("disk usage info", func() {
+			It("is returned in the response", func() {
+				fakeQuotaManager.GetUsageResult = backend.ContainerDiskStat{
+					BytesUsed: 1,
+					InodesUsed: 2,
+				}
+
+				info, err := container.Info()
+				Expect(err).ToNot(HaveOccured())
+
+				Expect(info.DiskStat).To(Equal(backend.ContainerDiskStat{
+					BytesUsed: 1,
+					InodesUsed: 2,
+				}))
+			})
+
+			Context("when getting the disk usage fails", func() {
+				disaster := errors.New("oh no!")
+
+				BeforeEach(func() {
+					fakeQuotaManager.GetUsageError = disaster
+				})
+
+				It("returns the error", func() {
+					_, err := container.Info()
+					Expect(err).To(Equal(disaster))
+				})
+			})
 		})
 
 		PDescribe("bandwidth info", func() {

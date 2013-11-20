@@ -14,6 +14,7 @@ import (
 type QuotaManager interface {
 	SetLimits(uid uint32, limits backend.DiskLimits) error
 	GetLimits(uid uint32) (backend.DiskLimits, error)
+	GetUsage(uid uint32) (backend.ContainerDiskStat, error)
 }
 
 type LinuxQuotaManager struct {
@@ -97,11 +98,44 @@ func (m *LinuxQuotaManager) GetLimits(uid uint32) (backend.DiskLimits, error) {
 		&limits.InodeHard,
 	)
 
+	return limits, err
+}
+
+func (m *LinuxQuotaManager) GetUsage(uid uint32) (backend.ContainerDiskStat, error) {
+	repquota := exec.Command(
+		path.Join(m.rootPath, "bin", "repquota"),
+		m.mountPoint,
+		fmt.Sprintf("%d", uid),
+	)
+
+	usage := backend.ContainerDiskStat{}
+
+	out, err := repquota.StdoutPipe()
 	if err != nil {
-		return limits, err
+		return usage, err
 	}
 
-	return limits, nil
+	err = m.runner.Start(repquota)
+	if err != nil {
+		return usage, err
+	}
+
+	var skip uint32
+
+	_, err = fmt.Fscanf(
+		out,
+		"%d %d %d %d %d %d %d %d",
+		&skip,
+		&usage.BytesUsed,
+		&skip,
+		&skip,
+		&skip,
+		&usage.InodesUsed,
+		&skip,
+		&skip,
+	)
+
+	return usage, err
 }
 
 func findMountPoint(location string) (string, error) {

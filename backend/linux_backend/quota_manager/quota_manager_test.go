@@ -131,7 +131,7 @@ var _ = Describe("Linux Quota manager", func() {
 					Path: "/root/path/bin/repquota",
 					Args: []string{realMountPoint, "1234"},
 				}, func(cmd *exec.Cmd) error {
-					cmd.Stdout.Write([]byte("1234 111 222 333 444 555 666 777\n"))
+					cmd.Stdout.Write([]byte("1234 111 222 333 444 555 666 777 888\n"))
 
 					return nil
 				},
@@ -181,6 +181,65 @@ var _ = Describe("Linux Quota manager", func() {
 				)
 
 				_, err := quotaManager.GetLimits(1234)
+				Expect(err).To(HaveOccured())
+			})
+		})
+	})
+
+	Describe("getting usage", func() {
+		It("executes repquota in the root path", func() {
+			fakeRunner.WhenRunning(
+				fake_command_runner.CommandSpec{
+					Path: "/root/path/bin/repquota",
+					Args: []string{realMountPoint, "1234"},
+				}, func(cmd *exec.Cmd) error {
+					cmd.Stdout.Write([]byte("1234 111 222 333 444 555 666 777 888\n"))
+
+					return nil
+				},
+			)
+
+			limits, err := quotaManager.GetUsage(1234)
+			Expect(err).ToNot(HaveOccured())
+
+			Expect(limits.BytesUsed).To(Equal(uint64(111)))
+			Expect(limits.InodesUsed).To(Equal(uint64(555)))
+		})
+
+		Context("when repquota fails", func() {
+			disaster := errors.New("oh no!")
+
+			BeforeEach(func() {
+				fakeRunner.WhenRunning(
+					fake_command_runner.CommandSpec{
+						Path: "/root/path/bin/repquota",
+						Args: []string{realMountPoint, "1234"},
+					}, func(cmd *exec.Cmd) error {
+						return disaster
+					},
+				)
+			})
+
+			It("returns the error", func() {
+				_, err := quotaManager.GetUsage(1234)
+				Expect(err).To(Equal(disaster))
+			})
+		})
+
+		Context("when the output of repquota is malformed", func() {
+			It("returns an error", func() {
+				fakeRunner.WhenRunning(
+					fake_command_runner.CommandSpec{
+						Path: "/root/path/bin/repquota",
+						Args: []string{realMountPoint, "1234"},
+					}, func(cmd *exec.Cmd) error {
+						cmd.Stdout.Write([]byte("abc\n"))
+
+						return nil
+					},
+				)
+
+				_, err := quotaManager.GetUsage(1234)
 				Expect(err).To(HaveOccured())
 			})
 		})

@@ -9,8 +9,10 @@ import (
 type FakeQuotaManager struct {
 	SetLimitsError error
 	GetLimitsError error
+	GetUsageError error
 
 	GetLimitsResult backend.DiskLimits
+	GetUsageResult backend.ContainerDiskStat
 
 	Limited map[uint32]backend.DiskLimits
 
@@ -45,4 +47,15 @@ func (m *FakeQuotaManager) GetLimits(uid uint32) (backend.DiskLimits, error) {
 	defer m.RUnlock()
 
 	return m.GetLimitsResult, nil
+}
+
+func (m *FakeQuotaManager) GetUsage(uid uint32) (backend.ContainerDiskStat, error) {
+	if m.GetUsageError != nil {
+		return backend.ContainerDiskStat{}, m.GetUsageError
+	}
+
+	m.RLock()
+	defer m.RUnlock()
+
+	return m.GetUsageResult, nil
 }
