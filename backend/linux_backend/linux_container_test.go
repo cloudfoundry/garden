@@ -1307,7 +1307,7 @@ system 2
 
 		Describe("bandwidth info", func() {
 			It("is returned in the response", func() {
-				fakeBandwidthManager.GetUsageResult = backend.ContainerBandwidthStat{
+				fakeBandwidthManager.GetLimitsResult = backend.ContainerBandwidthStat{
 					InRate:   1,
 					InBurst:  2,
 					OutRate:  3,
@@ -1329,7 +1329,7 @@ system 2
 				disaster := errors.New("oh no!")
 
 				BeforeEach(func() {
-					fakeBandwidthManager.GetUsageError = disaster
+					fakeBandwidthManager.GetLimitsError = disaster
 				})
 
 				It("returns the error", func() {

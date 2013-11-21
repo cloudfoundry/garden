@@ -8,8 +8,8 @@ type FakeBandwidthManager struct {
 	SetLimitsError error
 	EnforcedLimits []backend.BandwidthLimits
 
-	GetUsageError  error
-	GetUsageResult backend.ContainerBandwidthStat
+	GetLimitsError  error
+	GetLimitsResult backend.ContainerBandwidthStat
 }
 
 func New() *FakeBandwidthManager {
@@ -26,10 +26,10 @@ func (m *FakeBandwidthManager) SetLimits(limits backend.BandwidthLimits) error {
 	return nil
 }
 
-func (m *FakeBandwidthManager) GetUsage() (backend.ContainerBandwidthStat, error) {
-	if m.GetUsageError != nil {
-		return backend.ContainerBandwidthStat{}, m.GetUsageError
+func (m *FakeBandwidthManager) GetLimits() (backend.ContainerBandwidthStat, error) {
+	if m.GetLimitsError != nil {
+		return backend.ContainerBandwidthStat{}, m.GetLimitsError
 	}
 
-	return m.GetUsageResult, nil
+	return m.GetLimitsResult, nil
 }

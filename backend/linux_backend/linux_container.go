@@ -148,7 +148,7 @@ func (c *LinuxContainer) Info() (backend.ContainerInfo, error) {
 		return backend.ContainerInfo{}, err
 	}
 
-	bandwidthStat, err := c.bandwidthManager.GetUsage()
+	bandwidthStat, err := c.bandwidthManager.GetLimits()
 	if err != nil {
 		return backend.ContainerInfo{}, err
 	}

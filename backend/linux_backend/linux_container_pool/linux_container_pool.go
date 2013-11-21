@@ -113,7 +113,7 @@ func (p *LinuxContainerPool) Create(spec backend.ContainerSpec) (backend.Contain
 
 	cgroupsManager := cgroups_manager.New("/tmp/warden/cgroup", id)
 
-	bandwidthManager := bandwidth_manager.New(containerPath, p.runner)
+	bandwidthManager := bandwidth_manager.New(containerPath, id, p.runner)
 
 	container := linux_backend.NewLinuxContainer(
 		id,
