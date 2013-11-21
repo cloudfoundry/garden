@@ -10,6 +10,7 @@ import (
 
 	"github.com/vito/garden/backend"
 	"github.com/vito/garden/backend/linux_backend"
+	"github.com/vito/garden/backend/linux_backend/bandwidth_manager"
 	"github.com/vito/garden/backend/linux_backend/cgroups_manager"
 	"github.com/vito/garden/backend/linux_backend/network"
 	"github.com/vito/garden/backend/linux_backend/quota_manager"
@@ -112,6 +113,8 @@ func (p *LinuxContainerPool) Create(spec backend.ContainerSpec) (backend.Contain
 
 	cgroupsManager := cgroups_manager.New("/tmp/warden/cgroup", id)
 
+	bandwidthManager := bandwidth_manager.New(containerPath, p.runner)
+
 	container := linux_backend.NewLinuxContainer(
 		id,
 		containerPath,
@@ -124,6 +127,7 @@ func (p *LinuxContainerPool) Create(spec backend.ContainerSpec) (backend.Contain
 		p.runner,
 		cgroupsManager,
 		p.quotaManager,
+		bandwidthManager,
 	)
 
 	create := exec.Command(

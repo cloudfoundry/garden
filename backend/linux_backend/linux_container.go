@@ -12,6 +12,7 @@ import (
 	"sync"
 
 	"github.com/vito/garden/backend"
+	"github.com/vito/garden/backend/linux_backend/bandwidth_manager"
 	"github.com/vito/garden/backend/linux_backend/cgroups_manager"
 	"github.com/vito/garden/backend/linux_backend/job_tracker"
 	"github.com/vito/garden/backend/linux_backend/network"
@@ -31,8 +32,9 @@ type LinuxContainer struct {
 
 	runner command_runner.CommandRunner
 
-	cgroupsManager cgroups_manager.CgroupsManager
-	quotaManager   quota_manager.QuotaManager
+	cgroupsManager   cgroups_manager.CgroupsManager
+	quotaManager     quota_manager.QuotaManager
+	bandwidthManager bandwidth_manager.BandwidthManager
 
 	jobTracker *job_tracker.JobTracker
 
@@ -58,6 +60,7 @@ func NewLinuxContainer(
 	runner command_runner.CommandRunner,
 	cgroupsManager cgroups_manager.CgroupsManager,
 	quotaManager quota_manager.QuotaManager,
+	bandwidthManager bandwidth_manager.BandwidthManager,
 ) *LinuxContainer {
 	return &LinuxContainer{
 		id:   id,
@@ -71,8 +74,9 @@ func NewLinuxContainer(
 
 		runner: runner,
 
-		cgroupsManager: cgroupsManager,
-		quotaManager:   quotaManager,
+		cgroupsManager:   cgroupsManager,
+		quotaManager:     quotaManager,
+		bandwidthManager: bandwidthManager,
 
 		jobTracker: job_tracker.New(path, runner),
 	}
@@ -144,6 +148,11 @@ func (c *LinuxContainer) Info() (backend.ContainerInfo, error) {
 		return backend.ContainerInfo{}, err
 	}
 
+	bandwidthStat, err := c.bandwidthManager.GetUsage()
+	if err != nil {
+		return backend.ContainerInfo{}, err
+	}
+
 	return backend.ContainerInfo{
 		State:         "active",   // TODO
 		Events:        []string{}, // TODO
@@ -154,6 +163,7 @@ func (c *LinuxContainer) Info() (backend.ContainerInfo, error) {
 		MemoryStat:    parseMemoryStat(memoryStat),
 		CPUStat:       parseCPUStat(cpuUsage, cpuStat),
 		DiskStat:      diskStat,
+		BandwidthStat: bandwidthStat,
 	}, nil
 }
 
@@ -191,19 +201,7 @@ func (c *LinuxContainer) LimitBandwidth(limits backend.BandwidthLimits) (backend
 		limits.BurstRateInBytesPerSecond,
 	)
 
-	limit := exec.Command(path.Join(c.path, "net_rate.sh"))
-
-	limit.Env = []string{
-		fmt.Sprintf("BURST=%d", limits.BurstRateInBytesPerSecond),
-		fmt.Sprintf("RATE=%d", limits.RateInBytesPerSecond*8),
-	}
-
-	err := c.runner.Run(limit)
-	if err != nil {
-		return backend.BandwidthLimits{}, err
-	}
-
-	return limits, nil
+	return limits, c.bandwidthManager.SetLimits(limits)
 }
 
 func (c *LinuxContainer) LimitDisk(limits backend.DiskLimits) (backend.DiskLimits, error) {

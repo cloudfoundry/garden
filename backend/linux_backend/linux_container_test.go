@@ -16,6 +16,7 @@ import (
 
 	"github.com/vito/garden/backend"
 	"github.com/vito/garden/backend/linux_backend"
+	"github.com/vito/garden/backend/linux_backend/bandwidth_manager/fake_bandwidth_manager"
 	"github.com/vito/garden/backend/linux_backend/cgroups_manager/fake_cgroups_manager"
 	"github.com/vito/garden/backend/linux_backend/network_pool"
 	"github.com/vito/garden/backend/linux_backend/port_pool"
@@ -26,6 +27,7 @@ import (
 
 var fakeCgroups *fake_cgroups_manager.FakeCgroupsManager
 var fakeQuotaManager *fake_quota_manager.FakeQuotaManager
+var fakeBandwidthManager *fake_bandwidth_manager.FakeBandwidthManager
 var fakeRunner *fake_command_runner.FakeCommandRunner
 var containerResources linux_backend.Resources
 var container *linux_backend.LinuxContainer
@@ -38,6 +40,7 @@ var _ = Describe("Linux containers", func() {
 		fakeCgroups = fake_cgroups_manager.New("/cgroups", "some-id")
 
 		fakeQuotaManager = fake_quota_manager.New()
+		fakeBandwidthManager = fake_bandwidth_manager.New()
 
 		_, ipNet, err := net.ParseCIDR("10.254.0.0/24")
 		Expect(err).ToNot(HaveOccured())
@@ -63,6 +66,7 @@ var _ = Describe("Linux containers", func() {
 			fakeRunner,
 			fakeCgroups,
 			fakeQuotaManager,
+			fakeBandwidthManager,
 		)
 	})
 
@@ -356,6 +360,7 @@ var _ = Describe("Linux containers", func() {
 				fakeRunner,
 				fakeCgroups,
 				fakeQuotaManager,
+				fakeBandwidthManager,
 			)
 		})
 
@@ -594,48 +599,30 @@ var _ = Describe("Linux containers", func() {
 	})
 
 	Describe("Limiting bandwidth", func() {
-		It("executes net_rate.sh with the appropriate environment", func() {
-			limits := backend.BandwidthLimits{
-				RateInBytesPerSecond:      128,
-				BurstRateInBytesPerSecond: 256,
-			}
+		limits := backend.BandwidthLimits{
+			RateInBytesPerSecond:      128,
+			BurstRateInBytesPerSecond: 256,
+		}
 
+		It("sets the limit via the bandwidth manager with the new limits", func() {
 			newLimits, err := container.LimitBandwidth(limits)
-
 			Expect(err).ToNot(HaveOccured())
 
-			Expect(fakeRunner).To(HaveExecutedSerially(
-				fake_command_runner.CommandSpec{
-					Path: "/depot/some-id/net_rate.sh",
-					Env: []string{
-						"BURST=256",
-						fmt.Sprintf("RATE=%d", 128*8),
-					},
-				},
-			))
+			Expect(fakeBandwidthManager.EnforcedLimits).To(ContainElement(limits))
 
 			Expect(newLimits).To(Equal(limits))
 		})
 
-		Context("when net_rate.sh fails", func() {
-			nastyError := errors.New("oh no!")
+		Context("when setting the limit fails", func() {
+			disaster := errors.New("oh no!")
 
 			BeforeEach(func() {
-				fakeRunner.WhenRunning(
-					fake_command_runner.CommandSpec{
-						Path: "/depot/some-id/net_rate.sh",
-					}, func(*exec.Cmd) error {
-						return nastyError
-					},
-				)
+				fakeBandwidthManager.SetLimitsError = disaster
 			})
 
 			It("returns the error", func() {
-				_, err := container.LimitBandwidth(backend.BandwidthLimits{
-					RateInBytesPerSecond:      128,
-					BurstRateInBytesPerSecond: 256,
-				})
-				Expect(err).To(Equal(nastyError))
+				_, err := container.LimitBandwidth(limits)
+				Expect(err).To(Equal(disaster))
 			})
 		})
 	})
@@ -898,7 +885,6 @@ var _ = Describe("Linux containers", func() {
 				Expect(err).To(Equal(disaster))
 			})
 		})
-
 	})
 
 	Describe("Net in", func() {
@@ -1113,6 +1099,7 @@ var _ = Describe("Linux containers", func() {
 					fakeRunner,
 					fakeCgroups,
 					fakeQuotaManager,
+					fakeBandwidthManager,
 				)
 			})
 
@@ -1318,8 +1305,38 @@ system 2
 			})
 		})
 
-		PDescribe("bandwidth info", func() {
-			It("is returned in the response", func() {})
+		Describe("bandwidth info", func() {
+			It("is returned in the response", func() {
+				fakeBandwidthManager.GetUsageResult = backend.ContainerBandwidthStat{
+					InRate:   1,
+					InBurst:  2,
+					OutRate:  3,
+					OutBurst: 4,
+				}
+
+				info, err := container.Info()
+				Expect(err).ToNot(HaveOccured())
+
+				Expect(info.BandwidthStat).To(Equal(backend.ContainerBandwidthStat{
+					InRate:   1,
+					InBurst:  2,
+					OutRate:  3,
+					OutBurst: 4,
+				}))
+			})
+
+			Context("when getting the bandwidth usage fails", func() {
+				disaster := errors.New("oh no!")
+
+				BeforeEach(func() {
+					fakeBandwidthManager.GetUsageError = disaster
+				})
+
+				It("returns the error", func() {
+					_, err := container.Info()
+					Expect(err).To(Equal(disaster))
+				})
+			})
 		})
 	})
 })
