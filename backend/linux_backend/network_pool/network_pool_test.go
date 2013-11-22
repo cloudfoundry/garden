@@ -10,7 +10,7 @@ import (
 )
 
 var _ = Describe("Network Pool", func() {
-	var pool *network_pool.NetworkPool
+	var pool *network_pool.RealNetworkPool
 
 	BeforeEach(func() {
 		_, ipNet, err := net.ParseCIDR("10.254.0.0/22")

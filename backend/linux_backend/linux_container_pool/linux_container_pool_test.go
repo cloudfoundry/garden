@@ -9,8 +9,8 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/vito/garden/backend"
-	"github.com/vito/garden/backend/linux_backend/fake_network_pool"
-	"github.com/vito/garden/backend/linux_backend/fake_uid_pool"
+	"github.com/vito/garden/backend/linux_backend/network_pool/fake_network_pool"
+	"github.com/vito/garden/backend/linux_backend/uid_pool/fake_uid_pool"
 	"github.com/vito/garden/backend/linux_backend/linux_container_pool"
 	"github.com/vito/garden/backend/linux_backend/port_pool"
 	"github.com/vito/garden/backend/linux_backend/quota_manager/fake_quota_manager"

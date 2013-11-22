@@ -7,7 +7,12 @@ import (
 	"github.com/vito/garden/backend/linux_backend/network"
 )
 
-type NetworkPool struct {
+type NetworkPool interface {
+	Acquire() (network.Network, error)
+	Release(network.Network)
+}
+
+type RealNetworkPool struct {
 	ipNet *net.IPNet
 
 	pool []*Network
@@ -40,7 +45,7 @@ func (e PoolExhaustedError) Error() string {
 	return "Network pool is exhausted"
 }
 
-func New(ipNet *net.IPNet) *NetworkPool {
+func New(ipNet *net.IPNet) *RealNetworkPool {
 	pool := []*Network{}
 
 	_, startNet, err := net.ParseCIDR(ipNet.IP.String() + "/30")
@@ -52,14 +57,14 @@ func New(ipNet *net.IPNet) *NetworkPool {
 		pool = append(pool, networkFor(subnet))
 	}
 
-	return &NetworkPool{
+	return &RealNetworkPool{
 		ipNet: ipNet,
 
 		pool: pool,
 	}
 }
 
-func (p *NetworkPool) Acquire() (network.Network, error) {
+func (p *RealNetworkPool) Acquire() (network.Network, error) {
 	p.Lock()
 	defer p.Unlock()
 
@@ -73,7 +78,7 @@ func (p *NetworkPool) Acquire() (network.Network, error) {
 	return acquired, nil
 }
 
-func (p *NetworkPool) Release(n network.Network) {
+func (p *RealNetworkPool) Release(n network.Network) {
 	network := n.(*Network)
 
 	if !p.ipNet.Contains(network.ipNet.IP) {

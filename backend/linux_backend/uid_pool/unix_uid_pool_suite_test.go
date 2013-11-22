@@ -1,4 +1,4 @@
-package unix_uid_pool_test
+package uid_pool_test
 
 import (
 	. "github.com/onsi/ginkgo"

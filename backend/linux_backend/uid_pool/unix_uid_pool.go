@@ -1,4 +1,4 @@
-package unix_uid_pool
+package uid_pool
 
 import (
 	"fmt"

@@ -13,7 +13,7 @@ import (
 	"github.com/vito/garden/backend/linux_backend/network_pool"
 	"github.com/vito/garden/backend/linux_backend/port_pool"
 	"github.com/vito/garden/backend/linux_backend/quota_manager"
-	"github.com/vito/garden/backend/linux_backend/unix_uid_pool"
+	"github.com/vito/garden/backend/linux_backend/uid_pool"
 	"github.com/vito/garden/command_runner"
 	"github.com/vito/garden/server"
 )
@@ -67,7 +67,7 @@ func main() {
 			log.Fatalln("must specify -rootfs with linux backend")
 		}
 
-		uidPool := unix_uid_pool.New(10000, 256)
+		uidPool := uid_pool.New(10000, 256)
 
 		_, ipNet, err := net.ParseCIDR("10.254.0.0/22")
 		if err != nil {

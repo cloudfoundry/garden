@@ -12,8 +12,9 @@ import (
 	"github.com/vito/garden/backend/linux_backend"
 	"github.com/vito/garden/backend/linux_backend/bandwidth_manager"
 	"github.com/vito/garden/backend/linux_backend/cgroups_manager"
-	"github.com/vito/garden/backend/linux_backend/network"
 	"github.com/vito/garden/backend/linux_backend/quota_manager"
+	"github.com/vito/garden/backend/linux_backend/uid_pool"
+	"github.com/vito/garden/backend/linux_backend/network_pool"
 	"github.com/vito/garden/command_runner"
 )
 
@@ -22,8 +23,8 @@ type LinuxContainerPool struct {
 	depotPath  string
 	rootFSPath string
 
-	uidPool     UIDPool
-	networkPool NetworkPool
+	uidPool     uid_pool.UIDPool
+	networkPool network_pool.NetworkPool
 	portPool    linux_backend.PortPool
 
 	runner command_runner.CommandRunner
@@ -35,19 +36,11 @@ type LinuxContainerPool struct {
 	sync.RWMutex
 }
 
-type UIDPool interface {
-	Acquire() (uint32, error)
-	Release(uint32)
-}
-
-type NetworkPool interface {
-	Acquire() (network.Network, error)
-	Release(network.Network)
-}
-
 func New(
 	rootPath, depotPath, rootFSPath string,
-	uidPool UIDPool, networkPool NetworkPool, portPool linux_backend.PortPool,
+	uidPool uid_pool.UIDPool,
+	networkPool network_pool.NetworkPool,
+	portPool linux_backend.PortPool,
 	runner command_runner.CommandRunner,
 	quotaManager quota_manager.QuotaManager,
 ) *LinuxContainerPool {
