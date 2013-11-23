@@ -27,11 +27,11 @@ func New() *RealCommandRunner {
 }
 
 func (r *RealCommandRunner) Run(cmd *exec.Cmd) error {
-	return cmd.Run()
+	return r.resolve(cmd).Run()
 }
 
 func (r *RealCommandRunner) Start(cmd *exec.Cmd) error {
-	return cmd.Start()
+	return r.resolve(cmd).Start()
 }
 
 func (r *RealCommandRunner) Wait(cmd *exec.Cmd) error {
@@ -44,4 +44,19 @@ func (r *RealCommandRunner) Kill(cmd *exec.Cmd) error {
 	}
 
 	return cmd.Process.Kill()
+}
+
+func (r *RealCommandRunner) resolve(cmd *exec.Cmd) *exec.Cmd {
+	originalPath := cmd.Path
+
+	path, err := exec.LookPath(cmd.Path)
+	if err != nil {
+		path = cmd.Path
+	}
+
+	cmd.Path = path
+
+	cmd.Args = append([]string{originalPath}, cmd.Args...)
+
+	return cmd
 }

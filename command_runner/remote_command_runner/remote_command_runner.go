@@ -42,18 +42,17 @@ func (r *RemoteCommandRunner) Kill(cmd *exec.Cmd) error {
 }
 
 func (r *RemoteCommandRunner) wrap(cmd *exec.Cmd) *exec.Cmd {
-	ssh := exec.Command(
-		"ssh",
+	sshArgs := []string{
 		"-l", r.username,
 		"-p", fmt.Sprintf("%d", r.port),
 		r.address,
-	)
+	}
 
 	cmd.Args = append([]string{cmd.Path}, cmd.Args...)
 	cmd.Args = append(cmd.Env, cmd.Args...)
-	cmd.Args = append(ssh.Args, cmd.Args...)
+	cmd.Args = append(sshArgs, cmd.Args...)
 
-	cmd.Path = ssh.Path
+	cmd.Path = "ssh"
 
 	cmd.Env = []string{}
 

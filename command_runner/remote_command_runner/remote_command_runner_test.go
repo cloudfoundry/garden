@@ -16,8 +16,6 @@ var _ = Describe("running commands", func() {
 	var fakeRunner *fake_command_runner.FakeCommandRunner
 	var remoteRunner *remote_command_runner.RemoteCommandRunner
 
-	var sshPath string
-
 	BeforeEach(func() {
 		fakeRunner = fake_command_runner.New()
 
@@ -27,13 +25,6 @@ var _ = Describe("running commands", func() {
 			2222,
 			fakeRunner,
 		)
-
-		var err error
-
-		sshPath, err = exec.LookPath("ssh")
-		if err != nil {
-			sshPath = "ssh"
-		}
 	})
 
 	It("runs them over SSH", func() {
@@ -50,9 +41,9 @@ var _ = Describe("running commands", func() {
 
 		Expect(fakeRunner).To(HaveExecutedSerially(
 			fake_command_runner.CommandSpec{
-				Path: sshPath,
+				Path: "ssh",
 				Args: []string{
-					"ssh", "-l", "vagrant", "-p", "2222", "192.168.50.4", "A=B", "ls", "-al", "/",
+					"-l", "vagrant", "-p", "2222", "192.168.50.4", "A=B", "ls", "-al", "/",
 				},
 				Env: []string{},
 				Stdin: "hello\n",
@@ -73,9 +64,9 @@ var _ = Describe("running commands", func() {
 
 		Expect(fakeRunner).To(HaveStartedExecuting(
 			fake_command_runner.CommandSpec{
-				Path: sshPath,
+				Path: "ssh",
 				Args: []string{
-					"ssh", "-l", "vagrant", "-p", "2222", "192.168.50.4", "A=B", "ls", "-al", "/",
+					"-l", "vagrant", "-p", "2222", "192.168.50.4", "A=B", "ls", "-al", "/",
 				},
 				Env: []string{},
 				Stdin: "hello\n",
