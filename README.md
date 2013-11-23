@@ -32,8 +32,5 @@ vagrant up
 ./bin/run-garden-remote-linux
 ```
 
-The paths provided are actually the remote paths, so they don't have to exist
-locally. They're created in the VM with `vagrant up`.
-
-Normally (in production) Garden would be running on the same machine. In this
-case just don't pass -remoteHost.
+This runs the server locally and configures the Linux backend to do everything
+over SSH to the Vagrant box.
