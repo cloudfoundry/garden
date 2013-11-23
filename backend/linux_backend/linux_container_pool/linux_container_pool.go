@@ -105,7 +105,7 @@ func (p *LinuxContainerPool) Create(spec backend.ContainerSpec) (backend.Contain
 
 	containerPath := path.Join(p.depotPath, id)
 
-	cgroupsManager := cgroups_manager.New("/tmp/warden/cgroup", id)
+	cgroupsManager := cgroups_manager.New("/tmp/warden/cgroup", id, p.runner)
 
 	bandwidthManager := bandwidth_manager.New(containerPath, id, p.runner)
 
