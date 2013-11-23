@@ -37,28 +37,29 @@ func New(containerPath, containerID string, runner command_runner.CommandRunner)
 }
 
 func (m *ContainerBandwidthManager) SetLimits(limits backend.BandwidthLimits) error {
-	limit := exec.Command(path.Join(m.containerPath, "net_rate.sh"))
-
-	limit.Env = []string{
-		fmt.Sprintf("BURST=%d", limits.BurstRateInBytesPerSecond),
-		fmt.Sprintf("RATE=%d", limits.RateInBytesPerSecond*8),
-	}
-
-	return m.runner.Run(limit)
+	return m.runner.Run(&exec.Cmd{
+		Path: path.Join(m.containerPath, "net_rate.sh"),
+		Env: []string{
+			fmt.Sprintf("BURST=%d", limits.BurstRateInBytesPerSecond),
+			fmt.Sprintf("RATE=%d", limits.RateInBytesPerSecond*8),
+		},
+	})
 }
 
 func (m *ContainerBandwidthManager) GetLimits() (backend.ContainerBandwidthStat, error) {
 	limits := backend.ContainerBandwidthStat{}
 
-	egress := exec.Command(path.Join(m.containerPath, "net.sh"), "get_egress_info")
-	egress.Env = []string{
-		"ID=" + m.containerID,
-	}
-
 	egressOut := new(bytes.Buffer)
 
-	egress.Stdout = egressOut
-	egress.Stderr = egressOut
+	egress := &exec.Cmd{
+		Path: path.Join(m.containerPath, "net.sh"),
+		Args: []string{"get_egress_info"},
+		Env: []string{
+			"ID=" + m.containerID,
+		},
+		Stdout: egressOut,
+		Stderr: egressOut,
+	}
 
 	err := m.runner.Run(egress)
 	if err != nil {
@@ -84,15 +85,18 @@ func (m *ContainerBandwidthManager) GetLimits() (backend.ContainerBandwidthStat,
 		limits.InBurst = convertUnits(inBurst, inBurstUnit)
 	}
 
-	ingress := exec.Command(path.Join(m.containerPath, "net.sh"), "get_ingress_info")
-	ingress.Env = []string{
-		"ID=" + m.containerID,
-	}
-
 	ingressOut := new(bytes.Buffer)
 
-	ingress.Stdout = ingressOut
-	ingress.Stderr = ingressOut
+	ingress := &exec.Cmd{
+		Path: path.Join(m.containerPath, "net.sh"),
+		Args: []string{"get_ingress_info"},
+		Env: []string{
+			"ID=" + m.containerID,
+		},
+
+		Stdout: ingressOut,
+		Stderr: ingressOut,
+	}
 
 	err = m.runner.Run(ingress)
 	if err != nil {

@@ -15,6 +15,7 @@ import (
 	"github.com/vito/garden/backend/linux_backend/quota_manager"
 	"github.com/vito/garden/backend/linux_backend/uid_pool"
 	"github.com/vito/garden/command_runner"
+	"github.com/vito/garden/command_runner/remote_command_runner"
 	"github.com/vito/garden/server"
 )
 
@@ -48,6 +49,18 @@ var rootFSPath = flag.String(
 	"directory of the rootfs for the containers",
 )
 
+var remoteHost = flag.String(
+	"remoteHost",
+	"",
+	"machine to use for the Linux backend",
+)
+
+var remotePort = flag.Int(
+	"remotePort",
+	22,
+	"SSH port of the remote machine",
+)
+
 func main() {
 	flag.Parse()
 
@@ -79,7 +92,18 @@ func main() {
 		// TODO: base on ephemeral port range
 		portPool := port_pool.New(61000, 6501)
 
-		runner := command_runner.New()
+		var runner command_runner.CommandRunner
+
+		runner = command_runner.New()
+
+		if *remoteHost != "" {
+			runner = remote_command_runner.New(
+				"root",
+				*remoteHost,
+				uint32(*remotePort),
+				runner,
+			)
+		}
 
 		quotaManager, err := quota_manager.New(*depotPath, *rootPath, runner)
 		if err != nil {
@@ -102,10 +126,14 @@ func main() {
 		backend = fake_backend.New()
 	}
 
+	log.Println("setting up backend")
+
 	err := backend.Setup()
 	if err != nil {
 		log.Fatalln("failed to set up backend:", err)
 	}
+
+	log.Println("starting server; listening on", *socketFilePath)
 
 	wardenServer := server.New(*socketFilePath, backend)
 

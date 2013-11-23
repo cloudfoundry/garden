@@ -51,25 +51,26 @@ func (m *LinuxQuotaManager) SetLimits(uid uint32, limits backend.DiskLimits) err
 	}
 
 	return m.runner.Run(
-		exec.Command(
-			"setquota",
-			"-u",
-			fmt.Sprintf("%d", uid),
-			fmt.Sprintf("%d", limits.BlockSoft),
-			fmt.Sprintf("%d", limits.BlockHard),
-			fmt.Sprintf("%d", limits.InodeSoft),
-			fmt.Sprintf("%d", limits.InodeHard),
-			m.mountPoint,
-		),
+		&exec.Cmd{
+			Path: "setquota",
+			Args: []string{
+				"-u",
+				fmt.Sprintf("%d", uid),
+				fmt.Sprintf("%d", limits.BlockSoft),
+				fmt.Sprintf("%d", limits.BlockHard),
+				fmt.Sprintf("%d", limits.InodeSoft),
+				fmt.Sprintf("%d", limits.InodeHard),
+				m.mountPoint,
+			},
+		},
 	)
 }
 
 func (m *LinuxQuotaManager) GetLimits(uid uint32) (backend.DiskLimits, error) {
-	repquota := exec.Command(
-		path.Join(m.rootPath, "bin", "repquota"),
-		m.mountPoint,
-		fmt.Sprintf("%d", uid),
-	)
+	repquota := &exec.Cmd{
+		Path: path.Join(m.rootPath, "bin", "repquota"),
+		Args: []string{m.mountPoint, fmt.Sprintf("%d", uid)},
+	}
 
 	limits := backend.DiskLimits{}
 
@@ -102,11 +103,10 @@ func (m *LinuxQuotaManager) GetLimits(uid uint32) (backend.DiskLimits, error) {
 }
 
 func (m *LinuxQuotaManager) GetUsage(uid uint32) (backend.ContainerDiskStat, error) {
-	repquota := exec.Command(
-		path.Join(m.rootPath, "bin", "repquota"),
-		m.mountPoint,
-		fmt.Sprintf("%d", uid),
-	)
+	repquota := &exec.Cmd{
+		Path: path.Join(m.rootPath, "bin", "repquota"),
+		Args: []string{m.mountPoint, fmt.Sprintf("%d", uid)},
+	}
 
 	usage := backend.ContainerDiskStat{}
 

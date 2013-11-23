@@ -214,14 +214,9 @@ var _ = Describe("Linux containers", func() {
 			err := container.CopyIn("/src", "/dst")
 			Expect(err).ToNot(HaveOccured())
 
-			rsyncPath, err := exec.LookPath("rsync")
-			if err != nil {
-				rsyncPath = "rsync"
-			}
-
 			Expect(fakeRunner).To(HaveExecutedSerially(
 				fake_command_runner.CommandSpec{
-					Path: rsyncPath,
+					Path: "rsync",
 					Args: []string{
 						"-e",
 						"/depot/some-id/bin/wsh --socket /depot/some-id/run/wshd.sock --rsh",
@@ -239,14 +234,9 @@ var _ = Describe("Linux containers", func() {
 			nastyError := errors.New("oh no!")
 
 			BeforeEach(func() {
-				rsyncPath, err := exec.LookPath("rsync")
-				if err != nil {
-					rsyncPath = "rsync"
-				}
-
 				fakeRunner.WhenRunning(
 					fake_command_runner.CommandSpec{
-						Path: rsyncPath,
+						Path: "rsync",
 					}, func(*exec.Cmd) error {
 						return nastyError
 					},
@@ -265,14 +255,9 @@ var _ = Describe("Linux containers", func() {
 			err := container.CopyOut("/src", "/dst", "")
 			Expect(err).ToNot(HaveOccured())
 
-			rsyncPath, err := exec.LookPath("rsync")
-			if err != nil {
-				rsyncPath = "rsync"
-			}
-
 			Expect(fakeRunner).To(HaveExecutedSerially(
 				fake_command_runner.CommandSpec{
-					Path: rsyncPath,
+					Path: "rsync",
 					Args: []string{
 						"-e",
 						"/depot/some-id/bin/wsh --socket /depot/some-id/run/wshd.sock --rsh",
@@ -291,22 +276,12 @@ var _ = Describe("Linux containers", func() {
 				err := container.CopyOut("/src", "/dst", "some-user")
 				Expect(err).ToNot(HaveOccured())
 
-				rsyncPath, err := exec.LookPath("rsync")
-				if err != nil {
-					rsyncPath = "rsync"
-				}
-
-				chownPath, err := exec.LookPath("chown")
-				if err != nil {
-					chownPath = "chown"
-				}
-
 				Expect(fakeRunner).To(HaveExecutedSerially(
 					fake_command_runner.CommandSpec{
-						Path: rsyncPath,
+						Path: "rsync",
 					},
 					fake_command_runner.CommandSpec{
-						Path: chownPath,
+						Path: "chown",
 						Args: []string{"-R", "some-user", "/dst"},
 					},
 				))
@@ -317,14 +292,9 @@ var _ = Describe("Linux containers", func() {
 			nastyError := errors.New("oh no!")
 
 			BeforeEach(func() {
-				rsyncPath, err := exec.LookPath("rsync")
-				if err != nil {
-					rsyncPath = "rsync"
-				}
-
 				fakeRunner.WhenRunning(
 					fake_command_runner.CommandSpec{
-						Path: rsyncPath,
+						Path: "rsync",
 					}, func(*exec.Cmd) error {
 						return nastyError
 					},
@@ -341,14 +311,9 @@ var _ = Describe("Linux containers", func() {
 			nastyError := errors.New("oh no!")
 
 			BeforeEach(func() {
-				chownPath, err := exec.LookPath("chown")
-				if err != nil {
-					chownPath = "chown"
-				}
-
 				fakeRunner.WhenRunning(
 					fake_command_runner.CommandSpec{
-						Path: chownPath,
+						Path: "chown",
 					}, func(*exec.Cmd) error {
 						return nastyError
 					},

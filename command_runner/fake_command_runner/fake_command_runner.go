@@ -31,7 +31,7 @@ func (s CommandSpec) Matches(cmd *exec.Cmd) bool {
 		return false
 	}
 
-	if len(s.Args) > 0 && !reflect.DeepEqual(s.Args, cmd.Args[1:]) {
+	if len(s.Args) > 0 && !reflect.DeepEqual(s.Args, cmd.Args) {
 		return false
 	}
 

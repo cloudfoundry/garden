@@ -24,7 +24,7 @@ func prettyCommands(commands []*exec.Cmd) string {
 		out += fmt.Sprintf(`
 	'%s'
 		with arguments %v
-		and environment %v`, command.Path, command.Args[1:], command.Env)
+		and environment %v`, command.Path, command.Args, command.Env)
 	}
 
 	return out

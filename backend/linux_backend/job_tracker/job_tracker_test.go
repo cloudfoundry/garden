@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"io/ioutil"
-	"os"
 	"os/exec"
 	"path"
 	"time"
@@ -19,11 +17,10 @@ import (
 )
 
 var fakeRunner *fake_command_runner.FakeCommandRunner
-var containerPath string
 var jobTracker *job_tracker.JobTracker
 
 func binPath(bin string) string {
-	return path.Join(containerPath, "bin", bin)
+	return path.Join("/depot/some-id", "bin", bin)
 }
 
 func setupSuccessfulSpawn() {
@@ -41,17 +38,12 @@ func setupSuccessfulSpawn() {
 
 var _ = Describe("Spawning jobs", func() {
 	BeforeEach(func() {
-		tmpdir, err := ioutil.TempDir(os.TempDir(), "some-container")
-		Expect(err).ToNot(HaveOccured())
-
-		containerPath = tmpdir
-
 		fakeRunner = fake_command_runner.New()
-		jobTracker = job_tracker.New(containerPath, fakeRunner)
+		jobTracker = job_tracker.New("/depot/some-id", fakeRunner)
 	})
 
 	It("runs the command asynchronously via iomux-spawn", func() {
-		cmd := exec.Command("/bin/bash")
+		cmd := &exec.Cmd{Path: "/bin/bash"}
 
 		cmd.Stdin = bytes.NewBufferString("echo hi")
 
@@ -63,7 +55,7 @@ var _ = Describe("Spawning jobs", func() {
 			fake_command_runner.CommandSpec{
 				Path: binPath("iomux-spawn"),
 				Args: []string{
-					path.Join(containerPath, "jobs", fmt.Sprintf("%d", jobID)),
+					fmt.Sprintf("/depot/some-id/jobs/%d", jobID),
 					"/bin/bash",
 				},
 				Stdin: "echo hi",
@@ -118,9 +110,15 @@ var _ = Describe("Spawning jobs", func() {
 
 		jobID, _ := jobTracker.Spawn(exec.Command("xxx"))
 
-		stat, err := os.Stat(path.Join(containerPath, "jobs", fmt.Sprintf("%d", jobID)))
-		Expect(err).ToNot(HaveOccured())
-		Expect(stat.IsDir()).To(BeTrue())
+		Expect(fakeRunner).To(HaveExecutedSerially(
+			fake_command_runner.CommandSpec{
+				Path: "mkdir",
+				Args: []string{
+					"-p",
+					fmt.Sprintf("/depot/some-id/jobs/%d", jobID),
+				},
+			},
+		))
 	})
 
 	Context("when spawning fails", func() {
@@ -145,13 +143,8 @@ var _ = Describe("Spawning jobs", func() {
 
 var _ = Describe("Linking to jobs", func() {
 	BeforeEach(func() {
-		tmpdir, err := ioutil.TempDir(os.TempDir(), "some-container")
-		Expect(err).ToNot(HaveOccured())
-
-		containerPath = tmpdir
-
 		fakeRunner = fake_command_runner.New()
-		jobTracker = job_tracker.New(containerPath, fakeRunner)
+		jobTracker = job_tracker.New("/depot/some-id", fakeRunner)
 
 		fakeRunner.WhenRunning(
 			fake_command_runner.CommandSpec{
@@ -252,13 +245,8 @@ var _ = Describe("Linking to jobs", func() {
 
 var _ = Describe("Streaming jobs", func() {
 	BeforeEach(func() {
-		tmpdir, err := ioutil.TempDir(os.TempDir(), "some-container")
-		Expect(err).ToNot(HaveOccured())
-
-		containerPath = tmpdir
-
 		fakeRunner = fake_command_runner.New()
-		jobTracker = job_tracker.New(containerPath, fakeRunner)
+		jobTracker = job_tracker.New("/depot/some-id", fakeRunner)
 
 		fakeRunner.WhenRunning(
 			fake_command_runner.CommandSpec{
@@ -337,13 +325,8 @@ var _ = Describe("Streaming jobs", func() {
 
 var _ = Describe("Listing active jobs", func() {
 	BeforeEach(func() {
-		tmpdir, err := ioutil.TempDir(os.TempDir(), "some-container")
-		Expect(err).ToNot(HaveOccured())
-
-		containerPath = tmpdir
-
 		fakeRunner = fake_command_runner.New()
-		jobTracker = job_tracker.New(containerPath, fakeRunner)
+		jobTracker = job_tracker.New("/depot/some-id", fakeRunner)
 	})
 
 	It("includes running job IDs", func() {

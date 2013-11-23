@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
-	"os"
 	"os/exec"
 	"path"
 	"sync"
@@ -53,15 +52,24 @@ func (j *Job) Spawn() (ready, active chan error) {
 	spawnPath := path.Join(j.containerPath, "bin", "iomux-spawn")
 	jobDir := path.Join(j.containerPath, "jobs", fmt.Sprintf("%d", j.id))
 
-	err := os.MkdirAll(jobDir, 0755)
+	mkdir := &exec.Cmd{
+		Path: "mkdir",
+		Args: []string{"-p", jobDir},
+	}
+
+	err := j.runner.Run(mkdir)
 	if err != nil {
 		ready <- err
 		return
 	}
 
-	spawn := exec.Command(spawnPath, jobDir)
+	spawn := &exec.Cmd{
+		Path: spawnPath,
+		Stdin: j.cmd.Stdin,
+	}
+
+	spawn.Args = append([]string{jobDir}, j.cmd.Path)
 	spawn.Args = append(spawn.Args, j.cmd.Args...)
-	spawn.Stdin = j.cmd.Stdin
 
 	stdout, err := spawn.StdoutPipe()
 	if err != nil {
@@ -125,13 +133,15 @@ func (j *Job) runLinker() {
 	linkPath := path.Join(j.containerPath, "bin", "iomux-link")
 	jobDir := path.Join(j.containerPath, "jobs", fmt.Sprintf("%d", j.id))
 
-	link := exec.Command(linkPath, jobDir)
-
 	stdout := new(bytes.Buffer)
 	stderr := new(bytes.Buffer)
 
-	link.Stdout = newNamedStream(j, "stdout", stdout)
-	link.Stderr = newNamedStream(j, "stderr", stderr)
+	link := &exec.Cmd{
+		Path: linkPath,
+		Args: []string{jobDir},
+		Stdout: newNamedStream(j, "stdout", stdout),
+		Stderr: newNamedStream(j, "stderr", stderr),
+	}
 
 	j.runner.Run(link)
 

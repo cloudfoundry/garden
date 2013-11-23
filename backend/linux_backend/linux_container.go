@@ -131,12 +131,13 @@ func (c *LinuxContainer) Events() []string {
 func (c *LinuxContainer) Start() error {
 	log.Println(c.id, "starting")
 
-	start := exec.Command(path.Join(c.path, "start.sh"))
-
-	start.Env = []string{
-		"id=" + c.id,
-		"container_iface_mtu=1500",
-		"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+	start := &exec.Cmd{
+		Path: path.Join(c.path, "start.sh"),
+		Env: []string{
+			"id=" + c.id,
+			"container_iface_mtu=1500",
+			"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+		},
 	}
 
 	err := c.runner.Run(start)
@@ -152,7 +153,9 @@ func (c *LinuxContainer) Start() error {
 func (c *LinuxContainer) Stop(kill bool) error {
 	log.Println(c.id, "stopping")
 
-	stop := exec.Command(path.Join(c.path, "stop.sh"))
+	stop := &exec.Cmd{
+		Path: path.Join(c.path, "stop.sh"),
+	}
 
 	if kill {
 		stop.Args = append(stop.Args, "-w", "0")
@@ -224,7 +227,10 @@ func (c *LinuxContainer) CopyOut(src, dst, owner string) error {
 	}
 
 	if owner != "" {
-		chown := exec.Command("chown", "-R", owner, dst)
+		chown := &exec.Cmd{
+			Path: "chown",
+			Args: []string{"-R", owner, dst},
+		}
 
 		err := c.runner.Run(chown)
 		if err != nil {
@@ -305,9 +311,11 @@ func (c *LinuxContainer) Spawn(spec backend.JobSpec) (uint32, error) {
 		user = "root"
 	}
 
-	wsh := exec.Command(wshPath, "--socket", sockPath, "--user", user, "/bin/bash")
-
-	wsh.Stdin = bytes.NewBufferString(spec.Script)
+	wsh := &exec.Cmd{
+		Path: wshPath,
+		Args: []string{"--socket", sockPath, "--user", user, "/bin/bash"},
+		Stdin: bytes.NewBufferString(spec.Script),
+	}
 
 	return c.jobTracker.Spawn(wsh)
 }
@@ -354,18 +362,23 @@ func (c *LinuxContainer) NetIn(hostPort uint32, containerPort uint32) (uint32, u
 		containerPort,
 	)
 
-	net := exec.Command(path.Join(c.path, "net.sh"), "in")
-
-	net.Env = []string{
-		fmt.Sprintf("HOST_PORT=%d", hostPort),
-		fmt.Sprintf("CONTAINER_PORT=%d", containerPort),
+	net := &exec.Cmd{
+		Path: path.Join(c.path, "net.sh"),
+		Args: []string{"in"},
+		Env: []string{
+			fmt.Sprintf("HOST_PORT=%d", hostPort),
+			fmt.Sprintf("CONTAINER_PORT=%d", containerPort),
+		},
 	}
 
 	return hostPort, containerPort, c.runner.Run(net)
 }
 
 func (c *LinuxContainer) NetOut(network string, port uint32) error {
-	net := exec.Command(path.Join(c.path, "net.sh"), "out")
+	net := &exec.Cmd{
+		Path: path.Join(c.path, "net.sh"),
+		Args: []string{"out"},
+	}
 
 	if port != 0 {
 		log.Println(
@@ -411,18 +424,21 @@ func (c *LinuxContainer) registerEvent(event string) {
 }
 
 func (c *LinuxContainer) rsync(src, dst string) error {
+	// TODO: remote command running
 	wshPath := path.Join(c.path, "bin", "wsh")
 	sockPath := path.Join(c.path, "run", "wshd.sock")
 
-	rsync := exec.Command(
-		"rsync",
-		"-e", wshPath+" --socket "+sockPath+" --rsh",
-		"-r",
-		"-p",
-		"--links",
-		src,
-		dst,
-	)
+	rsync := &exec.Cmd{
+		Path: "rsync",
+		Args: []string{
+			"-e", wshPath+" --socket "+sockPath+" --rsh",
+			"-r",
+			"-p",
+			"--links",
+			src,
+			dst,
+		},
+	}
 
 	return c.runner.Run(rsync)
 }
@@ -437,7 +453,10 @@ func (c *LinuxContainer) startOomNotifier() error {
 
 	oomPath := path.Join(c.path, "bin", "oom")
 
-	c.oomNotifier = exec.Command(oomPath, c.cgroupsManager.SubsystemPath("memory"))
+	c.oomNotifier = &exec.Cmd{
+		Path: oomPath,
+		Args: []string{c.cgroupsManager.SubsystemPath("memory")},
+	}
 
 	err := c.runner.Start(c.oomNotifier)
 	if err != nil {

@@ -62,18 +62,19 @@ func New(
 }
 
 func (p *LinuxContainerPool) Setup() error {
-	setup := exec.Command(path.Join(p.rootPath, "setup.sh"))
+	setup := &exec.Cmd{
+		Path: path.Join(p.rootPath, "setup.sh"),
+		Env: []string{
+			"POOL_NETWORK=10.254.0.0/22",
+			"ALLOW_NETWORKS=",
+			"DENY_NETWORKS=",
+			"CONTAINER_ROOTFS_PATH=" + p.rootFSPath,
+			"CONTAINER_DEPOT_PATH=" + p.depotPath,
+			"CONTAINER_DEPOT_MOUNT_POINT_PATH=/",
+			"DISK_QUOTA_ENABLED=true",
 
-	setup.Env = []string{
-		"POOL_NETWORK=10.254.0.0/22",
-		"ALLOW_NETWORKS=",
-		"DENY_NETWORKS=",
-		"CONTAINER_ROOTFS_PATH=" + p.rootFSPath,
-		"CONTAINER_DEPOT_PATH=" + p.depotPath,
-		"CONTAINER_DEPOT_MOUNT_POINT_PATH=/",
-		"DISK_QUOTA_ENABLED=true",
-
-		"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+			"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+		},
 	}
 
 	err := p.runner.Run(setup)
@@ -123,20 +124,19 @@ func (p *LinuxContainerPool) Create(spec backend.ContainerSpec) (backend.Contain
 		bandwidthManager,
 	)
 
-	create := exec.Command(
-		path.Join(p.rootPath, "create.sh"),
-		containerPath,
-	)
+	create := &exec.Cmd{
+		Path: path.Join(p.rootPath, "create.sh"),
+		Args: []string{containerPath},
+		Env: []string{
+			"id=" + container.ID(),
+			"rootfs_path=" + p.rootFSPath,
+			fmt.Sprintf("user_uid=%d", uid),
+			fmt.Sprintf("network_host_ip=%s", network.HostIP()),
+			fmt.Sprintf("network_container_ip=%s", network.ContainerIP()),
+			"network_netmask=255.255.255.252",
 
-	create.Env = []string{
-		"id=" + container.ID(),
-		"rootfs_path=" + p.rootFSPath,
-		fmt.Sprintf("user_uid=%d", uid),
-		fmt.Sprintf("network_host_ip=%s", network.HostIP()),
-		fmt.Sprintf("network_container_ip=%s", network.ContainerIP()),
-		"network_netmask=255.255.255.252",
-
-		"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+			"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+		},
 	}
 
 	err = p.runner.Run(create)
@@ -150,14 +150,13 @@ func (p *LinuxContainerPool) Create(spec backend.ContainerSpec) (backend.Contain
 }
 
 func (p *LinuxContainerPool) Destroy(container backend.Container) error {
-	destroy := exec.Command(
-		path.Join(p.rootPath, "destroy.sh"),
-		path.Join(p.depotPath, container.ID()),
-	)
-
-	destroy.Env = []string{
-		"id=" + container.ID(),
-		"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+	destroy := &exec.Cmd{
+		Path: path.Join(p.rootPath, "destroy.sh"),
+		Args: []string{path.Join(p.depotPath, container.ID())},
+		Env: []string{
+			"id=" + container.ID(),
+			"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+		},
 	}
 
 	err := p.runner.Run(destroy)

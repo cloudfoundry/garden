@@ -51,3 +51,10 @@ execute "Install RootFS" do
 
   not_if "test -d /opt/warden/rootfs/usr"
 end
+
+execute "build root directory" do
+  cwd "/vagrant"
+
+  command "make"
+  action :run
+end
