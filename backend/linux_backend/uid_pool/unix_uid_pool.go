@@ -2,7 +2,6 @@ package uid_pool
 
 import (
 	"fmt"
-	"os/user"
 	"sync"
 )
 
@@ -54,23 +53,15 @@ func New(start, size uint32) *UnixUIDPool {
 
 func (p *UnixUIDPool) Acquire() (uint32, error) {
 	p.Lock()
+	defer p.Unlock()
 
 	if len(p.pool) == 0 {
-		p.Unlock()
 		return 0, PoolExhaustedError{}
 	}
 
 	uid := p.pool[0]
 
 	p.pool = p.pool[1:]
-
-	p.Unlock()
-
-	existingUser, err := user.LookupId(fmt.Sprintf("%d", uid))
-	if err == nil {
-		p.Release(uid)
-		return 0, SystemUserOverlapError{p.start, p.size, existingUser}
-	}
 
 	return uid, nil
 }

@@ -35,32 +35,6 @@ var _ = Describe("Unix UID pool", func() {
 				Expect(err).To(HaveOccured())
 			})
 		})
-
-		Context("when there is an existing user with the UID", func() {
-			It("returns an error", func() {
-				pool := uid_pool.New(0, 5)
-
-				_, err := pool.Acquire()
-				Expect(err).To(HaveOccured())
-			})
-
-			It("moves the uid to the end of the pool", func() {
-				pool := uid_pool.New(0, 2)
-
-				_, err1 := pool.Acquire()
-				Expect(err1).To(HaveOccured())
-
-				_, err2 := pool.Acquire()
-				Expect(err2).To(HaveOccured())
-
-				Expect(err2).ToNot(Equal(err1))
-
-				_, err3 := pool.Acquire()
-				Expect(err3).To(HaveOccured())
-
-				Expect(err3).To(Equal(err1))
-			})
-		})
 	})
 
 	Describe("releasing", func() {
