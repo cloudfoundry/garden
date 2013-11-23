@@ -24,6 +24,8 @@ type LinuxContainer struct {
 	id   string
 	path string
 
+	state State
+
 	spec backend.ContainerSpec
 
 	resources Resources
@@ -52,6 +54,14 @@ type PortPool interface {
 	Release(uint32)
 }
 
+type State string
+
+const (
+	StateBorn    = State("born")
+	StateActive  = State("active")
+	StateStopped = State("stopped")
+)
+
 func NewLinuxContainer(
 	id, path string,
 	spec backend.ContainerSpec,
@@ -65,6 +75,8 @@ func NewLinuxContainer(
 	return &LinuxContainer{
 		id:   id,
 		path: path,
+
+		state: StateBorn,
 
 		spec: spec,
 
@@ -94,6 +106,10 @@ func (c *LinuxContainer) Handle() string {
 	return c.ID()
 }
 
+func (c *LinuxContainer) State() State {
+	return c.state
+}
+
 func (c *LinuxContainer) Start() error {
 	log.Println(c.id, "starting")
 
@@ -105,7 +121,14 @@ func (c *LinuxContainer) Start() error {
 		"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
 	}
 
-	return c.runner.Run(start)
+	err := c.runner.Run(start)
+	if err != nil {
+		return err
+	}
+
+	c.state = StateActive
+
+	return nil
 }
 
 func (c *LinuxContainer) Stop(kill bool) error {
@@ -123,6 +146,8 @@ func (c *LinuxContainer) Stop(kill bool) error {
 	}
 
 	c.stopOomNotifier()
+
+	c.state = StateStopped
 
 	return nil
 }
@@ -154,7 +179,7 @@ func (c *LinuxContainer) Info() (backend.ContainerInfo, error) {
 	}
 
 	return backend.ContainerInfo{
-		State:         "active",   // TODO
+		State:         string(c.State()),
 		Events:        []string{}, // TODO
 		HostIP:        c.resources.Network.HostIP().String(),
 		ContainerIP:   c.resources.Network.ContainerIP().String(),

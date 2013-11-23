@@ -87,6 +87,15 @@ var _ = Describe("Linux containers", func() {
 			))
 		})
 
+		It("changes the container's state to active", func() {
+			Expect(container.State()).To(Equal(linux_backend.StateBorn))
+
+			err := container.Start()
+			Expect(err).ToNot(HaveOccured())
+
+			Expect(container.State()).To(Equal(linux_backend.StateActive))
+		})
+
 		Context("when start.sh fails", func() {
 			nastyError := errors.New("oh no!")
 
@@ -104,6 +113,15 @@ var _ = Describe("Linux containers", func() {
 				err := container.Start()
 				Expect(err).To(Equal(nastyError))
 			})
+
+			It("does not change the container's state", func() {
+				Expect(container.State()).To(Equal(linux_backend.StateBorn))
+
+				err := container.Start()
+				Expect(err).To(HaveOccured())
+
+				Expect(container.State()).To(Equal(linux_backend.StateBorn))
+			})
 		})
 	})
 
@@ -117,6 +135,16 @@ var _ = Describe("Linux containers", func() {
 					Path: "/depot/some-id/stop.sh",
 				},
 			))
+		})
+
+		It("sets the container's state to stopped", func() {
+			Expect(container.State()).To(Equal(linux_backend.StateBorn))
+
+			err := container.Stop(false)
+			Expect(err).ToNot(HaveOccured())
+
+			Expect(container.State()).To(Equal(linux_backend.StateStopped))
+
 		})
 
 		Context("when kill is true", func() {
@@ -149,6 +177,15 @@ var _ = Describe("Linux containers", func() {
 			It("returns the error", func() {
 				err := container.Stop(false)
 				Expect(err).To(Equal(nastyError))
+			})
+
+			It("does not change the container's state", func() {
+				Expect(container.State()).To(Equal(linux_backend.StateBorn))
+
+				err := container.Stop(false)
+				Expect(err).To(HaveOccured())
+
+				Expect(container.State()).To(Equal(linux_backend.StateBorn))
 			})
 		})
 
