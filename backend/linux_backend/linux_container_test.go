@@ -773,6 +773,19 @@ var _ = Describe("Linux containers", func() {
 					},
 				))
 			})
+
+			It("registers an 'out of memory' event", func() {
+				limits := backend.MemoryLimits{
+					LimitInBytes: 102400,
+				}
+
+				_, err := container.LimitMemory(limits)
+				Expect(err).ToNot(HaveOccured())
+
+				Eventually(func() []string {
+					return container.Events()
+				}).Should(ContainElement("out of memory"))
+			})
 		})
 
 		Context("when setting memory.memsw.limit_in_bytes fails", func() {

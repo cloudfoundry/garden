@@ -24,7 +24,9 @@ type LinuxContainer struct {
 	id   string
 	path string
 
-	state State
+	state      State
+	events     []string
+	stateMutex *sync.Mutex
 
 	spec backend.ContainerSpec
 
@@ -40,7 +42,7 @@ type LinuxContainer struct {
 
 	jobTracker *job_tracker.JobTracker
 
-	oomLock     sync.RWMutex
+	oomMutex    sync.RWMutex
 	oomNotifier *exec.Cmd
 }
 
@@ -76,7 +78,9 @@ func NewLinuxContainer(
 		id:   id,
 		path: path,
 
-		state: StateBorn,
+		state:      StateBorn,
+		events:     []string{},
+		stateMutex: &sync.Mutex{},
 
 		spec: spec,
 
@@ -107,7 +111,21 @@ func (c *LinuxContainer) Handle() string {
 }
 
 func (c *LinuxContainer) State() State {
+	c.stateMutex.Lock()
+	defer c.stateMutex.Unlock()
+
 	return c.state
+}
+
+func (c *LinuxContainer) Events() []string {
+	c.stateMutex.Lock()
+	defer c.stateMutex.Unlock()
+
+	events := make([]string, len(c.events))
+
+	copy(events, c.events)
+
+	return events
 }
 
 func (c *LinuxContainer) Start() error {
@@ -126,7 +144,7 @@ func (c *LinuxContainer) Start() error {
 		return err
 	}
 
-	c.state = StateActive
+	c.setState(StateActive)
 
 	return nil
 }
@@ -147,7 +165,7 @@ func (c *LinuxContainer) Stop(kill bool) error {
 
 	c.stopOomNotifier()
 
-	c.state = StateStopped
+	c.setState(StateStopped)
 
 	return nil
 }
@@ -180,7 +198,7 @@ func (c *LinuxContainer) Info() (backend.ContainerInfo, error) {
 
 	return backend.ContainerInfo{
 		State:         string(c.State()),
-		Events:        []string{}, // TODO
+		Events:        c.Events(),
 		HostIP:        c.resources.Network.HostIP().String(),
 		ContainerIP:   c.resources.Network.ContainerIP().String(),
 		ContainerPath: c.path,
@@ -378,6 +396,20 @@ func (c *LinuxContainer) NetOut(network string, port uint32) error {
 	return c.runner.Run(net)
 }
 
+func (c *LinuxContainer) setState(state State) {
+	c.stateMutex.Lock()
+	defer c.stateMutex.Unlock()
+
+	c.state = state
+}
+
+func (c *LinuxContainer) registerEvent(event string) {
+	c.stateMutex.Lock()
+	defer c.stateMutex.Unlock()
+
+	c.events = append(c.events, event)
+}
+
 func (c *LinuxContainer) rsync(src, dst string) error {
 	wshPath := path.Join(c.path, "bin", "wsh")
 	sockPath := path.Join(c.path, "run", "wshd.sock")
@@ -396,8 +428,8 @@ func (c *LinuxContainer) rsync(src, dst string) error {
 }
 
 func (c *LinuxContainer) startOomNotifier() error {
-	c.oomLock.Lock()
-	defer c.oomLock.Unlock()
+	c.oomMutex.Lock()
+	defer c.oomMutex.Unlock()
 
 	if c.oomNotifier != nil {
 		return nil
@@ -418,8 +450,8 @@ func (c *LinuxContainer) startOomNotifier() error {
 }
 
 func (c *LinuxContainer) stopOomNotifier() {
-	c.oomLock.RLock()
-	defer c.oomLock.RUnlock()
+	c.oomMutex.RLock()
+	defer c.oomMutex.RUnlock()
 
 	if c.oomNotifier != nil {
 		c.runner.Kill(c.oomNotifier)
@@ -430,6 +462,7 @@ func (c *LinuxContainer) watchForOom(oom *exec.Cmd) {
 	err := c.runner.Wait(oom)
 	if err == nil {
 		log.Println(c.id, "out of memory")
+		c.registerEvent("out of memory")
 		c.Stop(false)
 	} else {
 		log.Println(c.id, "oom failed:", err)
