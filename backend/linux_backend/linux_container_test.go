@@ -1062,8 +1062,19 @@ var _ = Describe("Linux containers", func() {
 	})
 
 	Describe("Info", func() {
-		PIt("returns the container's state", func() {})
-		PIt("returns the container's events", func() {})
+		It("returns the container's state", func() {
+			info, err := container.Info()
+			Expect(err).ToNot(HaveOccured())
+
+			Expect(info.State).To(Equal("born"))
+		})
+
+		It("returns the container's events", func() {
+			info, err := container.Info()
+			Expect(err).ToNot(HaveOccured())
+
+			Expect(info.Events).To(Equal([]string{}))
+		})
 
 		It("returns the container's network info", func() {
 			info, err := container.Info()
