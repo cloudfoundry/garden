@@ -12,9 +12,9 @@ import (
 	"github.com/vito/garden/backend/linux_backend"
 	"github.com/vito/garden/backend/linux_backend/bandwidth_manager"
 	"github.com/vito/garden/backend/linux_backend/cgroups_manager"
+	"github.com/vito/garden/backend/linux_backend/network_pool"
 	"github.com/vito/garden/backend/linux_backend/quota_manager"
 	"github.com/vito/garden/backend/linux_backend/uid_pool"
-	"github.com/vito/garden/backend/linux_backend/network_pool"
 	"github.com/vito/garden/command_runner"
 )
 
