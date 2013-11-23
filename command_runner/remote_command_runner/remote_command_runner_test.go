@@ -29,8 +29,8 @@ var _ = Describe("running commands", func() {
 
 	It("runs them over SSH", func() {
 		command := &exec.Cmd{
-			Path: "ls",
-			Args: []string{"-al", "/"},
+			Path: "ruby",
+			Args: []string{"-e", "p :hi"},
 			Env: []string{"A=B"},
 			Stdin: bytes.NewBufferString("hello\n"),
 		}
@@ -43,7 +43,8 @@ var _ = Describe("running commands", func() {
 			fake_command_runner.CommandSpec{
 				Path: "ssh",
 				Args: []string{
-					"-l", "vagrant", "-p", "2222", "192.168.50.4", "A=B", "ls", "-al", "/",
+					"-l", "vagrant", "-p", "2222", "192.168.50.4",
+					"A=B ruby '-e' 'p :hi'",
 				},
 				Env: []string{},
 				Stdin: "hello\n",
@@ -53,8 +54,8 @@ var _ = Describe("running commands", func() {
 
 	It("starts them over SSH", func() {
 		command := &exec.Cmd{
-			Path: "ls",
-			Args: []string{"-al", "/"},
+			Path: "ruby",
+			Args: []string{"-e", "p :hi"},
 			Env: []string{"A=B"},
 			Stdin: bytes.NewBufferString("hello\n"),
 		}
@@ -66,7 +67,8 @@ var _ = Describe("running commands", func() {
 			fake_command_runner.CommandSpec{
 				Path: "ssh",
 				Args: []string{
-					"-l", "vagrant", "-p", "2222", "192.168.50.4", "A=B", "ls", "-al", "/",
+					"-l", "vagrant", "-p", "2222", "192.168.50.4",
+					"A=B ruby '-e' 'p :hi'",
 				},
 				Env: []string{},
 				Stdin: "hello\n",

@@ -3,6 +3,7 @@ package remote_command_runner
 import (
 	"fmt"
 	"os/exec"
+	"strings"
 
 	"github.com/vito/garden/command_runner"
 )
@@ -42,19 +43,33 @@ func (r *RemoteCommandRunner) Kill(cmd *exec.Cmd) error {
 }
 
 func (r *RemoteCommandRunner) wrap(cmd *exec.Cmd) *exec.Cmd {
-	sshArgs := []string{
+	cmd.Args = []string{
 		"-l", r.username,
 		"-p", fmt.Sprintf("%d", r.port),
 		r.address,
+		r.buildCommandString(cmd.Env, cmd.Path, cmd.Args),
 	}
-
-	cmd.Args = append([]string{cmd.Path}, cmd.Args...)
-	cmd.Args = append(cmd.Env, cmd.Args...)
-	cmd.Args = append(sshArgs, cmd.Args...)
 
 	cmd.Path = "ssh"
 
 	cmd.Env = []string{}
 
 	return cmd
+}
+
+func (r *RemoteCommandRunner) buildCommandString(env []string, path string, args []string) string {
+	cmd := []string{}
+
+	cmd = append(cmd, env...)
+	cmd = append(cmd, path)
+
+	for _, arg := range args {
+		cmd = append(cmd, r.quoteArg(arg))
+	}
+
+	return strings.Join(cmd, " ")
+}
+
+func (r *RemoteCommandRunner) quoteArg(arg string) string {
+	return "'" + strings.Replace(arg, `'`, `\'`, -1) + "'"
 }
