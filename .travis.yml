@@ -18,4 +18,4 @@ install:
 
 script:
   - export PATH=$HOME/gopath/bin:$PATH
-  - ginkgo -r -i --randomizeAllSpecs
+  - ginkgo -race -r -i --randomizeAllSpecs
