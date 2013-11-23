@@ -5,7 +5,6 @@ ROOT_FS_URL = "http://cfstacks.s3.amazonaws.com/lucid64.dev.tgz"
   curl
   debootstrap
   iptables
-  ruby1.9.3
 }.each do |package_name|
   package package_name
 end
