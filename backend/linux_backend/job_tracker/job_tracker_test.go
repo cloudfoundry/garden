@@ -191,7 +191,7 @@ var _ = Describe("Linking to jobs", func() {
 				},
 				func(cmd *exec.Cmd) error {
 					// give time for both goroutines to link
-					time.Sleep(100 * time.Millisecond)
+					time.Sleep(1000 * time.Millisecond)
 					cmd.Stdout.Write([]byte("ready\n"))
 					cmd.Stdout.Write([]byte("active\n"))
 					return nil
@@ -216,6 +216,7 @@ var _ = Describe("Linking to jobs", func() {
 			)
 		})
 
+		// TODO: this test is racey
 		It("returns to both", func(done Done) {
 			jobID, _ := jobTracker.Spawn(exec.Command("xxx"))
 
@@ -348,14 +349,14 @@ var _ = Describe("Listing active jobs", func() {
 	It("includes running job IDs", func() {
 		setupSuccessfulSpawn()
 
-		runningJobs := []uint32{}
+		running := make(chan []uint32, 2)
 
 		fakeRunner.WhenRunning(
 			fake_command_runner.CommandSpec{
 				Path: binPath("iomux-link"),
 			},
 			func(cmd *exec.Cmd) error {
-				runningJobs = append(runningJobs, jobTracker.ActiveJobs()...)
+				running <- jobTracker.ActiveJobs()
 				return nil
 			},
 		)
@@ -366,7 +367,9 @@ var _ = Describe("Listing active jobs", func() {
 		jobID2, err := jobTracker.Spawn(exec.Command("xxx"))
 		Expect(err).ToNot(HaveOccured())
 
-		Expect(runningJobs).To(ContainElement(jobID1))
-		Expect(runningJobs).To(ContainElement(jobID2))
+		totalRunning := append(<-running, <-running...)
+
+		Expect(totalRunning).To(ContainElement(jobID1))
+		Expect(totalRunning).To(ContainElement(jobID2))
 	})
 })
