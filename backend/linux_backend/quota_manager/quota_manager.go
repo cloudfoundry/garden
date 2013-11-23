@@ -6,6 +6,8 @@ import (
 	"os/exec"
 	"path"
 	"syscall"
+	"bytes"
+	"strings"
 
 	"github.com/vito/garden/backend"
 	"github.com/vito/garden/command_runner"
@@ -28,10 +30,21 @@ type LinuxQuotaManager struct {
 const QUOTA_BLOCK_SIZE = 1024
 
 func New(containerDepotPath, rootPath string, runner command_runner.CommandRunner) (*LinuxQuotaManager, error) {
-	mountPoint, err := findMountPoint(containerDepotPath)
+	dfOut := new(bytes.Buffer)
+
+	df := &exec.Cmd{
+		Path: "df",
+		Args: []string{"-P", containerDepotPath},
+		Stdout: dfOut,
+	}
+
+	err := runner.Run(df)
 	if err != nil {
 		return nil, err
 	}
+
+	dfOutputWords := strings.Split(string(dfOut.Bytes()), " ")
+	mountPoint := strings.Trim(dfOutputWords[len(dfOutputWords)-1], "\n")
 
 	return &LinuxQuotaManager{
 		rootPath: rootPath,

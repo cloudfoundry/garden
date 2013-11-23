@@ -2,10 +2,7 @@ package quota_manager_test
 
 import (
 	"errors"
-	"io/ioutil"
-	"os"
 	"os/exec"
-	"strings"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -16,37 +13,53 @@ import (
 	. "github.com/vito/garden/command_runner/fake_command_runner/matchers"
 )
 
+var _ = Describe("Linux Quota Manager initialization", func() {
+	var fakeRunner *fake_command_runner.FakeCommandRunner
+
+	BeforeEach(func() {
+		fakeRunner = fake_command_runner.New()
+	})
+
+	Context("when df fails", func() {
+		disaster := errors.New("oh no!")
+
+		BeforeEach(func() {
+			fakeRunner.WhenRunning(fake_command_runner.CommandSpec{
+				Path: "df",
+			}, func(*exec.Cmd) error {
+				return disaster
+			})
+		})
+
+		It("returns the error", func() {
+			_, err := quota_manager.New("/bogus/path", "/root/path", fakeRunner)
+			Expect(err).To(Equal(disaster))
+		})
+	})
+})
+
 var _ = Describe("Linux Quota manager", func() {
 	var fakeRunner *fake_command_runner.FakeCommandRunner
-	var depotPath string
-	var realMountPoint string
 	var quotaManager *quota_manager.LinuxQuotaManager
 
 	BeforeEach(func() {
 		fakeRunner = fake_command_runner.New()
 
-		tmpdir, err := ioutil.TempDir(os.TempDir(), "fake-depot")
-		Expect(err).ToNot(HaveOccured())
+		fakeRunner.WhenRunning(fake_command_runner.CommandSpec{
+			Path: "df",
+			Args: []string{"-P", "/some/depot"},
+		}, func(cmd *exec.Cmd) error {
+			cmd.Stdout.Write([]byte(`Filesystem   512-blocks      Used Available Capacity  Mounted on
+/dev/disk0s2  488555536 423563328  64480208    87%    /some/mount/point
+`))
 
-		depotPath = tmpdir
-
-		df := exec.Command("df", "-P", tmpdir)
-
-		out, err := df.CombinedOutput()
-		Expect(err).ToNot(HaveOccured())
-
-		dfOutputWords := strings.Split(string(out), " ")
-		realMountPoint = strings.Trim(dfOutputWords[len(dfOutputWords)-1], "\n")
-
-		quotaManager, err = quota_manager.New(depotPath, "/root/path", fakeRunner)
-		Expect(err).ToNot(HaveOccured())
-	})
-
-	Describe("initialization", func() {
-		PIt("fails if the given path does not exist", func() {
-			_, err := quota_manager.New("/bogus/path", "/root/path", fakeRunner)
-			Expect(err).To(HaveOccured())
+			return nil
 		})
+
+		var err error
+
+		quotaManager, err = quota_manager.New("/some/depot", "/root/path", fakeRunner)
+		Expect(err).ToNot(HaveOccured())
 	})
 
 	Describe("setting quotas", func() {
@@ -69,7 +82,7 @@ var _ = Describe("Linux Quota manager", func() {
 					Args: []string{
 						"-u", "1234",
 						"1", "2", "11", "12",
-						realMountPoint,
+						"/some/mount/point",
 					},
 				},
 			))
@@ -95,7 +108,7 @@ var _ = Describe("Linux Quota manager", func() {
 						Args: []string{
 							"-u", "1234",
 							"101", "201", "11", "12",
-							realMountPoint,
+							"/some/mount/point",
 						},
 					},
 				))
@@ -127,7 +140,7 @@ var _ = Describe("Linux Quota manager", func() {
 			fakeRunner.WhenRunning(
 				fake_command_runner.CommandSpec{
 					Path: "/root/path/bin/repquota",
-					Args: []string{realMountPoint, "1234"},
+					Args: []string{"/some/mount/point", "1234"},
 				}, func(cmd *exec.Cmd) error {
 					cmd.Stdout.Write([]byte("1234 111 222 333 444 555 666 777 888\n"))
 
@@ -152,7 +165,7 @@ var _ = Describe("Linux Quota manager", func() {
 				fakeRunner.WhenRunning(
 					fake_command_runner.CommandSpec{
 						Path: "/root/path/bin/repquota",
-						Args: []string{realMountPoint, "1234"},
+						Args: []string{"/some/mount/point", "1234"},
 					}, func(cmd *exec.Cmd) error {
 						return disaster
 					},
@@ -170,7 +183,7 @@ var _ = Describe("Linux Quota manager", func() {
 				fakeRunner.WhenRunning(
 					fake_command_runner.CommandSpec{
 						Path: "/root/path/bin/repquota",
-						Args: []string{realMountPoint, "1234"},
+						Args: []string{"/some/mount/point", "1234"},
 					}, func(cmd *exec.Cmd) error {
 						cmd.Stdout.Write([]byte("abc\n"))
 
@@ -189,7 +202,7 @@ var _ = Describe("Linux Quota manager", func() {
 			fakeRunner.WhenRunning(
 				fake_command_runner.CommandSpec{
 					Path: "/root/path/bin/repquota",
-					Args: []string{realMountPoint, "1234"},
+					Args: []string{"/some/mount/point", "1234"},
 				}, func(cmd *exec.Cmd) error {
 					cmd.Stdout.Write([]byte("1234 111 222 333 444 555 666 777 888\n"))
 
@@ -211,7 +224,7 @@ var _ = Describe("Linux Quota manager", func() {
 				fakeRunner.WhenRunning(
 					fake_command_runner.CommandSpec{
 						Path: "/root/path/bin/repquota",
-						Args: []string{realMountPoint, "1234"},
+						Args: []string{"/some/mount/point", "1234"},
 					}, func(cmd *exec.Cmd) error {
 						return disaster
 					},
@@ -229,7 +242,7 @@ var _ = Describe("Linux Quota manager", func() {
 				fakeRunner.WhenRunning(
 					fake_command_runner.CommandSpec{
 						Path: "/root/path/bin/repquota",
-						Args: []string{realMountPoint, "1234"},
+						Args: []string{"/some/mount/point", "1234"},
 					}, func(cmd *exec.Cmd) error {
 						cmd.Stdout.Write([]byte("abc\n"))
 
