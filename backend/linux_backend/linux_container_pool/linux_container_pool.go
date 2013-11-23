@@ -65,7 +65,7 @@ func (p *LinuxContainerPool) Setup() error {
 	setup := &exec.Cmd{
 		Path: path.Join(p.rootPath, "setup.sh"),
 		Env: []string{
-			"POOL_NETWORK=10.254.0.0/22",
+			"POOL_NETWORK=" + p.networkPool.Network().String(),
 			"ALLOW_NETWORKS=",
 			"DENY_NETWORKS=",
 			"CONTAINER_ROOTFS_PATH=" + p.rootFSPath,

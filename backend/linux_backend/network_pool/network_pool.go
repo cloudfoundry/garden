@@ -10,6 +10,7 @@ import (
 type NetworkPool interface {
 	Acquire() (network.Network, error)
 	Release(network.Network)
+	Network() *net.IPNet
 }
 
 type RealNetworkPool struct {
@@ -89,6 +90,10 @@ func (p *RealNetworkPool) Release(n network.Network) {
 	defer p.Unlock()
 
 	p.pool = append(p.pool, network)
+}
+
+func (p *RealNetworkPool) Network() *net.IPNet {
+	return p.ipNet
 }
 
 func networkFor(ipNet *net.IPNet) *Network {

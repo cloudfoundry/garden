@@ -85,4 +85,10 @@ var _ = Describe("Network Pool", func() {
 			})
 		})
 	})
+
+	Describe("getting the network", func() {
+		It("returns the network's *net.IPNet", func() {
+			Expect(pool.Network().String()).To(Equal("10.254.0.0/22"))
+		})
+	})
 })

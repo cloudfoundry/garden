@@ -7,6 +7,7 @@ import (
 )
 
 type FakeNetworkPool struct {
+	ipNet *net.IPNet
 	nextNetwork net.IP
 
 	AcquireError error
@@ -32,9 +33,11 @@ func (n FakeNetwork) ContainerIP() net.IP {
 	return n.containerIP
 }
 
-func New(start net.IP) *FakeNetworkPool {
+func New(ipNet *net.IPNet) *FakeNetworkPool {
 	return &FakeNetworkPool{
-		nextNetwork: start,
+		ipNet: ipNet,
+
+		nextNetwork: ipNet.IP,
 	}
 }
 
@@ -63,6 +66,10 @@ func (p *FakeNetworkPool) Acquire() (network.Network, error) {
 
 func (p *FakeNetworkPool) Release(network network.Network) {
 	p.Released = append(p.Released, network.String())
+}
+
+func (p *FakeNetworkPool) Network() *net.IPNet {
+	return p.ipNet
 }
 
 func inc(ip net.IP) {

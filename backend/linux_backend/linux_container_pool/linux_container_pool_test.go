@@ -27,8 +27,12 @@ var _ = Describe("Linux Container pool", func() {
 	var pool *linux_container_pool.LinuxContainerPool
 
 	BeforeEach(func() {
+		_, ipNet, err := net.ParseCIDR("1.2.0.0/20")
+		Expect(err).ToNot(HaveOccured())
+
 		fakeUIDPool = fake_uid_pool.New(10000)
-		fakeNetworkPool = fake_network_pool.New(net.ParseIP("1.2.3.0"))
+
+		fakeNetworkPool = fake_network_pool.New(ipNet)
 		fakeRunner = fake_command_runner.New()
 		fakeQuotaManager = fake_quota_manager.New()
 		portPool = port_pool.New(1000, 10)
@@ -54,7 +58,7 @@ var _ = Describe("Linux Container pool", func() {
 				fake_command_runner.CommandSpec{
 					Path: "/root/path/setup.sh",
 					Env: []string{
-						"POOL_NETWORK=10.254.0.0/22",
+						"POOL_NETWORK=1.2.0.0/20",
 						"ALLOW_NETWORKS=",
 						"DENY_NETWORKS=",
 						"CONTAINER_ROOTFS_PATH=/rootfs/path",
@@ -111,8 +115,8 @@ var _ = Describe("Linux Container pool", func() {
 						"id=" + container.ID(),
 						"rootfs_path=/rootfs/path",
 						"user_uid=10000",
-						"network_host_ip=1.2.3.1",
-						"network_container_ip=1.2.3.2",
+						"network_host_ip=1.2.0.1",
+						"network_container_ip=1.2.0.2",
 						"network_netmask=255.255.255.252",
 
 						"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
@@ -167,7 +171,7 @@ var _ = Describe("Linux Container pool", func() {
 				Expect(err).To(Equal(nastyError))
 
 				Expect(fakeUIDPool.Released).To(ContainElement(uint32(10000)))
-				Expect(fakeNetworkPool.Released).To(ContainElement("1.2.3.0/30"))
+				Expect(fakeNetworkPool.Released).To(ContainElement("1.2.0.0/30"))
 			})
 		})
 	})
