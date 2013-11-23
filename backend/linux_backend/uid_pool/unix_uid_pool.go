@@ -1,7 +1,6 @@
 package uid_pool
 
 import (
-	"fmt"
 	"sync"
 )
 
@@ -18,22 +17,6 @@ type PoolExhaustedError struct{}
 
 func (e PoolExhaustedError) Error() string {
 	return "UID pool is exhausted"
-}
-
-type SystemUserOverlapError struct {
-	poolStart uint32
-	poolSize  uint32
-
-	user *user.User
-}
-
-func (e SystemUserOverlapError) Error() string {
-	return fmt.Sprintf(
-		"system user overlaps with UID pool (%d-%d): %v",
-		e.poolStart,
-		e.poolStart+e.poolSize,
-		e.user,
-	)
 }
 
 func New(start, size uint32) *UnixUIDPool {
