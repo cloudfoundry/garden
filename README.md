@@ -29,6 +29,8 @@ locally, pointing at its host:
 
 ```bash
 vagrant up
+ssh-copy-id vagrant@192.168.50.4
+ssh vagrant@192.168.50.4 sudo cp -r .ssh/ /root/.ssh/
 ./bin/run-garden-remote-linux
 ```
 
