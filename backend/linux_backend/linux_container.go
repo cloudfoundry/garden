@@ -312,8 +312,8 @@ func (c *LinuxContainer) Spawn(spec backend.JobSpec) (uint32, error) {
 	}
 
 	wsh := &exec.Cmd{
-		Path: wshPath,
-		Args: []string{"--socket", sockPath, "--user", user, "/bin/bash"},
+		Path:  wshPath,
+		Args:  []string{"--socket", sockPath, "--user", user, "/bin/bash"},
 		Stdin: bytes.NewBufferString(spec.Script),
 	}
 
@@ -431,7 +431,7 @@ func (c *LinuxContainer) rsync(src, dst string) error {
 	rsync := &exec.Cmd{
 		Path: "rsync",
 		Args: []string{
-			"-e", wshPath+" --socket "+sockPath+" --rsh",
+			"-e", wshPath + " --socket " + sockPath + " --rsh",
 			"-r",
 			"-p",
 			"--links",

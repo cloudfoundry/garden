@@ -64,7 +64,7 @@ func (j *Job) Spawn() (ready, active chan error) {
 	}
 
 	spawn := &exec.Cmd{
-		Path: spawnPath,
+		Path:  spawnPath,
 		Stdin: j.cmd.Stdin,
 	}
 
@@ -137,8 +137,8 @@ func (j *Job) runLinker() {
 	stderr := new(bytes.Buffer)
 
 	link := &exec.Cmd{
-		Path: linkPath,
-		Args: []string{jobDir},
+		Path:   linkPath,
+		Args:   []string{jobDir},
 		Stdout: newNamedStream(j, "stdout", stdout),
 		Stderr: newNamedStream(j, "stderr", stderr),
 	}

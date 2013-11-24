@@ -1,13 +1,13 @@
 package quota_manager
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
 	"path"
-	"syscall"
-	"bytes"
 	"strings"
+	"syscall"
 
 	"github.com/vito/garden/backend"
 	"github.com/vito/garden/command_runner"
@@ -33,8 +33,8 @@ func New(containerDepotPath, rootPath string, runner command_runner.CommandRunne
 	dfOut := new(bytes.Buffer)
 
 	df := &exec.Cmd{
-		Path: "df",
-		Args: []string{"-P", containerDepotPath},
+		Path:   "df",
+		Args:   []string{"-P", containerDepotPath},
 		Stdout: dfOut,
 	}
 

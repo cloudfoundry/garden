@@ -7,7 +7,7 @@ import (
 )
 
 type FakeNetworkPool struct {
-	ipNet *net.IPNet
+	ipNet       *net.IPNet
 	nextNetwork net.IP
 
 	AcquireError error

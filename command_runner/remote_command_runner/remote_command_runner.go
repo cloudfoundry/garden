@@ -10,8 +10,8 @@ import (
 
 type RemoteCommandRunner struct {
 	username string
-	address string
-	port uint32
+	address  string
+	port     uint32
 
 	runner command_runner.CommandRunner
 }
@@ -19,8 +19,8 @@ type RemoteCommandRunner struct {
 func New(username, address string, port uint32, runner command_runner.CommandRunner) *RemoteCommandRunner {
 	return &RemoteCommandRunner{
 		username: username,
-		address: address,
-		port: port,
+		address:  address,
+		port:     port,
 
 		runner: runner,
 	}

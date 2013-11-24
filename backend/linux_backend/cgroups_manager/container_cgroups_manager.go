@@ -35,8 +35,8 @@ func (m *ContainerCgroupsManager) Get(subsystem, name string) (string, error) {
 	catOut := new(bytes.Buffer)
 
 	cmd := &exec.Cmd{
-		Path: "cat",
-		Args: []string{path.Join(m.SubsystemPath(subsystem), name)},
+		Path:   "cat",
+		Args:   []string{path.Join(m.SubsystemPath(subsystem), name)},
 		Stdout: catOut,
 	}
 
