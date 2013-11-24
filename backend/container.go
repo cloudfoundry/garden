@@ -46,17 +46,6 @@ type JobStream struct {
 	Info       *ContainerInfo
 }
 
-type BindMount struct {
-	SrcPath string
-	DstPath string
-	Mode    BindMountMode
-}
-
-type BindMountMode uint8
-
-const BindMountModeRO BindMountMode = 0
-const BindMountModeRW BindMountMode = 1
-
 type ContainerInfo struct {
 	State         string
 	Events        []string

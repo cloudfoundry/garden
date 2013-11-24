@@ -146,6 +146,11 @@ func (p *LinuxContainerPool) Create(spec backend.ContainerSpec) (backend.Contain
 		return nil, err
 	}
 
+	err = p.writeBindMounts(containerPath, spec.BindMounts)
+	if err != nil {
+		return nil, err
+	}
+
 	return container, nil
 }
 
@@ -194,4 +199,76 @@ func (p *LinuxContainerPool) generateContainerID() string {
 	}
 
 	return string(containerID)
+}
+
+func (p *LinuxContainerPool) writeBindMounts(
+	containerPath string,
+	bindMounts []backend.BindMount,
+) error {
+	hook := path.Join(containerPath, "lib", "hook-child-before-pivot.sh")
+
+	for _, bm := range bindMounts {
+		dstMount := path.Join(containerPath, "mnt", bm.DstPath)
+
+		mode := "ro"
+		if bm.Mode == backend.BindMountModeRW {
+			mode = "rw"
+		}
+
+		linebreak := &exec.Cmd{
+			Path: "bash",
+			Args: []string{
+				"-c",
+				"echo >> " + hook,
+			},
+		}
+
+		err := p.runner.Run(linebreak)
+		if err != nil {
+			return err
+		}
+
+		mkdir := &exec.Cmd{
+			Path: "bash",
+			Args: []string{
+				"-c",
+				"echo mkdir -p " + dstMount + " >> " + hook,
+			},
+		}
+
+		err = p.runner.Run(mkdir)
+		if err != nil {
+			return err
+		}
+
+		mount := &exec.Cmd{
+			Path: "bash",
+			Args: []string{
+				"-c",
+				"echo mount -n --bind " + bm.SrcPath + " " + dstMount +
+					" >> " + hook,
+			},
+		}
+
+		err = p.runner.Run(mount)
+		if err != nil {
+			return err
+		}
+
+		remount := &exec.Cmd{
+			Path: "bash",
+			Args: []string{
+				"-c",
+				"echo mount -n --bind -o remount," + mode + " " + bm.SrcPath + " " + dstMount +
+					" >> " + hook,
+			},
+		}
+
+		err = p.runner.Run(remount)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

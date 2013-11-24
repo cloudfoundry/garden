@@ -126,6 +126,125 @@ var _ = Describe("Linux Container pool", func() {
 			))
 		})
 
+		Context("when bind mounts are specified", func() {
+			It("appends mount commands to hook-child-before-pivot.sh", func() {
+				container, err := pool.Create(backend.ContainerSpec{
+					BindMounts: []backend.BindMount{
+						{
+							SrcPath: "/src/path-ro",
+							DstPath: "/dst/path-ro",
+							Mode:    backend.BindMountModeRO,
+						},
+						{
+							SrcPath: "/src/path-rw",
+							DstPath: "/dst/path-rw",
+							Mode:    backend.BindMountModeRW,
+						},
+					},
+				})
+
+				Expect(err).ToNot(HaveOccured())
+
+				containerPath := "/depot/path/" + container.ID()
+
+				Expect(fakeRunner).To(HaveExecutedSerially(
+					fake_command_runner.CommandSpec{
+						Path: "bash",
+						Args: []string{
+							"-c",
+							"echo >> " + containerPath + "/lib/hook-child-before-pivot.sh",
+						},
+					},
+					fake_command_runner.CommandSpec{
+						Path: "bash",
+						Args: []string{
+							"-c",
+							"echo mkdir -p " + containerPath + "/mnt/dst/path-ro" +
+								" >> " + containerPath + "/lib/hook-child-before-pivot.sh",
+						},
+					},
+					fake_command_runner.CommandSpec{
+						Path: "bash",
+						Args: []string{
+							"-c",
+							"echo mount -n --bind /src/path-ro " + containerPath + "/mnt/dst/path-ro" +
+								" >> " + containerPath + "/lib/hook-child-before-pivot.sh",
+						},
+					},
+					fake_command_runner.CommandSpec{
+						Path: "bash",
+						Args: []string{
+							"-c",
+							"echo mount -n --bind -o remount,ro /src/path-ro " + containerPath + "/mnt/dst/path-ro" +
+								" >> " + containerPath + "/lib/hook-child-before-pivot.sh",
+						},
+					},
+					fake_command_runner.CommandSpec{
+						Path: "bash",
+						Args: []string{
+							"-c",
+							"echo >> " + containerPath + "/lib/hook-child-before-pivot.sh",
+						},
+					},
+					fake_command_runner.CommandSpec{
+						Path: "bash",
+						Args: []string{
+							"-c",
+							"echo mkdir -p " + containerPath + "/mnt/dst/path-rw" +
+								" >> " + containerPath + "/lib/hook-child-before-pivot.sh",
+						},
+					},
+					fake_command_runner.CommandSpec{
+						Path: "bash",
+						Args: []string{
+							"-c",
+							"echo mount -n --bind /src/path-rw " + containerPath + "/mnt/dst/path-rw" +
+								" >> " + containerPath + "/lib/hook-child-before-pivot.sh",
+						},
+					},
+					fake_command_runner.CommandSpec{
+						Path: "bash",
+						Args: []string{
+							"-c",
+							"echo mount -n --bind -o remount,rw /src/path-rw " + containerPath + "/mnt/dst/path-rw" +
+								" >> " + containerPath + "/lib/hook-child-before-pivot.sh",
+						},
+					},
+				))
+			})
+
+			Context("when appending to hook-child-before-pivot.sh fails", func() {
+				disaster := errors.New("oh no!")
+
+				BeforeEach(func() {
+					fakeRunner.WhenRunning(fake_command_runner.CommandSpec{
+						Path: "bash",
+					}, func(*exec.Cmd) error {
+						return disaster
+					})
+				})
+
+				It("returns the error", func() {
+					_, err := pool.Create(backend.ContainerSpec{
+						BindMounts: []backend.BindMount{
+							{
+								SrcPath: "/src/path-ro",
+								DstPath: "/dst/path-ro",
+								Mode:    backend.BindMountModeRO,
+							},
+							{
+								SrcPath: "/src/path-rw",
+								DstPath: "/dst/path-rw",
+								Mode:    backend.BindMountModeRW,
+							},
+						},
+					})
+
+					Expect(err).To(Equal(disaster))
+				})
+			})
+		})
+
 		Context("when acquiring a UID fails", func() {
 			nastyError := errors.New("oh no!")
 
