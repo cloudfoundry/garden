@@ -426,9 +426,10 @@ var _ = Describe("The Warden server", func() {
 				fakeContainer.SpawnedJobID = 42
 
 				writeMessages(&protocol.SpawnRequest{
-					Handle:     proto.String(fakeContainer.Handle()),
-					Script:     proto.String("/some/script"),
-					Privileged: proto.Bool(true),
+					Handle:        proto.String(fakeContainer.Handle()),
+					Script:        proto.String("/some/script"),
+					Privileged:    proto.Bool(true),
+					DiscardOutput: proto.Bool(true),
 				})
 
 				var response protocol.SpawnResponse
@@ -438,8 +439,9 @@ var _ = Describe("The Warden server", func() {
 
 				Expect(fakeContainer.Spawned).To(ContainElement(
 					backend.JobSpec{
-						Script:     "/some/script",
-						Privileged: true,
+						Script:        "/some/script",
+						Privileged:    true,
+						DiscardOutput: true,
 					},
 				))
 
@@ -689,9 +691,10 @@ var _ = Describe("The Warden server", func() {
 				}
 
 				writeMessages(&protocol.RunRequest{
-					Handle:     proto.String(fakeContainer.Handle()),
-					Script:     proto.String("/some/script"),
-					Privileged: proto.Bool(true),
+					Handle:        proto.String(fakeContainer.Handle()),
+					Script:        proto.String("/some/script"),
+					Privileged:    proto.Bool(true),
+					DiscardOutput: proto.Bool(true),
 				})
 
 				var response protocol.RunResponse
@@ -699,8 +702,9 @@ var _ = Describe("The Warden server", func() {
 
 				Expect(fakeContainer.Spawned).To(ContainElement(
 					backend.JobSpec{
-						Script:     "/some/script",
-						Privileged: true,
+						Script:        "/some/script",
+						Privileged:    true,
+						DiscardOutput: true,
 					},
 				))
 

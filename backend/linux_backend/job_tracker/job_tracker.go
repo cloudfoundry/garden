@@ -36,13 +36,13 @@ func New(containerPath string, runner command_runner.CommandRunner) *JobTracker 
 	}
 }
 
-func (t *JobTracker) Spawn(cmd *exec.Cmd) (uint32, error) {
+func (t *JobTracker) Spawn(cmd *exec.Cmd, discardOutput bool) (uint32, error) {
 	t.Lock()
 
 	jobID := t.nextJobID
 	t.nextJobID++
 
-	job := NewJob(jobID, t.containerPath, cmd, t.runner)
+	job := NewJob(jobID, discardOutput, t.containerPath, cmd, t.runner)
 
 	t.jobs[jobID] = job
 

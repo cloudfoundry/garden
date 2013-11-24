@@ -331,7 +331,7 @@ func (c *LinuxContainer) Spawn(spec backend.JobSpec) (uint32, error) {
 		Stdin: bytes.NewBufferString(spec.Script),
 	}
 
-	return c.jobTracker.Spawn(wsh)
+	return c.jobTracker.Spawn(wsh, spec.DiscardOutput)
 }
 
 func (c *LinuxContainer) Stream(jobID uint32) (<-chan backend.JobStream, error) {

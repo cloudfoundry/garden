@@ -229,6 +229,7 @@ func (s *WardenServer) handleSpawn(spawn *protocol.SpawnRequest) (proto.Message,
 	handle := spawn.GetHandle()
 	script := spawn.GetScript()
 	privileged := spawn.GetPrivileged()
+	discardOutput := spawn.GetDiscardOutput()
 
 	container, err := s.backend.Lookup(handle)
 	if err != nil {
@@ -236,8 +237,9 @@ func (s *WardenServer) handleSpawn(spawn *protocol.SpawnRequest) (proto.Message,
 	}
 
 	jobSpec := backend.JobSpec{
-		Script:     script,
-		Privileged: privileged,
+		Script:        script,
+		Privileged:    privileged,
+		DiscardOutput: discardOutput,
 	}
 
 	jobID, err := container.Spawn(jobSpec)
@@ -273,6 +275,7 @@ func (s *WardenServer) handleRun(request *protocol.RunRequest) (proto.Message, e
 	handle := request.GetHandle()
 	script := request.GetScript()
 	privileged := request.GetPrivileged()
+	discardOutput := request.GetDiscardOutput()
 
 	container, err := s.backend.Lookup(handle)
 	if err != nil {
@@ -280,8 +283,9 @@ func (s *WardenServer) handleRun(request *protocol.RunRequest) (proto.Message, e
 	}
 
 	jobSpec := backend.JobSpec{
-		Script:     script,
-		Privileged: privileged,
+		Script:        script,
+		Privileged:    privileged,
+		DiscardOutput: discardOutput,
 	}
 
 	jobID, err := container.Spawn(jobSpec)

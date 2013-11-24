@@ -492,6 +492,22 @@ var _ = Describe("Linux containers", func() {
 					Expect(jobResult.Stdout).To(Equal([]byte("hi out\n")))
 					Expect(jobResult.Stderr).To(Equal([]byte("hi err\n")))
 				})
+
+				Context("with output discarded", func() {
+					It("returns the exit status but not stdout or stderr", func() {
+						jobID, err := container.Spawn(backend.JobSpec{
+							Script:        "/some/script",
+							DiscardOutput: true,
+						})
+						Expect(err).ToNot(HaveOccured())
+
+						jobResult, err := container.Link(jobID)
+						Expect(err).ToNot(HaveOccured())
+						Expect(jobResult.ExitStatus).To(Equal(uint32(42)))
+						Expect(jobResult.Stdout).To(BeEmpty())
+						Expect(jobResult.Stderr).To(BeEmpty())
+					})
+				})
 			})
 
 			Context("to a job that has already completed", func() {

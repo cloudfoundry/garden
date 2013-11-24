@@ -4,6 +4,8 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"path"
@@ -16,6 +18,7 @@ import (
 
 type Job struct {
 	id            uint32
+	discardOutput bool
 	containerPath string
 	cmd           *exec.Cmd
 	runner        command_runner.CommandRunner
@@ -33,9 +36,16 @@ type Job struct {
 	stderr     *bytes.Buffer
 }
 
-func NewJob(id uint32, containerPath string, cmd *exec.Cmd, runner command_runner.CommandRunner) *Job {
+func NewJob(
+	id uint32,
+	discardOutput bool,
+	containerPath string,
+	cmd *exec.Cmd,
+	runner command_runner.CommandRunner,
+) *Job {
 	return &Job{
 		id:            id,
+		discardOutput: discardOutput,
 		containerPath: containerPath,
 		cmd:           cmd,
 		runner:        runner,
@@ -143,11 +153,21 @@ func (j *Job) runLinker() {
 	stdout := new(bytes.Buffer)
 	stderr := new(bytes.Buffer)
 
+	var cmdStdout, cmdStderr io.Writer
+
+	if j.discardOutput {
+		cmdStdout = ioutil.Discard
+		cmdStderr = ioutil.Discard
+	} else {
+		cmdStdout = stdout
+		cmdStderr = stderr
+	}
+
 	link := &exec.Cmd{
 		Path:   linkPath,
 		Args:   []string{jobDir},
-		Stdout: newNamedStream(j, "stdout", stdout),
-		Stderr: newNamedStream(j, "stderr", stderr),
+		Stdout: newNamedStream(j, "stdout", cmdStdout),
+		Stderr: newNamedStream(j, "stderr", cmdStderr),
 	}
 
 	j.runner.Run(link)

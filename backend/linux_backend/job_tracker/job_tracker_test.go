@@ -49,7 +49,7 @@ var _ = Describe("Spawning jobs", func() {
 
 		setupSuccessfulSpawn()
 
-		jobID, _ := jobTracker.Spawn(cmd)
+		jobID, _ := jobTracker.Spawn(cmd, false)
 
 		Eventually(fakeRunner).Should(HaveStartedExecuting(
 			fake_command_runner.CommandSpec{
@@ -94,21 +94,21 @@ var _ = Describe("Spawning jobs", func() {
 			},
 		)
 
-		jobTracker.Spawn(exec.Command("xxx"))
+		jobTracker.Spawn(exec.Command("xxx"), false)
 	}, 10.0)
 
 	It("returns a unique job ID", func() {
 		setupSuccessfulSpawn()
 
-		jobID1, _ := jobTracker.Spawn(exec.Command("xxx"))
-		jobID2, _ := jobTracker.Spawn(exec.Command("xxx"))
+		jobID1, _ := jobTracker.Spawn(exec.Command("xxx"), false)
+		jobID2, _ := jobTracker.Spawn(exec.Command("xxx"), false)
 		Expect(jobID1).ToNot(Equal(jobID2))
 	})
 
 	It("creates the job's working directory", func() {
 		setupSuccessfulSpawn()
 
-		jobID, _ := jobTracker.Spawn(exec.Command("xxx"))
+		jobID, _ := jobTracker.Spawn(exec.Command("xxx"), false)
 
 		Expect(fakeRunner).To(HaveExecutedSerially(
 			fake_command_runner.CommandSpec{
@@ -135,7 +135,7 @@ var _ = Describe("Spawning jobs", func() {
 		})
 
 		It("returns the error", func() {
-			_, err := jobTracker.Spawn(exec.Command("xxx"))
+			_, err := jobTracker.Spawn(exec.Command("xxx"), false)
 			Expect(err).To(Equal(disaster))
 		})
 	})
@@ -167,13 +167,27 @@ var _ = Describe("Linking to jobs", func() {
 	It("returns their stdout, stderr, and exit status", func() {
 		setupSuccessfulSpawn()
 
-		jobID, _ := jobTracker.Spawn(exec.Command("xxx"))
+		jobID, _ := jobTracker.Spawn(exec.Command("xxx"), false)
 
 		exitStatus, stdout, stderr, err := jobTracker.Link(jobID)
 		Expect(err).ToNot(HaveOccured())
 		Expect(exitStatus).To(Equal(uint32(42)))
 		Expect(stdout).To(Equal([]byte("hi out\n")))
 		Expect(stderr).To(Equal([]byte("hi err\n")))
+	})
+
+	Context("when the output is discarded", func() {
+		It("returns the exit status but no stdout/stderr", func() {
+			setupSuccessfulSpawn()
+
+			jobID, _ := jobTracker.Spawn(exec.Command("xxx"), true)
+
+			exitStatus, stdout, stderr, err := jobTracker.Link(jobID)
+			Expect(err).ToNot(HaveOccured())
+			Expect(exitStatus).To(Equal(uint32(42)))
+			Expect(stdout).To(BeEmpty())
+			Expect(stderr).To(BeEmpty())
+		})
 	})
 
 	Context("when more than one link is made", func() {
@@ -211,7 +225,7 @@ var _ = Describe("Linking to jobs", func() {
 
 		// TODO: this test is racey
 		It("returns to both", func(done Done) {
-			jobID, _ := jobTracker.Spawn(exec.Command("xxx"))
+			jobID, _ := jobTracker.Spawn(exec.Command("xxx"), false)
 
 			finishedLink := make(chan bool)
 
@@ -276,7 +290,7 @@ var _ = Describe("Streaming jobs", func() {
 	It("streams their stdout and stderr into the channel", func(done Done) {
 		setupSuccessfulSpawn()
 
-		jobID, _ := jobTracker.Spawn(exec.Command("xxx"))
+		jobID, _ := jobTracker.Spawn(exec.Command("xxx"), false)
 
 		jobStreamChannel, err := jobTracker.Stream(jobID)
 		Expect(err).ToNot(HaveOccured())
@@ -300,7 +314,7 @@ var _ = Describe("Streaming jobs", func() {
 		It("yields the exit status and closes the channel", func(done Done) {
 			setupSuccessfulSpawn()
 
-			jobID, _ := jobTracker.Spawn(exec.Command("xxx"))
+			jobID, _ := jobTracker.Spawn(exec.Command("xxx"), false)
 
 			jobStreamChannel, err := jobTracker.Stream(jobID)
 			Expect(err).ToNot(HaveOccured())
@@ -344,10 +358,10 @@ var _ = Describe("Listing active jobs", func() {
 			},
 		)
 
-		jobID1, err := jobTracker.Spawn(exec.Command("xxx"))
+		jobID1, err := jobTracker.Spawn(exec.Command("xxx"), false)
 		Expect(err).ToNot(HaveOccured())
 
-		jobID2, err := jobTracker.Spawn(exec.Command("xxx"))
+		jobID2, err := jobTracker.Spawn(exec.Command("xxx"), false)
 		Expect(err).ToNot(HaveOccured())
 
 		totalRunning := append(<-running, <-running...)
