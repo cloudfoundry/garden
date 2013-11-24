@@ -344,7 +344,7 @@ func (c *LinuxContainer) NetIn(hostPort uint32, containerPort uint32) (uint32, u
 	if hostPort == 0 {
 		randomPort, err := c.portPool.Acquire()
 		if err != nil {
-			panic("x")
+			return 0, 0, err
 		}
 
 		hostPort = randomPort

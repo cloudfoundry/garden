@@ -935,6 +935,22 @@ var _ = Describe("Linux containers", func() {
 
 				Expect(secondHostPort).ToNot(Equal(hostPort))
 			})
+
+			Context("and the pool is exhausted", func() {
+				BeforeEach(func() {
+					for {
+						_, err := portPool.Acquire()
+						if err != nil {
+							break
+						}
+					}
+				})
+
+				It("returns an error", func() {
+					_, _, err := container.NetIn(0, 456)
+					Expect(err).To(HaveOccured())
+				})
+			})
 		})
 
 		Context("when a container port is not provided", func() {
