@@ -79,5 +79,6 @@ func (r *RemoteCommandRunner) buildCommandString(env []string, path string, args
 }
 
 func (r *RemoteCommandRunner) quoteArg(arg string) string {
-	return "'" + strings.Replace(arg, `'`, `\'`, -1) + "'"
+	// lol
+	return "'" + strings.Replace(arg, `'`, `'"'"'`, -1) + "'"
 }
