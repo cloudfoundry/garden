@@ -87,10 +87,15 @@ func (m *LinuxQuotaManager) GetLimits(uid uint32) (backend.DiskLimits, error) {
 
 	limits := backend.DiskLimits{}
 
-	out, err := repquota.StdoutPipe()
+	repR, repW, err := os.Pipe()
 	if err != nil {
 		return limits, err
 	}
+
+	defer repR.Close()
+	defer repW.Close()
+
+	repquota.Stdout = repW
 
 	err = m.runner.Start(repquota)
 	if err != nil {
@@ -100,7 +105,7 @@ func (m *LinuxQuotaManager) GetLimits(uid uint32) (backend.DiskLimits, error) {
 	var skip uint32
 
 	_, err = fmt.Fscanf(
-		out,
+		repR,
 		"%d %d %d %d %d %d %d %d",
 		&skip,
 		&skip,
@@ -123,10 +128,15 @@ func (m *LinuxQuotaManager) GetUsage(uid uint32) (backend.ContainerDiskStat, err
 
 	usage := backend.ContainerDiskStat{}
 
-	out, err := repquota.StdoutPipe()
+	repR, repW, err := os.Pipe()
 	if err != nil {
 		return usage, err
 	}
+
+	defer repR.Close()
+	defer repW.Close()
+
+	repquota.Stdout = repW
 
 	err = m.runner.Start(repquota)
 	if err != nil {
@@ -136,7 +146,7 @@ func (m *LinuxQuotaManager) GetUsage(uid uint32) (backend.ContainerDiskStat, err
 	var skip uint32
 
 	_, err = fmt.Fscanf(
-		out,
+		repR,
 		"%d %d %d %d %d %d %d %d",
 		&skip,
 		&usage.BytesUsed,

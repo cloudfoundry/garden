@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"os"
 	"os/exec"
 	"path"
 	"sync"
@@ -71,13 +72,15 @@ func (j *Job) Spawn() (ready, active chan error) {
 	spawn.Args = append([]string{jobDir}, j.cmd.Path)
 	spawn.Args = append(spawn.Args, j.cmd.Args...)
 
-	stdout, err := spawn.StdoutPipe()
+	spawnR, spawnW, err := os.Pipe()
 	if err != nil {
 		ready <- err
 		return
 	}
 
-	spawnOut := bufio.NewReader(stdout)
+	spawn.Stdout = spawnW
+
+	spawnOut := bufio.NewReader(spawnR)
 
 	err = j.runner.Start(spawn)
 	if err != nil {
@@ -86,7 +89,11 @@ func (j *Job) Spawn() (ready, active chan error) {
 	}
 
 	go func() {
-		defer spawn.Wait()
+		defer func() {
+			spawn.Wait()
+			spawnW.Close()
+			spawnR.Close()
+		}()
 
 		_, err = spawnOut.ReadBytes('\n')
 		if err != nil {

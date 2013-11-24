@@ -61,6 +61,12 @@ var remotePort = flag.Int(
 	"SSH port of the remote machine",
 )
 
+var debug = flag.Bool(
+	"debug",
+	false,
+	"show low-level command output",
+)
+
 func main() {
 	flag.Parse()
 
@@ -94,7 +100,7 @@ func main() {
 
 		var runner command_runner.CommandRunner
 
-		runner = command_runner.New()
+		runner = command_runner.New(*debug)
 
 		if *remoteHost != "" {
 			runner = remote_command_runner.New(

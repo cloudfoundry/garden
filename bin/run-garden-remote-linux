@@ -12,4 +12,5 @@ rm -f /tmp/warden.sock
   -root=/vagrant/root \
   -backend=linux \
   -depot=/opt/warden/containers \
-  -rootfs=/opt/warden/rootfs
+  -rootfs=/opt/warden/rootfs \
+  "$@"
