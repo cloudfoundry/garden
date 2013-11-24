@@ -19,7 +19,7 @@ import (
 	"github.com/vito/garden/backend/linux_backend/bandwidth_manager/fake_bandwidth_manager"
 	"github.com/vito/garden/backend/linux_backend/cgroups_manager/fake_cgroups_manager"
 	"github.com/vito/garden/backend/linux_backend/network_pool"
-	"github.com/vito/garden/backend/linux_backend/port_pool"
+	"github.com/vito/garden/backend/linux_backend/port_pool/fake_port_pool"
 	"github.com/vito/garden/backend/linux_backend/quota_manager/fake_quota_manager"
 	"github.com/vito/garden/command_runner/fake_command_runner"
 	. "github.com/vito/garden/command_runner/fake_command_runner/matchers"
@@ -29,9 +29,9 @@ var fakeCgroups *fake_cgroups_manager.FakeCgroupsManager
 var fakeQuotaManager *fake_quota_manager.FakeQuotaManager
 var fakeBandwidthManager *fake_bandwidth_manager.FakeBandwidthManager
 var fakeRunner *fake_command_runner.FakeCommandRunner
-var containerResources linux_backend.Resources
+var containerResources *linux_backend.Resources
 var container *linux_backend.LinuxContainer
-var portPool *port_pool.PortPool
+var fakePortPool *fake_port_pool.FakePortPool
 
 var _ = Describe("Linux containers", func() {
 	BeforeEach(func() {
@@ -45,14 +45,14 @@ var _ = Describe("Linux containers", func() {
 		_, ipNet, err := net.ParseCIDR("10.254.0.0/24")
 		Expect(err).ToNot(HaveOccured())
 
-		portPool = port_pool.New(1000, 10)
+		fakePortPool = fake_port_pool.New(1000)
 
 		networkPool := network_pool.New(ipNet)
 
 		network, err := networkPool.Acquire()
 		Expect(err).ToNot(HaveOccured())
 
-		containerResources = linux_backend.Resources{
+		containerResources = &linux_backend.Resources{
 			UID:     1234,
 			Network: network,
 		}
@@ -62,7 +62,7 @@ var _ = Describe("Linux containers", func() {
 			"/depot/some-id",
 			backend.ContainerSpec{},
 			containerResources,
-			portPool,
+			fakePortPool,
 			fakeRunner,
 			fakeCgroups,
 			fakeQuotaManager,
@@ -358,7 +358,7 @@ var _ = Describe("Linux containers", func() {
 				containerPath,
 				backend.ContainerSpec{},
 				containerResources,
-				portPool,
+				fakePortPool,
 				fakeRunner,
 				fakeCgroups,
 				fakeQuotaManager,
@@ -934,21 +934,20 @@ var _ = Describe("Linux containers", func() {
 				Expect(err).ToNot(HaveOccured())
 
 				Expect(secondHostPort).ToNot(Equal(hostPort))
+
+				Expect(container.Resources().Ports).To(ContainElement(hostPort))
 			})
 
-			Context("and the pool is exhausted", func() {
+			Context("and acquiring a port from the pool fails", func() {
+				disaster := errors.New("oh no!")
+
 				BeforeEach(func() {
-					for {
-						_, err := portPool.Acquire()
-						if err != nil {
-							break
-						}
-					}
+					fakePortPool.AcquireError = disaster
 				})
 
-				It("returns an error", func() {
+				It("returns the error", func() {
 					_, _, err := container.NetIn(0, 456)
-					Expect(err).To(HaveOccured())
+					Expect(err).To(Equal(disaster))
 				})
 			})
 		})
@@ -1137,7 +1136,7 @@ var _ = Describe("Linux containers", func() {
 					containerPath,
 					backend.ContainerSpec{},
 					containerResources,
-					portPool,
+					fakePortPool,
 					fakeRunner,
 					fakeCgroups,
 					fakeQuotaManager,

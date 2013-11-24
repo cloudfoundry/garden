@@ -113,7 +113,7 @@ func (p *LinuxContainerPool) Create(spec backend.ContainerSpec) (backend.Contain
 		id,
 		containerPath,
 		spec,
-		linux_backend.Resources{
+		&linux_backend.Resources{
 			UID:     uid,
 			Network: network,
 		},
@@ -163,6 +163,18 @@ func (p *LinuxContainerPool) Destroy(container backend.Container) error {
 	if err != nil {
 		return err
 	}
+
+	linuxContainer := container.(*linux_backend.LinuxContainer)
+
+	resources := linuxContainer.Resources()
+
+	for _, port := range resources.Ports {
+		p.portPool.Release(port)
+	}
+
+	p.uidPool.Release(resources.UID)
+
+	p.networkPool.Release(resources.Network)
 
 	return nil
 }

@@ -9,9 +9,10 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/vito/garden/backend"
+	"github.com/vito/garden/backend/linux_backend"
 	"github.com/vito/garden/backend/linux_backend/linux_container_pool"
 	"github.com/vito/garden/backend/linux_backend/network_pool/fake_network_pool"
-	"github.com/vito/garden/backend/linux_backend/port_pool"
+	"github.com/vito/garden/backend/linux_backend/port_pool/fake_port_pool"
 	"github.com/vito/garden/backend/linux_backend/quota_manager/fake_quota_manager"
 	"github.com/vito/garden/backend/linux_backend/uid_pool/fake_uid_pool"
 	"github.com/vito/garden/command_runner/fake_command_runner"
@@ -23,7 +24,7 @@ var _ = Describe("Linux Container pool", func() {
 	var fakeUIDPool *fake_uid_pool.FakeUIDPool
 	var fakeNetworkPool *fake_network_pool.FakeNetworkPool
 	var fakeQuotaManager *fake_quota_manager.FakeQuotaManager
-	var portPool *port_pool.PortPool
+	var fakePortPool *fake_port_pool.FakePortPool
 	var pool *linux_container_pool.LinuxContainerPool
 
 	BeforeEach(func() {
@@ -35,7 +36,7 @@ var _ = Describe("Linux Container pool", func() {
 		fakeNetworkPool = fake_network_pool.New(ipNet)
 		fakeRunner = fake_command_runner.New()
 		fakeQuotaManager = fake_quota_manager.New()
-		portPool = port_pool.New(1000, 10)
+		fakePortPool = fake_port_pool.New(1000)
 
 		pool = linux_container_pool.New(
 			"/root/path",
@@ -43,13 +44,13 @@ var _ = Describe("Linux Container pool", func() {
 			"/rootfs/path",
 			fakeUIDPool,
 			fakeNetworkPool,
-			portPool,
+			fakePortPool,
 			fakeRunner,
 			fakeQuotaManager,
 		)
 	})
 
-	var _ = Describe("setup", func() {
+	Describe("setup", func() {
 		It("executes setup.sh with the correct environment", func() {
 			err := pool.Setup()
 			Expect(err).ToNot(HaveOccured())
@@ -92,7 +93,7 @@ var _ = Describe("Linux Container pool", func() {
 		})
 	})
 
-	var _ = Describe("creating", func() {
+	Describe("creating", func() {
 		It("returns containers with unique IDs", func() {
 			container1, err := pool.Create(backend.ContainerSpec{})
 			Expect(err).ToNot(HaveOccured())
@@ -176,25 +177,45 @@ var _ = Describe("Linux Container pool", func() {
 		})
 	})
 
-	var _ = Describe("destroying", func() {
-		It("executes destroy.sh with the correct args and environment", func() {
+	Describe("destroying", func() {
+		var createdContainer *linux_backend.LinuxContainer
+
+		BeforeEach(func() {
 			container, err := pool.Create(backend.ContainerSpec{})
 			Expect(err).ToNot(HaveOccured())
 
-			err = pool.Destroy(container)
+			createdContainer = container.(*linux_backend.LinuxContainer)
+
+			createdContainer.Resources().AddPort(123)
+			createdContainer.Resources().AddPort(456)
+		})
+
+		It("executes destroy.sh with the correct args and environment", func() {
+			err := pool.Destroy(createdContainer)
 			Expect(err).ToNot(HaveOccured())
 
 			Expect(fakeRunner).To(HaveExecutedSerially(
 				fake_command_runner.CommandSpec{
 					Path: "/root/path/destroy.sh",
-					Args: []string{"/depot/path/" + container.ID()},
+					Args: []string{"/depot/path/" + createdContainer.ID()},
 					Env: []string{
-						"id=" + container.ID(),
+						"id=" + createdContainer.ID(),
 						"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
 					},
 				},
 			))
 		})
-	})
 
+		It("releases the container's ports, uid, and network", func() {
+			err := pool.Destroy(createdContainer)
+			Expect(err).ToNot(HaveOccured())
+
+			Expect(fakePortPool.Released).To(ContainElement(uint32(123)))
+			Expect(fakePortPool.Released).To(ContainElement(uint32(456)))
+
+			Expect(fakeUIDPool.Released).To(ContainElement(uint32(10000)))
+
+			Expect(fakeNetworkPool.Released).To(ContainElement("1.2.0.0/30"))
+		})
+	})
 })

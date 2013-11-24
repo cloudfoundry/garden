@@ -30,7 +30,7 @@ type LinuxContainer struct {
 
 	spec backend.ContainerSpec
 
-	resources Resources
+	resources *Resources
 
 	portPool PortPool
 
@@ -49,6 +49,16 @@ type LinuxContainer struct {
 type Resources struct {
 	UID     uint32
 	Network network.Network
+	Ports   []uint32
+
+	sync.Mutex
+}
+
+func (r *Resources) AddPort(port uint32) {
+	r.Lock()
+	defer r.Unlock()
+
+	r.Ports = append(r.Ports, port)
 }
 
 type PortPool interface {
@@ -67,7 +77,7 @@ const (
 func NewLinuxContainer(
 	id, path string,
 	spec backend.ContainerSpec,
-	resources Resources,
+	resources *Resources,
 	portPool PortPool,
 	runner command_runner.CommandRunner,
 	cgroupsManager cgroups_manager.CgroupsManager,
@@ -126,6 +136,10 @@ func (c *LinuxContainer) Events() []string {
 	copy(events, c.events)
 
 	return events
+}
+
+func (c *LinuxContainer) Resources() *Resources {
+	return c.resources
 }
 
 func (c *LinuxContainer) Start() error {
@@ -346,6 +360,8 @@ func (c *LinuxContainer) NetIn(hostPort uint32, containerPort uint32) (uint32, u
 		if err != nil {
 			return 0, 0, err
 		}
+
+		c.resources.AddPort(randomPort)
 
 		hostPort = randomPort
 	}
