@@ -1,7 +1,16 @@
-package "debootstrap"
-package "iptables"
-package "quota"
-package "rsync"
+%w[
+  autoconf
+  binutils-doc
+  bison
+  build-essential
+  flex
+  debootstrap
+  iptables
+  quota
+  rsync
+].each do |pkg|
+  package pkg
+end
 
 if ["debian", "ubuntu"].include?(node["platform"])
   if node["kernel"]["release"].end_with? "virtual"
