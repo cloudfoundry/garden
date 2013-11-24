@@ -221,6 +221,8 @@ var _ = Describe("Linux containers", func() {
 
 	Describe("Copying in", func() {
 		It("executes rsync from src into dst via wsh --rsh", func() {
+			fakeRunner.ServerRootPath = "/host"
+
 			err := container.CopyIn("/src", "/dst")
 			Expect(err).ToNot(HaveOccured())
 
@@ -233,7 +235,7 @@ var _ = Describe("Linux containers", func() {
 						"-r",
 						"-p",
 						"--links",
-						"/src",
+						"/host/src",
 						"vcap@container:/dst",
 					},
 				},
@@ -262,6 +264,8 @@ var _ = Describe("Linux containers", func() {
 
 	Describe("Copying out", func() {
 		It("rsyncs from vcap@container:/src to /dst", func() {
+			fakeRunner.ServerRootPath = "/host"
+
 			err := container.CopyOut("/src", "/dst", "")
 			Expect(err).ToNot(HaveOccured())
 
@@ -275,7 +279,7 @@ var _ = Describe("Linux containers", func() {
 						"-p",
 						"--links",
 						"vcap@container:/src",
-						"/dst",
+						"/host/dst",
 					},
 				},
 			))

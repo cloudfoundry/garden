@@ -13,14 +13,18 @@ type RemoteCommandRunner struct {
 	address  string
 	port     uint32
 
+	serverRoot string
+
 	runner command_runner.CommandRunner
 }
 
-func New(username, address string, port uint32, runner command_runner.CommandRunner) *RemoteCommandRunner {
+func New(username, address string, port uint32, serverRoot string, runner command_runner.CommandRunner) *RemoteCommandRunner {
 	return &RemoteCommandRunner{
 		username: username,
 		address:  address,
 		port:     port,
+
+		serverRoot: serverRoot,
 
 		runner: runner,
 	}
@@ -40,6 +44,10 @@ func (r *RemoteCommandRunner) Wait(cmd *exec.Cmd) error {
 
 func (r *RemoteCommandRunner) Kill(cmd *exec.Cmd) error {
 	return r.runner.Kill(cmd)
+}
+
+func (r *RemoteCommandRunner) ServerRoot() string {
+	return r.serverRoot
 }
 
 func (r *RemoteCommandRunner) wrap(cmd *exec.Cmd) *exec.Cmd {

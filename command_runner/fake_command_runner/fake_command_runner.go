@@ -8,6 +8,8 @@ import (
 )
 
 type FakeCommandRunner struct {
+	ServerRootPath string
+
 	executedCommands []*exec.Cmd
 	startedCommands  []*exec.Cmd
 	waitedCommands   []*exec.Cmd
@@ -126,6 +128,10 @@ func (r *FakeCommandRunner) Kill(cmd *exec.Cmd) error {
 	r.killedCommands = append(r.waitedCommands, cmd)
 
 	return nil
+}
+
+func (r *FakeCommandRunner) ServerRoot() string {
+	return r.ServerRootPath
 }
 
 func (r *FakeCommandRunner) WhenRunning(spec CommandSpec, callback func(*exec.Cmd) error) {

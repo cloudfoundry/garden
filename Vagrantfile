@@ -10,6 +10,8 @@ Vagrant.configure("2") do |config|
 
   config.vm.network "private_network", ip: "192.168.50.4"
 
+  config.vm.synced_folder "/", "/host"
+
   config.vm.provider :virtualbox do |v, override|
     v.customize ["modifyvm", :id, "--memory", 3*1024]
     v.customize ["modifyvm", :id, "--cpus", 4]

@@ -13,6 +13,7 @@ type CommandRunner interface {
 	Start(*exec.Cmd) error
 	Wait(*exec.Cmd) error
 	Kill(*exec.Cmd) error
+	ServerRoot() string
 }
 
 type RealCommandRunner struct {
@@ -79,6 +80,10 @@ func (r *RealCommandRunner) Kill(cmd *exec.Cmd) error {
 	}
 
 	return cmd.Process.Kill()
+}
+
+func (r *RealCommandRunner) ServerRoot() string {
+	return "/"
 }
 
 func (r *RealCommandRunner) tee(cmd *exec.Cmd) {

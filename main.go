@@ -107,6 +107,7 @@ func main() {
 				"root",
 				*remoteHost,
 				uint32(*remotePort),
+				"/host",
 				runner,
 			)
 		}

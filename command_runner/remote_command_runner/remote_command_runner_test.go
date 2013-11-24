@@ -12,7 +12,7 @@ import (
 	"github.com/vito/garden/command_runner/remote_command_runner"
 )
 
-var _ = Describe("running commands", func() {
+var _ = Describe("Remote command runner", func() {
 	var fakeRunner *fake_command_runner.FakeCommandRunner
 	var remoteRunner *remote_command_runner.RemoteCommandRunner
 
@@ -23,55 +23,64 @@ var _ = Describe("running commands", func() {
 			"vagrant",
 			"192.168.50.4",
 			2222,
+			"/host",
 			fakeRunner,
 		)
 	})
 
-	It("runs them over SSH", func() {
-		command := &exec.Cmd{
-			Path:  "ruby",
-			Args:  []string{"-e", "p :hi"},
-			Env:   []string{"A=B"},
-			Stdin: bytes.NewBufferString("hello\n"),
-		}
+	Describe("running commands", func() {
+		It("runs them over SSH", func() {
+			command := &exec.Cmd{
+				Path:  "ruby",
+				Args:  []string{"-e", "p :hi"},
+				Env:   []string{"A=B"},
+				Stdin: bytes.NewBufferString("hello\n"),
+			}
 
-		err := remoteRunner.Run(command)
-		Expect(err).ToNot(HaveOccured())
+			err := remoteRunner.Run(command)
+			Expect(err).ToNot(HaveOccured())
 
-		Expect(fakeRunner).To(HaveExecutedSerially(
-			fake_command_runner.CommandSpec{
-				Path: "ssh",
-				Args: []string{
-					"-l", "vagrant", "-p", "2222", "192.168.50.4",
-					"A=B ruby '-e' 'p :hi'",
+			Expect(fakeRunner).To(HaveExecutedSerially(
+				fake_command_runner.CommandSpec{
+					Path: "ssh",
+					Args: []string{
+						"-l", "vagrant", "-p", "2222", "192.168.50.4",
+						"A=B ruby '-e' 'p :hi'",
+					},
+					Env:   []string{},
+					Stdin: "hello\n",
 				},
-				Env:   []string{},
-				Stdin: "hello\n",
-			},
-		))
+			))
+		})
+
+		It("starts them over SSH", func() {
+			command := &exec.Cmd{
+				Path:  "ruby",
+				Args:  []string{"-e", "p :hi"},
+				Env:   []string{"A=B"},
+				Stdin: bytes.NewBufferString("hello\n"),
+			}
+
+			err := remoteRunner.Start(command)
+			Expect(err).ToNot(HaveOccured())
+
+			Expect(fakeRunner).To(HaveStartedExecuting(
+				fake_command_runner.CommandSpec{
+					Path: "ssh",
+					Args: []string{
+						"-l", "vagrant", "-p", "2222", "192.168.50.4",
+						"A=B ruby '-e' 'p :hi'",
+					},
+					Env:   []string{},
+					Stdin: "hello\n",
+				},
+			))
+		})
 	})
 
-	It("starts them over SSH", func() {
-		command := &exec.Cmd{
-			Path:  "ruby",
-			Args:  []string{"-e", "p :hi"},
-			Env:   []string{"A=B"},
-			Stdin: bytes.NewBufferString("hello\n"),
-		}
-
-		err := remoteRunner.Start(command)
-		Expect(err).ToNot(HaveOccured())
-
-		Expect(fakeRunner).To(HaveStartedExecuting(
-			fake_command_runner.CommandSpec{
-				Path: "ssh",
-				Args: []string{
-					"-l", "vagrant", "-p", "2222", "192.168.50.4",
-					"A=B ruby '-e' 'p :hi'",
-				},
-				Env:   []string{},
-				Stdin: "hello\n",
-			},
-		))
+	Describe("getting the host root", func() {
+		It("returns the configured host root", func() {
+			Expect(remoteRunner.ServerRoot()).To(Equal("/host"))
+		})
 	})
 })

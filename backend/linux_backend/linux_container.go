@@ -222,13 +222,13 @@ func (c *LinuxContainer) Info() (backend.ContainerInfo, error) {
 
 func (c *LinuxContainer) CopyIn(src, dst string) error {
 	log.Println(c.id, "copying in from", src, "to", dst)
-	return c.rsync(src, "vcap@container:"+dst)
+	return c.rsync(path.Join(c.runner.ServerRoot(), src), "vcap@container:"+dst)
 }
 
 func (c *LinuxContainer) CopyOut(src, dst, owner string) error {
 	log.Println(c.id, "copying out from", src, "to", dst)
 
-	err := c.rsync("vcap@container:"+src, dst)
+	err := c.rsync("vcap@container:"+src, path.Join(c.runner.ServerRoot(), dst))
 	if err != nil {
 		return err
 	}
@@ -433,7 +433,6 @@ func (c *LinuxContainer) registerEvent(event string) {
 }
 
 func (c *LinuxContainer) rsync(src, dst string) error {
-	// TODO: remote command running
 	wshPath := path.Join(c.path, "bin", "wsh")
 	sockPath := path.Join(c.path, "run", "wshd.sock")
 

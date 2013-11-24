@@ -214,6 +214,7 @@ func (p *LinuxContainerPool) writeBindMounts(
 
 	for _, bm := range bindMounts {
 		dstMount := path.Join(containerPath, "mnt", bm.DstPath)
+		srcPath := path.Join(p.runner.ServerRoot(), bm.SrcPath)
 
 		mode := "ro"
 		if bm.Mode == backend.BindMountModeRW {
@@ -250,7 +251,7 @@ func (p *LinuxContainerPool) writeBindMounts(
 			Path: "bash",
 			Args: []string{
 				"-c",
-				"echo mount -n --bind " + bm.SrcPath + " " + dstMount +
+				"echo mount -n --bind " + srcPath + " " + dstMount +
 					" >> " + hook,
 			},
 		}
@@ -264,7 +265,7 @@ func (p *LinuxContainerPool) writeBindMounts(
 			Path: "bash",
 			Args: []string{
 				"-c",
-				"echo mount -n --bind -o remount," + mode + " " + bm.SrcPath + " " + dstMount +
+				"echo mount -n --bind -o remount," + mode + " " + srcPath + " " + dstMount +
 					" >> " + hook,
 			},
 		}
