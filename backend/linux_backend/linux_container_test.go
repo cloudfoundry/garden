@@ -56,8 +56,8 @@ var _ = Describe("Linux containers", func() {
 
 		container = linux_backend.NewLinuxContainer(
 			"some-id",
+			"some-handle",
 			"/depot/some-id",
-			backend.ContainerSpec{},
 			containerResources,
 			fakePortPool,
 			fakeRunner,

@@ -109,10 +109,15 @@ func (p *LinuxContainerPool) Create(spec backend.ContainerSpec) (backend.Contain
 
 	bandwidthManager := bandwidth_manager.New(containerPath, id, p.runner)
 
+	handle := id
+	if spec.Handle != "" {
+		handle = spec.Handle
+	}
+
 	container := linux_backend.NewLinuxContainer(
 		id,
+		handle,
 		containerPath,
-		spec,
 		&linux_backend.Resources{
 			UID:     uid,
 			Network: network,

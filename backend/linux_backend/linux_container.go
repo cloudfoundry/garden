@@ -21,14 +21,13 @@ import (
 )
 
 type LinuxContainer struct {
-	id   string
-	path string
+	id     string
+	handle string
+	path   string
 
 	state      State
 	events     []string
 	stateMutex *sync.Mutex
-
-	spec backend.ContainerSpec
 
 	resources *Resources
 
@@ -75,8 +74,7 @@ const (
 )
 
 func NewLinuxContainer(
-	id, path string,
-	spec backend.ContainerSpec,
+	id, handle, path string,
 	resources *Resources,
 	portPool PortPool,
 	runner command_runner.CommandRunner,
@@ -85,14 +83,13 @@ func NewLinuxContainer(
 	bandwidthManager bandwidth_manager.BandwidthManager,
 ) *LinuxContainer {
 	return &LinuxContainer{
-		id:   id,
-		path: path,
+		id:     id,
+		handle: handle,
+		path:   path,
 
 		state:      StateBorn,
 		events:     []string{},
 		stateMutex: &sync.Mutex{},
-
-		spec: spec,
 
 		resources: resources,
 
@@ -113,11 +110,7 @@ func (c *LinuxContainer) ID() string {
 }
 
 func (c *LinuxContainer) Handle() string {
-	if c.spec.Handle != "" {
-		return c.spec.Handle
-	}
-
-	return c.ID()
+	return c.handle
 }
 
 func (c *LinuxContainer) State() State {
