@@ -269,6 +269,94 @@ var _ = Describe("The Warden server", func() {
 			})
 		})
 
+		Context("and the client sends a StopRequest", func() {
+			var fakeContainer *fake_backend.FakeContainer
+
+			BeforeEach(func() {
+				container, err := serverBackend.Create(backend.ContainerSpec{Handle: "some-handle"})
+				Expect(err).ToNot(HaveOccured())
+
+				fakeContainer = container.(*fake_backend.FakeContainer)
+			})
+
+			It("stops the container and sends a StopResponse", func(done Done) {
+				writeMessages(&protocol.StopRequest{
+					Handle: proto.String(fakeContainer.Handle()),
+					Kill:   proto.Bool(true),
+				})
+
+				var response protocol.StopResponse
+				readResponse(&response)
+
+				Expect(fakeContainer.Stopped).To(ContainElement(
+					fake_backend.StopSpec{
+						Killed: true,
+					},
+				))
+
+				close(done)
+			}, 1.0)
+
+			Context("when background is true", func() {
+				It("stops async and returns immediately", func(done Done) {
+					fakeContainer.StopCallback = func() {
+						time.Sleep(1 * time.Second)
+					}
+
+					writeMessages(&protocol.StopRequest{
+						Handle:     proto.String(fakeContainer.Handle()),
+						Kill:       proto.Bool(true),
+						Background: proto.Bool(true),
+					})
+
+					var response protocol.StopResponse
+					readResponse(&response)
+
+					Expect(fakeContainer.Stopped).To(BeEmpty())
+
+					close(done)
+				}, 1.0)
+			})
+
+			Context("when the container is not found", func() {
+				BeforeEach(func() {
+					serverBackend.Destroy(fakeContainer.Handle())
+				})
+
+				It("sends a WardenError response", func(done Done) {
+					writeMessages(&protocol.StopRequest{
+						Handle: proto.String(fakeContainer.Handle()),
+					})
+
+					var response protocol.StopResponse
+					err := message_reader.ReadMessage(responses, &response)
+					Expect(err).To(Equal(&message_reader.WardenError{
+						Message: "unknown handle: some-handle",
+					}))
+
+					close(done)
+				}, 1.0)
+			})
+
+			Context("when stopping the container fails", func() {
+				BeforeEach(func() {
+					fakeContainer.StopError = errors.New("oh no!")
+				})
+
+				It("sends a WardenError response", func(done Done) {
+					writeMessages(&protocol.StopRequest{
+						Handle: proto.String("some-handle"),
+					})
+
+					var response protocol.StopResponse
+					err := message_reader.ReadMessage(responses, &response)
+					Expect(err).To(Equal(&message_reader.WardenError{Message: "oh no!"}))
+
+					close(done)
+				}, 1.0)
+			})
+		})
+
 		Context("and the client sends a CopyInRequest", func() {
 			var fakeContainer *fake_backend.FakeContainer
 

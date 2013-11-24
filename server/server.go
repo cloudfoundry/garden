@@ -86,6 +86,8 @@ func (s *WardenServer) serveConnection(conn net.Conn) {
 			response, err = s.handleDestroy(request.(*protocol.DestroyRequest))
 		case *protocol.ListRequest:
 			response, err = s.handleList(request.(*protocol.ListRequest))
+		case *protocol.StopRequest:
+			response, err = s.handleStop(request.(*protocol.StopRequest))
 		case *protocol.CopyInRequest:
 			response, err = s.handleCopyIn(request.(*protocol.CopyInRequest))
 		case *protocol.CopyOutRequest:
@@ -205,6 +207,28 @@ func (s *WardenServer) handleCopyOut(copyOut *protocol.CopyOutRequest) (proto.Me
 	}
 
 	return &protocol.CopyOutResponse{}, nil
+}
+
+func (s *WardenServer) handleStop(request *protocol.StopRequest) (proto.Message, error) {
+	handle := request.GetHandle()
+	kill := request.GetKill()
+	background := request.GetBackground()
+
+	container, err := s.backend.Lookup(handle)
+	if err != nil {
+		return nil, err
+	}
+
+	if background {
+		go container.Stop(kill)
+	} else {
+		err = container.Stop(kill)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return &protocol.StopResponse{}, nil
 }
 
 func (s *WardenServer) handleCopyIn(copyIn *protocol.CopyInRequest) (proto.Message, error) {

@@ -10,6 +10,10 @@ type FakeContainer struct {
 	StartError error
 	Started    bool
 
+	StopError    error
+	Stopped      []StopSpec
+	StopCallback func()
+
 	CopyInError error
 	CopiedIn    [][]string
 
@@ -53,6 +57,10 @@ type NetOutSpec struct {
 	Port    uint32
 }
 
+type StopSpec struct {
+	Killed bool
+}
+
 func NewFakeContainer(spec backend.ContainerSpec) *FakeContainer {
 	return &FakeContainer{Spec: spec}
 }
@@ -75,7 +83,17 @@ func (c *FakeContainer) Start() error {
 	return nil
 }
 
-func (c *FakeContainer) Stop(bool) error {
+func (c *FakeContainer) Stop(kill bool) error {
+	if c.StopError != nil {
+		return c.StopError
+	}
+
+	if c.StopCallback != nil {
+		c.StopCallback()
+	}
+
+	c.Stopped = append(c.Stopped, StopSpec{kill})
+
 	return nil
 }
 
