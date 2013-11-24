@@ -28,6 +28,7 @@ Vagrant.configure("2") do |config|
     chef.add_recipe "build-essential::default"
     chef.add_recipe "chef-golang"
     chef.add_recipe "garden::warden"
+    chef.add_recipe "garden::rootfs"
 
     chef.json = {
       go: {

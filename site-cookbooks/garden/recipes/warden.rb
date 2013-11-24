@@ -1,13 +1,7 @@
-ROOT_FS_URL = "http://cfstacks.s3.amazonaws.com/lucid64.dev.tgz"
-
-%w{
-  git
-  curl
-  debootstrap
-  iptables
-}.each do |package_name|
-  package package_name
-end
+package "debootstrap"
+package "iptables"
+package "quota"
+package "rsync"
 
 if ["debian", "ubuntu"].include?(node["platform"])
   if node["kernel"]["release"].end_with? "virtual"
@@ -18,10 +12,6 @@ if ["debian", "ubuntu"].include?(node["platform"])
   end
 end
 
-package "quota" do
-  action :install
-end
-
 package "apparmor" do
   action :remove
 end
@@ -30,30 +20,19 @@ execute "remove all remnants of apparmor" do
   command "sudo dpkg --purge apparmor"
 end
 
-directory "/opt/warden" do
-  mode 0755
-  action :create
-end
-
-%w(rootfs containers stemcells).each do |dir|
-  directory "/opt/warden/#{dir}" do
-    mode 0755
-    action :create
-  end
-end
-
-execute "Install RootFS" do
-  cwd "/opt/warden/rootfs"
-
-  command "curl -s #{ROOT_FS_URL} | tar zxf -"
-  action :run
-
-  not_if "test -d /opt/warden/rootfs/usr"
-end
-
 execute "build root directory" do
   cwd "/vagrant"
 
   command "make"
   action :run
+end
+
+directory "/opt/warden" do
+  mode 0755
+  action :create
+end
+
+directory "/opt/warden/containers" do
+  mode 0755
+  action :create
 end
