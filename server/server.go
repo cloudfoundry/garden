@@ -1,6 +1,7 @@
 package server
 
 import (
+	"bufio"
 	"fmt"
 	"io"
 	"log"
@@ -61,11 +62,13 @@ func (s *WardenServer) handleConnections(listener net.Listener) {
 }
 
 func (s *WardenServer) serveConnection(conn net.Conn) {
+	read := bufio.NewReader(conn)
+
 	for {
 		var response proto.Message
 		var err error
 
-		request, err := message_reader.ReadRequest(conn)
+		request, err := message_reader.ReadRequest(read)
 		if err == io.EOF {
 			break
 		}

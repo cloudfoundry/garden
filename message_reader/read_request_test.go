@@ -1,6 +1,7 @@
 package message_reader_test
 
 import (
+	"bufio"
 	"bytes"
 
 	"code.google.com/p/gogoprotobuf/proto"
@@ -15,9 +16,11 @@ import (
 var _ = Describe("Reading request messages over the wire", func() {
 	Context("when a request is received", func() {
 		It("returns the request and no error", func() {
-			payload := protocol.Messages(&protocol.EchoRequest{
-				Message: proto.String("some-message"),
-			})
+			payload := bufio.NewReader(
+				protocol.Messages(&protocol.EchoRequest{
+					Message: proto.String("some-message"),
+				}),
+			)
 
 			request, err := message_reader.ReadRequest(payload)
 			Expect(err).ToNot(HaveOccured())
@@ -33,7 +36,9 @@ var _ = Describe("Reading request messages over the wire", func() {
 		It("returns an error", func() {
 			payload := protocol.Messages(&protocol.PingRequest{})
 
-			bogusPayload := bytes.NewBuffer(payload.Bytes()[0 : payload.Len()-1])
+			bogusPayload := bufio.NewReader(
+				bytes.NewBuffer(payload.Bytes()[0 : payload.Len()-1]),
+			)
 
 			_, err := message_reader.ReadRequest(bogusPayload)
 			Expect(err).To(HaveOccured())

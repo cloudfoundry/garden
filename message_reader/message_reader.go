@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
-	"io"
 	"strconv"
 
 	"code.google.com/p/gogoprotobuf/proto"
@@ -73,8 +72,8 @@ func ReadMessage(read *bufio.Reader, response proto.Message) error {
 	return proto.Unmarshal(message.GetPayload(), response)
 }
 
-func ReadRequest(read io.Reader) (proto.Message, error) {
-	payload, err := readPayload(bufio.NewReader(read))
+func ReadRequest(read *bufio.Reader) (proto.Message, error) {
+	payload, err := readPayload(read)
 	if err != nil {
 		return nil, err
 	}
