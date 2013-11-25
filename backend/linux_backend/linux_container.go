@@ -228,7 +228,9 @@ func (c *LinuxContainer) CopyIn(src, dst string) error {
 func (c *LinuxContainer) CopyOut(src, dst, owner string) error {
 	log.Println(c.id, "copying out from", src, "to", dst)
 
-	err := c.rsync("vcap@container:"+src, path.Join(c.runner.ServerRoot(), dst))
+	dstDir := path.Join(c.runner.ServerRoot(), dst)
+
+	err := c.rsync("vcap@container:"+src, dstDir)
 	if err != nil {
 		return err
 	}
@@ -236,7 +238,7 @@ func (c *LinuxContainer) CopyOut(src, dst, owner string) error {
 	if owner != "" {
 		chown := &exec.Cmd{
 			Path: "chown",
-			Args: []string{"-R", owner, dst},
+			Args: []string{"-R", owner, dstDir},
 		}
 
 		err := c.runner.Run(chown)

@@ -287,6 +287,8 @@ var _ = Describe("Linux containers", func() {
 
 		Context("when an owner is given", func() {
 			It("chowns the files after rsyncing", func() {
+				fakeRunner.ServerRootPath = "/host"
+
 				err := container.CopyOut("/src", "/dst", "some-user")
 				Expect(err).ToNot(HaveOccured())
 
@@ -296,7 +298,7 @@ var _ = Describe("Linux containers", func() {
 					},
 					fake_command_runner.CommandSpec{
 						Path: "chown",
-						Args: []string{"-R", "some-user", "/dst"},
+						Args: []string{"-R", "some-user", "/host/dst"},
 					},
 				))
 			})
