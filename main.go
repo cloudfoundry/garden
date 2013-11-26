@@ -61,6 +61,12 @@ var remotePort = flag.Int(
 	"SSH port of the remote machine",
 )
 
+var disableQuotas = flag.Bool(
+	"disableQuotas",
+	false,
+	"disable disk quotas",
+)
+
 var debug = flag.Bool(
 	"debug",
 	false,
@@ -115,6 +121,10 @@ func main() {
 		quotaManager, err := quota_manager.New(*depotPath, *rootPath, runner)
 		if err != nil {
 			panic(err)
+		}
+
+		if *disableQuotas {
+			quotaManager.Disable()
 		}
 
 		pool := linux_container_pool.New(

@@ -52,6 +52,8 @@ var _ = Describe("Linux Container pool", func() {
 
 	Describe("setup", func() {
 		It("executes setup.sh with the correct environment", func() {
+			fakeQuotaManager.MountPointResult = "/depot/mount/point"
+
 			err := pool.Setup()
 			Expect(err).ToNot(HaveOccured())
 
@@ -64,7 +66,7 @@ var _ = Describe("Linux Container pool", func() {
 						"DENY_NETWORKS=",
 						"CONTAINER_ROOTFS_PATH=/rootfs/path",
 						"CONTAINER_DEPOT_PATH=/depot/path",
-						"CONTAINER_DEPOT_MOUNT_POINT_PATH=/",
+						"CONTAINER_DEPOT_MOUNT_POINT_PATH=/depot/mount/point",
 						"DISK_QUOTA_ENABLED=true",
 
 						"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",

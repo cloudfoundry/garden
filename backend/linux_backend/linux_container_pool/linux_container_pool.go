@@ -70,8 +70,8 @@ func (p *LinuxContainerPool) Setup() error {
 			"DENY_NETWORKS=",
 			"CONTAINER_ROOTFS_PATH=" + p.rootFSPath,
 			"CONTAINER_DEPOT_PATH=" + p.depotPath,
-			"CONTAINER_DEPOT_MOUNT_POINT_PATH=/",
-			"DISK_QUOTA_ENABLED=true",
+			"CONTAINER_DEPOT_MOUNT_POINT_PATH=" + p.quotaManager.MountPoint(),
+			fmt.Sprintf("DISK_QUOTA_ENABLED=%v", p.quotaManager.IsEnabled()),
 
 			"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
 		},

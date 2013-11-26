@@ -14,7 +14,11 @@ type FakeQuotaManager struct {
 	GetLimitsResult backend.DiskLimits
 	GetUsageResult  backend.ContainerDiskStat
 
+	MountPointResult string
+
 	Limited map[uint32]backend.DiskLimits
+
+	enabled bool
 
 	sync.RWMutex
 }
@@ -22,6 +26,8 @@ type FakeQuotaManager struct {
 func New() *FakeQuotaManager {
 	return &FakeQuotaManager{
 		Limited: make(map[uint32]backend.DiskLimits),
+
+		enabled: true,
 	}
 }
 
@@ -58,4 +64,16 @@ func (m *FakeQuotaManager) GetUsage(uid uint32) (backend.ContainerDiskStat, erro
 	defer m.RUnlock()
 
 	return m.GetUsageResult, nil
+}
+
+func (m *FakeQuotaManager) MountPoint() string {
+	return m.MountPointResult
+}
+
+func (m *FakeQuotaManager) Disable() {
+	m.enabled = false
+}
+
+func (m *FakeQuotaManager) IsEnabled() bool {
+	return m.enabled
 }

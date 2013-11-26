@@ -17,14 +17,18 @@ type QuotaManager interface {
 	SetLimits(uid uint32, limits backend.DiskLimits) error
 	GetLimits(uid uint32) (backend.DiskLimits, error)
 	GetUsage(uid uint32) (backend.ContainerDiskStat, error)
+	MountPoint() string
+	Disable()
+	IsEnabled() bool
 }
 
 type LinuxQuotaManager struct {
-	mountPoint string
+	enabled bool
 
 	rootPath string
+	runner   command_runner.CommandRunner
 
-	runner command_runner.CommandRunner
+	mountPoint string
 }
 
 const QUOTA_BLOCK_SIZE = 1024
@@ -47,6 +51,8 @@ func New(containerDepotPath, rootPath string, runner command_runner.CommandRunne
 	mountPoint := strings.Trim(dfOutputWords[len(dfOutputWords)-1], "\n")
 
 	return &LinuxQuotaManager{
+		enabled: true,
+
 		rootPath: rootPath,
 		runner:   runner,
 
@@ -54,7 +60,15 @@ func New(containerDepotPath, rootPath string, runner command_runner.CommandRunne
 	}, nil
 }
 
+func (m *LinuxQuotaManager) Disable() {
+	m.enabled = false
+}
+
 func (m *LinuxQuotaManager) SetLimits(uid uint32, limits backend.DiskLimits) error {
+	if !m.enabled {
+		return nil
+	}
+
 	if limits.ByteSoft != 0 {
 		limits.BlockSoft = (limits.ByteSoft + QUOTA_BLOCK_SIZE - 1) / QUOTA_BLOCK_SIZE
 	}
@@ -80,6 +94,10 @@ func (m *LinuxQuotaManager) SetLimits(uid uint32, limits backend.DiskLimits) err
 }
 
 func (m *LinuxQuotaManager) GetLimits(uid uint32) (backend.DiskLimits, error) {
+	if !m.enabled {
+		return backend.DiskLimits{}, nil
+	}
+
 	repquota := &exec.Cmd{
 		Path: path.Join(m.rootPath, "bin", "repquota"),
 		Args: []string{m.mountPoint, fmt.Sprintf("%d", uid)},
@@ -121,6 +139,10 @@ func (m *LinuxQuotaManager) GetLimits(uid uint32) (backend.DiskLimits, error) {
 }
 
 func (m *LinuxQuotaManager) GetUsage(uid uint32) (backend.ContainerDiskStat, error) {
+	if !m.enabled {
+		return backend.ContainerDiskStat{}, nil
+	}
+
 	repquota := &exec.Cmd{
 		Path: path.Join(m.rootPath, "bin", "repquota"),
 		Args: []string{m.mountPoint, fmt.Sprintf("%d", uid)},
@@ -159,6 +181,14 @@ func (m *LinuxQuotaManager) GetUsage(uid uint32) (backend.ContainerDiskStat, err
 	)
 
 	return usage, err
+}
+
+func (m *LinuxQuotaManager) MountPoint() string {
+	return m.mountPoint
+}
+
+func (m *LinuxQuotaManager) IsEnabled() bool {
+	return m.enabled
 }
 
 func findMountPoint(location string) (string, error) {

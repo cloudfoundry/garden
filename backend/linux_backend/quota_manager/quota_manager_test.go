@@ -133,6 +133,24 @@ var _ = Describe("Linux Quota manager", func() {
 				Expect(err).To(Equal(nastyError))
 			})
 		})
+
+		Context("when quotas are disabled", func() {
+			BeforeEach(func() {
+				quotaManager.Disable()
+			})
+
+			It("runs nothing", func() {
+				err := quotaManager.SetLimits(1234, limits)
+
+				Expect(err).ToNot(HaveOccured())
+
+				Expect(fakeRunner).ToNot(HaveExecutedSerially(
+					fake_command_runner.CommandSpec{
+						Path: "setquota",
+					},
+				))
+			})
+		})
 	})
 
 	Describe("getting quotas limits", func() {
@@ -195,6 +213,25 @@ var _ = Describe("Linux Quota manager", func() {
 				Expect(err).To(HaveOccured())
 			})
 		})
+
+		Context("when quotas are disabled", func() {
+			BeforeEach(func() {
+				quotaManager.Disable()
+			})
+
+			It("runs nothing", func() {
+				limits, err := quotaManager.GetLimits(1234)
+				Expect(err).ToNot(HaveOccured())
+
+				Expect(limits).To(BeZero())
+
+				Expect(fakeRunner).ToNot(HaveExecutedSerially(
+					fake_command_runner.CommandSpec{
+						Path: "/root/path/bin/repquota",
+					},
+				))
+			})
+		})
 	})
 
 	Describe("getting usage", func() {
@@ -253,6 +290,31 @@ var _ = Describe("Linux Quota manager", func() {
 				_, err := quotaManager.GetUsage(1234)
 				Expect(err).To(HaveOccured())
 			})
+		})
+
+		Context("when quotas are disabled", func() {
+			BeforeEach(func() {
+				quotaManager.Disable()
+			})
+
+			It("runs nothing", func() {
+				usage, err := quotaManager.GetUsage(1234)
+				Expect(err).ToNot(HaveOccured())
+
+				Expect(usage).To(BeZero())
+
+				Expect(fakeRunner).ToNot(HaveExecutedSerially(
+					fake_command_runner.CommandSpec{
+						Path: "/root/path/bin/repquota",
+					},
+				))
+			})
+		})
+	})
+
+	Describe("getting the mount point", func() {
+		It("returns the mount point of the container depot", func() {
+			Expect(quotaManager.MountPoint()).To(Equal("/some/mount/point"))
 		})
 	})
 })
