@@ -212,7 +212,7 @@ func childRun(state State, fullLibPath, fullRootPath string) {
 		goto cleanup
 	}
 
-	err = syscall.Exec("/sbin/wshd", []string{"/sbin/wshd", "--continue"}, []string{})
+	err = syscall.Exec("/sbin/wshd", []string{*title, "--continue"}, []string{})
 	if err != nil {
 		log.Println("error executing /sbin/wshd:", err)
 		goto cleanup
@@ -231,8 +231,6 @@ func childContinue() {
 	syscall.CloseOnExec(state.ChildBarrier.FDs[0])
 	syscall.CloseOnExec(state.ChildBarrier.FDs[1])
 	syscall.CloseOnExec(state.SocketFD)
-
-	// TODO: set title
 
 	err = umountAll("/mnt")
 	if err != nil {

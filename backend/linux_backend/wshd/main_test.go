@@ -205,7 +205,13 @@ setup_fs
 
 		socketPath = path.Join(runDir, "wshd.sock")
 
-		wshdCommand = exec.Command(wshd, "--run", runDir, "--lib", libDir, "--root", mntDir)
+		wshdCommand = exec.Command(
+			wshd,
+			"--run", runDir,
+			"--lib", libDir,
+			"--root", mntDir,
+			"--title", "test wshd",
+		)
 
 		wshdSession, err := cmdtest.StartWrapped(wshdCommand, outWrapper, outWrapper)
 		Expect(err).ToNot(HaveOccured())
@@ -217,13 +223,19 @@ setup_fs
 		Eventually(ErrorDialingUnix(socketPath)).ShouldNot(HaveOccured())
 	})
 
-	It("starts the daemon as a session leader with process isolation", func() {
+	It("starts the daemon as a session leader with process isolation and the given title", func() {
 		ps := exec.Command(wsh, "--socket", socketPath, "/bin/ps", "-o", "pid,command")
 
 		psSession, err := cmdtest.StartWrapped(ps, outWrapper, outWrapper)
 		Expect(err).ToNot(HaveOccured())
 
-		Expect(psSession).To(Say(" 1 /sbin/wshd"))
+		Expect(psSession).To(Say(`  PID COMMAND
+    1 test wshd --continue
+   \d+ /bin/ps -o pid,command
+`))
+
+		Expect(psSession).ToNot(Say(`.`))
+
 		Expect(psSession).To(ExitWith(0))
 	})
 
