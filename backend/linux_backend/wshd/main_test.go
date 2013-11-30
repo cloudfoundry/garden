@@ -167,7 +167,7 @@ setup_fs
 		Expect(err).ToNot(HaveOccured())
 		Expect(setUpRootSession).To(ExitWith(0))
 
-		err = copyFile(shmTest, path.Join(mntDir, "bin", "shmtest"))
+		err = copyFile(shmTest, path.Join(mntDir, "sbin", "shmtest"))
 		Expect(err).ToNot(HaveOccured())
 
 		socketPath = path.Join(runDir, "wshd.sock")
@@ -249,7 +249,7 @@ setup_fs
 		Expect(createLocal).To(Say("ok"))
 
 		createRemote, err := cmdtest.StartWrapped(
-			exec.Command(wsh, "--socket", socketPath, "/bin/shmtest", "create"),
+			exec.Command(wsh, "--socket", socketPath, "/sbin/shmtest", "create"),
 			outWrapper,
 			outWrapper,
 		)
