@@ -3,6 +3,15 @@
 
 set -e -x
 
+if ! which go >/dev/null 2>&1; then
+  bash < <(curl -s https://raw.github.com/moovweb/gvm/master/binscripts/gvm-installer) || true
+
+  source $HOME/.gvm/scripts/gvm
+
+  gvm install go1.1
+  gvm use go1.1
+fi
+
 ROOTFS_FN=lucid64.dev.tgz
 ROOTFS_URI=http://cfstacks.s3.amazonaws.com/${ROOTFS_FN}
 ROOTFS_SHA=b2633b2ab4964f91402bb2d889f2f12449a8b828
