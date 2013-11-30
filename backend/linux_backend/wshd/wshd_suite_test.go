@@ -40,7 +40,7 @@ func TestWshd(t *testing.T) {
 				}
 			}
 
-			for i := 0; i < 100; i++ {
+			for i := 0; i < 4; i++ {
 				umount := exec.Command("umount", path.Join(containerDir, "mnt"))
 
 				err := umount.Run()
@@ -56,7 +56,7 @@ func TestWshd(t *testing.T) {
 		}
 
 		for _, containerDir := range createdContainers {
-			for i := 0; i < 100; i++ {
+			for i := 0; i < 4; i++ {
 				err := os.RemoveAll(containerDir)
 
 				log.Println("destroying", err)
