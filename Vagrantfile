@@ -28,7 +28,15 @@ Vagrant.configure("2") do |config|
     chef.cookbooks_path = ["cookbooks", "site-cookbooks"]
 
     chef.add_recipe "garden::apt-update"
+    chef.add_recipe "build-essential::default"
+    chef.add_recipe "chef-golang"
     chef.add_recipe "garden::warden"
     chef.add_recipe "garden::rootfs"
+
+    chef.json = {
+      go: {
+        version: "1.1.2",
+      },
+    }
   end
 end
