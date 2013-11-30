@@ -45,75 +45,6 @@ var continueAsChild = flag.Bool(
 	"(internal) continue execution as containerized daemon",
 )
 
-func createContainerizedProcess() (int, error) {
-	syscall.ForkLock.Lock()
-	defer syscall.ForkLock.Unlock()
-
-	pid, _, err := syscall.RawSyscall(
-		syscall.SYS_CLONE,
-		CLONE_NEWNS|
-			CLONE_NEWUTS|
-			CLONE_NEWIPC|
-			CLONE_NEWPID|
-			CLONE_NEWNET,
-		0,
-		0,
-	)
-
-	if err != 0 {
-		return 0, err
-	}
-
-	return int(pid), nil
-}
-
-func childContinue() {
-	state, err := LoadStateFromSHM()
-	if err != nil {
-		log.Fatalln("error loading state:", err)
-	}
-
-	childBarrier := &barrier.Barrier{FDs: state.ChildBarrierFDs}
-
-	syscall.CloseOnExec(state.ChildBarrierFDs[0])
-	syscall.CloseOnExec(state.ChildBarrierFDs[1])
-	syscall.CloseOnExec(state.SocketFD)
-
-	// TODO: set title
-
-	err = umountAll("/mnt")
-	if err != nil {
-		log.Fatalf("error clearing /mnt mountpoints: %#v\n", err)
-	}
-
-	_, err = syscall.Setsid()
-	if err != nil {
-		log.Fatalln("error setting sid:", err)
-	}
-
-	socketFile := os.NewFile(uintptr(state.SocketFD), "wshd.sock")
-
-	daemon := daemon.New(socketFile)
-
-	err = childBarrier.Signal()
-	if err != nil {
-		log.Fatalln("error signalling parent:", err)
-	}
-
-	err = daemon.Start()
-	if err != nil {
-		log.Fatalln("daemon start error:", err)
-	}
-
-	socketFile.Close()
-
-	os.Stdin.Close()
-	os.Stdout.Close()
-	os.Stderr.Close()
-
-	select {}
-}
-
 func main() {
 	flag.Parse()
 
@@ -122,37 +53,11 @@ func main() {
 		return
 	}
 
-	fullRunPath, err := filepath.Abs(*runPath)
-	if err != nil {
-		log.Fatalln("error resolving run path:", err)
-	}
+	fullRunPath := resolvePath(*runPath)
+	fullLibPath := resolvePath(*libPath)
+	fullRootPath := resolvePath(*rootPath)
 
-	fullRunPath, err = filepath.EvalSymlinks(fullRunPath)
-	if err != nil {
-		log.Fatalln("error resolving run path:", err)
-	}
-
-	fullLibPath, err := filepath.Abs(*libPath)
-	if err != nil {
-		log.Fatalln("error resolving lib path:", err)
-	}
-
-	fullLibPath, err = filepath.EvalSymlinks(fullLibPath)
-	if err != nil {
-		log.Fatalln("error resolving lib path:", err)
-	}
-
-	fullRootPath, err := filepath.Abs(*rootPath)
-	if err != nil {
-		log.Fatalln("error resolving root path:", err)
-	}
-
-	fullRootPath, err = filepath.EvalSymlinks(fullRootPath)
-	if err != nil {
-		log.Fatalln("error resolving root path:", err)
-	}
-
-	err = syscall.Unshare(CLONE_NEWNS)
+	err := syscall.Unshare(CLONE_NEWNS)
 	if err != nil {
 		log.Fatalln("error unsharing:", err)
 	}
@@ -188,73 +93,20 @@ func main() {
 	}
 
 	state := State{
-		SocketFD:        newFD,
-		ChildBarrierFDs: childBarrier.FDs,
+		SocketFD:      newFD,
+		ChildBarrier:  childBarrier,
+		ParentBarrier: parentBarrier,
 	}
 
 	pid, err := createContainerizedProcess()
-
 	if err != nil {
 		log.Fatalln("error creating child process:", err)
 	}
 
 	if pid == 0 {
-		err := parentBarrier.Wait()
-		if err != nil {
-			log.Println("error waiting for signal from parent:", err)
-			goto cleanup
-		}
+		childRun(state, fullLibPath, fullRootPath)
 
-		err = exec.Command(path.Join(fullLibPath, "hook-child-before-pivot.sh")).Run()
-		if err != nil {
-			log.Println("error executing hook-child-before-pivot.sh:", err)
-			goto cleanup
-		}
-
-		err = os.Chdir(fullRootPath)
-		if err != nil {
-			log.Println("error chdir'ing to root path:", err)
-			goto cleanup
-		}
-
-		err = os.MkdirAll("mnt", 0700)
-		if err != nil {
-			log.Println("error making mnt:", err)
-			goto cleanup
-		}
-
-		err = syscall.PivotRoot(".", "mnt")
-		if err != nil {
-			log.Println("error pivoting root:", err)
-			goto cleanup
-		}
-
-		err = os.Chdir("/")
-		if err != nil {
-			log.Println("error chdir'ing to /:", err)
-			goto cleanup
-		}
-
-		err = exec.Command(path.Join("/mnt", fullLibPath, "hook-child-after-pivot.sh")).Run()
-		if err != nil {
-			log.Println("error executing hook-child-after-pivot.sh:", err)
-			goto cleanup
-		}
-
-		err = SaveStateToSHM(state)
-		if err != nil {
-			log.Println("error saving state:", err)
-			goto cleanup
-		}
-
-		err = syscall.Exec("/sbin/wshd", []string{"/sbin/wshd", "--continue"}, []string{})
-		if err != nil {
-			log.Println("error executing /sbin/wshd:", err)
-			goto cleanup
-		}
-	cleanup:
-		childBarrier.Fail()
-		os.Exit(255)
+		panic("unreachable")
 	}
 
 	os.Setenv("PID", fmt.Sprintf("%d", pid))
@@ -275,4 +127,142 @@ func main() {
 	}
 
 	os.Exit(0)
+}
+
+func resolvePath(path string) string {
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		log.Fatalln("error resolving path:", path, err)
+	}
+
+	fullPath, err := filepath.EvalSymlinks(absPath)
+	if err != nil {
+		log.Fatalln("error resolving path:", path, err)
+	}
+
+	return fullPath
+}
+
+func createContainerizedProcess() (int, error) {
+	syscall.ForkLock.Lock()
+	defer syscall.ForkLock.Unlock()
+
+	var flags uintptr
+
+	flags |= CLONE_NEWNS  // new mount namespace
+	flags |= CLONE_NEWUTS // new UTS namespace
+	flags |= CLONE_NEWIPC // new inter-process communiucation namespace
+	flags |= CLONE_NEWPID // new process pid namespace
+	flags |= CLONE_NEWNET // new network namespace
+
+	pid, _, err := syscall.RawSyscall(syscall.SYS_CLONE, flags, 0, 0)
+	if err != 0 {
+		return 0, err
+	}
+
+	return int(pid), nil
+}
+
+func childRun(state State, fullLibPath, fullRootPath string) {
+	err := state.ParentBarrier.Wait()
+	if err != nil {
+		log.Println("error waiting for signal from parent:", err)
+		goto cleanup
+	}
+
+	err = exec.Command(path.Join(fullLibPath, "hook-child-before-pivot.sh")).Run()
+	if err != nil {
+		log.Println("error executing hook-child-before-pivot.sh:", err)
+		goto cleanup
+	}
+
+	err = os.Chdir(fullRootPath)
+	if err != nil {
+		log.Println("error chdir'ing to root path:", err)
+		goto cleanup
+	}
+
+	err = os.MkdirAll("mnt", 0700)
+	if err != nil {
+		log.Println("error making mnt:", err)
+		goto cleanup
+	}
+
+	err = syscall.PivotRoot(".", "mnt")
+	if err != nil {
+		log.Println("error pivoting root:", err)
+		goto cleanup
+	}
+
+	err = os.Chdir("/")
+	if err != nil {
+		log.Println("error chdir'ing to /:", err)
+		goto cleanup
+	}
+
+	err = exec.Command(path.Join("/mnt", fullLibPath, "hook-child-after-pivot.sh")).Run()
+	if err != nil {
+		log.Println("error executing hook-child-after-pivot.sh:", err)
+		goto cleanup
+	}
+
+	err = SaveStateToSHM(state)
+	if err != nil {
+		log.Println("error saving state:", err)
+		goto cleanup
+	}
+
+	err = syscall.Exec("/sbin/wshd", []string{"/sbin/wshd", "--continue"}, []string{})
+	if err != nil {
+		log.Println("error executing /sbin/wshd:", err)
+		goto cleanup
+	}
+cleanup:
+	state.ChildBarrier.Fail()
+	os.Exit(255)
+}
+
+func childContinue() {
+	state, err := LoadStateFromSHM()
+	if err != nil {
+		log.Fatalln("error loading state:", err)
+	}
+
+	syscall.CloseOnExec(state.ChildBarrier.FDs[0])
+	syscall.CloseOnExec(state.ChildBarrier.FDs[1])
+	syscall.CloseOnExec(state.SocketFD)
+
+	// TODO: set title
+
+	err = umountAll("/mnt")
+	if err != nil {
+		log.Fatalf("error clearing /mnt mountpoints: %#v\n", err)
+	}
+
+	_, err = syscall.Setsid()
+	if err != nil {
+		log.Fatalln("error setting sid:", err)
+	}
+
+	socketFile := os.NewFile(uintptr(state.SocketFD), "wshd.sock")
+
+	daemon := daemon.New(socketFile)
+
+	err = state.ChildBarrier.Signal()
+	if err != nil {
+		log.Fatalln("error signalling parent:", err)
+	}
+
+	err = daemon.Start()
+	if err != nil {
+		log.Fatalln("daemon start error:", err)
+	}
+
+	socketFile.Close()
+
+	os.Stdin.Close()
+	os.Stdout.Close()
+	os.Stderr.Close()
+
+	select {}
 }

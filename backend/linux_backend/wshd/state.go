@@ -5,11 +5,14 @@ import (
 	"encoding/gob"
 	"syscall"
 	"unsafe"
+
+	"github.com/vito/garden/backend/linux_backend/wshd/barrier"
 )
 
 type State struct {
-	SocketFD        int
-	ChildBarrierFDs []int
+	SocketFD      int
+	ChildBarrier  *barrier.Barrier
+	ParentBarrier *barrier.Barrier
 }
 
 const StateKey = 0xdeadbeef
