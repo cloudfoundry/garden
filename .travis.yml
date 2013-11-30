@@ -17,5 +17,8 @@ install:
   - go test -i ./...
 
 script:
+  - mkdir -p ./.rootfs
+  - curl http://cfstacks.s3.amazonaws.com/lucid64.dev.tgz | tar zxf - -C ./.rootfs
+  - export GARDEN_TEST_ROOTFS=$PWD/.rootfs
   - export PATH=$HOME/gopath/bin:$PATH
   - sudo ginkgo -race -r -i --randomizeAllSpecs
