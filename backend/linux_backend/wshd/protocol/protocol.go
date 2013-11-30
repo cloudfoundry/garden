@@ -1,6 +1,7 @@
 package protocol
 
 type RequestMessage struct {
+	User string
 	Argv []string
 }
 

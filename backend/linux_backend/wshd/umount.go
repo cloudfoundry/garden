@@ -56,8 +56,6 @@ func umountAll(prefix string) error {
 		for i := 0; i < 10; i++ {
 			err := syscall.Unmount(mountPoint, 0)
 
-			fmt.Println("unmount", mountPoint, err)
-
 			if err == nil {
 				break
 			}

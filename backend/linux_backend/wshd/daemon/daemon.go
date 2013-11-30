@@ -3,10 +3,12 @@ package daemon
 import (
 	"bytes"
 	"encoding/gob"
+	"fmt"
 	"log"
 	"net"
 	"os"
 	"os/exec"
+	"os/user"
 	"syscall"
 
 	"github.com/vito/garden/backend/linux_backend/wshd/protocol"
@@ -110,12 +112,42 @@ func (d *Daemon) serveConnection(conn *net.UnixConn) {
 		return
 	}
 
+	if requestMessage.User == "" {
+		requestMessage.User = "root"
+	}
+
+	user, err := user.Lookup(requestMessage.User)
+	if err != nil {
+		defer statusIn.Close()
+		defer statusOut.Close()
+
+		log.Println("cannot find user:", requestMessage.User)
+
+		writeStatus(statusIn, 255)
+
+		return
+	}
+
+	path := "/bin:/usr/bin"
+	if user.Uid == "0" {
+		path = "/sbin:/bin:/usr/sbin:/usr/bin"
+	}
+
+	var uid, gid uint32
+
+	fmt.Sscanf(user.Uid, "%d", &uid)
+	fmt.Sscanf(user.Gid, "%d", &gid)
+
 	cmd := &exec.Cmd{
 		Path: requestMessage.Argv[0],
 		Args: requestMessage.Argv,
 
+		Dir: user.HomeDir,
+
 		Env: []string{
-			"PATH=/sbin:/bin:/usr/sbin:/usr/bin",
+			"PATH=" + path,
+			"USER=" + user.Username,
+			"HOME=" + user.HomeDir,
 		},
 
 		Stdin:  stdinOut,
@@ -124,6 +156,10 @@ func (d *Daemon) serveConnection(conn *net.UnixConn) {
 
 		SysProcAttr: &syscall.SysProcAttr{
 			Setsid: true,
+			Credential: &syscall.Credential{
+				Uid: uid,
+				Gid: gid,
+			},
 		},
 	}
 

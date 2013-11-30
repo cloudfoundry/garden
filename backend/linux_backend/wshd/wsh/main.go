@@ -33,6 +33,7 @@ func main() {
 	}
 
 	request := protocol.RequestMessage{
+		User: *user,
 		Argv: flag.Args(),
 	}
 

@@ -102,6 +102,7 @@ ln -sf pts/ptmx /dev/ptmx
 mkdir -p /proc
 mount -t proc none /proc
 
+useradd -mU -u 10000 -s /bin/bash vcap
 `), 0755)
 
 		ioutil.WriteFile(path.Join(libDir, "set-up-root.sh"), []byte(`#!/bin/bash
@@ -341,6 +342,76 @@ setup_fs
 
 		Expect(catSession).ToNot(Say(" /mnt"))
 		Expect(catSession).To(ExitWith(0))
+	})
+
+	Context("when running a command as a user", func() {
+		It("executes with setuid and setgid", func() {
+			bash := exec.Command(wsh, "--socket", socketPath, "--user", "vcap", "/bin/bash", "-c", "id -u; id -g")
+
+			bashSession, err := cmdtest.StartWrapped(bash, outWrapper, outWrapper)
+			Expect(err).ToNot(HaveOccured())
+
+			Expect(bashSession).To(Say("^10000\n"))
+			Expect(bashSession).To(Say("^10000\n"))
+			Expect(bashSession).To(ExitWith(0))
+		})
+
+		It("sets $HOME, $USER, and $PATH", func() {
+			bash := exec.Command(wsh, "--socket", socketPath, "--user", "vcap", "/bin/bash", "-c", "env | sort")
+
+			bashSession, err := cmdtest.StartWrapped(bash, outWrapper, outWrapper)
+			Expect(err).ToNot(HaveOccured())
+
+			Expect(bashSession).To(Say("HOME=/home/vcap\n"))
+			Expect(bashSession).To(Say("PATH=/bin:/usr/bin\n"))
+			Expect(bashSession).To(Say("USER=vcap\n"))
+			Expect(bashSession).To(ExitWith(0))
+		})
+
+		It("executes in their home directory", func() {
+			pwd := exec.Command(wsh, "--socket", socketPath, "--user", "vcap", "/bin/pwd")
+
+			pwdSession, err := cmdtest.StartWrapped(pwd, outWrapper, outWrapper)
+			Expect(err).ToNot(HaveOccured())
+
+			Expect(pwdSession).To(Say("/home/vcap\n"))
+			Expect(pwdSession).To(ExitWith(0))
+		})
+	})
+
+	Context("when running a command as root", func() {
+		It("executes with setuid and setgid", func() {
+			bash := exec.Command(wsh, "--socket", socketPath, "--user", "root", "/bin/bash", "-c", "id -u; id -g")
+
+			bashSession, err := cmdtest.StartWrapped(bash, outWrapper, outWrapper)
+			Expect(err).ToNot(HaveOccured())
+
+			Expect(bashSession).To(Say("^0\n"))
+			Expect(bashSession).To(Say("^0\n"))
+			Expect(bashSession).To(ExitWith(0))
+		})
+
+		It("sets $HOME, $USER, and a $PATH with sbin dirs", func() {
+			bash := exec.Command(wsh, "--socket", socketPath, "--user", "root", "/bin/bash", "-c", "env | sort")
+
+			bashSession, err := cmdtest.StartWrapped(bash, outWrapper, outWrapper)
+			Expect(err).ToNot(HaveOccured())
+
+			Expect(bashSession).To(Say("HOME=/root\n"))
+			Expect(bashSession).To(Say("PATH=/sbin:/bin:/usr/sbin:/usr/bin\n"))
+			Expect(bashSession).To(Say("USER=root\n"))
+			Expect(bashSession).To(ExitWith(0))
+		})
+
+		It("executes in their home directory", func() {
+			pwd := exec.Command(wsh, "--socket", socketPath, "--user", "root", "/bin/pwd")
+
+			pwdSession, err := cmdtest.StartWrapped(pwd, outWrapper, outWrapper)
+			Expect(err).ToNot(HaveOccured())
+
+			Expect(pwdSession).To(Say("/root\n"))
+			Expect(pwdSession).To(ExitWith(0))
+		})
 	})
 })
 

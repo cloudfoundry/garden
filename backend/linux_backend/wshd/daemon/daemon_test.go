@@ -54,12 +54,27 @@ var _ = Describe("Handling command requests", func() {
 		serverConnection = conn.(*net.UnixConn)
 	})
 
+	readExitStatus := func() int {
+		decoder := gob.NewDecoder(status)
+
+		var exitStatus protocol.ExitStatusMessage
+
+		err := decoder.Decode(&exitStatus)
+		Expect(err).ToNot(HaveOccured())
+
+		return exitStatus.ExitStatus
+	}
+
 	Describe("running commands", func() {
+		var request protocol.RequestMessage
+
 		BeforeEach(func() {
-			request := protocol.RequestMessage{
+			request = protocol.RequestMessage{
 				Argv: []string{"/bin/bash"},
 			}
+		})
 
+		JustBeforeEach(func() {
 			encoder := gob.NewEncoder(serverConnection)
 
 			err := encoder.Encode(request)
@@ -88,14 +103,7 @@ var _ = Describe("Handling command requests", func() {
 			err = errExpect.Expect("hi err\n")
 			Expect(err).ToNot(HaveOccured())
 
-			decoder := gob.NewDecoder(status)
-
-			var exitStatus protocol.ExitStatusMessage
-
-			err = decoder.Decode(&exitStatus)
-			Expect(err).ToNot(HaveOccured())
-
-			Expect(exitStatus.ExitStatus).To(Equal(42))
+			Expect(readExitStatus()).To(Equal(42))
 		})
 
 		It("runs the command with $PATH set", func() {
@@ -105,39 +113,39 @@ var _ = Describe("Handling command requests", func() {
 			err := outExpect.Expect("PATH: /sbin:/bin:/usr/sbin:/usr/bin\n")
 			Expect(err).ToNot(HaveOccured())
 		})
-	})
 
-	Context("when a command fails to start", func() {
-		BeforeEach(func() {
-			request := protocol.RequestMessage{
-				Argv: []string{"/bogus/path"},
-			}
+		It("runs with $HOME and $USER set", func() {
+			stdin.Write([]byte("echo $USER\n"))
+			stdin.Write([]byte("echo $HOME\n"))
+			stdin.Close()
 
-			encoder := gob.NewEncoder(serverConnection)
-
-			err := encoder.Encode(request)
+			err := outExpect.Expect("root\n")
 			Expect(err).ToNot(HaveOccured())
 
-			fds := readFDs(serverConnection)
-
-			stdin = os.NewFile(uintptr(fds[0]), "stdin")
-			stdout := os.NewFile(uintptr(fds[1]), "stdout")
-			stderr := os.NewFile(uintptr(fds[2]), "stderr")
-			status = os.NewFile(uintptr(fds[3]), "status")
-
-			outExpect = cmdtest.NewExpector(stdout, 1*time.Second)
-			errExpect = cmdtest.NewExpector(stderr, 1*time.Second)
+			err = outExpect.Expect("/root\n")
+			Expect(err).ToNot(HaveOccured())
 		})
 
-		It("returns exit status 255", func() {
-			decoder := gob.NewDecoder(status)
+		Context("when a user is given", func() {
+			Context("but the user does not exist", func() {
+				BeforeEach(func() {
+					request.User = "bogus-user"
+				})
 
-			var exitStatus protocol.ExitStatusMessage
+				It("returns exit status 255", func() {
+					Expect(readExitStatus()).To(Equal(255))
+				})
+			})
+		})
 
-			err := decoder.Decode(&exitStatus)
-			Expect(err).ToNot(HaveOccured())
+		Context("when a command fails to start", func() {
+			BeforeEach(func() {
+				request.Argv = []string{"/bogus/path"}
+			})
 
-			Expect(exitStatus.ExitStatus).To(Equal(255))
+			It("returns exit status 255", func() {
+				Expect(readExitStatus()).To(Equal(255))
+			})
 		})
 	})
 })
