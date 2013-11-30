@@ -3,3 +3,4 @@ code.google.com/p/gogoprotobuf/protoc-gen-gogo	a2cbb9e3ce8ab9e350516a3cda5da7b61
 github.com/onsi/gomega	1a1f88a0799ac4009af5262e3add6a8486a8270f
 github.com/onsi/ginkgo	5a38252755c298129262a2c9f67564183c98e396
 github.com/onsi/ginkgo/ginkgo	5a38252755c298129262a2c9f67564183c98e396
+github.com/vito/cmdtest	f47af44b2ab0551737a58aa0c8504a445c8836fd
