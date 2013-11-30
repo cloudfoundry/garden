@@ -1,0 +1,42 @@
+#!/bin/bash
+# vim: set ft=sh
+
+set -e -x
+
+ROOTFS_FN=lucid64.dev.tgz
+ROOTFS_URI=http://cfstacks.s3.amazonaws.com/${ROOTFS_FN}
+ROOTFS_SHA=b2633b2ab4964f91402bb2d889f2f12449a8b828
+
+ROOTFS_INSTALL_DIR=$PWD/.rootfs
+
+mkdir -p "$ROOTFS_INSTALL_DIR"
+
+pushd "$ROOTFS_INSTALL_DIR"
+  echo "${ROOTFS_SHA}  ${ROOTFS_FN}" > checksum
+
+  if [ ! -f ${ROOTFS_FN} ] || ! shasum -s -c checksum; then
+    curl "${ROOTFS_URI}" -o ${ROOTFS_FN}
+  fi
+
+  shasum "${ROOTFS_FN}" > checksum
+
+  mkdir -p ./rootfs
+  tar zxf ${ROOTFS_FN} -C ./rootfs
+popd
+
+export GARDEN_TEST_ROOTFS="${ROOTFS_INSTALL_DIR}/rootfs"
+
+if [ -z "$GOPATH" ]; then
+  export GOPATH=$HOME/go
+fi
+
+FIRST_GOPATH=`echo $GOPATH | cut -d':' -f1`
+
+export PATH=$FIRST_GOPATH/bin:$PATH
+
+go get -v github.com/xoebus/gocart/gocart
+
+gocart install
+go install github.com/onsi/ginkgo/ginkgo
+
+ginkgo -race -r -i --randomizeAllSpecs
