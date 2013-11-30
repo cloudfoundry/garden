@@ -3,13 +3,12 @@
 
 set -e -x
 
-if ! which go >/dev/null 2>&1; then
-  bash < <(curl -s https://raw.github.com/moovweb/gvm/master/binscripts/gvm-installer) || true
-
+if [ "$TRAVIS" = "true" ]; then
   source $HOME/.gvm/scripts/gvm
-
   gvm install go1.1
   gvm use go1.1
+
+  export GOPATH=$HOME/gopath:$GOPATH
 fi
 
 ROOTFS_FN=lucid64.dev.tgz
