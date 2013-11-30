@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"syscall"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -24,6 +25,11 @@ var _ = Describe("Running wshd", func() {
 	}
 
 	wsh, err := cmdtest.Build("github.com/vito/garden/backend/linux_backend/wshd/wsh")
+	if err != nil {
+		panic(err)
+	}
+
+	shmTest, err := cmdtest.Build("github.com/vito/garden/backend/linux_backend/wshd/shm_test")
 	if err != nil {
 		panic(err)
 	}
@@ -194,6 +200,9 @@ setup_fs
 		Expect(err).ToNot(HaveOccured())
 		Expect(setUpRootSession).To(ExitWith(0))
 
+		err = copyFile(shmTest, path.Join(mntDir, "bin", "shmtest"))
+		Expect(err).ToNot(HaveOccured())
+
 		socketPath = path.Join(runDir, "wshd.sock")
 
 		wshdCommand = exec.Command(wshd, "--run", runDir, "--lib", libDir, "--root", mntDir)
@@ -208,7 +217,7 @@ setup_fs
 		Eventually(ErrorDialingUnix(socketPath)).ShouldNot(HaveOccured())
 	})
 
-	It("starts the daemon with process isolation", func() {
+	It("starts the daemon as a session leader with process isolation", func() {
 		ps := exec.Command(wsh, "--socket", socketPath, "/bin/ps", "-o", "pid,command")
 
 		psSession, err := cmdtest.StartWrapped(ps, outWrapper, outWrapper)
@@ -218,19 +227,71 @@ setup_fs
 		Expect(psSession).To(ExitWith(0))
 	})
 
-	PIt("starts the daemon with mount space isolation", func() {
+	It("starts the daemon with mount space isolation", func() {
+		mkdir := exec.Command(wsh, "--socket", socketPath, "/bin/mkdir", "/gnome")
+		mkdirSession, err := cmdtest.StartWrapped(mkdir, outWrapper, outWrapper)
+		Expect(err).ToNot(HaveOccured())
+		Expect(mkdirSession).To(ExitWith(0))
+
+		mount := exec.Command(wsh, "--socket", socketPath, "/bin/mount", "--bind", "/home", "/gnome")
+		mountSession, err := cmdtest.StartWrapped(mount, outWrapper, outWrapper)
+		Expect(err).ToNot(HaveOccured())
+		Expect(mountSession).To(ExitWith(0))
+
+		cat := exec.Command("/bin/cat", "/proc/mounts")
+		catSession, err := cmdtest.StartWrapped(cat, outWrapper, outWrapper)
+		Expect(err).ToNot(HaveOccured())
+		Expect(catSession).ToNot(Say("/gnome"))
+		Expect(catSession).To(ExitWith(0))
 	})
 
-	PIt("starts the daemon with network namespace isolation", func() {
+	It("starts the daemon with network namespace isolation", func() {
+		ifconfig := exec.Command(wsh, "--socket", socketPath, "/sbin/ifconfig", "lo:0", "1.2.3.4", "up")
+		ifconfigSession, err := cmdtest.StartWrapped(ifconfig, outWrapper, outWrapper)
+		Expect(err).ToNot(HaveOccured())
+		Expect(ifconfigSession).To(ExitWith(0))
 
+		localIfconfig := exec.Command("/sbin/ifconfig")
+		localIfconfigSession, err := cmdtest.StartWrapped(localIfconfig, outWrapper, outWrapper)
+		Expect(err).ToNot(HaveOccured())
+		Expect(localIfconfigSession).ToNot(Say("lo:0"))
+		Expect(localIfconfigSession).To(ExitWith(0))
 	})
 
-	PIt("starts the daemon with a new IPC namespace", func() {
+	It("starts the daemon with a new IPC namespace", func() {
+		localSHM := exec.Command(shmTest)
+		createLocal, err := cmdtest.StartWrapped(
+			localSHM,
+			outWrapper,
+			outWrapper,
+		)
+		Expect(err).ToNot(HaveOccured())
 
+		Expect(createLocal).To(Say("ok"))
+
+		createRemote, err := cmdtest.StartWrapped(
+			exec.Command(wsh, "--socket", socketPath, "/bin/shmtest", "create"),
+			outWrapper,
+			outWrapper,
+		)
+		Expect(err).ToNot(HaveOccured())
+		Expect(createRemote).To(Say("ok"))
+
+		localSHM.Process.Signal(syscall.SIGUSR2)
+
+		Expect(createLocal).To(ExitWith(0))
 	})
 
-	PIt("starts the daemon with a new UTCS namespace", func() {
+	It("starts the daemon with a new UTS namespace", func() {
+		hostname := exec.Command(wsh, "--socket", socketPath, "/bin/hostname", "newhostname")
+		hostnameSession, err := cmdtest.StartWrapped(hostname, outWrapper, outWrapper)
+		Expect(err).ToNot(HaveOccured())
 
+		Expect(hostnameSession).To(ExitWith(0))
+
+		localHostname := exec.Command("hostname")
+		localHostnameSession, err := cmdtest.StartWrapped(localHostname, outWrapper, outWrapper)
+		Expect(localHostnameSession).ToNot(Say("newhostname"))
 	})
 
 	PIt("makes the given rootfs the root of the daemon", func() {
@@ -279,7 +340,7 @@ func copyFile(src, dst string) error {
 
 	defer s.Close()
 
-	d, err := os.Create(dst)
+	d, err := os.OpenFile(dst, os.O_WRONLY|os.O_CREATE, 0755)
 	if err != nil {
 		return err
 	}
