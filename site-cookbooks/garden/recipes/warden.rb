@@ -23,7 +23,7 @@ end
 execute "build root directory" do
   cwd "/vagrant"
 
-  command "make"
+  command "make GOPATH=/go"
   action :run
 end
 
