@@ -147,6 +147,16 @@ var _ = Describe("Handling command requests", func() {
 				Expect(readExitStatus()).To(Equal(255))
 			})
 		})
+
+		Context("when a command is given without an absolute path", func() {
+			BeforeEach(func() {
+				request.Argv = []string{"ifconfig"}
+			})
+
+			It("resolves the executable in the user's $PATH", func() {
+				Expect(readExitStatus()).To(Equal(0))
+			})
+		})
 	})
 })
 

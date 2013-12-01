@@ -419,7 +419,7 @@ setup_fs
 		})
 
 		It("doesn't cause rsh-like flags to be consumed", func() {
-			pwd := exec.Command(
+			cmd := exec.Command(
 				wsh,
 				"--socket", socketPath,
 				"--user", "root",
@@ -433,11 +433,29 @@ setup_fs
 				"somehost",
 			)
 
-			pwdSession, err := cmdtest.StartWrapped(pwd, outWrapper, outWrapper)
+			cmdSession, err := cmdtest.StartWrapped(cmd, outWrapper, outWrapper)
 			Expect(err).ToNot(HaveOccured())
 
-			Expect(pwdSession).To(Say("-l vcap -t 1 -4 -6 -d -n somehost\n"))
-			Expect(pwdSession).To(ExitWith(0))
+			Expect(cmdSession).To(Say("-l vcap -t 1 -4 -6 -d -n somehost\n"))
+			Expect(cmdSession).To(ExitWith(0))
+		})
+
+		It("can be used to rsync files", func() {
+			cmd := exec.Command(
+				"rsync",
+				"-e",
+				wsh+" --socket "+socketPath+" --rsh",
+				"-r",
+				"-p",
+				"--links",
+				wsh, // send wsh binary
+				"root@container:wsh",
+			)
+
+			cmdSession, err := cmdtest.StartWrapped(cmd, outWrapper, outWrapper)
+			Expect(err).ToNot(HaveOccured())
+
+			Expect(cmdSession).To(ExitWith(0))
 		})
 	})
 })

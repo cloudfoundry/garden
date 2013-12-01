@@ -138,8 +138,14 @@ func (d *Daemon) serveConnection(conn *net.UnixConn) {
 	fmt.Sscanf(user.Uid, "%d", &uid)
 	fmt.Sscanf(user.Gid, "%d", &gid)
 
+	executable, err := LookPath(requestMessage.Argv[0], path)
+	if err != nil {
+		// let cmd.Start fail later
+		executable = requestMessage.Argv[0]
+	}
+
 	cmd := &exec.Cmd{
-		Path: requestMessage.Argv[0],
+		Path: executable,
 		Args: requestMessage.Argv,
 
 		Dir: user.HomeDir,
