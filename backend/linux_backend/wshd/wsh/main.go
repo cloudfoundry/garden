@@ -130,6 +130,28 @@ func main() {
 	stderr := os.NewFile(uintptr(fds[2]), "stderr")
 	status := os.NewFile(uintptr(fds[3]), "status")
 
+	err = syscall.SetNonblock(int(os.Stdin.Fd()), false)
+	if err != nil {
+		log.Fatalln("failed setting fd nonblock:", err)
+	}
+
+	err = syscall.SetNonblock(int(os.Stdout.Fd()), false)
+	if err != nil {
+		log.Fatalln("failed setting fd nonblock:", err)
+	}
+
+	err = syscall.SetNonblock(int(os.Stderr.Fd()), false)
+	if err != nil {
+		log.Fatalln("failed setting fd nonblock:", err)
+	}
+
+	for _, fd := range fds {
+		err := syscall.SetNonblock(fd, false)
+		if err != nil {
+			log.Fatalln("failed setting fd nonblock:", err, fd)
+		}
+	}
+
 	done := make(chan bool)
 
 	go func() {
