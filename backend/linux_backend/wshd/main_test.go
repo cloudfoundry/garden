@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"path"
 	"syscall"
+	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -377,6 +378,21 @@ setup_fs
 
 			Expect(pwdSession).To(Say("/root\n"))
 			Expect(pwdSession).To(ExitWith(0))
+		})
+	})
+
+	Context("when piping stdin", func() {
+		It("terminates when the input stream terminates", func() {
+			bash := exec.Command(wsh, "--socket", socketPath, "/bin/bash")
+
+			bashSession, err := cmdtest.StartWrapped(bash, outWrapper, outWrapper)
+			Expect(err).ToNot(HaveOccured())
+
+			bashSession.Stdin.Write([]byte("echo hello"))
+			bashSession.Stdin.Close()
+
+			Expect(bashSession).To(SayWithTimeout("hello\n", 1*time.Second))
+			Expect(bashSession).To(ExitWith(0))
 		})
 	})
 })

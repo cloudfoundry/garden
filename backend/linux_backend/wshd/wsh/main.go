@@ -44,8 +44,6 @@ func main() {
 		log.Fatalln("failed writing request:", err)
 	}
 
-	log.Println("sent request")
-
 	var b [2048]byte
 	var oob [2048]byte
 
@@ -53,8 +51,6 @@ func main() {
 	if err != nil {
 		log.Fatalln("failed to read unix msg:", err, n, oobn)
 	}
-
-	log.Println("got response")
 
 	scms, err := syscall.ParseSocketControlMessage(oob[:oobn])
 	if err != nil {
@@ -73,8 +69,6 @@ func main() {
 		return
 	}
 
-	log.Println("got fds", fds)
-
 	if len(fds) != 4 {
 		log.Fatalln("invalid number of fds; need 4, got", len(fds))
 	}
@@ -84,35 +78,16 @@ func main() {
 	stderr := os.NewFile(uintptr(fds[2]), "stderr")
 	status := os.NewFile(uintptr(fds[3]), "status")
 
-	// err = syscall.SetNonblock(int(os.Stdin.Fd()), false)
-	// if err != nil {
-	// 	log.Fatalln("failed setting fd nonblock:", err)
-	// }
-
-	// err = syscall.SetNonblock(int(os.Stdout.Fd()), false)
-	// if err != nil {
-	// 	log.Fatalln("failed setting fd nonblock:", err)
-	// }
-
-	// err = syscall.SetNonblock(int(os.Stderr.Fd()), false)
-	// if err != nil {
-	// 	log.Fatalln("failed setting fd nonblock:", err)
-	// }
-
-	// for _, fd := range fds {
-	// 	err := syscall.SetNonblock(fd, false)
-	// 	if err != nil {
-	// 		log.Fatalln("failed setting fd nonblock:", err, fd)
-	// 	}
-	// }
-
 	done := make(chan bool)
 
-	go io.Copy(stdin, os.Stdin)
+	go func() {
+		io.Copy(stdin, os.Stdin)
+		stdin.Close()
+		os.Stdin.Close()
+	}()
 
 	go func() {
 		io.Copy(os.Stdout, stdout)
-		log.Println("stdout done")
 		stdout.Close()
 		os.Stdout.Close()
 		done <- true
@@ -120,7 +95,6 @@ func main() {
 
 	go func() {
 		io.Copy(os.Stderr, stderr)
-		log.Println("stderr done")
 		stderr.Close()
 		os.Stderr.Close()
 		done <- true
