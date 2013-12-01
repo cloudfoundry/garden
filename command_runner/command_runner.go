@@ -94,9 +94,10 @@ func (r *RealCommandRunner) tee(cmd *exec.Cmd) {
 	}
 
 	if cmd.Stdout == nil {
-		cmd.Stdout = os.Stdout
+		cmd.Stdout = os.Stderr
+
 	} else if cmd.Stdout != nil {
-		cmd.Stdout = io.MultiWriter(cmd.Stdout, os.Stdout)
+		cmd.Stdout = io.MultiWriter(cmd.Stdout, os.Stderr)
 	}
 }
 
