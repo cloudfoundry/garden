@@ -403,8 +403,8 @@ func copyFile(src, dst string) error {
 	return d.Close()
 }
 
-func outWrapper(out io.Reader) io.Reader {
-	return io.TeeReader(out, os.Stdout)
+func outWrapper(out io.Writer) io.Writer {
+	return io.MultiWriter(out, os.Stdout)
 }
 
 func ErrorDialingUnix(socketPath string) func() error {
