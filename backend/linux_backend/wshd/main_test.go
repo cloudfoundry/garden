@@ -130,6 +130,8 @@ function overlay_directory_in_rootfs() {
 function setup_fs() {
   mkdir -p tmp/rootfs mnt
 
+  modprobe overlayfs 2>/dev/null || true
+
   if grep -q -i overlayfs /proc/filesystems
   then
     mount -n -t overlayfs -o rw,upperdir=tmp/rootfs,lowerdir=$rootfs_path none mnt
