@@ -11,28 +11,28 @@ if [ "$TRAVIS" = "true" ]; then
   export GOPATH=$HOME/gopath:$GOPATH
 fi
 
-ROOTFS_FN=lucid64.dev.tgz
-ROOTFS_URI=http://cfstacks.s3.amazonaws.com/${ROOTFS_FN}
-ROOTFS_SHA=b2633b2ab4964f91402bb2d889f2f12449a8b828
+if [ -z "$TRAVIS" ]; then
+  ROOTFS_FN=lucid64.dev.tgz
+  ROOTFS_URI=http://cfstacks.s3.amazonaws.com/${ROOTFS_FN}
+  ROOTFS_SHA=b2633b2ab4964f91402bb2d889f2f12449a8b828
 
-ROOTFS_INSTALL_DIR=${ROOTFS_INSTALL_DIR:-$PWD/.rootfs}
+  ROOTFS_INSTALL_DIR=${ROOTFS_INSTALL_DIR:-$PWD/.rootfs}
 
-mkdir -p "$ROOTFS_INSTALL_DIR"
+  mkdir -p "$ROOTFS_INSTALL_DIR"
 
-pushd "$ROOTFS_INSTALL_DIR"
-  echo "${ROOTFS_SHA}  ${ROOTFS_FN}" > checksum
+  pushd "$ROOTFS_INSTALL_DIR"
+    echo "${ROOTFS_SHA}  ${ROOTFS_FN}" > checksum
 
-  if [ ! -f ${ROOTFS_FN} ] || ! shasum -s -c checksum; then
-    wget "${ROOTFS_URI}"
-  fi
+    if [ ! -f ${ROOTFS_FN} ] || ! shasum -s -c checksum; then
+      wget "${ROOTFS_URI}"
+    fi
 
-  shasum "${ROOTFS_FN}" > checksum
+    mkdir -p ./rootfs
+    tar zxf ${ROOTFS_FN} -C ./rootfs
+  popd
 
-  mkdir -p ./rootfs
-  tar zxf ${ROOTFS_FN} -C ./rootfs
-popd
-
-export GARDEN_TEST_ROOTFS="${ROOTFS_INSTALL_DIR}/rootfs"
+  export GARDEN_TEST_ROOTFS="${ROOTFS_INSTALL_DIR}/rootfs"
+fi
 
 if [ -z "$GOPATH" ]; then
   export GOPATH=$HOME/go
