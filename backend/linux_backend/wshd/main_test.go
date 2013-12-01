@@ -417,6 +417,28 @@ setup_fs
 			Expect(pwdSession).To(Say("/home/vcap\n"))
 			Expect(pwdSession).To(ExitWith(0))
 		})
+
+		It("doesn't cause rsh-like flags to be consumed", func() {
+			pwd := exec.Command(
+				wsh,
+				"--socket", socketPath,
+				"--user", "root",
+				"/bin/echo",
+				"-l", "vcap",
+				"-t", "1",
+				"-4",
+				"-6",
+				"-d",
+				"-n",
+				"somehost",
+			)
+
+			pwdSession, err := cmdtest.StartWrapped(pwd, outWrapper, outWrapper)
+			Expect(err).ToNot(HaveOccured())
+
+			Expect(pwdSession).To(Say("-l vcap -t 1 -4 -6 -d -n somehost\n"))
+			Expect(pwdSession).To(ExitWith(0))
+		})
 	})
 })
 
