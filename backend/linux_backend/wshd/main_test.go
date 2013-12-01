@@ -59,7 +59,6 @@ var _ = Describe("Running wshd", func() {
 
 		ioutil.WriteFile(path.Join(libDir, "hook-parent-before-clone.sh"), []byte(`#!/bin/bash
 
-set -o xtrace
 set -o nounset
 set -o errexit
 shopt -s nullglob
@@ -72,7 +71,6 @@ chmod 700 mnt/sbin/wshd
 
 		ioutil.WriteFile(path.Join(libDir, "hook-parent-after-clone.sh"), []byte(`#!/bin/bash
 
-set -o xtrace
 set -o nounset
 set -o errexit
 shopt -s nullglob
@@ -89,7 +87,6 @@ pwd
 
 		ioutil.WriteFile(path.Join(libDir, "hook-child-after-pivot.sh"), []byte(`#!/bin/bash
 
-set -o xtrace
 set -o nounset
 set -o errexit
 shopt -s nullglob
@@ -108,7 +105,6 @@ useradd -mU -u 10000 -s /bin/bash vcap
 
 		ioutil.WriteFile(path.Join(libDir, "set-up-root.sh"), []byte(`#!/bin/bash
 
-set -o xtrace
 set -o nounset
 set -o errexit
 shopt -s nullglob
