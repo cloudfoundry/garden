@@ -395,6 +395,31 @@ setup_fs
 			Expect(bashSession).To(ExitWith(0))
 		})
 	})
+
+	Context("when in rsh compatibility mode", func() {
+		It("respects -l, discards -t [X], -46dn, skips the host, and runs the command", func() {
+			pwd := exec.Command(
+				wsh,
+				"--socket", socketPath,
+				"--user", "root",
+				"--rsh",
+				"-l", "vcap",
+				"-t", "1",
+				"-4",
+				"-6",
+				"-d",
+				"-n",
+				"somehost",
+				"/bin/pwd",
+			)
+
+			pwdSession, err := cmdtest.StartWrapped(pwd, outWrapper, outWrapper)
+			Expect(err).ToNot(HaveOccured())
+
+			Expect(pwdSession).To(Say("/home/vcap\n"))
+			Expect(pwdSession).To(ExitWith(0))
+		})
+	})
 })
 
 func copyFile(src, dst string) error {

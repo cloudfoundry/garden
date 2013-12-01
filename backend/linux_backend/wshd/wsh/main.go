@@ -24,6 +24,48 @@ var user = flag.String(
 	"user to run the command as",
 )
 
+var rsh = flag.Bool(
+	"rsh",
+	false,
+	"run in rsh compatibility mode",
+)
+
+var rshLogin = flag.String(
+	"l",
+	"",
+	"rsh user; overrides --user",
+)
+
+var rshTimeout = flag.String(
+	"t",
+	"",
+	"(discarded) rsh timeout",
+)
+
+var rsh4 = flag.Bool(
+	"4",
+	false,
+	"(discarded) rsh compatibility",
+)
+
+var rsh6 = flag.Bool(
+	"6",
+	false,
+	"(discarded) rsh compatibility",
+)
+
+var rshD = flag.Bool(
+	"d",
+	false,
+	"(discarded) rsh compatibility",
+)
+
+var rshN = flag.Bool(
+	"n",
+	false,
+	"(discarded) rsh compatibility",
+)
+
 func main() {
 	flag.Parse()
 
@@ -32,9 +74,19 @@ func main() {
 		log.Fatalln(err)
 	}
 
+	args := flag.Args()
+
+	if *rsh {
+		if *rshLogin != "" {
+			user = rshLogin
+		}
+
+		args = args[1:]
+	}
+
 	request := protocol.RequestMessage{
 		User: *user,
-		Argv: flag.Args(),
+		Argv: args,
 	}
 
 	encoder := gob.NewEncoder(conn)
