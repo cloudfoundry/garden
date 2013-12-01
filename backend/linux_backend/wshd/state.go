@@ -11,6 +11,7 @@ import (
 
 type State struct {
 	SocketFD      int
+	LogFD         int
 	ChildBarrier  *barrier.Barrier
 	ParentBarrier *barrier.Barrier
 }

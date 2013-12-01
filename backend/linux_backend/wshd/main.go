@@ -94,8 +94,19 @@ func main() {
 		log.Fatalln("error duplicating socket file:", err)
 	}
 
+	logFile, err := os.Create(path.Join(fullRunPath, "wshd.log"))
+	if err != nil {
+		log.Fatalln("error creating wshd log file:", err)
+	}
+
+	logFD, err := syscall.Dup(int(logFile.Fd()))
+	if err != nil {
+		log.Fatalln("error duplicating log file:", err)
+	}
+
 	state := State{
 		SocketFD:      newFD,
+		LogFD:         logFD,
 		ChildBarrier:  childBarrier,
 		ParentBarrier: parentBarrier,
 	}
@@ -233,6 +244,11 @@ func childContinue() {
 	syscall.CloseOnExec(state.ChildBarrier.FDs[0])
 	syscall.CloseOnExec(state.ChildBarrier.FDs[1])
 	syscall.CloseOnExec(state.SocketFD)
+	syscall.CloseOnExec(state.LogFD)
+
+	logFile := os.NewFile(uintptr(state.LogFD), "wshd.log")
+
+	log.SetOutput(logFile)
 
 	err = umountAll("/mnt")
 	if err != nil {

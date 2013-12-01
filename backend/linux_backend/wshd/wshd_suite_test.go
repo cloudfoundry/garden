@@ -4,6 +4,7 @@ package main_test
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"os/exec"
@@ -38,6 +39,15 @@ func TestWshd(t *testing.T) {
 						log.Println("killing", wshdPid, proc.Kill())
 					}
 				}
+			}
+
+			wshdLogFile, err := os.Open(path.Join(containerDir, "run", "wshd.log"))
+
+			if err == nil {
+				log.Println("logs:")
+				log.Println("------------------------------------------------------")
+				io.Copy(os.Stderr, wshdLogFile)
+				log.Println("------------------------------------------------------")
 			}
 
 			for i := 0; i < 4; i++ {
