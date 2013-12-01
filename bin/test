@@ -15,7 +15,7 @@ ROOTFS_FN=lucid64.dev.tgz
 ROOTFS_URI=http://cfstacks.s3.amazonaws.com/${ROOTFS_FN}
 ROOTFS_SHA=b2633b2ab4964f91402bb2d889f2f12449a8b828
 
-ROOTFS_INSTALL_DIR=$PWD/.rootfs
+ROOTFS_INSTALL_DIR=${ROOTFS_INSTALL_DIR:-$PWD/.rootfs}
 
 mkdir -p "$ROOTFS_INSTALL_DIR"
 
@@ -23,7 +23,7 @@ pushd "$ROOTFS_INSTALL_DIR"
   echo "${ROOTFS_SHA}  ${ROOTFS_FN}" > checksum
 
   if [ ! -f ${ROOTFS_FN} ] || ! shasum -s -c checksum; then
-    curl "${ROOTFS_URI}" -o ${ROOTFS_FN}
+    wget "${ROOTFS_URI}"
   fi
 
   shasum "${ROOTFS_FN}" > checksum
