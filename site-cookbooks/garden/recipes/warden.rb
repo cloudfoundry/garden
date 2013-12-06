@@ -4,6 +4,7 @@
   bison
   build-essential
   flex
+  git
   debootstrap
   iptables
   quota
