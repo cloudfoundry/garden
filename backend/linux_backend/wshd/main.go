@@ -63,6 +63,8 @@ func main() {
 	fullLibPath := resolvePath(*libPath)
 	fullRootPath := resolvePath(*rootPath)
 
+	runtime.LockOSThread()
+
 	err := syscall.Unshare(CLONE_NEWNS)
 	if err != nil {
 		log.Fatalln("error unsharing:", err)
