@@ -118,7 +118,6 @@ func main() {
 	fds, err := syscall.ParseUnixRights(&scm)
 	if err != nil {
 		log.Fatalln("failed to parse unix rights", err)
-		return
 	}
 
 	if len(fds) != 4 {

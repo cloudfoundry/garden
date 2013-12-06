@@ -11,10 +11,12 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"runtime"
 	"syscall"
 
 	"github.com/vito/garden/backend/linux_backend/wshd/barrier"
 	"github.com/vito/garden/backend/linux_backend/wshd/daemon"
+	"github.com/vito/garden/command_runner"
 )
 
 var runPath = flag.String(
@@ -55,6 +57,8 @@ func main() {
 		return
 	}
 
+	commandRunner := command_runner.New(true)
+
 	fullRunPath := resolvePath(*runPath)
 	fullLibPath := resolvePath(*libPath)
 	fullRootPath := resolvePath(*rootPath)
@@ -64,19 +68,9 @@ func main() {
 		log.Fatalln("error unsharing:", err)
 	}
 
-	err = exec.Command(path.Join(*libPath, "hook-parent-before-clone.sh")).Run()
+	err = commandRunner.Run(&exec.Cmd{Path: path.Join(fullLibPath, "hook-parent-before-clone.sh")})
 	if err != nil {
 		log.Fatalln("error executing hook-parent-before-clone.sh:", err)
-	}
-
-	parentBarrier, err := barrier.New()
-	if err != nil {
-		log.Fatalln("error creating parent barrier:", err)
-	}
-
-	childBarrier, err := barrier.New()
-	if err != nil {
-		log.Fatalln("error creating child barrier:", err)
 	}
 
 	listener, err := net.Listen("unix", path.Join(fullRunPath, "wshd.sock"))
@@ -104,6 +98,16 @@ func main() {
 		log.Fatalln("error duplicating log file:", err)
 	}
 
+	parentBarrier, err := barrier.New()
+	if err != nil {
+		log.Fatalln("error creating parent barrier:", err)
+	}
+
+	childBarrier, err := barrier.New()
+	if err != nil {
+		log.Fatalln("error creating child barrier:", err)
+	}
+
 	state := State{
 		SocketFD:      newFD,
 		LogFD:         logFD,
@@ -117,14 +121,14 @@ func main() {
 	}
 
 	if pid == 0 {
-		childRun(state, fullLibPath, fullRootPath)
+		childRun(state, fullLibPath, fullRootPath, commandRunner)
 
 		panic("unreachable")
 	}
 
 	os.Setenv("PID", fmt.Sprintf("%d", pid))
 
-	err = exec.Command(path.Join(*libPath, "hook-parent-after-clone.sh")).Run()
+	err = commandRunner.Run(&exec.Cmd{Path: path.Join(fullLibPath, "hook-parent-after-clone.sh")})
 	if err != nil {
 		log.Fatalln("error executing hook-parent-after-clone.sh:", err)
 	}
@@ -176,14 +180,14 @@ func createContainerizedProcess() (int, error) {
 	return int(pid), nil
 }
 
-func childRun(state State, fullLibPath, fullRootPath string) {
+func childRun(state State, fullLibPath, fullRootPath string, commandRunner command_runner.CommandRunner) {
 	err := state.ParentBarrier.Wait()
 	if err != nil {
 		log.Println("error waiting for signal from parent:", err)
 		goto cleanup
 	}
 
-	err = exec.Command(path.Join(fullLibPath, "hook-child-before-pivot.sh")).Run()
+	err = commandRunner.Run(&exec.Cmd{Path: path.Join(fullLibPath, "hook-child-before-pivot.sh")})
 	if err != nil {
 		log.Println("error executing hook-child-before-pivot.sh:", err)
 		goto cleanup
@@ -213,7 +217,7 @@ func childRun(state State, fullLibPath, fullRootPath string) {
 		goto cleanup
 	}
 
-	err = exec.Command(path.Join("/mnt", fullLibPath, "hook-child-after-pivot.sh")).Run()
+	err = commandRunner.Run(&exec.Cmd{Path: path.Join("/mnt", fullLibPath, "hook-child-after-pivot.sh")})
 	if err != nil {
 		log.Println("error executing hook-child-after-pivot.sh:", err)
 		goto cleanup
