@@ -81,8 +81,6 @@ echo $PID > ./run/wshd.pid
 `), 0755)
 
 		ioutil.WriteFile(path.Join(libDir, "hook-child-before-pivot.sh"), []byte(`#!/bin/bash
-env
-pwd
 `), 0755)
 
 		ioutil.WriteFile(path.Join(libDir, "hook-child-after-pivot.sh"), []byte(`#!/bin/bash
