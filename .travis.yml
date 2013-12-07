@@ -2,20 +2,5 @@ language: go
 
 go:
   - 1.1
-  - tip
 
-
-matrix:
-  allow_failures:
-    - go: tip
-
-install:
-  - go get -v github.com/xoebus/gocart/gocart
-  - export PATH=$HOME/gopath/bin:$PATH
-  - gocart install
-  - go install github.com/onsi/ginkgo/ginkgo
-  - go test -i ./...
-
-script:
-  - export PATH=$HOME/gopath/bin:$PATH
-  - ginkgo -race -r -i --randomizeAllSpecs
+script: sudo ./bin/test -skip="wshd Suite"

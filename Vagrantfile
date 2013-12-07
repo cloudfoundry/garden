@@ -11,6 +11,7 @@ Vagrant.configure("2") do |config|
   config.vm.network "private_network", ip: "192.168.50.4"
 
   config.vm.synced_folder "/", "/host"
+  config.vm.synced_folder ENV["GOPATH"], "/go"
 
   config.vm.provider :virtualbox do |v, override|
     v.customize ["modifyvm", :id, "--memory", 3*1024]
@@ -27,7 +28,16 @@ Vagrant.configure("2") do |config|
     chef.cookbooks_path = ["cookbooks", "site-cookbooks"]
 
     chef.add_recipe "garden::apt-update"
+    chef.add_recipe "build-essential::default"
+    chef.add_recipe "chef-golang"
     chef.add_recipe "garden::warden"
     chef.add_recipe "garden::rootfs"
+    chef.add_recipe "garden::dev"
+
+    chef.json = {
+      go: {
+        version: "1.1.2",
+      },
+    }
   end
 end

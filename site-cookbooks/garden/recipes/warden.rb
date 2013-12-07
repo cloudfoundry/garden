@@ -1,17 +1,7 @@
-%w[
-  autoconf
-  binutils-doc
-  bison
-  build-essential
-  flex
-  git
-  debootstrap
-  iptables
-  quota
-  rsync
-].each do |pkg|
-  package pkg
-end
+package "iptables"
+package "quota"
+package "rsync"
+package "git"
 
 if ["debian", "ubuntu"].include?(node["platform"])
   if node["kernel"]["release"].end_with? "virtual"
@@ -33,7 +23,7 @@ end
 execute "build root directory" do
   cwd "/vagrant"
 
-  command "make"
+  command "make GOPATH=/go"
   action :run
 end
 

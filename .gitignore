@@ -5,3 +5,4 @@ tmp/
 out/
 root/
 *.coverprofile
+.rootfs/
