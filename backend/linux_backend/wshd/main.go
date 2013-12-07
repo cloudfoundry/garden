@@ -43,17 +43,43 @@ var title = flag.String(
 	"title for the container gnome daemon",
 )
 
-var continueAsChild = flag.Bool(
+var daemonize = flag.Bool(
 	"continue",
 	false,
 	"(internal) continue execution as containerized daemon",
 )
 
+// high-level view of the control flow for creating a container:
+//
+//  P = parent,
+//  C = child,
+//  D = daemon,
+//  | = has control flow
+//
+//  P C D
+//  |     create listening socket file
+//  |     run hook-parent-before-clone
+//  |     clone() process with containerization flags
+//    |   wait for signal from parent
+//  |     run hook-parent-after-clone
+//  |     signal child, wait for signal from child
+//    |   run hook-child-before-pivot
+//    |   set up root filesystem via pivot_root()
+//    |   run hook-child-after-pivot
+//    |   save socket file descriptor to shared memory
+//    |   exec /sbin/wshd --continue
+//      | load socket file descriptor from shared memory
+//      | remove all /mnt mount points
+//      | setsid()
+//      | signal parent
+//  |     exit 0
+//      | listen on socket for requests
 func main() {
 	flag.Parse()
 
-	if *continueAsChild {
-		childContinue()
+	// --daemonize was given; daemonize!
+	if *daemonize {
+		startDaemon()
 		return
 	}
 
@@ -63,8 +89,12 @@ func main() {
 	fullLibPath := resolvePath(*libPath)
 	fullRootPath := resolvePath(*rootPath)
 
+	// lock this goroutine to its OS thread so the next Unshare sticks for
+	// the full duration; otherwise if we get scheduled to another thread
+	// it goes away
 	runtime.LockOSThread()
 
+	// unshare mount namespace so the following hooks can modify mount points
 	err := syscall.Unshare(CLONE_NEWNS)
 	if err != nil {
 		log.Fatalln("error unsharing:", err)
@@ -75,6 +105,8 @@ func main() {
 		log.Fatalln("error executing hook-parent-before-clone.sh:", err)
 	}
 
+	// create listening socket file descriptor, so we can pass its fd to
+	// the container later
 	listener, err := net.Listen("unix", path.Join(fullRunPath, "wshd.sock"))
 	if err != nil {
 		log.Fatalln("error listening:", err)
@@ -85,14 +117,15 @@ func main() {
 		log.Fatalln("error getting listening file:", err)
 	}
 
-	newFD, err := syscall.Dup(int(socketFile.Fd()))
-	if err != nil {
-		log.Fatalln("error duplicating socket file:", err)
-	}
-
 	logFile, err := os.Create(path.Join(fullRunPath, "wshd.log"))
 	if err != nil {
 		log.Fatalln("error creating wshd log file:", err)
+	}
+
+	// dup the socket and log file fds; otherwise they'll close-on-exec
+	newFD, err := syscall.Dup(int(socketFile.Fd()))
+	if err != nil {
+		log.Fatalln("error duplicating socket file:", err)
 	}
 
 	logFD, err := syscall.Dup(int(logFile.Fd()))
@@ -100,16 +133,19 @@ func main() {
 		log.Fatalln("error duplicating log file:", err)
 	}
 
+	// parent -> child synchronization
 	parentBarrier, err := barrier.New()
 	if err != nil {
 		log.Fatalln("error creating parent barrier:", err)
 	}
 
+	// child -> parent synchronization
 	childBarrier, err := barrier.New()
 	if err != nil {
 		log.Fatalln("error creating child barrier:", err)
 	}
 
+	// set up the state to temporarily share in-memory with the container
 	state := State{
 		SocketFD:      newFD,
 		LogFD:         logFD,
@@ -117,17 +153,20 @@ func main() {
 		ParentBarrier: parentBarrier,
 	}
 
+	// clone() to create a containerized thread
 	pid, err := createContainerizedProcess()
 	if err != nil {
 		log.Fatalln("error creating child process:", err)
 	}
 
+	// we're the clone; execute as the child
 	if pid == 0 {
 		childRun(state, fullLibPath, fullRootPath, commandRunner)
 
 		panic("unreachable")
 	}
 
+	// we're the parent; execute after-clone hook here
 	os.Setenv("PID", fmt.Sprintf("%d", pid))
 
 	err = commandRunner.Run(&exec.Cmd{Path: path.Join(fullLibPath, "hook-parent-after-clone.sh")})
@@ -135,16 +174,19 @@ func main() {
 		log.Fatalln("error executing hook-parent-after-clone.sh:", err)
 	}
 
+	// tell the child process to begin, now that the hook is executed
 	err = parentBarrier.Signal()
 	if err != nil {
 		log.Fatalln("error signaling child:", err)
 	}
 
+	// wait for the exec'd container (--daemon) to come alive
 	err = childBarrier.Wait()
 	if err != nil {
 		log.Fatalln("error waiting for signal from child:", err)
 	}
 
+	// our job is done; the container is daemonized
 	os.Exit(0)
 }
 
@@ -183,6 +225,7 @@ func createContainerizedProcess() (int, error) {
 }
 
 func childRun(state State, fullLibPath, fullRootPath string, commandRunner command_runner.CommandRunner) {
+	// wait until hook-parent-after-clone is done
 	err := state.ParentBarrier.Wait()
 	if err != nil {
 		log.Println("error waiting for signal from parent:", err)
@@ -231,6 +274,7 @@ func childRun(state State, fullLibPath, fullRootPath string, commandRunner comma
 		goto cleanup
 	}
 
+	// exec wshd on the new filesystem and tell it to daemonize
 	err = syscall.Exec("/sbin/wshd", []string{*title, "--continue"}, []string{})
 	if err != nil {
 		log.Println("error executing /sbin/wshd:", err)
@@ -241,12 +285,14 @@ cleanup:
 	os.Exit(255)
 }
 
-func childContinue() {
+func startDaemon() {
+	// load socket file from memory
 	state, err := LoadStateFromSHM()
 	if err != nil {
 		log.Fatalln("error loading state:", err)
 	}
 
+	// don't leak file descriptors to child processes
 	syscall.CloseOnExec(state.ChildBarrier.FDs[0])
 	syscall.CloseOnExec(state.ChildBarrier.FDs[1])
 	syscall.CloseOnExec(state.SocketFD)
@@ -256,11 +302,13 @@ func childContinue() {
 
 	log.SetOutput(logFile)
 
+	// clean up /mnt mount points
 	err = umountAll("/mnt")
 	if err != nil {
 		log.Fatalf("error clearing /mnt mountpoints: %#v\n", err)
 	}
 
+	// detach
 	_, err = syscall.Setsid()
 	if err != nil {
 		log.Fatalln("error setting sid:", err)
@@ -275,6 +323,7 @@ func childContinue() {
 		log.Fatalln("error signalling parent:", err)
 	}
 
+	// start listening on the socket
 	err = daemon.Start()
 	if err != nil {
 		log.Fatalln("daemon start error:", err)
