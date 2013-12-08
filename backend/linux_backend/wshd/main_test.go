@@ -194,7 +194,7 @@ setup_fs
 		Expect(err).ToNot(HaveOccured())
 
 		Expect(psSession).To(Say(`  PID COMMAND
-    1 test wshd --continue
+    1 test wshd
    \d+ /bin/ps -o pid,command
 `))
 

@@ -14,6 +14,7 @@ type State struct {
 	LogFD         int
 	ChildBarrier  *barrier.Barrier
 	ParentBarrier *barrier.Barrier
+	Title         string
 }
 
 const StateKey = 0xdeadbeef

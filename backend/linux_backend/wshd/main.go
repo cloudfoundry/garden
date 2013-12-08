@@ -43,42 +43,44 @@ var title = flag.String(
 	"title for the container gnome daemon",
 )
 
-var daemonize = flag.Bool(
-	"continue",
-	false,
-	"(internal) continue execution as containerized daemon",
-)
-
 // high-level view of the control flow for creating a container:
 //
-//  P = parent,
-//  C = child,
-//  D = daemon,
-//  | = has control flow
+//   P = parent,
+//   C = child,
+//   D = daemon,
+//   * = has control flow
 //
-//  P C D
-//  |     create listening socket file
-//  |     run hook-parent-before-clone
-//  |     clone() process with containerization flags
-//    |   wait for signal from parent
-//  |     run hook-parent-after-clone
-//  |     signal child, wait for signal from child
-//    |   run hook-child-before-pivot
-//    |   set up root filesystem via pivot_root()
-//    |   run hook-child-after-pivot
-//    |   save socket file descriptor to shared memory
-//    |   exec /sbin/wshd --continue
-//      | load socket file descriptor from shared memory
-//      | remove all /mnt mount points
-//      | setsid()
-//      | signal parent
-//  |     exit 0
-//      | listen on socket for requests
+//   P C D  action
+//   ------------------------------------------------------------------
+//   *      create listening socket file
+//   *      run hook-parent-before-clone
+//   *      clone() process with containerization flags
+//     *    wait for signal from parent
+//   *      run hook-parent-after-clone
+//   *      signal child, wait for signal from child
+//     *    run hook-child-before-pivot
+//     *    set up root filesystem via pivot_root()
+//     *    run hook-child-after-pivot
+//     *    save socket file descriptor to shared memory
+//     *    exec /sbin/wshd with whitespace for argv[0]
+//       *  load socket file descriptor and title from shared memory
+//       *  remove all /mnt mount points
+//       *  setsid()
+//       *  fill in argv[0] with process title
+//       *  signal parent
+//   *      exit 0
+//       *  listen on socket for requests
+//
 func main() {
 	flag.Parse()
 
-	// --daemonize was given; daemonize!
-	if *daemonize {
+	// daemonize if argv[0] is whitespace.
+	//
+	// This is done instead of a flag mainly because there's no convenient
+	// way to set the process title in Go. So instead exec with argv[0] as
+	// whitespace and just detect that and fill it in later. If we passed a
+	// flag we'd have to clear out argv[1] somehow.
+	if os.Args[0][0] == ' ' {
 		startDaemon()
 		return
 	}
@@ -225,6 +227,19 @@ func createContainerizedProcess() (int, error) {
 }
 
 func childRun(state State, fullLibPath, fullRootPath string, commandRunner command_runner.CommandRunner) {
+	argv0 := "/sbin/wshd"
+
+	if *title != "" {
+		argv0 = *title
+	}
+
+	blankTitle := make([]byte, len(argv0))
+	for i := 0; i < len(argv0); i++ {
+		blankTitle[i] = ' '
+	}
+
+	state.Title = argv0
+
 	// wait until hook-parent-after-clone is done
 	err := state.ParentBarrier.Wait()
 	if err != nil {
@@ -275,7 +290,7 @@ func childRun(state State, fullLibPath, fullRootPath string, commandRunner comma
 	}
 
 	// exec wshd on the new filesystem and tell it to daemonize
-	err = syscall.Exec("/sbin/wshd", []string{*title, "--continue"}, []string{})
+	err = syscall.Exec("/sbin/wshd", []string{string(blankTitle)}, []string{})
 	if err != nil {
 		log.Println("error executing /sbin/wshd:", err)
 		goto cleanup
@@ -301,6 +316,8 @@ func startDaemon() {
 	logFile := os.NewFile(uintptr(state.LogFD), "wshd.log")
 
 	log.SetOutput(logFile)
+
+	setProcTitle(state.Title)
 
 	// clean up /mnt mount points
 	err = umountAll("/mnt")
