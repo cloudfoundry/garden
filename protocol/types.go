@@ -71,6 +71,8 @@ func TypeForMessage(msg proto.Message) Message_Type {
 		return Message_LimitDisk
 	case *LimitBandwidthRequest, *LimitBandwidthResponse:
 		return Message_LimitBandwidth
+	case *LimitCpuRequest, *LimitCpuResponse:
+		return Message_LimitCpu
 
 	case *PingRequest, *PingResponse:
 		return Message_Ping
@@ -119,6 +121,8 @@ func RequestMessageForType(t Message_Type) proto.Message {
 		return &LimitDiskRequest{}
 	case Message_LimitBandwidth:
 		return &LimitBandwidthRequest{}
+	case Message_LimitCpu:
+		return &LimitCpuRequest{}
 
 	case Message_Ping:
 		return &PingRequest{}
