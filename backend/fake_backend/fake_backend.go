@@ -35,7 +35,7 @@ func (b *FakeBackend) Create(spec backend.ContainerSpec) (backend.Container, err
 		return nil, b.CreateError
 	}
 
-	container := &FakeContainer{Spec: spec}
+	container := NewFakeContainer(spec)
 
 	b.CreatedContainers[container.Handle()] = container
 

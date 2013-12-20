@@ -109,6 +109,8 @@ func (s *WardenServer) serveConnection(conn net.Conn) {
 			response, err = s.handleLimitMemory(request.(*protocol.LimitMemoryRequest))
 		case *protocol.LimitDiskRequest:
 			response, err = s.handleLimitDisk(request.(*protocol.LimitDiskRequest))
+		case *protocol.LimitCpuRequest:
+			response, err = s.handleLimitCpu(request.(*protocol.LimitCpuRequest))
 		case *protocol.NetInRequest:
 			response, err = s.handleNetIn(request.(*protocol.NetInRequest))
 		case *protocol.NetOutRequest:
@@ -437,6 +439,28 @@ func (s *WardenServer) handleLimitDisk(request *protocol.LimitDiskRequest) (prot
 		InodeHard: proto.Uint64(limits.InodeHard),
 		ByteSoft:  proto.Uint64(limits.ByteSoft),
 		ByteHard:  proto.Uint64(limits.ByteHard),
+	}, nil
+}
+
+func (s *WardenServer) handleLimitCpu(request *protocol.LimitCpuRequest) (proto.Message, error) {
+	handle := request.GetHandle()
+	limitInShares := request.GetLimitInShares()
+
+	container, err := s.backend.Lookup(handle)
+	if err != nil {
+		return nil, err
+	}
+
+	limits, err := container.LimitCPU(backend.CPULimits{
+		LimitInShares: limitInShares,
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &protocol.LimitCpuResponse{
+		LimitInShares: proto.Uint64(limits.LimitInShares),
 	}, nil
 }
 

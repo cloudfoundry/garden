@@ -309,6 +309,26 @@ func (c *LinuxContainer) LimitMemory(limits backend.MemoryLimits) (backend.Memor
 	return backend.MemoryLimits{uint64(numericLimit)}, nil
 }
 
+func (c *LinuxContainer) LimitCPU(limits backend.CPULimits) (backend.CPULimits, error) {
+	log.Println(c.id, "limiting CPU to", limits.LimitInShares, "shares")
+
+	limit := fmt.Sprintf("%d", limits.LimitInShares)
+
+	err := c.cgroupsManager.Set("cpu", "cpu.shares", limit)
+	if err != nil {
+		return backend.CPULimits{}, err
+	}
+
+	actualLimitInShares, err := c.cgroupsManager.Get("cpu", "cpu.shares")
+
+	numericLimit, err := strconv.ParseUint(actualLimitInShares, 10, 0)
+	if err != nil {
+		return backend.CPULimits{}, err
+	}
+
+	return backend.CPULimits{uint64(numericLimit)}, nil
+}
+
 func (c *LinuxContainer) Spawn(spec backend.JobSpec) (uint32, error) {
 	log.Println(c.id, "spawning job:", spec.Script)
 

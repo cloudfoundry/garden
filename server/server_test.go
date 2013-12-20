@@ -1278,6 +1278,77 @@ var _ = Describe("The Warden server", func() {
 			})
 		})
 
+		Context("and the client sends a LimitCpuRequest", func() {
+			var fakeContainer *fake_backend.FakeContainer
+
+			BeforeEach(func() {
+				container, err := serverBackend.Create(backend.ContainerSpec{Handle: "some-handle"})
+				Expect(err).ToNot(HaveOccured())
+
+				fakeContainer = container.(*fake_backend.FakeContainer)
+			})
+
+			It("sets the container's CPU shares and returns them", func(done Done) {
+				writeMessages(&protocol.LimitCpuRequest{
+					Handle:        proto.String(fakeContainer.Handle()),
+					LimitInShares: proto.Uint64(123),
+				})
+
+				var response protocol.LimitCpuResponse
+				readResponse(&response)
+
+				Expect(fakeContainer.LimitedCPU).To(Equal(
+					backend.CPULimits{
+						LimitInShares: 123,
+					},
+				))
+
+				Expect(response.GetLimitInShares()).To(Equal(uint64(123)))
+
+				close(done)
+			}, 1.0)
+
+			Context("when the container is not found", func() {
+				BeforeEach(func() {
+					serverBackend.Destroy(fakeContainer.Handle())
+				})
+
+				It("sends a WardenError response", func(done Done) {
+					writeMessages(&protocol.LimitCpuRequest{
+						Handle:        proto.String(fakeContainer.Handle()),
+						LimitInShares: proto.Uint64(123),
+					})
+
+					var response protocol.LimitCpuResponse
+					err := message_reader.ReadMessage(responses, &response)
+					Expect(err).To(Equal(&message_reader.WardenError{
+						Message: "unknown handle: some-handle",
+					}))
+
+					close(done)
+				}, 1.0)
+			})
+
+			Context("when limiting the CPU fails", func() {
+				BeforeEach(func() {
+					fakeContainer.LimitCPUError = errors.New("oh no!")
+				})
+
+				It("sends a WardenError response", func(done Done) {
+					writeMessages(&protocol.LimitCpuRequest{
+						Handle:        proto.String(fakeContainer.Handle()),
+						LimitInShares: proto.Uint64(123),
+					})
+
+					var response protocol.LimitCpuResponse
+					err := message_reader.ReadMessage(responses, &response)
+					Expect(err).To(Equal(&message_reader.WardenError{Message: "oh no!"}))
+
+					close(done)
+				}, 1.0)
+			})
+		})
+
 		Context("and the client sends a NetInRequest", func() {
 			var fakeContainer *fake_backend.FakeContainer
 

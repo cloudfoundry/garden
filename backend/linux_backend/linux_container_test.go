@@ -844,6 +844,61 @@ var _ = Describe("Linux containers", func() {
 		})
 	})
 
+	Describe("Limiting CPU", func() {
+		It("sets cpu.shares", func() {
+			limits := backend.CPULimits{
+				LimitInShares: 512,
+			}
+
+			_, err := container.LimitCPU(limits)
+			Expect(err).ToNot(HaveOccured())
+
+			Expect(fakeCgroups.SetValues()).To(Equal(
+				[]fake_cgroups_manager.SetValue{
+					{
+						Subsystem: "cpu",
+						Name:      "cpu.shares",
+						Value:     "512",
+					},
+				},
+			))
+		})
+
+		It("returns the effective CPU limits", func() {
+			limits := backend.CPULimits{
+				LimitInShares: 512,
+			}
+
+			fakeCgroups.WhenGetting("cpu", "cpu.shares", func() (string, error) {
+				return "102400", nil
+			})
+
+			actualLimits, err := container.LimitCPU(limits)
+			Expect(err).ToNot(HaveOccured())
+
+			Expect(actualLimits.LimitInShares).To(Equal(uint64(102400)))
+		})
+
+		Context("when setting cpu.shares fails", func() {
+			disaster := errors.New("oh no!")
+
+			BeforeEach(func() {
+				fakeCgroups.WhenSetting("cpu", "cpu.shares", func() error {
+					return disaster
+				})
+			})
+
+			It("returns the error and no limits", func() {
+				limits, err := container.LimitCPU(backend.CPULimits{
+					LimitInShares: 512,
+				})
+
+				Expect(err).To(Equal(disaster))
+				Expect(limits).To(BeZero())
+			})
+		})
+	})
+
 	Describe("Limiting disk", func() {
 		limits := backend.DiskLimits{
 			BlockLimit: 1,

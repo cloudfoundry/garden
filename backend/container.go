@@ -16,6 +16,7 @@ type Container interface {
 	LimitBandwidth(limits BandwidthLimits) (BandwidthLimits, error)
 	LimitDisk(limits DiskLimits) (DiskLimits, error)
 	LimitMemory(limits MemoryLimits) (MemoryLimits, error)
+	LimitCPU(limits CPULimits) (CPULimits, error)
 
 	Spawn(JobSpec) (uint32, error)
 	Stream(jobID uint32) (<-chan JobStream, error)
@@ -132,6 +133,10 @@ type DiskLimits struct {
 
 type MemoryLimits struct {
 	LimitInBytes uint64
+}
+
+type CPULimits struct {
+	LimitInShares uint64
 }
 
 type ResourceLimits struct {

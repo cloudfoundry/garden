@@ -42,6 +42,9 @@ type FakeContainer struct {
 	LimitedDisk       backend.DiskLimits
 	LimitedDiskResult backend.DiskLimits
 
+	LimitCPUError error
+	LimitedCPU    backend.CPULimits
+
 	NetInError error
 	MappedIn   [][]uint32
 
@@ -155,6 +158,16 @@ func (c *FakeContainer) LimitMemory(limits backend.MemoryLimits) (backend.Memory
 	}
 
 	c.LimitedMemory = limits
+
+	return limits, nil
+}
+
+func (c *FakeContainer) LimitCPU(limits backend.CPULimits) (backend.CPULimits, error) {
+	if c.LimitCPUError != nil {
+		return backend.CPULimits{}, c.LimitCPUError
+	}
+
+	c.LimitedCPU = limits
 
 	return limits, nil
 }
