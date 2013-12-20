@@ -29,25 +29,25 @@ var _ = Describe("Handling command requests", func() {
 
 	BeforeEach(func() {
 		tmpdir, err := ioutil.TempDir(os.TempDir(), "warden-server-test")
-		Expect(err).ToNot(HaveOccured())
+		Expect(err).ToNot(HaveOccurred())
 
 		socketPath = path.Join(tmpdir, "warden.sock")
 
 		listener, err := net.Listen("unix", socketPath)
-		Expect(err).ToNot(HaveOccured())
+		Expect(err).ToNot(HaveOccurred())
 
 		socketFile, err := listener.(*net.UnixListener).File()
-		Expect(err).ToNot(HaveOccured())
+		Expect(err).ToNot(HaveOccurred())
 
 		daemonServer := daemon.New(socketFile)
 
 		err = daemonServer.Start()
-		Expect(err).ToNot(HaveOccured())
+		Expect(err).ToNot(HaveOccurred())
 
-		Eventually(ErrorDialingUnix(socketPath)).ShouldNot(HaveOccured())
+		Eventually(ErrorDialingUnix(socketPath)).ShouldNot(HaveOccurred())
 
 		conn, err := net.Dial("unix", socketPath)
-		Expect(err).ToNot(HaveOccured())
+		Expect(err).ToNot(HaveOccurred())
 
 		conn.SetReadDeadline(time.Now().Add(10 * time.Second))
 
@@ -60,7 +60,7 @@ var _ = Describe("Handling command requests", func() {
 		var exitStatus protocol.ExitStatusMessage
 
 		err := decoder.Decode(&exitStatus)
-		Expect(err).ToNot(HaveOccured())
+		Expect(err).ToNot(HaveOccurred())
 
 		return exitStatus.ExitStatus
 	}
@@ -78,7 +78,7 @@ var _ = Describe("Handling command requests", func() {
 			encoder := gob.NewEncoder(serverConnection)
 
 			err := encoder.Encode(request)
-			Expect(err).ToNot(HaveOccured())
+			Expect(err).ToNot(HaveOccurred())
 
 			fds := readFDs(serverConnection)
 
@@ -98,10 +98,10 @@ var _ = Describe("Handling command requests", func() {
 			stdin.Close()
 
 			err := outExpect.Expect("hi out\n")
-			Expect(err).ToNot(HaveOccured())
+			Expect(err).ToNot(HaveOccurred())
 
 			err = errExpect.Expect("hi err\n")
-			Expect(err).ToNot(HaveOccured())
+			Expect(err).ToNot(HaveOccurred())
 
 			Expect(readExitStatus()).To(Equal(42))
 		})
@@ -111,7 +111,7 @@ var _ = Describe("Handling command requests", func() {
 			stdin.Close()
 
 			err := outExpect.Expect("PATH: /sbin:/bin:/usr/sbin:/usr/bin\n")
-			Expect(err).ToNot(HaveOccured())
+			Expect(err).ToNot(HaveOccurred())
 		})
 
 		It("runs with $HOME and $USER set", func() {
@@ -120,10 +120,10 @@ var _ = Describe("Handling command requests", func() {
 			stdin.Close()
 
 			err := outExpect.Expect("root\n")
-			Expect(err).ToNot(HaveOccured())
+			Expect(err).ToNot(HaveOccurred())
 
 			err = outExpect.Expect("/root\n")
-			Expect(err).ToNot(HaveOccured())
+			Expect(err).ToNot(HaveOccurred())
 		})
 
 		Context("when a user is given", func() {
@@ -165,17 +165,17 @@ func readFDs(conn *net.UnixConn) []int {
 	var oob [2048]byte
 
 	_, oobn, _, _, err := conn.ReadMsgUnix(b[:], oob[:])
-	Expect(err).ToNot(HaveOccured())
+	Expect(err).ToNot(HaveOccurred())
 
 	scms, err := syscall.ParseSocketControlMessage(oob[:oobn])
-	Expect(err).ToNot(HaveOccured())
+	Expect(err).ToNot(HaveOccurred())
 
 	Expect(len(scms)).To(Equal(1))
 
 	scm := scms[0]
 
 	fds, err := syscall.ParseUnixRights(&scm)
-	Expect(err).ToNot(HaveOccured())
+	Expect(err).ToNot(HaveOccurred())
 
 	Expect(len(fds)).To(Equal(4))
 

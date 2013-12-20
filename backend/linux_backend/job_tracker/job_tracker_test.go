@@ -170,7 +170,7 @@ var _ = Describe("Linking to jobs", func() {
 		jobID, _ := jobTracker.Spawn(exec.Command("xxx"), false)
 
 		exitStatus, stdout, stderr, err := jobTracker.Link(jobID)
-		Expect(err).ToNot(HaveOccured())
+		Expect(err).ToNot(HaveOccurred())
 		Expect(exitStatus).To(Equal(uint32(42)))
 		Expect(stdout).To(Equal([]byte("hi out\n")))
 		Expect(stderr).To(Equal([]byte("hi err\n")))
@@ -183,7 +183,7 @@ var _ = Describe("Linking to jobs", func() {
 			jobID, _ := jobTracker.Spawn(exec.Command("xxx"), true)
 
 			exitStatus, stdout, stderr, err := jobTracker.Link(jobID)
-			Expect(err).ToNot(HaveOccured())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(exitStatus).To(Equal(uint32(42)))
 			Expect(stdout).To(BeEmpty())
 			Expect(stderr).To(BeEmpty())
@@ -231,7 +231,7 @@ var _ = Describe("Linking to jobs", func() {
 
 			go func() {
 				exitStatus, stdout, stderr, err := jobTracker.Link(jobID)
-				Expect(err).ToNot(HaveOccured())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(exitStatus).To(Equal(uint32(42)))
 				Expect(string(stdout)).To(Equal("hi out\n"))
 				Expect(string(stderr)).To(Equal("hi err\n"))
@@ -241,7 +241,7 @@ var _ = Describe("Linking to jobs", func() {
 
 			go func() {
 				exitStatus, stdout, stderr, err := jobTracker.Link(jobID)
-				Expect(err).ToNot(HaveOccured())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(exitStatus).To(Equal(uint32(42)))
 				Expect(string(stdout)).To(Equal("hi out\n"))
 				Expect(string(stderr)).To(Equal("hi err\n"))
@@ -293,7 +293,7 @@ var _ = Describe("Streaming jobs", func() {
 		jobID, _ := jobTracker.Spawn(exec.Command("xxx"), false)
 
 		jobStreamChannel, err := jobTracker.Stream(jobID)
-		Expect(err).ToNot(HaveOccured())
+		Expect(err).ToNot(HaveOccurred())
 
 		chunk1 := <-jobStreamChannel
 		Expect(chunk1.Name).To(Equal("stdout"))
@@ -317,7 +317,7 @@ var _ = Describe("Streaming jobs", func() {
 			jobID, _ := jobTracker.Spawn(exec.Command("xxx"), false)
 
 			jobStreamChannel, err := jobTracker.Stream(jobID)
-			Expect(err).ToNot(HaveOccured())
+			Expect(err).ToNot(HaveOccurred())
 
 			<-jobStreamChannel
 			<-jobStreamChannel
@@ -359,10 +359,10 @@ var _ = Describe("Listing active jobs", func() {
 		)
 
 		jobID1, err := jobTracker.Spawn(exec.Command("xxx"), false)
-		Expect(err).ToNot(HaveOccured())
+		Expect(err).ToNot(HaveOccurred())
 
 		jobID2, err := jobTracker.Spawn(exec.Command("xxx"), false)
-		Expect(err).ToNot(HaveOccured())
+		Expect(err).ToNot(HaveOccurred())
 
 		totalRunning := append(<-running, <-running...)
 

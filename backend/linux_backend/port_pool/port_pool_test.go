@@ -13,10 +13,10 @@ var _ = Describe("Port pool", func() {
 			pool := port_pool.New(10000, 5)
 
 			port1, err := pool.Acquire()
-			Expect(err).ToNot(HaveOccured())
+			Expect(err).ToNot(HaveOccurred())
 
 			port2, err := pool.Acquire()
-			Expect(err).ToNot(HaveOccured())
+			Expect(err).ToNot(HaveOccurred())
 
 			Expect(port1).To(Equal(uint32(10000)))
 			Expect(port2).To(Equal(uint32(10001)))
@@ -28,11 +28,11 @@ var _ = Describe("Port pool", func() {
 
 				for i := 0; i < 5; i++ {
 					_, err := pool.Acquire()
-					Expect(err).ToNot(HaveOccured())
+					Expect(err).ToNot(HaveOccurred())
 				}
 
 				_, err := pool.Acquire()
-				Expect(err).To(HaveOccured())
+				Expect(err).To(HaveOccurred())
 			})
 		})
 	})
@@ -42,17 +42,17 @@ var _ = Describe("Port pool", func() {
 			pool := port_pool.New(10000, 2)
 
 			port1, err := pool.Acquire()
-			Expect(err).ToNot(HaveOccured())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(port1).To(Equal(uint32(10000)))
 
 			pool.Release(port1)
 
 			port2, err := pool.Acquire()
-			Expect(err).ToNot(HaveOccured())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(port2).To(Equal(uint32(10001)))
 
 			nextPort, err := pool.Acquire()
-			Expect(err).ToNot(HaveOccured())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(nextPort).To(Equal(uint32(10000)))
 		})
 
@@ -63,7 +63,7 @@ var _ = Describe("Port pool", func() {
 				pool.Release(20000)
 
 				_, err := pool.Acquire()
-				Expect(err).To(HaveOccured())
+				Expect(err).To(HaveOccurred())
 			})
 		})
 	})

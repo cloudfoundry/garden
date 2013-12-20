@@ -41,7 +41,7 @@ var _ = Describe("Running wshd", func() {
 
 	BeforeEach(func() {
 		containerDir, err := ioutil.TempDir(os.TempDir(), "wshd-test-container")
-		Expect(err).ToNot(HaveOccured())
+		Expect(err).ToNot(HaveOccurred())
 
 		containerPath = containerDir
 
@@ -55,7 +55,7 @@ var _ = Describe("Running wshd", func() {
 		os.Mkdir(runDir, 0755)
 
 		err = copyFile(wshd, path.Join(binDir, "wshd"))
-		Expect(err).ToNot(HaveOccured())
+		Expect(err).ToNot(HaveOccurred())
 
 		ioutil.WriteFile(path.Join(libDir, "hook-parent-before-clone.sh"), []byte(`#!/bin/bash
 
@@ -161,11 +161,11 @@ setup_fs
 		setUpRoot.Dir = containerDir
 
 		setUpRootSession, err := cmdtest.StartWrapped(setUpRoot, outWrapper, outWrapper)
-		Expect(err).ToNot(HaveOccured())
+		Expect(err).ToNot(HaveOccurred())
 		Expect(setUpRootSession).To(ExitWith(0))
 
 		err = copyFile(shmTest, path.Join(mntDir, "sbin", "shmtest"))
-		Expect(err).ToNot(HaveOccured())
+		Expect(err).ToNot(HaveOccurred())
 
 		socketPath = path.Join(runDir, "wshd.sock")
 
@@ -178,20 +178,20 @@ setup_fs
 		)
 
 		wshdSession, err := cmdtest.StartWrapped(wshdCommand, outWrapper, outWrapper)
-		Expect(err).ToNot(HaveOccured())
+		Expect(err).ToNot(HaveOccurred())
 
 		Expect(wshdSession).To(ExitWith(0))
 
 		createdContainers = append(createdContainers, containerDir)
 
-		Eventually(ErrorDialingUnix(socketPath)).ShouldNot(HaveOccured())
+		Eventually(ErrorDialingUnix(socketPath)).ShouldNot(HaveOccurred())
 	})
 
 	It("starts the daemon as a session leader with process isolation and the given title", func() {
 		ps := exec.Command(wsh, "--socket", socketPath, "/bin/ps", "-o", "pid,command")
 
 		psSession, err := cmdtest.StartWrapped(ps, outWrapper, outWrapper)
-		Expect(err).ToNot(HaveOccured())
+		Expect(err).ToNot(HaveOccurred())
 
 		Expect(psSession).To(Say(`  PID COMMAND
     1 test wshd
@@ -206,17 +206,17 @@ setup_fs
 	It("starts the daemon with mount space isolation", func() {
 		mkdir := exec.Command(wsh, "--socket", socketPath, "/bin/mkdir", "/gnome")
 		mkdirSession, err := cmdtest.StartWrapped(mkdir, outWrapper, outWrapper)
-		Expect(err).ToNot(HaveOccured())
+		Expect(err).ToNot(HaveOccurred())
 		Expect(mkdirSession).To(ExitWith(0))
 
 		mount := exec.Command(wsh, "--socket", socketPath, "/bin/mount", "--bind", "/home", "/gnome")
 		mountSession, err := cmdtest.StartWrapped(mount, outWrapper, outWrapper)
-		Expect(err).ToNot(HaveOccured())
+		Expect(err).ToNot(HaveOccurred())
 		Expect(mountSession).To(ExitWith(0))
 
 		cat := exec.Command("/bin/cat", "/proc/mounts")
 		catSession, err := cmdtest.StartWrapped(cat, outWrapper, outWrapper)
-		Expect(err).ToNot(HaveOccured())
+		Expect(err).ToNot(HaveOccurred())
 		Expect(catSession).ToNot(Say("/gnome"))
 		Expect(catSession).To(ExitWith(0))
 	})
@@ -224,12 +224,12 @@ setup_fs
 	It("starts the daemon with network namespace isolation", func() {
 		ifconfig := exec.Command(wsh, "--socket", socketPath, "/sbin/ifconfig", "lo:0", "1.2.3.4", "up")
 		ifconfigSession, err := cmdtest.StartWrapped(ifconfig, outWrapper, outWrapper)
-		Expect(err).ToNot(HaveOccured())
+		Expect(err).ToNot(HaveOccurred())
 		Expect(ifconfigSession).To(ExitWith(0))
 
 		localIfconfig := exec.Command("/sbin/ifconfig")
 		localIfconfigSession, err := cmdtest.StartWrapped(localIfconfig, outWrapper, outWrapper)
-		Expect(err).ToNot(HaveOccured())
+		Expect(err).ToNot(HaveOccurred())
 		Expect(localIfconfigSession).ToNot(Say("lo:0"))
 		Expect(localIfconfigSession).To(ExitWith(0))
 	})
@@ -241,7 +241,7 @@ setup_fs
 			outWrapper,
 			outWrapper,
 		)
-		Expect(err).ToNot(HaveOccured())
+		Expect(err).ToNot(HaveOccurred())
 
 		Expect(createLocal).To(Say("ok"))
 
@@ -250,7 +250,7 @@ setup_fs
 			outWrapper,
 			outWrapper,
 		)
-		Expect(err).ToNot(HaveOccured())
+		Expect(err).ToNot(HaveOccurred())
 		Expect(createRemote).To(Say("ok"))
 
 		localSHM.Process.Signal(syscall.SIGUSR2)
@@ -261,7 +261,7 @@ setup_fs
 	It("starts the daemon with a new UTS namespace", func() {
 		hostname := exec.Command(wsh, "--socket", socketPath, "/bin/hostname", "newhostname")
 		hostnameSession, err := cmdtest.StartWrapped(hostname, outWrapper, outWrapper)
-		Expect(err).ToNot(HaveOccured())
+		Expect(err).ToNot(HaveOccurred())
 
 		Expect(hostnameSession).To(ExitWith(0))
 
@@ -280,15 +280,15 @@ setup_fs
 
 	PIt("does not leak file descriptors to the child", func() {
 		wshdPidfile, err := os.Open(path.Join(containerPath, "run", "wshd.pid"))
-		Expect(err).ToNot(HaveOccured())
+		Expect(err).ToNot(HaveOccurred())
 
 		var wshdPid int
 
 		_, err = fmt.Fscanf(wshdPidfile, "%d", &wshdPid)
-		Expect(err).ToNot(HaveOccured())
+		Expect(err).ToNot(HaveOccurred())
 
 		entries, err := ioutil.ReadDir(fmt.Sprintf("/proc/%d/fd", wshdPid))
-		Expect(err).ToNot(HaveOccured())
+		Expect(err).ToNot(HaveOccurred())
 
 		// TODO: one fd is wshd.sock, unsure what the other is.
 		// shows up as type 0000 in lsof.
@@ -301,7 +301,7 @@ setup_fs
 		cat := exec.Command(wsh, "--socket", socketPath, "/bin/cat", "/proc/mounts")
 
 		catSession, err := cmdtest.StartWrapped(cat, outWrapper, outWrapper)
-		Expect(err).ToNot(HaveOccured())
+		Expect(err).ToNot(HaveOccurred())
 
 		Expect(catSession).ToNot(Say(" /mnt"))
 		Expect(catSession).To(ExitWith(0))
@@ -312,7 +312,7 @@ setup_fs
 			bash := exec.Command(wsh, "--socket", socketPath, "--user", "vcap", "/bin/bash", "-c", "id -u; id -g")
 
 			bashSession, err := cmdtest.StartWrapped(bash, outWrapper, outWrapper)
-			Expect(err).ToNot(HaveOccured())
+			Expect(err).ToNot(HaveOccurred())
 
 			Expect(bashSession).To(Say("^10000\n"))
 			Expect(bashSession).To(Say("^10000\n"))
@@ -323,7 +323,7 @@ setup_fs
 			bash := exec.Command(wsh, "--socket", socketPath, "--user", "vcap", "/bin/bash", "-c", "env | sort")
 
 			bashSession, err := cmdtest.StartWrapped(bash, outWrapper, outWrapper)
-			Expect(err).ToNot(HaveOccured())
+			Expect(err).ToNot(HaveOccurred())
 
 			Expect(bashSession).To(Say("HOME=/home/vcap\n"))
 			Expect(bashSession).To(Say("PATH=/bin:/usr/bin\n"))
@@ -335,7 +335,7 @@ setup_fs
 			pwd := exec.Command(wsh, "--socket", socketPath, "--user", "vcap", "/bin/pwd")
 
 			pwdSession, err := cmdtest.StartWrapped(pwd, outWrapper, outWrapper)
-			Expect(err).ToNot(HaveOccured())
+			Expect(err).ToNot(HaveOccurred())
 
 			Expect(pwdSession).To(Say("/home/vcap\n"))
 			Expect(pwdSession).To(ExitWith(0))
@@ -347,7 +347,7 @@ setup_fs
 			bash := exec.Command(wsh, "--socket", socketPath, "--user", "root", "/bin/bash", "-c", "id -u; id -g")
 
 			bashSession, err := cmdtest.StartWrapped(bash, outWrapper, outWrapper)
-			Expect(err).ToNot(HaveOccured())
+			Expect(err).ToNot(HaveOccurred())
 
 			Expect(bashSession).To(Say("^0\n"))
 			Expect(bashSession).To(Say("^0\n"))
@@ -358,7 +358,7 @@ setup_fs
 			bash := exec.Command(wsh, "--socket", socketPath, "--user", "root", "/bin/bash", "-c", "env | sort")
 
 			bashSession, err := cmdtest.StartWrapped(bash, outWrapper, outWrapper)
-			Expect(err).ToNot(HaveOccured())
+			Expect(err).ToNot(HaveOccurred())
 
 			Expect(bashSession).To(Say("HOME=/root\n"))
 			Expect(bashSession).To(Say("PATH=/sbin:/bin:/usr/sbin:/usr/bin\n"))
@@ -370,7 +370,7 @@ setup_fs
 			pwd := exec.Command(wsh, "--socket", socketPath, "--user", "root", "/bin/pwd")
 
 			pwdSession, err := cmdtest.StartWrapped(pwd, outWrapper, outWrapper)
-			Expect(err).ToNot(HaveOccured())
+			Expect(err).ToNot(HaveOccurred())
 
 			Expect(pwdSession).To(Say("/root\n"))
 			Expect(pwdSession).To(ExitWith(0))
@@ -382,7 +382,7 @@ setup_fs
 			bash := exec.Command(wsh, "--socket", socketPath, "/bin/bash")
 
 			bashSession, err := cmdtest.StartWrapped(bash, outWrapper, outWrapper)
-			Expect(err).ToNot(HaveOccured())
+			Expect(err).ToNot(HaveOccurred())
 
 			bashSession.Stdin.Write([]byte("echo hello"))
 			bashSession.Stdin.Close()
@@ -410,7 +410,7 @@ setup_fs
 			)
 
 			pwdSession, err := cmdtest.StartWrapped(pwd, outWrapper, outWrapper)
-			Expect(err).ToNot(HaveOccured())
+			Expect(err).ToNot(HaveOccurred())
 
 			Expect(pwdSession).To(Say("/home/vcap\n"))
 			Expect(pwdSession).To(ExitWith(0))
@@ -432,7 +432,7 @@ setup_fs
 			)
 
 			cmdSession, err := cmdtest.StartWrapped(cmd, outWrapper, outWrapper)
-			Expect(err).ToNot(HaveOccured())
+			Expect(err).ToNot(HaveOccurred())
 
 			Expect(cmdSession).To(Say("-l vcap -t 1 -4 -6 -d -n somehost\n"))
 			Expect(cmdSession).To(ExitWith(0))
@@ -451,7 +451,7 @@ setup_fs
 			)
 
 			cmdSession, err := cmdtest.StartWrapped(cmd, outWrapper, outWrapper)
-			Expect(err).ToNot(HaveOccured())
+			Expect(err).ToNot(HaveOccurred())
 
 			Expect(cmdSession).To(ExitWith(0))
 		})

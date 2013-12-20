@@ -29,7 +29,7 @@ var _ = Describe("Container cgroups", func() {
 	Describe("setting", func() {
 		It("writes the value to the name under the subsytem", func() {
 			err := cgroupsManager.Set("memory", "memory.limit_in_bytes", "42")
-			Expect(err).ToNot(HaveOccured())
+			Expect(err).ToNot(HaveOccurred())
 
 			Expect(fakeRunner).To(HaveExecutedSerially(
 				fake_command_runner.CommandSpec{
@@ -76,7 +76,7 @@ var _ = Describe("Container cgroups", func() {
 			)
 
 			val, err := cgroupsManager.Get("memory", "memory.limit_in_bytes")
-			Expect(err).ToNot(HaveOccured())
+			Expect(err).ToNot(HaveOccurred())
 
 			Expect(val).To(Equal("42"))
 		})

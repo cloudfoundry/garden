@@ -29,7 +29,7 @@ var _ = Describe("Linux Container pool", func() {
 
 	BeforeEach(func() {
 		_, ipNet, err := net.ParseCIDR("1.2.0.0/20")
-		Expect(err).ToNot(HaveOccured())
+		Expect(err).ToNot(HaveOccurred())
 
 		fakeUIDPool = fake_uid_pool.New(10000)
 
@@ -55,7 +55,7 @@ var _ = Describe("Linux Container pool", func() {
 			fakeQuotaManager.MountPointResult = "/depot/mount/point"
 
 			err := pool.Setup()
-			Expect(err).ToNot(HaveOccured())
+			Expect(err).ToNot(HaveOccurred())
 
 			Expect(fakeRunner).To(HaveExecutedSerially(
 				fake_command_runner.CommandSpec{
@@ -98,17 +98,17 @@ var _ = Describe("Linux Container pool", func() {
 	Describe("creating", func() {
 		It("returns containers with unique IDs", func() {
 			container1, err := pool.Create(backend.ContainerSpec{})
-			Expect(err).ToNot(HaveOccured())
+			Expect(err).ToNot(HaveOccurred())
 
 			container2, err := pool.Create(backend.ContainerSpec{})
-			Expect(err).ToNot(HaveOccured())
+			Expect(err).ToNot(HaveOccurred())
 
 			Expect(container1.ID()).ToNot(Equal(container2.ID()))
 		})
 
 		It("executes create.sh with the correct args and environment", func() {
 			container, err := pool.Create(backend.ContainerSpec{})
-			Expect(err).ToNot(HaveOccured())
+			Expect(err).ToNot(HaveOccurred())
 
 			Expect(fakeRunner).To(HaveExecutedSerially(
 				fake_command_runner.CommandSpec{
@@ -147,7 +147,7 @@ var _ = Describe("Linux Container pool", func() {
 					},
 				})
 
-				Expect(err).ToNot(HaveOccured())
+				Expect(err).ToNot(HaveOccurred())
 
 				containerPath := "/depot/path/" + container.ID()
 
@@ -305,7 +305,7 @@ var _ = Describe("Linux Container pool", func() {
 
 		BeforeEach(func() {
 			container, err := pool.Create(backend.ContainerSpec{})
-			Expect(err).ToNot(HaveOccured())
+			Expect(err).ToNot(HaveOccurred())
 
 			createdContainer = container.(*linux_backend.LinuxContainer)
 
@@ -315,7 +315,7 @@ var _ = Describe("Linux Container pool", func() {
 
 		It("executes destroy.sh with the correct args and environment", func() {
 			err := pool.Destroy(createdContainer)
-			Expect(err).ToNot(HaveOccured())
+			Expect(err).ToNot(HaveOccurred())
 
 			Expect(fakeRunner).To(HaveExecutedSerially(
 				fake_command_runner.CommandSpec{
@@ -331,7 +331,7 @@ var _ = Describe("Linux Container pool", func() {
 
 		It("releases the container's ports, uid, and network", func() {
 			err := pool.Destroy(createdContainer)
-			Expect(err).ToNot(HaveOccured())
+			Expect(err).ToNot(HaveOccurred())
 
 			Expect(fakePortPool.Released).To(ContainElement(uint32(123)))
 			Expect(fakePortPool.Released).To(ContainElement(uint32(456)))

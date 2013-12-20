@@ -17,7 +17,7 @@ var _ = Describe("Running commands", func() {
 		Expect(cmd.ProcessState).To(BeNil())
 
 		err := runner.Run(cmd)
-		Expect(err).ToNot(HaveOccured())
+		Expect(err).ToNot(HaveOccurred())
 
 		Expect(cmd.ProcessState).ToNot(BeNil())
 	})
@@ -31,7 +31,7 @@ var _ = Describe("Running commands", func() {
 				Args: []string{"-c", "exit 1"},
 			})
 
-			Expect(err).To(HaveOccured())
+			Expect(err).To(HaveOccurred())
 		})
 	})
 })
@@ -47,7 +47,7 @@ var _ = Describe("Starting commands", func() {
 		Expect(err).To(BeNil())
 
 		err = runner.Start(cmd)
-		Expect(err).ToNot(HaveOccured())
+		Expect(err).ToNot(HaveOccurred())
 
 		Expect(cmd.ProcessState).To(BeNil())
 
@@ -67,12 +67,12 @@ var _ = Describe("Waiting on commands", func() {
 		Expect(cmd.ProcessState).To(BeNil())
 
 		err := runner.Start(cmd)
-		Expect(err).ToNot(HaveOccured())
+		Expect(err).ToNot(HaveOccurred())
 
 		Expect(cmd.ProcessState).To(BeNil())
 
 		err = runner.Wait(cmd)
-		Expect(err).ToNot(HaveOccured())
+		Expect(err).ToNot(HaveOccurred())
 
 		Expect(cmd.ProcessState).ToNot(BeNil())
 	})
@@ -86,15 +86,15 @@ var _ = Describe("Killing commands", func() {
 		Expect(cmd.ProcessState).To(BeNil())
 
 		err := runner.Start(cmd)
-		Expect(err).ToNot(HaveOccured())
+		Expect(err).ToNot(HaveOccurred())
 
 		Expect(cmd.ProcessState).To(BeNil())
 
 		err = runner.Kill(cmd)
-		Expect(err).ToNot(HaveOccured())
+		Expect(err).ToNot(HaveOccurred())
 
 		err = cmd.Wait()
-		Expect(err).To(HaveOccured())
+		Expect(err).To(HaveOccurred())
 
 		Expect(cmd.ProcessState).ToNot(BeNil())
 	})
@@ -107,7 +107,7 @@ var _ = Describe("Killing commands", func() {
 			Expect(cmd.ProcessState).To(BeNil())
 
 			err := runner.Kill(cmd)
-			Expect(err).To(HaveOccured())
+			Expect(err).To(HaveOccurred())
 		})
 	})
 })

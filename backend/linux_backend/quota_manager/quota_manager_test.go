@@ -59,7 +59,7 @@ var _ = Describe("Linux Quota manager", func() {
 		var err error
 
 		quotaManager, err = quota_manager.New("/some/depot", "/root/path", fakeRunner)
-		Expect(err).ToNot(HaveOccured())
+		Expect(err).ToNot(HaveOccurred())
 	})
 
 	Describe("setting quotas", func() {
@@ -74,7 +74,7 @@ var _ = Describe("Linux Quota manager", func() {
 		It("executes setquota on the container depo's mount point", func() {
 			err := quotaManager.SetLimits(1234, limits)
 
-			Expect(err).ToNot(HaveOccured())
+			Expect(err).ToNot(HaveOccurred())
 
 			Expect(fakeRunner).To(HaveExecutedSerially(
 				fake_command_runner.CommandSpec{
@@ -100,7 +100,7 @@ var _ = Describe("Linux Quota manager", func() {
 			It("executes setquota with them converted to blocks", func() {
 				err := quotaManager.SetLimits(1234, limits)
 
-				Expect(err).ToNot(HaveOccured())
+				Expect(err).ToNot(HaveOccurred())
 
 				Expect(fakeRunner).To(HaveExecutedSerially(
 					fake_command_runner.CommandSpec{
@@ -142,7 +142,7 @@ var _ = Describe("Linux Quota manager", func() {
 			It("runs nothing", func() {
 				err := quotaManager.SetLimits(1234, limits)
 
-				Expect(err).ToNot(HaveOccured())
+				Expect(err).ToNot(HaveOccurred())
 
 				Expect(fakeRunner).ToNot(HaveExecutedSerially(
 					fake_command_runner.CommandSpec{
@@ -167,7 +167,7 @@ var _ = Describe("Linux Quota manager", func() {
 			)
 
 			limits, err := quotaManager.GetLimits(1234)
-			Expect(err).ToNot(HaveOccured())
+			Expect(err).ToNot(HaveOccurred())
 
 			Expect(limits.BlockSoft).To(Equal(uint64(222)))
 			Expect(limits.BlockHard).To(Equal(uint64(333)))
@@ -210,7 +210,7 @@ var _ = Describe("Linux Quota manager", func() {
 				)
 
 				_, err := quotaManager.GetLimits(1234)
-				Expect(err).To(HaveOccured())
+				Expect(err).To(HaveOccurred())
 			})
 		})
 
@@ -221,7 +221,7 @@ var _ = Describe("Linux Quota manager", func() {
 
 			It("runs nothing", func() {
 				limits, err := quotaManager.GetLimits(1234)
-				Expect(err).ToNot(HaveOccured())
+				Expect(err).ToNot(HaveOccurred())
 
 				Expect(limits).To(BeZero())
 
@@ -248,7 +248,7 @@ var _ = Describe("Linux Quota manager", func() {
 			)
 
 			limits, err := quotaManager.GetUsage(1234)
-			Expect(err).ToNot(HaveOccured())
+			Expect(err).ToNot(HaveOccurred())
 
 			Expect(limits.BytesUsed).To(Equal(uint64(111)))
 			Expect(limits.InodesUsed).To(Equal(uint64(555)))
@@ -288,7 +288,7 @@ var _ = Describe("Linux Quota manager", func() {
 				)
 
 				_, err := quotaManager.GetUsage(1234)
-				Expect(err).To(HaveOccured())
+				Expect(err).To(HaveOccurred())
 			})
 		})
 
@@ -299,7 +299,7 @@ var _ = Describe("Linux Quota manager", func() {
 
 			It("runs nothing", func() {
 				usage, err := quotaManager.GetUsage(1234)
-				Expect(err).ToNot(HaveOccured())
+				Expect(err).ToNot(HaveOccurred())
 
 				Expect(usage).To(BeZero())
 

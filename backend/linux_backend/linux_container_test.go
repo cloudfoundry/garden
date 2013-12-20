@@ -40,14 +40,14 @@ var _ = Describe("Linux containers", func() {
 		fakeBandwidthManager = fake_bandwidth_manager.New()
 
 		_, ipNet, err := net.ParseCIDR("10.254.0.0/24")
-		Expect(err).ToNot(HaveOccured())
+		Expect(err).ToNot(HaveOccurred())
 
 		fakePortPool = fake_port_pool.New(1000)
 
 		networkPool := network_pool.New(ipNet)
 
 		network, err := networkPool.Acquire()
-		Expect(err).ToNot(HaveOccured())
+		Expect(err).ToNot(HaveOccurred())
 
 		containerResources = &linux_backend.Resources{
 			UID:     1234,
@@ -83,7 +83,7 @@ var _ = Describe("Linux containers", func() {
 	Describe("Starting", func() {
 		It("executes the container's start.sh with the correct environment", func() {
 			err := container.Start()
-			Expect(err).ToNot(HaveOccured())
+			Expect(err).ToNot(HaveOccurred())
 
 			Expect(fakeRunner).To(HaveExecutedSerially(
 				fake_command_runner.CommandSpec{
@@ -101,7 +101,7 @@ var _ = Describe("Linux containers", func() {
 			Expect(container.State()).To(Equal(linux_backend.StateBorn))
 
 			err := container.Start()
-			Expect(err).ToNot(HaveOccured())
+			Expect(err).ToNot(HaveOccurred())
 
 			Expect(container.State()).To(Equal(linux_backend.StateActive))
 		})
@@ -128,7 +128,7 @@ var _ = Describe("Linux containers", func() {
 				Expect(container.State()).To(Equal(linux_backend.StateBorn))
 
 				err := container.Start()
-				Expect(err).To(HaveOccured())
+				Expect(err).To(HaveOccurred())
 
 				Expect(container.State()).To(Equal(linux_backend.StateBorn))
 			})
@@ -138,7 +138,7 @@ var _ = Describe("Linux containers", func() {
 	Describe("Stopping", func() {
 		It("executes the container's stop.sh", func() {
 			err := container.Stop(false)
-			Expect(err).ToNot(HaveOccured())
+			Expect(err).ToNot(HaveOccurred())
 
 			Expect(fakeRunner).To(HaveExecutedSerially(
 				fake_command_runner.CommandSpec{
@@ -151,7 +151,7 @@ var _ = Describe("Linux containers", func() {
 			Expect(container.State()).To(Equal(linux_backend.StateBorn))
 
 			err := container.Stop(false)
-			Expect(err).ToNot(HaveOccured())
+			Expect(err).ToNot(HaveOccurred())
 
 			Expect(container.State()).To(Equal(linux_backend.StateStopped))
 
@@ -160,7 +160,7 @@ var _ = Describe("Linux containers", func() {
 		Context("when kill is true", func() {
 			It("executes stop.sh with -w 0", func() {
 				err := container.Stop(true)
-				Expect(err).ToNot(HaveOccured())
+				Expect(err).ToNot(HaveOccurred())
 
 				Expect(fakeRunner).To(HaveExecutedSerially(
 					fake_command_runner.CommandSpec{
@@ -193,7 +193,7 @@ var _ = Describe("Linux containers", func() {
 				Expect(container.State()).To(Equal(linux_backend.StateBorn))
 
 				err := container.Stop(false)
-				Expect(err).To(HaveOccured())
+				Expect(err).To(HaveOccurred())
 
 				Expect(container.State()).To(Equal(linux_backend.StateBorn))
 			})
@@ -205,12 +205,12 @@ var _ = Describe("Linux containers", func() {
 					LimitInBytes: 42,
 				})
 
-				Expect(err).ToNot(HaveOccured())
+				Expect(err).ToNot(HaveOccurred())
 			})
 
 			It("stops it", func() {
 				err := container.Stop(false)
-				Expect(err).ToNot(HaveOccured())
+				Expect(err).ToNot(HaveOccurred())
 
 				Expect(fakeRunner).To(HaveKilled(fake_command_runner.CommandSpec{
 					Path: "/depot/some-id/bin/oom",
@@ -224,7 +224,7 @@ var _ = Describe("Linux containers", func() {
 			fakeRunner.ServerRootPath = "/host"
 
 			err := container.CopyIn("/src", "/dst")
-			Expect(err).ToNot(HaveOccured())
+			Expect(err).ToNot(HaveOccurred())
 
 			Expect(fakeRunner).To(HaveExecutedSerially(
 				fake_command_runner.CommandSpec{
@@ -267,7 +267,7 @@ var _ = Describe("Linux containers", func() {
 			fakeRunner.ServerRootPath = "/host"
 
 			err := container.CopyOut("/src", "/dst", "")
-			Expect(err).ToNot(HaveOccured())
+			Expect(err).ToNot(HaveOccurred())
 
 			Expect(fakeRunner).To(HaveExecutedSerially(
 				fake_command_runner.CommandSpec{
@@ -290,7 +290,7 @@ var _ = Describe("Linux containers", func() {
 				fakeRunner.ServerRootPath = "/host"
 
 				err := container.CopyOut("/src", "/dst", "some-user")
-				Expect(err).ToNot(HaveOccured())
+				Expect(err).ToNot(HaveOccurred())
 
 				Expect(fakeRunner).To(HaveExecutedSerially(
 					fake_command_runner.CommandSpec{
@@ -351,7 +351,7 @@ var _ = Describe("Linux containers", func() {
 				Script: "/some/script",
 			})
 
-			Expect(err).ToNot(HaveOccured())
+			Expect(err).ToNot(HaveOccurred())
 
 			Eventually(fakeRunner).Should(HaveStartedExecuting(
 				fake_command_runner.CommandSpec{
@@ -374,12 +374,12 @@ var _ = Describe("Linux containers", func() {
 			jobID1, err := container.Spawn(backend.JobSpec{
 				Script: "/some/script",
 			})
-			Expect(err).ToNot(HaveOccured())
+			Expect(err).ToNot(HaveOccurred())
 
 			jobID2, err := container.Spawn(backend.JobSpec{
 				Script: "/some/script",
 			})
-			Expect(err).ToNot(HaveOccured())
+			Expect(err).ToNot(HaveOccurred())
 
 			Expect(jobID1).ToNot(Equal(jobID2))
 		})
@@ -393,7 +393,7 @@ var _ = Describe("Linux containers", func() {
 					Privileged: true,
 				})
 
-				Expect(err).ToNot(HaveOccured())
+				Expect(err).ToNot(HaveOccurred())
 
 				Eventually(fakeRunner).Should(HaveStartedExecuting(
 					fake_command_runner.CommandSpec{
@@ -461,10 +461,10 @@ var _ = Describe("Linux containers", func() {
 				jobID, err := container.Spawn(backend.JobSpec{
 					Script: "/some/script",
 				})
-				Expect(err).ToNot(HaveOccured())
+				Expect(err).ToNot(HaveOccurred())
 
 				jobResult, err := container.Link(jobID)
-				Expect(err).ToNot(HaveOccured())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(jobResult.ExitStatus).To(Equal(uint32(42)))
 				Expect(jobResult.Stdout).To(Equal([]byte("hi out\n")))
 				Expect(jobResult.Stderr).To(Equal([]byte("hi err\n")))
@@ -476,10 +476,10 @@ var _ = Describe("Linux containers", func() {
 						Script:        "/some/script",
 						DiscardOutput: true,
 					})
-					Expect(err).ToNot(HaveOccured())
+					Expect(err).ToNot(HaveOccurred())
 
 					jobResult, err := container.Link(jobID)
-					Expect(err).ToNot(HaveOccured())
+					Expect(err).ToNot(HaveOccurred())
 					Expect(jobResult.ExitStatus).To(Equal(uint32(42)))
 					Expect(jobResult.Stdout).To(BeEmpty())
 					Expect(jobResult.Stderr).To(BeEmpty())
@@ -492,19 +492,19 @@ var _ = Describe("Linux containers", func() {
 				jobID, err := container.Spawn(backend.JobSpec{
 					Script: "/some/script",
 				})
-				Expect(err).ToNot(HaveOccured())
+				Expect(err).ToNot(HaveOccurred())
 
 				time.Sleep(100 * time.Millisecond)
 
 				_, err = container.Link(jobID)
-				Expect(err).To(HaveOccured())
+				Expect(err).To(HaveOccurred())
 			})
 		})
 
 		Context("to an unknown job", func() {
 			It("returns an error", func() {
 				_, err := container.Link(42)
-				Expect(err).To(HaveOccured())
+				Expect(err).To(HaveOccurred())
 			})
 		})
 	})
@@ -542,10 +542,10 @@ var _ = Describe("Linux containers", func() {
 				jobID, err := container.Spawn(backend.JobSpec{
 					Script: "/some/script",
 				})
-				Expect(err).ToNot(HaveOccured())
+				Expect(err).ToNot(HaveOccurred())
 
 				jobStreamChannel, err := container.Stream(jobID)
-				Expect(err).ToNot(HaveOccured())
+				Expect(err).ToNot(HaveOccurred())
 
 				chunk1 := <-jobStreamChannel
 				Expect(chunk1.Name).To(Equal("stdout"))
@@ -575,19 +575,19 @@ var _ = Describe("Linux containers", func() {
 				jobID, err := container.Spawn(backend.JobSpec{
 					Script: "/some/script",
 				})
-				Expect(err).ToNot(HaveOccured())
+				Expect(err).ToNot(HaveOccurred())
 
 				time.Sleep(100 * time.Millisecond)
 
 				_, err = container.Stream(jobID)
-				Expect(err).To(HaveOccured())
+				Expect(err).To(HaveOccurred())
 			})
 		})
 
 		Context("an unknown job", func() {
 			It("returns an error", func() {
 				_, err := container.Stream(42)
-				Expect(err).To(HaveOccured())
+				Expect(err).To(HaveOccurred())
 			})
 		})
 	})
@@ -600,7 +600,7 @@ var _ = Describe("Linux containers", func() {
 
 		It("sets the limit via the bandwidth manager with the new limits", func() {
 			newLimits, err := container.LimitBandwidth(limits)
-			Expect(err).ToNot(HaveOccured())
+			Expect(err).ToNot(HaveOccurred())
 
 			Expect(fakeBandwidthManager.EnforcedLimits).To(ContainElement(limits))
 
@@ -628,7 +628,7 @@ var _ = Describe("Linux containers", func() {
 			}
 
 			_, err := container.LimitMemory(limits)
-			Expect(err).ToNot(HaveOccured())
+			Expect(err).ToNot(HaveOccurred())
 
 			Expect(fakeRunner).To(HaveStartedExecuting(
 				fake_command_runner.CommandSpec{
@@ -644,7 +644,7 @@ var _ = Describe("Linux containers", func() {
 			}
 
 			_, err := container.LimitMemory(limits)
-			Expect(err).ToNot(HaveOccured())
+			Expect(err).ToNot(HaveOccurred())
 
 			Expect(fakeCgroups.SetValues()).To(Equal(
 				[]fake_cgroups_manager.SetValue{
@@ -677,7 +677,7 @@ var _ = Describe("Linux containers", func() {
 			})
 
 			actualLimits, err := container.LimitMemory(limits)
-			Expect(err).ToNot(HaveOccured())
+			Expect(err).ToNot(HaveOccurred())
 
 			Expect(actualLimits.LimitInBytes).To(Equal(uint64(math.MaxUint64)))
 		})
@@ -698,10 +698,10 @@ var _ = Describe("Linux containers", func() {
 				}
 
 				_, err := container.LimitMemory(limits)
-				Expect(err).ToNot(HaveOccured())
+				Expect(err).ToNot(HaveOccurred())
 
 				_, err = container.LimitMemory(limits)
-				Expect(err).ToNot(HaveOccured())
+				Expect(err).ToNot(HaveOccurred())
 
 				Expect(started).To(Equal(1))
 			})
@@ -722,7 +722,7 @@ var _ = Describe("Linux containers", func() {
 				}
 
 				_, err := container.LimitMemory(limits)
-				Expect(err).ToNot(HaveOccured())
+				Expect(err).ToNot(HaveOccurred())
 
 				Eventually(fakeRunner).Should(HaveExecutedSerially(
 					fake_command_runner.CommandSpec{
@@ -737,7 +737,7 @@ var _ = Describe("Linux containers", func() {
 				}
 
 				_, err := container.LimitMemory(limits)
-				Expect(err).ToNot(HaveOccured())
+				Expect(err).ToNot(HaveOccurred())
 
 				Eventually(func() []string {
 					return container.Events()
@@ -790,7 +790,7 @@ var _ = Describe("Linux containers", func() {
 					LimitInBytes: 102400,
 				})
 
-				Expect(err).ToNot(HaveOccured())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(limits.LimitInBytes).To(Equal(uint64(123)))
 			})
 		})
@@ -851,7 +851,7 @@ var _ = Describe("Linux containers", func() {
 			}
 
 			_, err := container.LimitCPU(limits)
-			Expect(err).ToNot(HaveOccured())
+			Expect(err).ToNot(HaveOccurred())
 
 			Expect(fakeCgroups.SetValues()).To(Equal(
 				[]fake_cgroups_manager.SetValue{
@@ -874,7 +874,7 @@ var _ = Describe("Linux containers", func() {
 			})
 
 			actualLimits, err := container.LimitCPU(limits)
-			Expect(err).ToNot(HaveOccured())
+			Expect(err).ToNot(HaveOccurred())
 
 			Expect(actualLimits.LimitInShares).To(Equal(uint64(102400)))
 		})
@@ -925,7 +925,7 @@ var _ = Describe("Linux containers", func() {
 			fakeQuotaManager.GetLimitsResult = resultingLimits
 
 			newLimits, err := container.LimitDisk(limits)
-			Expect(err).ToNot(HaveOccured())
+			Expect(err).ToNot(HaveOccurred())
 
 			uid := containerResources.UID
 
@@ -952,7 +952,7 @@ var _ = Describe("Linux containers", func() {
 	Describe("Net in", func() {
 		It("executes net.sh in with HOST_PORT and CONTAINER_PORT", func() {
 			hostPort, containerPort, err := container.NetIn(123, 456)
-			Expect(err).ToNot(HaveOccured())
+			Expect(err).ToNot(HaveOccurred())
 
 			Expect(fakeRunner).To(HaveExecutedSerially(
 				fake_command_runner.CommandSpec{
@@ -972,13 +972,13 @@ var _ = Describe("Linux containers", func() {
 		Context("when a host port is not provided", func() {
 			It("acquires one from the port pool", func() {
 				hostPort, containerPort, err := container.NetIn(0, 456)
-				Expect(err).ToNot(HaveOccured())
+				Expect(err).ToNot(HaveOccurred())
 
 				Expect(hostPort).To(Equal(uint32(1000)))
 				Expect(containerPort).To(Equal(uint32(456)))
 
 				secondHostPort, _, err := container.NetIn(0, 456)
-				Expect(err).ToNot(HaveOccured())
+				Expect(err).ToNot(HaveOccurred())
 
 				Expect(secondHostPort).ToNot(Equal(hostPort))
 
@@ -1002,7 +1002,7 @@ var _ = Describe("Linux containers", func() {
 		Context("when a container port is not provided", func() {
 			It("defaults it to the host port", func() {
 				hostPort, containerPort, err := container.NetIn(123, 0)
-				Expect(err).ToNot(HaveOccured())
+				Expect(err).ToNot(HaveOccurred())
 
 				Expect(fakeRunner).To(HaveExecutedSerially(
 					fake_command_runner.CommandSpec{
@@ -1022,7 +1022,7 @@ var _ = Describe("Linux containers", func() {
 			Context("and a host port is not provided either", func() {
 				It("defaults it to the same acquired port", func() {
 					hostPort, containerPort, err := container.NetIn(0, 0)
-					Expect(err).ToNot(HaveOccured())
+					Expect(err).ToNot(HaveOccurred())
 
 					Expect(fakeRunner).To(HaveExecutedSerially(
 						fake_command_runner.CommandSpec{
@@ -1064,7 +1064,7 @@ var _ = Describe("Linux containers", func() {
 	Describe("Net out", func() {
 		It("executes net.sh out with NETWORK and PORT", func() {
 			err := container.NetOut("1.2.3.4/22", 567)
-			Expect(err).ToNot(HaveOccured())
+			Expect(err).ToNot(HaveOccurred())
 
 			Expect(fakeRunner).To(HaveExecutedSerially(
 				fake_command_runner.CommandSpec{
@@ -1081,7 +1081,7 @@ var _ = Describe("Linux containers", func() {
 		Context("when port 0 is given", func() {
 			It("executes with PORT as an empty string", func() {
 				err := container.NetOut("1.2.3.4/22", 0)
-				Expect(err).ToNot(HaveOccured())
+				Expect(err).ToNot(HaveOccurred())
 
 				Expect(fakeRunner).To(HaveExecutedSerially(
 					fake_command_runner.CommandSpec{
@@ -1098,7 +1098,7 @@ var _ = Describe("Linux containers", func() {
 			Context("and a network is not given", func() {
 				It("returns an error", func() {
 					err := container.NetOut("", 0)
-					Expect(err).To(HaveOccured())
+					Expect(err).To(HaveOccurred())
 				})
 			})
 		})
@@ -1126,21 +1126,21 @@ var _ = Describe("Linux containers", func() {
 	Describe("Info", func() {
 		It("returns the container's state", func() {
 			info, err := container.Info()
-			Expect(err).ToNot(HaveOccured())
+			Expect(err).ToNot(HaveOccurred())
 
 			Expect(info.State).To(Equal("born"))
 		})
 
 		It("returns the container's events", func() {
 			info, err := container.Info()
-			Expect(err).ToNot(HaveOccured())
+			Expect(err).ToNot(HaveOccurred())
 
 			Expect(info.Events).To(Equal([]string{}))
 		})
 
 		It("returns the container's network info", func() {
 			info, err := container.Info()
-			Expect(err).ToNot(HaveOccured())
+			Expect(err).ToNot(HaveOccurred())
 
 			Expect(info.HostIP).To(Equal("10.254.0.1"))
 			Expect(info.ContainerIP).To(Equal("10.254.0.2"))
@@ -1148,7 +1148,7 @@ var _ = Describe("Linux containers", func() {
 
 		It("returns the container's path", func() {
 			info, err := container.Info()
-			Expect(err).ToNot(HaveOccured())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(info.ContainerPath).To(Equal("/depot/some-id"))
 		})
 
@@ -1171,15 +1171,15 @@ var _ = Describe("Linux containers", func() {
 				jobID1, err := container.Spawn(backend.JobSpec{
 					Script: "/some/script",
 				})
-				Expect(err).ToNot(HaveOccured())
+				Expect(err).ToNot(HaveOccurred())
 
 				jobID2, err := container.Spawn(backend.JobSpec{
 					Script: "/some/script",
 				})
-				Expect(err).ToNot(HaveOccured())
+				Expect(err).ToNot(HaveOccurred())
 
 				info, err := container.Info()
-				Expect(err).ToNot(HaveOccured())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(info.JobIDs).To(Equal([]uint32{jobID1, jobID2}))
 			})
 		})
@@ -1221,7 +1221,7 @@ total_unevictable 28
 
 			It("is returned in the response", func() {
 				info, err := container.Info()
-				Expect(err).ToNot(HaveOccured())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(info.MemoryStat).To(Equal(backend.ContainerMemoryStat{
 					Cache:                   1,
 					Rss:                     2,
@@ -1286,7 +1286,7 @@ system 2
 
 			It("is returned in the response", func() {
 				info, err := container.Info()
-				Expect(err).ToNot(HaveOccured())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(info.CPUStat).To(Equal(backend.ContainerCPUStat{
 					Usage:  42,
 					User:   1,
@@ -1333,7 +1333,7 @@ system 2
 				}
 
 				info, err := container.Info()
-				Expect(err).ToNot(HaveOccured())
+				Expect(err).ToNot(HaveOccurred())
 
 				Expect(info.DiskStat).To(Equal(backend.ContainerDiskStat{
 					BytesUsed:  1,
@@ -1365,7 +1365,7 @@ system 2
 				}
 
 				info, err := container.Info()
-				Expect(err).ToNot(HaveOccured())
+				Expect(err).ToNot(HaveOccurred())
 
 				Expect(info.BandwidthStat).To(Equal(backend.ContainerBandwidthStat{
 					InRate:   1,

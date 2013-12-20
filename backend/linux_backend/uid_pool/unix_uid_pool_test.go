@@ -13,10 +13,10 @@ var _ = Describe("Unix UID pool", func() {
 			pool := uid_pool.New(10000, 5)
 
 			uid1, err := pool.Acquire()
-			Expect(err).ToNot(HaveOccured())
+			Expect(err).ToNot(HaveOccurred())
 
 			uid2, err := pool.Acquire()
-			Expect(err).ToNot(HaveOccured())
+			Expect(err).ToNot(HaveOccurred())
 
 			Expect(uid1).To(Equal(uint32(10000)))
 			Expect(uid2).To(Equal(uint32(10001)))
@@ -28,11 +28,11 @@ var _ = Describe("Unix UID pool", func() {
 
 				for i := 0; i < 5; i++ {
 					_, err := pool.Acquire()
-					Expect(err).ToNot(HaveOccured())
+					Expect(err).ToNot(HaveOccurred())
 				}
 
 				_, err := pool.Acquire()
-				Expect(err).To(HaveOccured())
+				Expect(err).To(HaveOccurred())
 			})
 		})
 	})
@@ -42,17 +42,17 @@ var _ = Describe("Unix UID pool", func() {
 			pool := uid_pool.New(10000, 2)
 
 			uid1, err := pool.Acquire()
-			Expect(err).ToNot(HaveOccured())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(uid1).To(Equal(uint32(10000)))
 
 			pool.Release(uid1)
 
 			uid2, err := pool.Acquire()
-			Expect(err).ToNot(HaveOccured())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(uid2).To(Equal(uint32(10001)))
 
 			nextUID, err := pool.Acquire()
-			Expect(err).ToNot(HaveOccured())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(nextUID).To(Equal(uint32(10000)))
 		})
 
@@ -63,7 +63,7 @@ var _ = Describe("Unix UID pool", func() {
 				pool.Release(20000)
 
 				_, err := pool.Acquire()
-				Expect(err).To(HaveOccured())
+				Expect(err).To(HaveOccurred())
 			})
 		})
 	})

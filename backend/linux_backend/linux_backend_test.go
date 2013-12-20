@@ -23,7 +23,7 @@ var _ = Describe("Setup", func() {
 
 	It("sets up the container pool", func() {
 		err := linuxBackend.Setup()
-		Expect(err).ToNot(HaveOccured())
+		Expect(err).ToNot(HaveOccurred())
 
 		Expect(fakeContainerPool.DidSetup).To(BeTrue())
 	})
@@ -39,23 +39,23 @@ var _ = Describe("Create", func() {
 		Expect(fakeContainerPool.CreatedContainers).To(BeEmpty())
 
 		container, err := linuxBackend.Create(backend.ContainerSpec{})
-		Expect(err).ToNot(HaveOccured())
+		Expect(err).ToNot(HaveOccurred())
 
 		Expect(fakeContainerPool.CreatedContainers).To(ContainElement(container))
 	})
 
 	It("starts the container", func() {
 		container, err := linuxBackend.Create(backend.ContainerSpec{})
-		Expect(err).ToNot(HaveOccured())
+		Expect(err).ToNot(HaveOccurred())
 		Expect(container.(*fake_backend.FakeContainer).Started).To(BeTrue())
 	})
 
 	It("registers the container", func() {
 		container, err := linuxBackend.Create(backend.ContainerSpec{})
-		Expect(err).ToNot(HaveOccured())
+		Expect(err).ToNot(HaveOccurred())
 
 		foundContainer, err := linuxBackend.Lookup(container.Handle())
-		Expect(err).ToNot(HaveOccured())
+		Expect(err).ToNot(HaveOccurred())
 
 		Expect(foundContainer).To(Equal(container))
 	})
@@ -69,7 +69,7 @@ var _ = Describe("Create", func() {
 
 		It("returns the error", func() {
 			container, err := linuxBackend.Create(backend.ContainerSpec{})
-			Expect(err).To(HaveOccured())
+			Expect(err).To(HaveOccurred())
 			Expect(err).To(Equal(disaster))
 
 			Expect(container).To(BeNil())
@@ -87,7 +87,7 @@ var _ = Describe("Create", func() {
 
 		It("returns the error", func() {
 			container, err := linuxBackend.Create(backend.ContainerSpec{})
-			Expect(err).To(HaveOccured())
+			Expect(err).To(HaveOccurred())
 			Expect(err).To(Equal(disaster))
 
 			Expect(container).To(BeNil())
@@ -95,10 +95,10 @@ var _ = Describe("Create", func() {
 
 		It("does not register the container", func() {
 			_, err := linuxBackend.Create(backend.ContainerSpec{})
-			Expect(err).To(HaveOccured())
+			Expect(err).To(HaveOccurred())
 
 			containers, err := linuxBackend.Containers()
-			Expect(err).ToNot(HaveOccured())
+			Expect(err).ToNot(HaveOccurred())
 
 			Expect(containers).To(BeEmpty())
 		})
@@ -113,7 +113,7 @@ var _ = Describe("Destroy", func() {
 		linuxBackend = linux_backend.New(fakeContainerPool)
 
 		newContainer, err := linuxBackend.Create(backend.ContainerSpec{})
-		Expect(err).ToNot(HaveOccured())
+		Expect(err).ToNot(HaveOccurred())
 
 		container = newContainer
 	})
@@ -122,24 +122,24 @@ var _ = Describe("Destroy", func() {
 		Expect(fakeContainerPool.DestroyedContainers).To(BeEmpty())
 
 		err := linuxBackend.Destroy(container.Handle())
-		Expect(err).ToNot(HaveOccured())
+		Expect(err).ToNot(HaveOccurred())
 
 		Expect(fakeContainerPool.DestroyedContainers).To(ContainElement(container))
 	})
 
 	It("unregisters the container", func() {
 		err := linuxBackend.Destroy(container.Handle())
-		Expect(err).ToNot(HaveOccured())
+		Expect(err).ToNot(HaveOccurred())
 
 		_, err = linuxBackend.Lookup(container.Handle())
-		Expect(err).To(HaveOccured())
+		Expect(err).To(HaveOccurred())
 		Expect(err).To(Equal(linux_backend.UnknownHandleError{container.Handle()}))
 	})
 
 	Context("when the container does not exist", func() {
 		It("returns UnknownHandleError", func() {
 			err := linuxBackend.Destroy("bogus-handle")
-			Expect(err).To(HaveOccured())
+			Expect(err).To(HaveOccurred())
 			Expect(err).To(Equal(linux_backend.UnknownHandleError{"bogus-handle"}))
 		})
 	})
@@ -153,16 +153,16 @@ var _ = Describe("Destroy", func() {
 
 		It("returns the error", func() {
 			err := linuxBackend.Destroy(container.Handle())
-			Expect(err).To(HaveOccured())
+			Expect(err).To(HaveOccurred())
 			Expect(err).To(Equal(disaster))
 		})
 
 		It("does not unregister the container", func() {
 			err := linuxBackend.Destroy(container.Handle())
-			Expect(err).To(HaveOccured())
+			Expect(err).To(HaveOccurred())
 
 			foundContainer, err := linuxBackend.Lookup(container.Handle())
-			Expect(err).ToNot(HaveOccured())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(foundContainer).To(Equal(container))
 		})
 	})
@@ -176,10 +176,10 @@ var _ = Describe("Lookup", func() {
 
 	It("returns the container", func() {
 		container, err := linuxBackend.Create(backend.ContainerSpec{})
-		Expect(err).ToNot(HaveOccured())
+		Expect(err).ToNot(HaveOccurred())
 
 		foundContainer, err := linuxBackend.Lookup(container.Handle())
-		Expect(err).ToNot(HaveOccured())
+		Expect(err).ToNot(HaveOccurred())
 
 		Expect(foundContainer).To(Equal(container))
 	})
@@ -187,7 +187,7 @@ var _ = Describe("Lookup", func() {
 	Context("when the handle is not found", func() {
 		It("returns UnknownHandleError", func() {
 			foundContainer, err := linuxBackend.Lookup("bogus-handle")
-			Expect(err).To(HaveOccured())
+			Expect(err).To(HaveOccurred())
 			Expect(foundContainer).To(BeNil())
 
 			Expect(err).To(Equal(linux_backend.UnknownHandleError{"bogus-handle"}))
@@ -203,13 +203,13 @@ var _ = Describe("Containers", func() {
 
 	It("returns a list of all existing containers", func() {
 		container1, err := linuxBackend.Create(backend.ContainerSpec{})
-		Expect(err).ToNot(HaveOccured())
+		Expect(err).ToNot(HaveOccurred())
 
 		container2, err := linuxBackend.Create(backend.ContainerSpec{})
-		Expect(err).ToNot(HaveOccured())
+		Expect(err).ToNot(HaveOccurred())
 
 		containers, err := linuxBackend.Containers()
-		Expect(err).ToNot(HaveOccured())
+		Expect(err).ToNot(HaveOccurred())
 
 		Expect(containers).To(ContainElement(container1))
 		Expect(containers).To(ContainElement(container2))

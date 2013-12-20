@@ -24,19 +24,19 @@ import (
 var _ = Describe("The Warden server", func() {
 	It("listens on the given socket path and chmods it to 0777", func() {
 		tmpdir, err := ioutil.TempDir(os.TempDir(), "warden-server-test")
-		Expect(err).ToNot(HaveOccured())
+		Expect(err).ToNot(HaveOccurred())
 
 		socketPath := path.Join(tmpdir, "warden.sock")
 
 		wardenServer := server.New(socketPath, fake_backend.New())
 
 		err = wardenServer.Start()
-		Expect(err).ToNot(HaveOccured())
+		Expect(err).ToNot(HaveOccurred())
 
-		Eventually(ErrorDialingUnix(socketPath)).ShouldNot(HaveOccured())
+		Eventually(ErrorDialingUnix(socketPath)).ShouldNot(HaveOccurred())
 
 		stat, err := os.Stat(socketPath)
-		Expect(err).ToNot(HaveOccured())
+		Expect(err).ToNot(HaveOccurred())
 
 		Expect(int(stat.Mode() & 0777)).To(Equal(0777))
 	})
@@ -44,7 +44,7 @@ var _ = Describe("The Warden server", func() {
 	Context("when starting fails", func() {
 		It("returns the error", func() {
 			tmpfile, err := ioutil.TempFile(os.TempDir(), "warden-server-test")
-			Expect(err).ToNot(HaveOccured())
+			Expect(err).ToNot(HaveOccurred())
 
 			wardenServer := server.New(
 				// weird scenario: /foo/X/warden.sock with X being a file
@@ -53,7 +53,7 @@ var _ = Describe("The Warden server", func() {
 			)
 
 			err = wardenServer.Start()
-			Expect(err).To(HaveOccured())
+			Expect(err).To(HaveOccurred())
 		})
 	})
 
@@ -66,7 +66,7 @@ var _ = Describe("The Warden server", func() {
 
 		BeforeEach(func() {
 			tmpdir, err := ioutil.TempDir(os.TempDir(), "warden-server-test")
-			Expect(err).ToNot(HaveOccured())
+			Expect(err).ToNot(HaveOccurred())
 
 			socketPath = path.Join(tmpdir, "warden.sock")
 			serverBackend = fake_backend.New()
@@ -74,25 +74,25 @@ var _ = Describe("The Warden server", func() {
 			wardenServer := server.New(socketPath, serverBackend)
 
 			err = wardenServer.Start()
-			Expect(err).ToNot(HaveOccured())
+			Expect(err).ToNot(HaveOccurred())
 
-			Eventually(ErrorDialingUnix(socketPath)).ShouldNot(HaveOccured())
+			Eventually(ErrorDialingUnix(socketPath)).ShouldNot(HaveOccurred())
 
 			serverConnection, err = net.Dial("unix", socketPath)
-			Expect(err).ToNot(HaveOccured())
+			Expect(err).ToNot(HaveOccurred())
 
 			responses = bufio.NewReader(serverConnection)
 		})
 
 		writeMessages := func(message proto.Message) {
 			num, err := protocol.Messages(message).WriteTo(serverConnection)
-			Expect(err).ToNot(HaveOccured())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(num).ToNot(Equal(0))
 		}
 
 		readResponse := func(response proto.Message) {
 			err := message_reader.ReadMessage(responses, response)
-			Expect(err).ToNot(HaveOccured())
+			Expect(err).ToNot(HaveOccurred())
 		}
 
 		Context("and the client sends a PingRequest", func() {
@@ -196,7 +196,7 @@ var _ = Describe("The Warden server", func() {
 		Context("and the client sends a DestroyRequest", func() {
 			BeforeEach(func() {
 				_, err := serverBackend.Create(backend.ContainerSpec{Handle: "some-handle"})
-				Expect(err).ToNot(HaveOccured())
+				Expect(err).ToNot(HaveOccurred())
 			})
 
 			It("destroys the container and sends a DestroyResponse", func(done Done) {
@@ -234,10 +234,10 @@ var _ = Describe("The Warden server", func() {
 		Context("and the client sends a ListRequest", func() {
 			BeforeEach(func() {
 				_, err := serverBackend.Create(backend.ContainerSpec{Handle: "some-handle"})
-				Expect(err).ToNot(HaveOccured())
+				Expect(err).ToNot(HaveOccurred())
 
 				_, err = serverBackend.Create(backend.ContainerSpec{Handle: "another-handle"})
-				Expect(err).ToNot(HaveOccured())
+				Expect(err).ToNot(HaveOccurred())
 			})
 
 			It("sends a ListResponse containing the existing handles", func(done Done) {
@@ -274,7 +274,7 @@ var _ = Describe("The Warden server", func() {
 
 			BeforeEach(func() {
 				container, err := serverBackend.Create(backend.ContainerSpec{Handle: "some-handle"})
-				Expect(err).ToNot(HaveOccured())
+				Expect(err).ToNot(HaveOccurred())
 
 				fakeContainer = container.(*fake_backend.FakeContainer)
 			})
@@ -362,7 +362,7 @@ var _ = Describe("The Warden server", func() {
 
 			BeforeEach(func() {
 				container, err := serverBackend.Create(backend.ContainerSpec{Handle: "some-handle"})
-				Expect(err).ToNot(HaveOccured())
+				Expect(err).ToNot(HaveOccurred())
 
 				fakeContainer = container.(*fake_backend.FakeContainer)
 			})
@@ -432,7 +432,7 @@ var _ = Describe("The Warden server", func() {
 
 			BeforeEach(func() {
 				container, err := serverBackend.Create(backend.ContainerSpec{Handle: "some-handle"})
-				Expect(err).ToNot(HaveOccured())
+				Expect(err).ToNot(HaveOccurred())
 
 				fakeContainer = container.(*fake_backend.FakeContainer)
 			})
@@ -505,7 +505,7 @@ var _ = Describe("The Warden server", func() {
 
 			BeforeEach(func() {
 				container, err := serverBackend.Create(backend.ContainerSpec{Handle: "some-handle"})
-				Expect(err).ToNot(HaveOccured())
+				Expect(err).ToNot(HaveOccurred())
 
 				fakeContainer = container.(*fake_backend.FakeContainer)
 			})
@@ -584,7 +584,7 @@ var _ = Describe("The Warden server", func() {
 
 			BeforeEach(func() {
 				container, err := serverBackend.Create(backend.ContainerSpec{Handle: "some-handle"})
-				Expect(err).ToNot(HaveOccured())
+				Expect(err).ToNot(HaveOccurred())
 
 				fakeContainer = container.(*fake_backend.FakeContainer)
 			})
@@ -661,7 +661,7 @@ var _ = Describe("The Warden server", func() {
 
 			BeforeEach(func() {
 				container, err := serverBackend.Create(backend.ContainerSpec{Handle: "some-handle"})
-				Expect(err).ToNot(HaveOccured())
+				Expect(err).ToNot(HaveOccurred())
 
 				fakeContainer = container.(*fake_backend.FakeContainer)
 			})
@@ -764,7 +764,7 @@ var _ = Describe("The Warden server", func() {
 
 			BeforeEach(func() {
 				container, err := serverBackend.Create(backend.ContainerSpec{Handle: "some-handle"})
-				Expect(err).ToNot(HaveOccured())
+				Expect(err).ToNot(HaveOccurred())
 
 				fakeContainer = container.(*fake_backend.FakeContainer)
 			})
@@ -873,7 +873,7 @@ var _ = Describe("The Warden server", func() {
 
 			BeforeEach(func() {
 				container, err := serverBackend.Create(backend.ContainerSpec{Handle: "some-handle"})
-				Expect(err).ToNot(HaveOccured())
+				Expect(err).ToNot(HaveOccurred())
 
 				fakeContainer = container.(*fake_backend.FakeContainer)
 			})
@@ -949,7 +949,7 @@ var _ = Describe("The Warden server", func() {
 
 			BeforeEach(func() {
 				container, err := serverBackend.Create(backend.ContainerSpec{Handle: "some-handle"})
-				Expect(err).ToNot(HaveOccured())
+				Expect(err).ToNot(HaveOccurred())
 
 				fakeContainer = container.(*fake_backend.FakeContainer)
 			})
@@ -1020,7 +1020,7 @@ var _ = Describe("The Warden server", func() {
 
 			BeforeEach(func() {
 				container, err := serverBackend.Create(backend.ContainerSpec{Handle: "some-handle"})
-				Expect(err).ToNot(HaveOccured())
+				Expect(err).ToNot(HaveOccurred())
 
 				fakeContainer = container.(*fake_backend.FakeContainer)
 			})
@@ -1283,7 +1283,7 @@ var _ = Describe("The Warden server", func() {
 
 			BeforeEach(func() {
 				container, err := serverBackend.Create(backend.ContainerSpec{Handle: "some-handle"})
-				Expect(err).ToNot(HaveOccured())
+				Expect(err).ToNot(HaveOccurred())
 
 				fakeContainer = container.(*fake_backend.FakeContainer)
 			})
@@ -1354,7 +1354,7 @@ var _ = Describe("The Warden server", func() {
 
 			BeforeEach(func() {
 				container, err := serverBackend.Create(backend.ContainerSpec{Handle: "some-handle"})
-				Expect(err).ToNot(HaveOccured())
+				Expect(err).ToNot(HaveOccurred())
 
 				fakeContainer = container.(*fake_backend.FakeContainer)
 			})
@@ -1427,7 +1427,7 @@ var _ = Describe("The Warden server", func() {
 
 			BeforeEach(func() {
 				container, err := serverBackend.Create(backend.ContainerSpec{Handle: "some-handle"})
-				Expect(err).ToNot(HaveOccured())
+				Expect(err).ToNot(HaveOccurred())
 
 				fakeContainer = container.(*fake_backend.FakeContainer)
 			})
@@ -1497,7 +1497,7 @@ var _ = Describe("The Warden server", func() {
 
 			BeforeEach(func() {
 				container, err := serverBackend.Create(backend.ContainerSpec{Handle: "some-handle"})
-				Expect(err).ToNot(HaveOccured())
+				Expect(err).ToNot(HaveOccurred())
 
 				fakeContainer = container.(*fake_backend.FakeContainer)
 			})

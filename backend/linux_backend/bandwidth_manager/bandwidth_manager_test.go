@@ -30,7 +30,7 @@ var _ = Describe("setting rate limits", func() {
 		}
 
 		err := bandwidthManager.SetLimits(limits)
-		Expect(err).ToNot(HaveOccured())
+		Expect(err).ToNot(HaveOccurred())
 
 		Expect(fakeRunner).To(HaveExecutedSerially(
 			fake_command_runner.CommandSpec{
@@ -100,7 +100,7 @@ ref 1 bind 1
 		})
 
 		usage, err := bandwidthManager.GetLimits()
-		Expect(err).ToNot(HaveOccured())
+		Expect(err).ToNot(HaveOccurred())
 
 		Expect(usage.InRate).To(Equal(uint64(1024)))
 		Expect(usage.InBurst).To(Equal(uint64(65536)))
@@ -156,7 +156,7 @@ ref 1 bind 1
 			})
 
 			usage, err := bandwidthManager.GetLimits()
-			Expect(err).ToNot(HaveOccured())
+			Expect(err).ToNot(HaveOccurred())
 
 			Expect(usage.InRate).To(Equal(uint64(0)))
 			Expect(usage.InBurst).To(Equal(uint64(0)))
@@ -208,7 +208,7 @@ qdisc ingress ffff: parent ffff:fff1 ----------------
 			})
 
 			usage, err := bandwidthManager.GetLimits()
-			Expect(err).ToNot(HaveOccured())
+			Expect(err).ToNot(HaveOccurred())
 
 			Expect(usage.InRate).To(Equal(uint64(1024)))
 			Expect(usage.InBurst).To(Equal(uint64(65536)))
