@@ -344,11 +344,15 @@ func (s *WardenServer) handleLimitBandwidth(request *protocol.LimitBandwidthRequ
 		return nil, err
 	}
 
-	limits, err := container.LimitBandwidth(backend.BandwidthLimits{
+	err = container.LimitBandwidth(backend.BandwidthLimits{
 		RateInBytesPerSecond:      rate,
 		BurstRateInBytesPerSecond: burst,
 	})
+	if err != nil {
+		return nil, err
+	}
 
+	limits, err := container.CurrentBandwidthLimits()
 	if err != nil {
 		return nil, err
 	}
@@ -368,10 +372,16 @@ func (s *WardenServer) handleLimitMemory(request *protocol.LimitMemoryRequest) (
 		return nil, err
 	}
 
-	limits, err := container.LimitMemory(backend.MemoryLimits{
-		LimitInBytes: limitInBytes,
-	})
+	if request.LimitInBytes != nil {
+		err = container.LimitMemory(backend.MemoryLimits{
+			LimitInBytes: limitInBytes,
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
 
+	limits, err := container.CurrentMemoryLimits()
 	if err != nil {
 		return nil, err
 	}
@@ -390,28 +400,42 @@ func (s *WardenServer) handleLimitDisk(request *protocol.LimitDiskRequest) (prot
 	byteSoft := request.GetByteSoft()
 	byteHard := request.GetByteHard()
 
+	settingLimit := false
+
+	if request.BlockSoft != nil || request.BlockHard != nil ||
+		request.InodeSoft != nil || request.InodeHard != nil ||
+		request.ByteSoft != nil || request.ByteHard != nil {
+		settingLimit = true
+	}
+
 	if request.Block != nil {
 		blockHard = request.GetBlock()
+		settingLimit = true
 	}
 
 	if request.BlockLimit != nil {
 		blockHard = request.GetBlockLimit()
+		settingLimit = true
 	}
 
 	if request.Inode != nil {
 		inodeHard = request.GetInode()
+		settingLimit = true
 	}
 
 	if request.InodeLimit != nil {
 		inodeHard = request.GetInodeLimit()
+		settingLimit = true
 	}
 
 	if request.Byte != nil {
 		byteHard = request.GetByte()
+		settingLimit = true
 	}
 
 	if request.ByteLimit != nil {
 		byteHard = request.GetByteLimit()
+		settingLimit = true
 	}
 
 	container, err := s.backend.Lookup(handle)
@@ -419,15 +443,21 @@ func (s *WardenServer) handleLimitDisk(request *protocol.LimitDiskRequest) (prot
 		return nil, err
 	}
 
-	limits, err := container.LimitDisk(backend.DiskLimits{
-		BlockSoft: blockSoft,
-		BlockHard: blockHard,
-		InodeSoft: inodeSoft,
-		InodeHard: inodeHard,
-		ByteSoft:  byteSoft,
-		ByteHard:  byteHard,
-	})
+	if settingLimit {
+		err = container.LimitDisk(backend.DiskLimits{
+			BlockSoft: blockSoft,
+			BlockHard: blockHard,
+			InodeSoft: inodeSoft,
+			InodeHard: inodeHard,
+			ByteSoft:  byteSoft,
+			ByteHard:  byteHard,
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
 
+	limits, err := container.CurrentDiskLimits()
 	if err != nil {
 		return nil, err
 	}
@@ -451,10 +481,16 @@ func (s *WardenServer) handleLimitCpu(request *protocol.LimitCpuRequest) (proto.
 		return nil, err
 	}
 
-	limits, err := container.LimitCPU(backend.CPULimits{
-		LimitInShares: limitInShares,
-	})
+	if request.LimitInShares != nil {
+		err = container.LimitCPU(backend.CPULimits{
+			LimitInShares: limitInShares,
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
 
+	limits, err := container.CurrentCPULimits()
 	if err != nil {
 		return nil, err
 	}

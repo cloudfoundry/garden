@@ -201,7 +201,7 @@ var _ = Describe("Linux containers", func() {
 
 		Context("when the container has an oom notifier running", func() {
 			BeforeEach(func() {
-				_, err := container.LimitMemory(backend.MemoryLimits{
+				err := container.LimitMemory(backend.MemoryLimits{
 					LimitInBytes: 42,
 				})
 
@@ -599,12 +599,10 @@ var _ = Describe("Linux containers", func() {
 		}
 
 		It("sets the limit via the bandwidth manager with the new limits", func() {
-			newLimits, err := container.LimitBandwidth(limits)
+			err := container.LimitBandwidth(limits)
 			Expect(err).ToNot(HaveOccurred())
 
 			Expect(fakeBandwidthManager.EnforcedLimits).To(ContainElement(limits))
-
-			Expect(newLimits).To(Equal(limits))
 		})
 
 		Context("when setting the limit fails", func() {
@@ -615,8 +613,49 @@ var _ = Describe("Linux containers", func() {
 			})
 
 			It("returns the error", func() {
-				_, err := container.LimitBandwidth(limits)
+				err := container.LimitBandwidth(limits)
 				Expect(err).To(Equal(disaster))
+			})
+		})
+	})
+
+	Describe("Getting the current bandwidth limit", func() {
+		limits := backend.BandwidthLimits{
+			RateInBytesPerSecond:      128,
+			BurstRateInBytesPerSecond: 256,
+		}
+
+		It("returns a zero value if no limits are set", func() {
+			receivedLimits, err := container.CurrentBandwidthLimits()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(receivedLimits).To(BeZero())
+		})
+
+		Context("when limits are set", func() {
+			It("returns them", func() {
+				err := container.LimitBandwidth(limits)
+				Expect(err).ToNot(HaveOccurred())
+
+				receivedLimits, err := container.CurrentBandwidthLimits()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(receivedLimits).To(Equal(limits))
+			})
+
+			Context("when limits fail to be set", func() {
+				disaster := errors.New("oh no!")
+
+				BeforeEach(func() {
+					fakeBandwidthManager.SetLimitsError = disaster
+				})
+
+				It("does not update the current limits", func() {
+					err := container.LimitBandwidth(limits)
+					Expect(err).To(Equal(disaster))
+
+					receivedLimits, err := container.CurrentBandwidthLimits()
+					Expect(err).ToNot(HaveOccurred())
+					Expect(receivedLimits).To(BeZero())
+				})
 			})
 		})
 	})
@@ -627,7 +666,7 @@ var _ = Describe("Linux containers", func() {
 				LimitInBytes: 102400,
 			}
 
-			_, err := container.LimitMemory(limits)
+			err := container.LimitMemory(limits)
 			Expect(err).ToNot(HaveOccurred())
 
 			Expect(fakeRunner).To(HaveStartedExecuting(
@@ -643,7 +682,7 @@ var _ = Describe("Linux containers", func() {
 				LimitInBytes: 102400,
 			}
 
-			_, err := container.LimitMemory(limits)
+			err := container.LimitMemory(limits)
 			Expect(err).ToNot(HaveOccurred())
 
 			Expect(fakeCgroups.SetValues()).To(Equal(
@@ -667,21 +706,6 @@ var _ = Describe("Linux containers", func() {
 			))
 		})
 
-		It("returns the limited memory", func() {
-			limits := backend.MemoryLimits{
-				LimitInBytes: 102400,
-			}
-
-			fakeCgroups.WhenGetting("memory", "memory.limit_in_bytes", func() (string, error) {
-				return "18446744073709551615", nil
-			})
-
-			actualLimits, err := container.LimitMemory(limits)
-			Expect(err).ToNot(HaveOccurred())
-
-			Expect(actualLimits.LimitInBytes).To(Equal(uint64(math.MaxUint64)))
-		})
-
 		Context("when the oom notifier is already running", func() {
 			It("does not start another", func() {
 				started := 0
@@ -697,10 +721,10 @@ var _ = Describe("Linux containers", func() {
 					LimitInBytes: 102400,
 				}
 
-				_, err := container.LimitMemory(limits)
+				err := container.LimitMemory(limits)
 				Expect(err).ToNot(HaveOccurred())
 
-				_, err = container.LimitMemory(limits)
+				err = container.LimitMemory(limits)
 				Expect(err).ToNot(HaveOccurred())
 
 				Expect(started).To(Equal(1))
@@ -721,7 +745,7 @@ var _ = Describe("Linux containers", func() {
 					LimitInBytes: 102400,
 				}
 
-				_, err := container.LimitMemory(limits)
+				err := container.LimitMemory(limits)
 				Expect(err).ToNot(HaveOccurred())
 
 				Eventually(fakeRunner).Should(HaveExecutedSerially(
@@ -736,7 +760,7 @@ var _ = Describe("Linux containers", func() {
 					LimitInBytes: 102400,
 				}
 
-				_, err := container.LimitMemory(limits)
+				err := container.LimitMemory(limits)
 				Expect(err).ToNot(HaveOccurred())
 
 				Eventually(func() []string {
@@ -754,13 +778,12 @@ var _ = Describe("Linux containers", func() {
 				})
 			})
 
-			It("returns the error and no limits", func() {
-				limits, err := container.LimitMemory(backend.MemoryLimits{
+			It("returns the error", func() {
+				err := container.LimitMemory(backend.MemoryLimits{
 					LimitInBytes: 102400,
 				})
 
 				Expect(err).To(Equal(disaster))
-				Expect(limits).To(BeZero())
 			})
 		})
 
@@ -786,12 +809,11 @@ var _ = Describe("Linux containers", func() {
 					return "123", nil
 				})
 
-				limits, err := container.LimitMemory(backend.MemoryLimits{
+				err := container.LimitMemory(backend.MemoryLimits{
 					LimitInBytes: 102400,
 				})
 
 				Expect(err).ToNot(HaveOccurred())
-				Expect(limits.LimitInBytes).To(Equal(uint64(123)))
 			})
 		})
 
@@ -813,12 +835,11 @@ var _ = Describe("Linux containers", func() {
 			})
 
 			It("returns the error and no limits", func() {
-				limits, err := container.LimitMemory(backend.MemoryLimits{
+				err := container.LimitMemory(backend.MemoryLimits{
 					LimitInBytes: 102400,
 				})
 
 				Expect(err).To(Equal(disaster))
-				Expect(limits).To(BeZero())
 			})
 		})
 
@@ -833,11 +854,38 @@ var _ = Describe("Linux containers", func() {
 				})
 			})
 
-			It("returns the error and no limits", func() {
-				limits, err := container.LimitMemory(backend.MemoryLimits{
+			It("returns the error", func() {
+				err := container.LimitMemory(backend.MemoryLimits{
 					LimitInBytes: 102400,
 				})
 
+				Expect(err).To(Equal(disaster))
+			})
+		})
+	})
+
+	Describe("Getting the current memory limit", func() {
+		It("returns the limited memory", func() {
+			fakeCgroups.WhenGetting("memory", "memory.limit_in_bytes", func() (string, error) {
+				return "18446744073709551615", nil
+			})
+
+			limits, err := container.CurrentMemoryLimits()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(limits.LimitInBytes).To(Equal(uint64(math.MaxUint64)))
+		})
+
+		Context("when getting the limit fails", func() {
+			disaster := errors.New("oh no!")
+
+			BeforeEach(func() {
+				fakeCgroups.WhenGetting("memory", "memory.limit_in_bytes", func() (string, error) {
+					return "", disaster
+				})
+			})
+
+			It("returns the error", func() {
+				limits, err := container.CurrentMemoryLimits()
 				Expect(err).To(Equal(disaster))
 				Expect(limits).To(BeZero())
 			})
@@ -850,7 +898,7 @@ var _ = Describe("Linux containers", func() {
 				LimitInShares: 512,
 			}
 
-			_, err := container.LimitCPU(limits)
+			err := container.LimitCPU(limits)
 			Expect(err).ToNot(HaveOccurred())
 
 			Expect(fakeCgroups.SetValues()).To(Equal(
@@ -864,21 +912,6 @@ var _ = Describe("Linux containers", func() {
 			))
 		})
 
-		It("returns the effective CPU limits", func() {
-			limits := backend.CPULimits{
-				LimitInShares: 512,
-			}
-
-			fakeCgroups.WhenGetting("cpu", "cpu.shares", func() (string, error) {
-				return "102400", nil
-			})
-
-			actualLimits, err := container.LimitCPU(limits)
-			Expect(err).ToNot(HaveOccurred())
-
-			Expect(actualLimits.LimitInShares).To(Equal(uint64(102400)))
-		})
-
 		Context("when setting cpu.shares fails", func() {
 			disaster := errors.New("oh no!")
 
@@ -888,11 +921,38 @@ var _ = Describe("Linux containers", func() {
 				})
 			})
 
-			It("returns the error and no limits", func() {
-				limits, err := container.LimitCPU(backend.CPULimits{
+			It("returns the error", func() {
+				err := container.LimitCPU(backend.CPULimits{
 					LimitInShares: 512,
 				})
 
+				Expect(err).To(Equal(disaster))
+			})
+		})
+	})
+
+	Describe("Getting the current CPU limits", func() {
+		It("returns the CPU limits", func() {
+			fakeCgroups.WhenGetting("cpu", "cpu.shares", func() (string, error) {
+				return "512", nil
+			})
+
+			limits, err := container.CurrentCPULimits()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(limits.LimitInShares).To(Equal(uint64(512)))
+		})
+
+		Context("when getting the limit fails", func() {
+			disaster := errors.New("oh no!")
+
+			BeforeEach(func() {
+				fakeCgroups.WhenGetting("cpu", "cpu.shares", func() (string, error) {
+					return "", disaster
+				})
+			})
+
+			It("returns the error", func() {
+				limits, err := container.CurrentCPULimits()
 				Expect(err).To(Equal(disaster))
 				Expect(limits).To(BeZero())
 			})
@@ -924,15 +984,13 @@ var _ = Describe("Linux containers", func() {
 
 			fakeQuotaManager.GetLimitsResult = resultingLimits
 
-			newLimits, err := container.LimitDisk(limits)
+			err := container.LimitDisk(limits)
 			Expect(err).ToNot(HaveOccurred())
 
 			uid := containerResources.UID
 
 			Expect(fakeQuotaManager.Limited).To(HaveKey(uid))
 			Expect(fakeQuotaManager.Limited[uid]).To(Equal(limits))
-
-			Expect(newLimits).To(Equal(resultingLimits))
 		})
 
 		Context("when setting the quota fails", func() {
@@ -943,8 +1001,36 @@ var _ = Describe("Linux containers", func() {
 			})
 
 			It("returns the error", func() {
-				_, err := container.LimitDisk(limits)
+				err := container.LimitDisk(limits)
 				Expect(err).To(Equal(disaster))
+			})
+		})
+	})
+
+	Describe("Getting the current disk limits", func() {
+		It("returns the disk limits", func() {
+			limits := backend.DiskLimits{
+				Block: 1234567,
+			}
+
+			fakeQuotaManager.GetLimitsResult = limits
+
+			receivedLimits, err := container.CurrentDiskLimits()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(receivedLimits).To(Equal(limits))
+		})
+
+		Context("when getting the limit fails", func() {
+			disaster := errors.New("oh no!")
+
+			BeforeEach(func() {
+				fakeQuotaManager.GetLimitsError = disaster
+			})
+
+			It("returns the error", func() {
+				limits, err := container.CurrentDiskLimits()
+				Expect(err).To(Equal(disaster))
+				Expect(limits).To(BeZero())
 			})
 		})
 	})

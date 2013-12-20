@@ -13,10 +13,17 @@ type Container interface {
 	CopyIn(srcPath, dstPath string) error
 	CopyOut(srcPath, dstPath, owner string) error
 
-	LimitBandwidth(limits BandwidthLimits) (BandwidthLimits, error)
-	LimitDisk(limits DiskLimits) (DiskLimits, error)
-	LimitMemory(limits MemoryLimits) (MemoryLimits, error)
-	LimitCPU(limits CPULimits) (CPULimits, error)
+	LimitBandwidth(limits BandwidthLimits) error
+	CurrentBandwidthLimits() (BandwidthLimits, error)
+
+	LimitCPU(limits CPULimits) error
+	CurrentCPULimits() (CPULimits, error)
+
+	LimitDisk(limits DiskLimits) error
+	CurrentDiskLimits() (DiskLimits, error)
+
+	LimitMemory(limits MemoryLimits) error
+	CurrentMemoryLimits() (MemoryLimits, error)
 
 	Spawn(JobSpec) (uint32, error)
 	Stream(jobID uint32) (<-chan JobStream, error)

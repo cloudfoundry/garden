@@ -879,24 +879,31 @@ var _ = Describe("The Warden server", func() {
 			})
 
 			It("sets the container's bandwidth limits and returns them", func(done Done) {
+				setLimits := backend.BandwidthLimits{
+					RateInBytesPerSecond:      123,
+					BurstRateInBytesPerSecond: 456,
+				}
+
+				effectiveLimits := backend.BandwidthLimits{
+					RateInBytesPerSecond:      1230,
+					BurstRateInBytesPerSecond: 4560,
+				}
+
+				fakeContainer.CurrentBandwidthLimitsResult = effectiveLimits
+
 				writeMessages(&protocol.LimitBandwidthRequest{
 					Handle: proto.String(fakeContainer.Handle()),
-					Rate:   proto.Uint64(123),
-					Burst:  proto.Uint64(456),
+					Rate:   proto.Uint64(setLimits.RateInBytesPerSecond),
+					Burst:  proto.Uint64(setLimits.BurstRateInBytesPerSecond),
 				})
 
 				var response protocol.LimitBandwidthResponse
 				readResponse(&response)
 
-				Expect(fakeContainer.LimitedBandwidth).To(Equal(
-					backend.BandwidthLimits{
-						RateInBytesPerSecond:      123,
-						BurstRateInBytesPerSecond: 456,
-					},
-				))
+				Expect(fakeContainer.LimitedBandwidth).To(Equal(setLimits))
 
-				Expect(response.GetRate()).To(Equal(uint64(123)))
-				Expect(response.GetBurst()).To(Equal(uint64(456)))
+				Expect(response.GetRate()).To(Equal(effectiveLimits.RateInBytesPerSecond))
+				Expect(response.GetBurst()).To(Equal(effectiveLimits.BurstRateInBytesPerSecond))
 
 				close(done)
 			}, 1.0)
@@ -942,6 +949,26 @@ var _ = Describe("The Warden server", func() {
 					close(done)
 				}, 1.0)
 			})
+
+			Context("when getting the current limits fails", func() {
+				BeforeEach(func() {
+					fakeContainer.CurrentBandwidthLimitsError = errors.New("oh no!")
+				})
+
+				It("sends a WardenError response", func(done Done) {
+					writeMessages(&protocol.LimitBandwidthRequest{
+						Handle: proto.String(fakeContainer.Handle()),
+						Rate:   proto.Uint64(123),
+						Burst:  proto.Uint64(456),
+					})
+
+					var response protocol.LimitBandwidthResponse
+					err := message_reader.ReadMessage(responses, &response)
+					Expect(err).To(Equal(&message_reader.WardenError{Message: "oh no!"}))
+
+					close(done)
+				}, 1.0)
+			})
 		})
 
 		Context("and the client sends a LimitMemoryRequest", func() {
@@ -954,25 +981,47 @@ var _ = Describe("The Warden server", func() {
 				fakeContainer = container.(*fake_backend.FakeContainer)
 			})
 
-			It("sets the container's memory limits and returns them", func(done Done) {
+			It("sets the container's memory limits and returns the current limits", func(done Done) {
+				setLimits := backend.MemoryLimits{1024}
+				effectiveLimits := backend.MemoryLimits{2048}
+
+				fakeContainer.CurrentMemoryLimitsResult = effectiveLimits
+
 				writeMessages(&protocol.LimitMemoryRequest{
 					Handle:       proto.String(fakeContainer.Handle()),
-					LimitInBytes: proto.Uint64(123),
+					LimitInBytes: proto.Uint64(setLimits.LimitInBytes),
 				})
 
 				var response protocol.LimitMemoryResponse
 				readResponse(&response)
 
-				Expect(fakeContainer.LimitedMemory).To(Equal(
-					backend.MemoryLimits{
-						LimitInBytes: 123,
-					},
-				))
+				Expect(fakeContainer.LimitedMemory).To(Equal(setLimits))
 
-				Expect(response.GetLimitInBytes()).To(Equal(uint64(123)))
+				Expect(response.GetLimitInBytes()).To(Equal(effectiveLimits.LimitInBytes))
 
 				close(done)
 			}, 1.0)
+
+			Context("when no limit is given", func() {
+				It("does not change the memory limit", func(done Done) {
+					effectiveLimits := backend.MemoryLimits{456}
+
+					fakeContainer.CurrentMemoryLimitsResult = effectiveLimits
+
+					writeMessages(&protocol.LimitMemoryRequest{
+						Handle: proto.String(fakeContainer.Handle()),
+					})
+
+					var response protocol.LimitMemoryResponse
+					readResponse(&response)
+
+					Expect(fakeContainer.DidLimitMemory).To(BeFalse())
+
+					Expect(response.GetLimitInBytes()).To(Equal(effectiveLimits.LimitInBytes))
+
+					close(done)
+				})
+			})
 
 			Context("when the container is not found", func() {
 				BeforeEach(func() {
@@ -1013,6 +1062,25 @@ var _ = Describe("The Warden server", func() {
 					close(done)
 				}, 1.0)
 			})
+
+			Context("when getting the current memory limits fails", func() {
+				BeforeEach(func() {
+					fakeContainer.CurrentMemoryLimitsError = errors.New("oh no!")
+				})
+
+				It("sends a WardenError response", func(done Done) {
+					writeMessages(&protocol.LimitMemoryRequest{
+						Handle:       proto.String(fakeContainer.Handle()),
+						LimitInBytes: proto.Uint64(123),
+					})
+
+					var response protocol.LimitMemoryResponse
+					err := message_reader.ReadMessage(responses, &response)
+					Expect(err).To(Equal(&message_reader.WardenError{Message: "oh no!"}))
+
+					close(done)
+				}, 1.0)
+			})
 		})
 
 		Context("and the client sends a LimitDiskRequest", func() {
@@ -1025,8 +1093,8 @@ var _ = Describe("The Warden server", func() {
 				fakeContainer = container.(*fake_backend.FakeContainer)
 			})
 
-			It("sets the container's disk limits and returns them", func(done Done) {
-				fakeContainer.LimitedDiskResult = backend.DiskLimits{
+			It("sets the container's disk limits and returns the current limits", func(done Done) {
+				fakeContainer.CurrentDiskLimitsResult = backend.DiskLimits{
 					BlockSoft: 1111,
 					BlockHard: 2222,
 
@@ -1074,6 +1142,41 @@ var _ = Describe("The Warden server", func() {
 
 				close(done)
 			}, 1.0)
+
+			Context("when no limits are given", func() {
+				It("does not change the disk limit", func(done Done) {
+					fakeContainer.CurrentDiskLimitsResult = backend.DiskLimits{
+						BlockSoft: 1111,
+						BlockHard: 2222,
+
+						InodeSoft: 3333,
+						InodeHard: 4444,
+
+						ByteSoft: 5555,
+						ByteHard: 6666,
+					}
+
+					writeMessages(&protocol.LimitDiskRequest{
+						Handle: proto.String(fakeContainer.Handle()),
+					})
+
+					var response protocol.LimitDiskResponse
+					readResponse(&response)
+
+					Expect(fakeContainer.DidLimitDisk).To(BeFalse())
+
+					Expect(response.GetBlockSoft()).To(Equal(uint64(1111)))
+					Expect(response.GetBlockHard()).To(Equal(uint64(2222)))
+
+					Expect(response.GetInodeSoft()).To(Equal(uint64(3333)))
+					Expect(response.GetInodeHard()).To(Equal(uint64(4444)))
+
+					Expect(response.GetByteSoft()).To(Equal(uint64(5555)))
+					Expect(response.GetByteHard()).To(Equal(uint64(6666)))
+
+					close(done)
+				})
+			})
 
 			Context("when Block is given", func() {
 				It("passes it as BlockHard", func() {
@@ -1276,6 +1379,28 @@ var _ = Describe("The Warden server", func() {
 					close(done)
 				}, 1.0)
 			})
+
+			Context("when getting the current disk limits fails", func() {
+				BeforeEach(func() {
+					fakeContainer.CurrentDiskLimitsError = errors.New("oh no!")
+				})
+
+				It("sends a WardenError response", func(done Done) {
+					writeMessages(&protocol.LimitDiskRequest{
+						Handle:    proto.String(fakeContainer.Handle()),
+						BlockSoft: proto.Uint64(111),
+						BlockHard: proto.Uint64(222),
+						InodeSoft: proto.Uint64(333),
+						InodeHard: proto.Uint64(444),
+					})
+
+					var response protocol.LimitDiskResponse
+					err := message_reader.ReadMessage(responses, &response)
+					Expect(err).To(Equal(&message_reader.WardenError{Message: "oh no!"}))
+
+					close(done)
+				}, 1.0)
+			})
 		})
 
 		Context("and the client sends a LimitCpuRequest", func() {
@@ -1288,25 +1413,47 @@ var _ = Describe("The Warden server", func() {
 				fakeContainer = container.(*fake_backend.FakeContainer)
 			})
 
-			It("sets the container's CPU shares and returns them", func(done Done) {
+			It("sets the container's CPU shares and returns the current limits", func(done Done) {
+				setLimits := backend.CPULimits{123}
+				effectiveLimits := backend.CPULimits{456}
+
+				fakeContainer.CurrentCPULimitsResult = effectiveLimits
+
 				writeMessages(&protocol.LimitCpuRequest{
 					Handle:        proto.String(fakeContainer.Handle()),
-					LimitInShares: proto.Uint64(123),
+					LimitInShares: proto.Uint64(setLimits.LimitInShares),
 				})
 
 				var response protocol.LimitCpuResponse
 				readResponse(&response)
 
-				Expect(fakeContainer.LimitedCPU).To(Equal(
-					backend.CPULimits{
-						LimitInShares: 123,
-					},
-				))
+				Expect(fakeContainer.LimitedCPU).To(Equal(setLimits))
 
-				Expect(response.GetLimitInShares()).To(Equal(uint64(123)))
+				Expect(response.GetLimitInShares()).To(Equal(effectiveLimits.LimitInShares))
 
 				close(done)
 			}, 1.0)
+
+			Context("when no limit is given", func() {
+				It("does not change the CPU shares", func(done Done) {
+					effectiveLimits := backend.CPULimits{456}
+
+					fakeContainer.CurrentCPULimitsResult = effectiveLimits
+
+					writeMessages(&protocol.LimitCpuRequest{
+						Handle: proto.String(fakeContainer.Handle()),
+					})
+
+					var response protocol.LimitCpuResponse
+					readResponse(&response)
+
+					Expect(fakeContainer.DidLimitCPU).To(BeFalse())
+
+					Expect(response.GetLimitInShares()).To(Equal(effectiveLimits.LimitInShares))
+
+					close(done)
+				})
+			})
 
 			Context("when the container is not found", func() {
 				BeforeEach(func() {
@@ -1332,6 +1479,25 @@ var _ = Describe("The Warden server", func() {
 			Context("when limiting the CPU fails", func() {
 				BeforeEach(func() {
 					fakeContainer.LimitCPUError = errors.New("oh no!")
+				})
+
+				It("sends a WardenError response", func(done Done) {
+					writeMessages(&protocol.LimitCpuRequest{
+						Handle:        proto.String(fakeContainer.Handle()),
+						LimitInShares: proto.Uint64(123),
+					})
+
+					var response protocol.LimitCpuResponse
+					err := message_reader.ReadMessage(responses, &response)
+					Expect(err).To(Equal(&message_reader.WardenError{Message: "oh no!"}))
+
+					close(done)
+				}, 1.0)
+			})
+
+			Context("when getting the current CPU limits fails", func() {
+				BeforeEach(func() {
+					fakeContainer.CurrentCPULimitsError = errors.New("oh no!")
 				})
 
 				It("sends a WardenError response", func(done Done) {

@@ -26,8 +26,10 @@ type LinuxContainer struct {
 	path   string
 
 	state      State
-	events     []string
-	stateMutex *sync.Mutex
+	stateMutex sync.RWMutex
+
+	events      []string
+	eventsMutex sync.RWMutex
 
 	resources *Resources
 
@@ -43,6 +45,9 @@ type LinuxContainer struct {
 
 	oomMutex    sync.RWMutex
 	oomNotifier *exec.Cmd
+
+	currentBandwidthLimits backend.BandwidthLimits
+	bandwidthMutex         sync.RWMutex
 }
 
 type Resources struct {
@@ -87,9 +92,8 @@ func NewLinuxContainer(
 		handle: handle,
 		path:   path,
 
-		state:      StateBorn,
-		events:     []string{},
-		stateMutex: &sync.Mutex{},
+		state:  StateBorn,
+		events: []string{},
 
 		resources: resources,
 
@@ -114,15 +118,15 @@ func (c *LinuxContainer) Handle() string {
 }
 
 func (c *LinuxContainer) State() State {
-	c.stateMutex.Lock()
-	defer c.stateMutex.Unlock()
+	c.stateMutex.RLock()
+	defer c.stateMutex.RUnlock()
 
 	return c.state
 }
 
 func (c *LinuxContainer) Events() []string {
-	c.stateMutex.Lock()
-	defer c.stateMutex.Unlock()
+	c.eventsMutex.RLock()
+	defer c.eventsMutex.RUnlock()
 
 	events := make([]string, len(c.events))
 
@@ -250,7 +254,7 @@ func (c *LinuxContainer) CopyOut(src, dst, owner string) error {
 	return nil
 }
 
-func (c *LinuxContainer) LimitBandwidth(limits backend.BandwidthLimits) (backend.BandwidthLimits, error) {
+func (c *LinuxContainer) LimitBandwidth(limits backend.BandwidthLimits) error {
 	log.Println(
 		c.id,
 		"limiting bandwidth to",
@@ -259,24 +263,40 @@ func (c *LinuxContainer) LimitBandwidth(limits backend.BandwidthLimits) (backend
 		limits.BurstRateInBytesPerSecond,
 	)
 
-	return limits, c.bandwidthManager.SetLimits(limits)
-}
-
-func (c *LinuxContainer) LimitDisk(limits backend.DiskLimits) (backend.DiskLimits, error) {
-	err := c.quotaManager.SetLimits(c.resources.UID, limits)
+	err := c.bandwidthManager.SetLimits(limits)
 	if err != nil {
-		return backend.DiskLimits{}, err
+		return err
 	}
 
+	c.bandwidthMutex.Lock()
+	defer c.bandwidthMutex.Unlock()
+
+	c.currentBandwidthLimits = limits
+
+	return nil
+}
+
+func (c *LinuxContainer) CurrentBandwidthLimits() (backend.BandwidthLimits, error) {
+	c.bandwidthMutex.RLock()
+	defer c.bandwidthMutex.RUnlock()
+
+	return c.currentBandwidthLimits, nil
+}
+
+func (c *LinuxContainer) LimitDisk(limits backend.DiskLimits) error {
+	return c.quotaManager.SetLimits(c.resources.UID, limits)
+}
+
+func (c *LinuxContainer) CurrentDiskLimits() (backend.DiskLimits, error) {
 	return c.quotaManager.GetLimits(c.resources.UID)
 }
 
-func (c *LinuxContainer) LimitMemory(limits backend.MemoryLimits) (backend.MemoryLimits, error) {
+func (c *LinuxContainer) LimitMemory(limits backend.MemoryLimits) error {
 	log.Println(c.id, "limiting memory to", limits.LimitInBytes, "bytes")
 
 	err := c.startOomNotifier()
 	if err != nil {
-		return backend.MemoryLimits{}, err
+		return err
 	}
 
 	limit := fmt.Sprintf("%d", limits.LimitInBytes)
@@ -291,17 +311,24 @@ func (c *LinuxContainer) LimitMemory(limits backend.MemoryLimits) (backend.Memor
 
 	err = c.cgroupsManager.Set("memory", "memory.memsw.limit_in_bytes", limit)
 	if err != nil {
-		return backend.MemoryLimits{}, err
+		return err
 	}
 
 	err = c.cgroupsManager.Set("memory", "memory.limit_in_bytes", limit)
 	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c *LinuxContainer) CurrentMemoryLimits() (backend.MemoryLimits, error) {
+	limitInBytes, err := c.cgroupsManager.Get("memory", "memory.limit_in_bytes")
+	if err != nil {
 		return backend.MemoryLimits{}, err
 	}
 
-	actualLimitInBytes, err := c.cgroupsManager.Get("memory", "memory.limit_in_bytes")
-
-	numericLimit, err := strconv.ParseUint(actualLimitInBytes, 10, 0)
+	numericLimit, err := strconv.ParseUint(limitInBytes, 10, 0)
 	if err != nil {
 		return backend.MemoryLimits{}, err
 	}
@@ -309,17 +336,19 @@ func (c *LinuxContainer) LimitMemory(limits backend.MemoryLimits) (backend.Memor
 	return backend.MemoryLimits{uint64(numericLimit)}, nil
 }
 
-func (c *LinuxContainer) LimitCPU(limits backend.CPULimits) (backend.CPULimits, error) {
+func (c *LinuxContainer) LimitCPU(limits backend.CPULimits) error {
 	log.Println(c.id, "limiting CPU to", limits.LimitInShares, "shares")
 
 	limit := fmt.Sprintf("%d", limits.LimitInShares)
 
-	err := c.cgroupsManager.Set("cpu", "cpu.shares", limit)
+	return c.cgroupsManager.Set("cpu", "cpu.shares", limit)
+}
+
+func (c *LinuxContainer) CurrentCPULimits() (backend.CPULimits, error) {
+	actualLimitInShares, err := c.cgroupsManager.Get("cpu", "cpu.shares")
 	if err != nil {
 		return backend.CPULimits{}, err
 	}
-
-	actualLimitInShares, err := c.cgroupsManager.Get("cpu", "cpu.shares")
 
 	numericLimit, err := strconv.ParseUint(actualLimitInShares, 10, 0)
 	if err != nil {
@@ -448,8 +477,8 @@ func (c *LinuxContainer) setState(state State) {
 }
 
 func (c *LinuxContainer) registerEvent(event string) {
-	c.stateMutex.Lock()
-	defer c.stateMutex.Unlock()
+	c.eventsMutex.Lock()
+	defer c.eventsMutex.Unlock()
 
 	c.events = append(c.events, event)
 }
