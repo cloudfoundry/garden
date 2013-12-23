@@ -37,6 +37,11 @@ func New(socketPath string, backend backend.Backend) *WardenServer {
 }
 
 func (s *WardenServer) Start() error {
+	err := s.removeExistingSocket()
+	if err != nil {
+		return err
+	}
+
 	listener, err := net.Listen("unix", s.socketPath)
 	if err != nil {
 		return err
@@ -129,6 +134,20 @@ func (s *WardenServer) serveConnection(conn net.Conn) {
 
 		protocol.Messages(response).WriteTo(conn)
 	}
+}
+
+func (s *WardenServer) removeExistingSocket() error {
+	if _, err := os.Stat(s.socketPath); os.IsNotExist(err) {
+		return nil
+	}
+
+	err := os.Remove(s.socketPath)
+
+	if err != nil {
+		return fmt.Errorf("error deleting existing socket: %s", err)
+	}
+
+	return nil
 }
 
 func (s *WardenServer) handlePing(ping *protocol.PingRequest) (proto.Message, error) {
