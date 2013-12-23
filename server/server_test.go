@@ -41,6 +41,23 @@ var _ = Describe("The Warden server", func() {
 		Expect(int(stat.Mode() & 0777)).To(Equal(0777))
 	})
 
+	It("deletes the socket file if it is already there", func() {
+		tmpdir, err := ioutil.TempDir(os.TempDir(), "warden-server-test")
+		Expect(err).ToNot(HaveOccurred())
+
+		socketPath := path.Join(tmpdir, "warden.sock")
+
+		socket, err := os.Create(socketPath)
+		Expect(err).ToNot(HaveOccurred())
+		socket.WriteString("oops")
+		socket.Close()
+
+		wardenServer := server.New(socketPath, fake_backend.New())
+
+		err = wardenServer.Start()
+		Expect(err).ToNot(HaveOccurred())
+	})
+
 	Context("when starting fails", func() {
 		It("returns the error", func() {
 			tmpfile, err := ioutil.TempFile(os.TempDir(), "warden-server-test")
