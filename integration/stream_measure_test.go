@@ -5,6 +5,8 @@ import (
 	"net"
 	"os"
 	"time"
+	"sync/atomic"
+	"runtime"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -14,6 +16,8 @@ import (
 
 var _ = Describe("The Warden server", func() {
 	var wardenClient *warden.Client
+
+	runtime.GOMAXPROCS(runtime.NumCPU())
 
 	BeforeEach(func() {
 		socketPath := os.Getenv("WARDEN_TEST_SOCKET")
@@ -35,42 +39,54 @@ var _ = Describe("The Warden server", func() {
 			handle = res.GetHandle()
 		})
 
-		for i := 0; i <= 100; i += 10 {
-			Context(fmt.Sprintf("with %d streams", i), func() {
+		streamCounts := []int{0}
+
+		for i := 1; i <= 128; i *= 2 {
+			streamCounts = append(streamCounts, i)
+		}
+
+		for _, streams := range streamCounts {
+			Context(fmt.Sprintf("with %d streams", streams), func() {
 				var started time.Time
 				var receivedBytes uint64
 
-				numToSpawn := i
+				numToSpawn := streams
 
 				BeforeEach(func() {
 					receivedBytes = 0
 					started = time.Now()
 
+					spawned := make(chan bool)
+
 					for j := 0; j < numToSpawn; j++ {
-						spawnRes, err := wardenClient.Spawn(
-							handle,
-							"while true; do echo hi out; echo hi err 1>&2; done",
-							true,
-						)
-						Expect(err).ToNot(HaveOccurred())
+						go func() {
+							spawnRes, err := wardenClient.Spawn(
+								handle,
+								"cat /dev/zero",
+								true,
+							)
+							Expect(err).ToNot(HaveOccurred())
 
-						results, err := wardenClient.Stream(handle, spawnRes.GetJobId())
-						Expect(err).ToNot(HaveOccurred())
+							results, err := wardenClient.Stream(handle, spawnRes.GetJobId())
+							Expect(err).ToNot(HaveOccurred())
 
-						go func(results chan *warden.StreamResponse) {
-							for {
-								res, ok := <-results
-								if !ok {
-									break
+							go func(results chan *warden.StreamResponse) {
+								for {
+									res, ok := <-results
+									if !ok {
+										break
+									}
+
+									atomic.AddUint64(&receivedBytes, uint64(len(res.GetData())))
 								}
+							}(results)
 
-								receivedBytes += uint64(len(res.GetData()))
+							spawned <- true
+						}()
+					}
 
-								continue
-
-								fmt.Println(res)
-							}
-						}(results)
+					for j := 0; j < numToSpawn; j++ {
+						<-spawned
 					}
 				})
 
@@ -112,6 +128,8 @@ var _ = Describe("The Warden server", func() {
 						"received rate (bytes/second)",
 						float64(receivedBytes) / float64(time.Since(started) / time.Second),
 					)
+
+					fmt.Println("total time:", time.Since(started))
 				}, 5)
 			})
 		}
