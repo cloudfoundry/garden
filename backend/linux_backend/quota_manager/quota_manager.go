@@ -120,6 +120,8 @@ func (m *LinuxQuotaManager) GetLimits(uid uint32) (backend.DiskLimits, error) {
 		return limits, err
 	}
 
+	defer m.runner.Wait(repquota)
+
 	var skip uint32
 
 	_, err = fmt.Fscanf(
@@ -164,6 +166,8 @@ func (m *LinuxQuotaManager) GetUsage(uid uint32) (backend.ContainerDiskStat, err
 	if err != nil {
 		return usage, err
 	}
+
+	defer m.runner.Wait(repquota)
 
 	var skip uint32
 

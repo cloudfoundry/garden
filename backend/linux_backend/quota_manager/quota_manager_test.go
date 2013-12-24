@@ -154,7 +154,16 @@ var _ = Describe("Linux Quota manager", func() {
 	})
 
 	Describe("getting quotas limits", func() {
-		It("executes repquota in the root path", func() {
+		It("executes repquota in the root path", func(done Done) {
+			fakeRunner.WhenWaitingFor(
+				fake_command_runner.CommandSpec{
+					Path: "/root/path/bin/repquota",
+				}, func(cmd *exec.Cmd) error {
+					close(done)
+					return nil
+				},
+			)
+
 			fakeRunner.WhenRunning(
 				fake_command_runner.CommandSpec{
 					Path: "/root/path/bin/repquota",
@@ -235,7 +244,16 @@ var _ = Describe("Linux Quota manager", func() {
 	})
 
 	Describe("getting usage", func() {
-		It("executes repquota in the root path", func() {
+		It("executes repquota in the root path", func(done Done) {
+			fakeRunner.WhenWaitingFor(
+				fake_command_runner.CommandSpec{
+					Path: "/root/path/bin/repquota",
+				}, func(cmd *exec.Cmd) error {
+					close(done)
+					return nil
+				},
+			)
+
 			fakeRunner.WhenRunning(
 				fake_command_runner.CommandSpec{
 					Path: "/root/path/bin/repquota",
