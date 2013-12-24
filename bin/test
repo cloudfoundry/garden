@@ -47,4 +47,4 @@ go get -v github.com/xoebus/gocart/gocart
 gocart install
 go install github.com/onsi/ginkgo/ginkgo
 
-ginkgo -race -r -i --randomizeAllSpecs "$@"
+ginkgo -race -r -i -skipMeasurements -randomizeAllSpecs "$@"
