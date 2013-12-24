@@ -181,6 +181,7 @@ func readFDs(conn *net.UnixConn) []int {
 
 	return fds
 }
+
 func ErrorDialingUnix(socketPath string) func() error {
 	return func() error {
 		conn, err := net.Dial("unix", socketPath)
