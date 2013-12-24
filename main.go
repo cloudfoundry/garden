@@ -5,6 +5,7 @@ import (
 	"log"
 	"net"
 	"path"
+	"runtime"
 
 	"github.com/vito/garden/backend"
 	"github.com/vito/garden/backend/fake_backend"
@@ -75,6 +76,11 @@ var debug = flag.Bool(
 
 func main() {
 	flag.Parse()
+
+	maxProcs := runtime.NumCPU()
+	prevMaxProcs := runtime.GOMAXPROCS(maxProcs)
+
+	log.Println("set GOMAXPROCS to", maxProcs, "was", prevMaxProcs)
 
 	var backend backend.Backend
 
