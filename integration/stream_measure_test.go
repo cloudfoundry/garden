@@ -4,18 +4,19 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"time"
-	"sync/atomic"
 	"runtime"
+	"sync/atomic"
+	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
 	"github.com/vito/gordon"
+	"github.com/vito/gordon/warden"
 )
 
 var _ = Describe("The Warden server", func() {
-	var wardenClient *warden.Client
+	var wardenClient *gordon.Client
 
 	runtime.GOMAXPROCS(runtime.NumCPU())
 
@@ -23,7 +24,7 @@ var _ = Describe("The Warden server", func() {
 		socketPath := os.Getenv("WARDEN_TEST_SOCKET")
 		Eventually(ErrorDialingUnix(socketPath)).ShouldNot(HaveOccurred())
 
-		wardenClient = warden.NewClient(&warden.ConnectionInfo{SocketPath: socketPath})
+		wardenClient = gordon.NewClient(&gordon.ConnectionInfo{SocketPath: socketPath})
 
 		err := wardenClient.Connect()
 		Expect(err).ToNot(HaveOccurred())
@@ -126,7 +127,7 @@ var _ = Describe("The Warden server", func() {
 
 					b.RecordValue(
 						"received rate (bytes/second)",
-						float64(receivedBytes) / float64(time.Since(started) / time.Second),
+						float64(receivedBytes)/float64(time.Since(started)/time.Second),
 					)
 
 					fmt.Println("total time:", time.Since(started))
