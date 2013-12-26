@@ -1,6 +1,6 @@
 // +build linux
 
-package main_test
+package wshd_test
 
 import (
 	"fmt"
@@ -20,17 +20,11 @@ import (
 )
 
 var _ = Describe("Running wshd", func() {
-	wshd, err := cmdtest.Build("github.com/vito/garden/backend/linux_backend/wshd")
-	if err != nil {
-		panic(err)
-	}
+	wshd := "../../root/linux/skeleton/bin/wshd"
 
-	wsh, err := cmdtest.Build("github.com/vito/garden/backend/linux_backend/wshd/wsh")
-	if err != nil {
-		panic(err)
-	}
+	wsh := "../../root/linux/skeleton/bin/wsh"
 
-	shmTest, err := cmdtest.Build("github.com/vito/garden/backend/linux_backend/wshd/shm_test")
+	shmTest, err := cmdtest.Build("github.com/vito/garden/integration/wshd/shm_test")
 	if err != nil {
 		panic(err)
 	}
@@ -194,7 +188,7 @@ setup_fs
 		Expect(err).ToNot(HaveOccurred())
 
 		Expect(psSession).To(Say(`  PID COMMAND
-    1 test wshd
+    1 test wshd\s+
    \d+ /bin/ps -o pid,command
 `))
 

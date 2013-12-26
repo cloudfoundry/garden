@@ -1,6 +1,6 @@
 // +build linux
 
-package main_test
+package wshd_test
 
 import (
 	"fmt"
