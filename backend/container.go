@@ -38,6 +38,7 @@ type JobSpec struct {
 	Privileged    bool
 	Limits        ResourceLimits
 	DiscardOutput bool
+	AutoLink      bool
 }
 
 type JobResult struct {

@@ -547,6 +547,7 @@ var _ = Describe("The Warden server", func() {
 						Script:        "/some/script",
 						Privileged:    true,
 						DiscardOutput: true,
+						AutoLink:      true,
 					},
 				))
 
@@ -786,7 +787,7 @@ var _ = Describe("The Warden server", func() {
 				fakeContainer = container.(*fake_backend.FakeContainer)
 			})
 
-			It("spawns a job, links to it, and sends a RunResponse", func(done Done) {
+			It("spawns a job without auto-link, links to it, and sends a RunResponse", func(done Done) {
 				fakeContainer.SpawnedJobID = 123
 
 				fakeContainer.LinkedJobResult = backend.JobResult{
@@ -810,6 +811,7 @@ var _ = Describe("The Warden server", func() {
 						Script:        "/some/script",
 						Privileged:    true,
 						DiscardOutput: true,
+						AutoLink:      false,
 					},
 				))
 

@@ -36,7 +36,7 @@ func New(containerPath string, runner command_runner.CommandRunner) *JobTracker 
 	}
 }
 
-func (t *JobTracker) Spawn(cmd *exec.Cmd, discardOutput bool) (uint32, error) {
+func (t *JobTracker) Spawn(cmd *exec.Cmd, discardOutput, autoLink bool) (uint32, error) {
 	t.Lock()
 
 	jobID := t.nextJobID
@@ -55,11 +55,13 @@ func (t *JobTracker) Spawn(cmd *exec.Cmd, discardOutput bool) (uint32, error) {
 		return 0, err
 	}
 
-	go t.Link(jobID)
+	if autoLink {
+		go t.Link(jobID)
 
-	err = <-active
-	if err != nil {
-		return 0, err
+		err = <-active
+		if err != nil {
+			return 0, err
+		}
 	}
 
 	return jobID, nil
@@ -87,6 +89,8 @@ func (t *JobTracker) Stream(jobID uint32) (chan backend.JobStream, error) {
 	if !ok {
 		return nil, UnknownJobError{jobID}
 	}
+
+	defer t.unregister(jobID)
 
 	return job.Stream(), nil
 }

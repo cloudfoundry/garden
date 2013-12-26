@@ -115,8 +115,8 @@ var _ = Describe("The Warden server", func() {
 
 					for i := 0; i < 10; i++ {
 						b.Time("running a job (10x)", func() {
-							wardenClient.Run(newHandle, "ls")
-							//Expect(err).ToNot(HaveOccurred())
+							_, err := wardenClient.Run(newHandle, "ls")
+							Expect(err).ToNot(HaveOccurred())
 						})
 					}
 

@@ -288,6 +288,7 @@ func (s *WardenServer) handleSpawn(spawn *protocol.SpawnRequest) (proto.Message,
 		Script:        script,
 		Privileged:    privileged,
 		DiscardOutput: discardOutput,
+		AutoLink:      true,
 	}
 
 	jobID, err := container.Spawn(jobSpec)
@@ -334,6 +335,7 @@ func (s *WardenServer) handleRun(request *protocol.RunRequest) (proto.Message, e
 		Script:        script,
 		Privileged:    privileged,
 		DiscardOutput: discardOutput,
+		AutoLink:      false,
 	}
 
 	jobID, err := container.Spawn(jobSpec)

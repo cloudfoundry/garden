@@ -49,7 +49,7 @@ var _ = Describe("Spawning jobs", func() {
 
 		setupSuccessfulSpawn()
 
-		jobID, _ := jobTracker.Spawn(cmd, false)
+		jobID, _ := jobTracker.Spawn(cmd, false, true)
 
 		Eventually(fakeRunner).Should(HaveStartedExecuting(
 			fake_command_runner.CommandSpec{
@@ -77,9 +77,9 @@ var _ = Describe("Spawning jobs", func() {
 						},
 					), "Executed iomux-link too early!")
 
-					if cmd.Stdout != nil {
-						cmd.Stdout.Write([]byte("xxx\n"))
-					}
+					Expect(cmd.Stdout).ToNot(BeNil())
+
+					cmd.Stdout.Write([]byte("xxx\n"))
 
 					Eventually(fakeRunner).Should(HaveExecutedSerially(
 						fake_command_runner.CommandSpec{
@@ -94,21 +94,21 @@ var _ = Describe("Spawning jobs", func() {
 			},
 		)
 
-		jobTracker.Spawn(exec.Command("xxx"), false)
+		jobTracker.Spawn(exec.Command("xxx"), false, true)
 	}, 10.0)
 
 	It("returns a unique job ID", func() {
 		setupSuccessfulSpawn()
 
-		jobID1, _ := jobTracker.Spawn(exec.Command("xxx"), false)
-		jobID2, _ := jobTracker.Spawn(exec.Command("xxx"), false)
+		jobID1, _ := jobTracker.Spawn(exec.Command("xxx"), false, true)
+		jobID2, _ := jobTracker.Spawn(exec.Command("xxx"), false, true)
 		Expect(jobID1).ToNot(Equal(jobID2))
 	})
 
 	It("creates the job's working directory", func() {
 		setupSuccessfulSpawn()
 
-		jobID, _ := jobTracker.Spawn(exec.Command("xxx"), false)
+		jobID, _ := jobTracker.Spawn(exec.Command("xxx"), false, true)
 
 		Expect(fakeRunner).To(HaveExecutedSerially(
 			fake_command_runner.CommandSpec{
@@ -119,6 +119,42 @@ var _ = Describe("Spawning jobs", func() {
 				},
 			},
 		))
+	})
+
+	Context("when told not to link", func() {
+		It("does not automatically link to the spawned job", func(done Done) {
+			didntLink := make(chan bool)
+
+			fakeRunner.WhenRunning(
+				fake_command_runner.CommandSpec{
+					Path: binPath("iomux-spawn"),
+				}, func(cmd *exec.Cmd) error {
+					go func() {
+						Expect(cmd.Stdout).ToNot(BeNil())
+
+						cmd.Stdout.Write([]byte("xxx\n"))
+
+						time.Sleep(100 * time.Millisecond)
+
+						Expect(fakeRunner).ToNot(HaveExecutedSerially(
+							fake_command_runner.CommandSpec{
+								Path: binPath("iomux-link"),
+							},
+						))
+
+						didntLink <- true
+					}()
+
+					return nil
+				},
+			)
+
+			jobTracker.Spawn(exec.Command("xxx"), false, false)
+
+			<-didntLink
+
+			close(done)
+		}, 10.0)
 	})
 
 	Context("when spawning fails", func() {
@@ -135,7 +171,7 @@ var _ = Describe("Spawning jobs", func() {
 		})
 
 		It("returns the error", func() {
-			_, err := jobTracker.Spawn(exec.Command("xxx"), false)
+			_, err := jobTracker.Spawn(exec.Command("xxx"), false, true)
 			Expect(err).To(Equal(disaster))
 		})
 	})
@@ -167,7 +203,7 @@ var _ = Describe("Linking to jobs", func() {
 	It("returns their stdout, stderr, and exit status", func() {
 		setupSuccessfulSpawn()
 
-		jobID, _ := jobTracker.Spawn(exec.Command("xxx"), false)
+		jobID, _ := jobTracker.Spawn(exec.Command("xxx"), false, true)
 
 		exitStatus, stdout, stderr, err := jobTracker.Link(jobID)
 		Expect(err).ToNot(HaveOccurred())
@@ -180,7 +216,7 @@ var _ = Describe("Linking to jobs", func() {
 		It("returns the exit status but no stdout/stderr", func() {
 			setupSuccessfulSpawn()
 
-			jobID, _ := jobTracker.Spawn(exec.Command("xxx"), true)
+			jobID, _ := jobTracker.Spawn(exec.Command("xxx"), true, true)
 
 			exitStatus, stdout, stderr, err := jobTracker.Link(jobID)
 			Expect(err).ToNot(HaveOccurred())
@@ -225,7 +261,7 @@ var _ = Describe("Linking to jobs", func() {
 
 		// TODO: this test is racey
 		It("returns to both", func(done Done) {
-			jobID, _ := jobTracker.Spawn(exec.Command("xxx"), false)
+			jobID, _ := jobTracker.Spawn(exec.Command("xxx"), false, true)
 
 			finishedLink := make(chan bool)
 
@@ -290,7 +326,7 @@ var _ = Describe("Streaming jobs", func() {
 	It("streams their stdout and stderr into the channel", func(done Done) {
 		setupSuccessfulSpawn()
 
-		jobID, _ := jobTracker.Spawn(exec.Command("xxx"), false)
+		jobID, _ := jobTracker.Spawn(exec.Command("xxx"), false, true)
 
 		jobStreamChannel, err := jobTracker.Stream(jobID)
 		Expect(err).ToNot(HaveOccurred())
@@ -310,11 +346,34 @@ var _ = Describe("Streaming jobs", func() {
 		close(done)
 	}, 5.0)
 
+	Context("when the job is not yet linked to", func() {
+		It("runs iomux-link", func() {
+			setupSuccessfulSpawn()
+
+			jobID, _ := jobTracker.Spawn(exec.Command("xxx"), false, false)
+
+			Expect(fakeRunner).ToNot(HaveExecutedSerially(
+				fake_command_runner.CommandSpec{
+					Path: binPath("iomux-link"),
+				},
+			))
+
+			_, err := jobTracker.Stream(jobID)
+			Expect(err).ToNot(HaveOccurred())
+
+			Eventually(fakeRunner).Should(HaveExecutedSerially(
+				fake_command_runner.CommandSpec{
+					Path: binPath("iomux-link"),
+				},
+			))
+		})
+	})
+
 	Context("when the job completes", func() {
 		It("yields the exit status and closes the channel", func(done Done) {
 			setupSuccessfulSpawn()
 
-			jobID, _ := jobTracker.Spawn(exec.Command("xxx"), false)
+			jobID, _ := jobTracker.Spawn(exec.Command("xxx"), false, true)
 
 			jobStreamChannel, err := jobTracker.Stream(jobID)
 			Expect(err).ToNot(HaveOccurred())
@@ -358,10 +417,10 @@ var _ = Describe("Listing active jobs", func() {
 			},
 		)
 
-		jobID1, err := jobTracker.Spawn(exec.Command("xxx"), false)
+		jobID1, err := jobTracker.Spawn(exec.Command("xxx"), false, true)
 		Expect(err).ToNot(HaveOccurred())
 
-		jobID2, err := jobTracker.Spawn(exec.Command("xxx"), false)
+		jobID2, err := jobTracker.Spawn(exec.Command("xxx"), false, true)
 		Expect(err).ToNot(HaveOccurred())
 
 		totalRunning := append(<-running, <-running...)

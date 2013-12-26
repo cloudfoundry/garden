@@ -494,7 +494,8 @@ var _ = Describe("Linux containers", func() {
 				})
 				Expect(err).ToNot(HaveOccurred())
 
-				time.Sleep(100 * time.Millisecond)
+				_, err = container.Link(jobID)
+				Expect(err).ToNot(HaveOccurred())
 
 				_, err = container.Link(jobID)
 				Expect(err).To(HaveOccurred())
@@ -540,7 +541,8 @@ var _ = Describe("Linux containers", func() {
 
 			It("streams stderr and stdout and exit status", func(done Done) {
 				jobID, err := container.Spawn(backend.JobSpec{
-					Script: "/some/script",
+					Script:   "/some/script",
+					AutoLink: true,
 				})
 				Expect(err).ToNot(HaveOccurred())
 
@@ -577,7 +579,8 @@ var _ = Describe("Linux containers", func() {
 				})
 				Expect(err).ToNot(HaveOccurred())
 
-				time.Sleep(100 * time.Millisecond)
+				_, err = container.Link(jobID)
+				Expect(err).ToNot(HaveOccurred())
 
 				_, err = container.Stream(jobID)
 				Expect(err).To(HaveOccurred())
