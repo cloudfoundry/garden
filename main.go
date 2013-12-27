@@ -102,7 +102,7 @@ func main() {
 
 		_, ipNet, err := net.ParseCIDR("10.254.0.0/22")
 		if err != nil {
-			panic(err)
+			log.Fatalln("error parsing CIDR:", err)
 		}
 
 		networkPool := network_pool.New(ipNet)
@@ -126,7 +126,7 @@ func main() {
 
 		quotaManager, err := quota_manager.New(*depotPath, *rootPath, runner)
 		if err != nil {
-			panic(err)
+			log.Fatalln("error creating quota manager:", err)
 		}
 
 		if *disableQuotas {
