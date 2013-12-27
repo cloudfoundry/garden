@@ -82,6 +82,8 @@ func (j *Job) Spawn() (ready, active chan error) {
 	spawn.Args = append([]string{jobDir}, j.cmd.Path)
 	spawn.Args = append(spawn.Args, j.cmd.Args...)
 
+	spawn.Env = j.cmd.Env
+
 	spawnR, spawnW, err := os.Pipe()
 	if err != nil {
 		ready <- err

@@ -535,6 +535,23 @@ var _ = Describe("The Warden server", func() {
 					Script:        proto.String("/some/script"),
 					Privileged:    proto.Bool(true),
 					DiscardOutput: proto.Bool(true),
+					Rlimits: &protocol.ResourceLimits{
+						As:         proto.Uint64(1),
+						Core:       proto.Uint64(2),
+						Cpu:        proto.Uint64(3),
+						Data:       proto.Uint64(4),
+						Fsize:      proto.Uint64(5),
+						Locks:      proto.Uint64(6),
+						Memlock:    proto.Uint64(7),
+						Msgqueue:   proto.Uint64(8),
+						Nice:       proto.Uint64(9),
+						Nofile:     proto.Uint64(10),
+						Nproc:      proto.Uint64(11),
+						Rss:        proto.Uint64(12),
+						Rtprio:     proto.Uint64(13),
+						Sigpending: proto.Uint64(14),
+						Stack:      proto.Uint64(15),
+					},
 				})
 
 				var response protocol.SpawnResponse
@@ -548,6 +565,23 @@ var _ = Describe("The Warden server", func() {
 						Privileged:    true,
 						DiscardOutput: true,
 						AutoLink:      true,
+						Limits: backend.ResourceLimits{
+							As:         uint64ptr(1),
+							Core:       uint64ptr(2),
+							Cpu:        uint64ptr(3),
+							Data:       uint64ptr(4),
+							Fsize:      uint64ptr(5),
+							Locks:      uint64ptr(6),
+							Memlock:    uint64ptr(7),
+							Msgqueue:   uint64ptr(8),
+							Nice:       uint64ptr(9),
+							Nofile:     uint64ptr(10),
+							Nproc:      uint64ptr(11),
+							Rss:        uint64ptr(12),
+							Rtprio:     uint64ptr(13),
+							Sigpending: uint64ptr(14),
+							Stack:      uint64ptr(15),
+						},
 					},
 				))
 
@@ -801,6 +835,23 @@ var _ = Describe("The Warden server", func() {
 					Script:        proto.String("/some/script"),
 					Privileged:    proto.Bool(true),
 					DiscardOutput: proto.Bool(true),
+					Rlimits: &protocol.ResourceLimits{
+						As:         proto.Uint64(1),
+						Core:       proto.Uint64(2),
+						Cpu:        proto.Uint64(3),
+						Data:       proto.Uint64(4),
+						Fsize:      proto.Uint64(5),
+						Locks:      proto.Uint64(6),
+						Memlock:    proto.Uint64(7),
+						Msgqueue:   proto.Uint64(8),
+						Nice:       proto.Uint64(9),
+						Nofile:     proto.Uint64(10),
+						Nproc:      proto.Uint64(11),
+						Rss:        proto.Uint64(12),
+						Rtprio:     proto.Uint64(13),
+						Sigpending: proto.Uint64(14),
+						Stack:      proto.Uint64(15),
+					},
 				})
 
 				var response protocol.RunResponse
@@ -812,6 +863,23 @@ var _ = Describe("The Warden server", func() {
 						Privileged:    true,
 						DiscardOutput: true,
 						AutoLink:      false,
+						Limits: backend.ResourceLimits{
+							As:         uint64ptr(1),
+							Core:       uint64ptr(2),
+							Cpu:        uint64ptr(3),
+							Data:       uint64ptr(4),
+							Fsize:      uint64ptr(5),
+							Locks:      uint64ptr(6),
+							Memlock:    uint64ptr(7),
+							Msgqueue:   uint64ptr(8),
+							Nice:       uint64ptr(9),
+							Nofile:     uint64ptr(10),
+							Nproc:      uint64ptr(11),
+							Rss:        uint64ptr(12),
+							Rtprio:     uint64ptr(13),
+							Sigpending: uint64ptr(14),
+							Stack:      uint64ptr(15),
+						},
 					},
 				))
 
@@ -1850,4 +1918,8 @@ func ErrorDialingUnix(socketPath string) func() error {
 
 		return err
 	}
+}
+
+func uint64ptr(n uint64) *uint64 {
+	return &n
 }

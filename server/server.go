@@ -273,11 +273,11 @@ func (s *WardenServer) handleCopyIn(copyIn *protocol.CopyInRequest) (proto.Messa
 	return &protocol.CopyInResponse{}, nil
 }
 
-func (s *WardenServer) handleSpawn(spawn *protocol.SpawnRequest) (proto.Message, error) {
-	handle := spawn.GetHandle()
-	script := spawn.GetScript()
-	privileged := spawn.GetPrivileged()
-	discardOutput := spawn.GetDiscardOutput()
+func (s *WardenServer) handleSpawn(request *protocol.SpawnRequest) (proto.Message, error) {
+	handle := request.GetHandle()
+	script := request.GetScript()
+	privileged := request.GetPrivileged()
+	discardOutput := request.GetDiscardOutput()
 
 	container, err := s.backend.Lookup(handle)
 	if err != nil {
@@ -289,6 +289,10 @@ func (s *WardenServer) handleSpawn(spawn *protocol.SpawnRequest) (proto.Message,
 		Privileged:    privileged,
 		DiscardOutput: discardOutput,
 		AutoLink:      true,
+	}
+
+	if request.Rlimits != nil {
+		jobSpec.Limits = requestLimits(request.Rlimits)
 	}
 
 	jobID, err := container.Spawn(jobSpec)
@@ -336,6 +340,10 @@ func (s *WardenServer) handleRun(request *protocol.RunRequest) (proto.Message, e
 		Privileged:    privileged,
 		DiscardOutput: discardOutput,
 		AutoLink:      false,
+	}
+
+	if request.Rlimits != nil {
+		jobSpec.Limits = resourceLimits(request.Rlimits)
 	}
 
 	jobID, err := container.Spawn(jobSpec)
@@ -669,4 +677,24 @@ func (s *WardenServer) handleInfo(request *protocol.InfoRequest) (proto.Message,
 			OutBurst: proto.Uint64(info.BandwidthStat.OutBurst),
 		},
 	}, nil
+}
+
+func resourceLimits(limits *protocol.ResourceLimits) backend.ResourceLimits {
+	return backend.ResourceLimits{
+		As:         request.Rlimits.As,
+		Core:       request.Rlimits.Core,
+		Cpu:        request.Rlimits.Cpu,
+		Data:       request.Rlimits.Data,
+		Fsize:      request.Rlimits.Fsize,
+		Locks:      request.Rlimits.Locks,
+		Memlock:    request.Rlimits.Memlock,
+		Msgqueue:   request.Rlimits.Msgqueue,
+		Nice:       request.Rlimits.Nice,
+		Nofile:     request.Rlimits.Nofile,
+		Nproc:      request.Rlimits.Nproc,
+		Rss:        request.Rlimits.Rss,
+		Rtprio:     request.Rlimits.Rtprio,
+		Sigpending: request.Rlimits.Sigpending,
+		Stack:      request.Rlimits.Stack,
+	}
 }

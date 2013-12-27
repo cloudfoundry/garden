@@ -148,19 +148,19 @@ type CPULimits struct {
 }
 
 type ResourceLimits struct {
-	As         uint64
-	Core       uint64
-	Cpu        uint64
-	Data       uint64
-	Fsize      uint64
-	Locks      uint64
-	Memlock    uint64
-	Msgqueue   uint64
-	Nice       uint64
-	Nofile     uint64
-	Nproc      uint64
-	Rss        uint64
-	Rtprio     uint64
-	Sigpending uint64
-	Stack      uint64
+	As         *uint64
+	Core       *uint64
+	Cpu        *uint64
+	Data       *uint64
+	Fsize      *uint64
+	Locks      *uint64
+	Memlock    *uint64
+	Msgqueue   *uint64
+	Nice       *uint64
+	Nofile     *uint64
+	Nproc      *uint64
+	Rss        *uint64
+	Rtprio     *uint64
+	Sigpending *uint64
+	Stack      *uint64
 }

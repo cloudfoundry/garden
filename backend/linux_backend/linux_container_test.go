@@ -344,11 +344,28 @@ var _ = Describe("Linux containers", func() {
 	})
 
 	Describe("Spawning", func() {
-		It("runs the /bin/bash via wsh with the given script as the input", func() {
+		It("runs the /bin/bash via wsh with the given script as the input, and rlimits in env", func() {
 			setupSuccessfulSpawn()
 
 			jobID, err := container.Spawn(backend.JobSpec{
 				Script: "/some/script",
+				Limits: backend.ResourceLimits{
+					As:         uint64ptr(1),
+					Core:       uint64ptr(2),
+					Cpu:        uint64ptr(3),
+					Data:       uint64ptr(4),
+					Fsize:      uint64ptr(5),
+					Locks:      uint64ptr(6),
+					Memlock:    uint64ptr(7),
+					Msgqueue:   uint64ptr(8),
+					Nice:       uint64ptr(9),
+					Nofile:     uint64ptr(10),
+					Nproc:      uint64ptr(11),
+					Rss:        uint64ptr(12),
+					Rtprio:     uint64ptr(13),
+					Sigpending: uint64ptr(14),
+					Stack:      uint64ptr(15),
+				},
 			})
 
 			Expect(err).ToNot(HaveOccurred())
@@ -364,8 +381,71 @@ var _ = Describe("Linux containers", func() {
 						"/bin/bash",
 					},
 					Stdin: "/some/script",
+					Env: []string{
+						"RLIMIT_AS=1",
+						"RLIMIT_CORE=2",
+						"RLIMIT_CPU=3",
+						"RLIMIT_DATA=4",
+						"RLIMIT_FSIZE=5",
+						"RLIMIT_LOCKS=6",
+						"RLIMIT_MEMLOCK=7",
+						"RLIMIT_MSGQUEUE=8",
+						"RLIMIT_NICE=9",
+						"RLIMIT_NOFILE=10",
+						"RLIMIT_NPROC=11",
+						"RLIMIT_RSS=12",
+						"RLIMIT_RTPRIO=13",
+						"RLIMIT_SIGPENDING=14",
+						"RLIMIT_STACK=15",
+					},
 				},
 			))
+		})
+
+		Context("when not all rlimits are set", func() {
+			It("only sets the given rlimits", func() {
+				setupSuccessfulSpawn()
+
+				jobID, err := container.Spawn(backend.JobSpec{
+					Script: "/some/script",
+					Limits: backend.ResourceLimits{
+						As:      uint64ptr(1),
+						Cpu:     uint64ptr(3),
+						Fsize:   uint64ptr(5),
+						Memlock: uint64ptr(7),
+						Nice:    uint64ptr(9),
+						Nproc:   uint64ptr(11),
+						Rtprio:  uint64ptr(13),
+						Stack:   uint64ptr(15),
+					},
+				})
+
+				Expect(err).ToNot(HaveOccurred())
+
+				Eventually(fakeRunner).Should(HaveStartedExecuting(
+					fake_command_runner.CommandSpec{
+						Path: "/depot/some-id/bin/iomux-spawn",
+						Args: []string{
+							fmt.Sprintf("/depot/some-id/jobs/%d", jobID),
+							"/depot/some-id/bin/wsh",
+							"--socket", "/depot/some-id/run/wshd.sock",
+							"--user", "vcap",
+							"/bin/bash",
+						},
+						Stdin: "/some/script",
+						Env: []string{
+							"RLIMIT_AS=1",
+							"RLIMIT_CPU=3",
+							"RLIMIT_FSIZE=5",
+							"RLIMIT_MEMLOCK=7",
+							"RLIMIT_NICE=9",
+							"RLIMIT_NPROC=11",
+							"RLIMIT_RTPRIO=13",
+							"RLIMIT_STACK=15",
+						},
+					},
+				))
+			})
 		})
 
 		It("returns a unique job ID", func() {
@@ -1479,3 +1559,7 @@ system 2
 		})
 	})
 })
+
+func uint64ptr(n uint64) *uint64 {
+	return &n
+}
