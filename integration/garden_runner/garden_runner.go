@@ -3,11 +3,11 @@ package garden_runner
 import (
 	"fmt"
 	"io/ioutil"
+	"net"
 	"os"
 	"os/exec"
-	"time"
 	"path/filepath"
-	"net"
+	"time"
 
 	"github.com/vito/cmdtest"
 )

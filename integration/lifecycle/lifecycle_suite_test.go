@@ -1,9 +1,9 @@
 package lifecycle_test
 
 import (
+	"log"
 	"os"
 	"testing"
-	"log"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
