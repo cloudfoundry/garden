@@ -1,4 +1,4 @@
-package integration_test
+package measurements_test
 
 import (
 	. "github.com/onsi/ginkgo"
@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestIntegration(t *testing.T) {
+func TestMeasurements(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Integration Suite")
+	RunSpecs(t, "Measurements Suite")
 }
