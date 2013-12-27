@@ -292,7 +292,7 @@ func (s *WardenServer) handleSpawn(request *protocol.SpawnRequest) (proto.Messag
 	}
 
 	if request.Rlimits != nil {
-		jobSpec.Limits = requestLimits(request.Rlimits)
+		jobSpec.Limits = resourceLimits(request.Rlimits)
 	}
 
 	jobID, err := container.Spawn(jobSpec)
@@ -681,20 +681,20 @@ func (s *WardenServer) handleInfo(request *protocol.InfoRequest) (proto.Message,
 
 func resourceLimits(limits *protocol.ResourceLimits) backend.ResourceLimits {
 	return backend.ResourceLimits{
-		As:         request.Rlimits.As,
-		Core:       request.Rlimits.Core,
-		Cpu:        request.Rlimits.Cpu,
-		Data:       request.Rlimits.Data,
-		Fsize:      request.Rlimits.Fsize,
-		Locks:      request.Rlimits.Locks,
-		Memlock:    request.Rlimits.Memlock,
-		Msgqueue:   request.Rlimits.Msgqueue,
-		Nice:       request.Rlimits.Nice,
-		Nofile:     request.Rlimits.Nofile,
-		Nproc:      request.Rlimits.Nproc,
-		Rss:        request.Rlimits.Rss,
-		Rtprio:     request.Rlimits.Rtprio,
-		Sigpending: request.Rlimits.Sigpending,
-		Stack:      request.Rlimits.Stack,
+		As:         limits.As,
+		Core:       limits.Core,
+		Cpu:        limits.Cpu,
+		Data:       limits.Data,
+		Fsize:      limits.Fsize,
+		Locks:      limits.Locks,
+		Memlock:    limits.Memlock,
+		Msgqueue:   limits.Msgqueue,
+		Nice:       limits.Nice,
+		Nofile:     limits.Nofile,
+		Nproc:      limits.Nproc,
+		Rss:        limits.Rss,
+		Rtprio:     limits.Rtprio,
+		Sigpending: limits.Sigpending,
+		Stack:      limits.Stack,
 	}
 }
