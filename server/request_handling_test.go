@@ -21,7 +21,6 @@ import (
 	"github.com/vito/garden/server"
 )
 
-
 var _ = Describe("When a client connects", func() {
 	var socketPath string
 	var snapshotsPath string

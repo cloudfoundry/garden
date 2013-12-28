@@ -1,6 +1,7 @@
 package linux_backend
 
 import (
+	"io"
 	"sync"
 
 	"github.com/vito/garden/backend"
@@ -58,6 +59,10 @@ func (b *LinuxBackend) Create(spec backend.ContainerSpec) (backend.Container, er
 	b.Unlock()
 
 	return container, nil
+}
+
+func (b *LinuxBackend) Restore(io.Reader) error {
+	return nil
 }
 
 func (b *LinuxBackend) Destroy(handle string) error {

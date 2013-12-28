@@ -2,6 +2,7 @@ package server_test
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -118,7 +119,7 @@ var _ = Describe("The Warden server", func() {
 	})
 
 	Context("when starting fails", func() {
-		It("returns the error", func() {
+		It("fails to start", func() {
 			tmpfile, err := ioutil.TempFile(os.TempDir(), "warden-server-test")
 			Expect(err).ToNot(HaveOccurred())
 
@@ -131,6 +132,71 @@ var _ = Describe("The Warden server", func() {
 
 			err = wardenServer.Start()
 			Expect(err).To(HaveOccurred())
+		})
+	})
+
+	Describe("when snapshots are present", func() {
+		var fakeBackend *fake_backend.FakeBackend
+		var socketPath, snapshotsPath string
+
+		BeforeEach(func() {
+			tmpdir, err := ioutil.TempDir(os.TempDir(), "warden-server-test")
+			Expect(err).ToNot(HaveOccurred())
+
+			socketPath = path.Join(tmpdir, "warden.sock")
+			snapshotsPath = path.Join(tmpdir, "snapshots")
+			fakeBackend = fake_backend.New()
+
+			err = os.MkdirAll(snapshotsPath, 0755)
+			Expect(err).ToNot(HaveOccurred())
+
+			file, err := os.Create(path.Join(snapshotsPath, "some-id"))
+			Expect(err).ToNot(HaveOccurred())
+
+			file.Write([]byte("snapshot-a"))
+			file.Close()
+
+			file, err = os.Create(path.Join(snapshotsPath, "some-other-id"))
+			Expect(err).ToNot(HaveOccurred())
+
+			file.Write([]byte("snapshot-b"))
+			file.Close()
+		})
+
+		It("restores them via the backend", func() {
+			wardenServer := server.New(socketPath, snapshotsPath, fakeBackend)
+
+			err := wardenServer.Start()
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(fakeBackend.RestoredContainers).To(HaveLen(2))
+
+			buf := make([]byte, len("snapshot-X"))
+
+			_, err = fakeBackend.RestoredContainers[0].Read(buf[:])
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(string(buf)).To(Equal("snapshot-a"))
+
+			_, err = fakeBackend.RestoredContainers[1].Read(buf[:])
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(string(buf)).To(Equal("snapshot-b"))
+		})
+
+		Context("when restoring a snapshot fails", func() {
+			disaster := errors.New("oh no!")
+
+			BeforeEach(func() {
+				fakeBackend.RestoreError = errors.New("oh no!")
+			})
+
+			It("fails to start", func() {
+				wardenServer := server.New(socketPath, snapshotsPath, fakeBackend)
+
+				err := wardenServer.Start()
+				Expect(err).To(Equal(disaster))
+			})
 		})
 	})
 

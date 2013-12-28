@@ -4,9 +4,11 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"net"
 	"os"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -58,6 +60,11 @@ func (s *WardenServer) Start() error {
 		if err != nil {
 			return err
 		}
+
+		err = s.restoreSnapshots()
+		if err != nil {
+			return err
+		}
 	}
 
 	listener, err := net.Listen("unix", s.socketPath)
@@ -85,6 +92,29 @@ func (s *WardenServer) Stop() {
 	s.setStopping()
 	s.listener.Close()
 	s.openRequests.Wait()
+}
+
+func (s *WardenServer) restoreSnapshots() error {
+	entries, err := ioutil.ReadDir(s.snapshotsPath)
+	if err != nil {
+		return err
+	}
+
+	for _, entry := range entries {
+		snapshot := filepath.Join(s.snapshotsPath, entry.Name())
+
+		file, err := os.Open(snapshot)
+		if err != nil {
+			return err
+		}
+
+		err = s.backend.Restore(file)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (s *WardenServer) handleConnections(listener net.Listener) {

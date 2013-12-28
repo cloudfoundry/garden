@@ -1,15 +1,19 @@
 package fake_backend
 
 import (
+	"io"
+
 	"github.com/vito/garden/backend"
 )
 
 type FakeBackend struct {
 	CreateError     error
+	RestoreError    error
 	DestroyError    error
 	ContainersError error
 
-	CreatedContainers map[string]*FakeContainer
+	CreatedContainers  map[string]*FakeContainer
+	RestoredContainers []io.Reader
 }
 
 type UnknownHandleError struct {
@@ -40,6 +44,16 @@ func (b *FakeBackend) Create(spec backend.ContainerSpec) (backend.Container, err
 	b.CreatedContainers[container.Handle()] = container
 
 	return container, nil
+}
+
+func (b *FakeBackend) Restore(snapshot io.Reader) error {
+	if b.RestoreError != nil {
+		return b.RestoreError
+	}
+
+	b.RestoredContainers = append(b.RestoredContainers, snapshot)
+
+	return nil
 }
 
 func (b *FakeBackend) Destroy(handle string) error {
