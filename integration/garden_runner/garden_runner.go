@@ -116,7 +116,7 @@ func (r *GardenRunner) Stop() error {
 	}
 }
 
-func (r *GardenRunner) TearDown() error {
+func (r *GardenRunner) DestroyContainers() error {
 	containerDirs, err := ioutil.ReadDir(r.DepotPath)
 	if err != nil {
 		return err
@@ -136,6 +136,15 @@ func (r *GardenRunner) TearDown() error {
 		if err != nil {
 			return err
 		}
+	}
+
+	return nil
+}
+
+func (r *GardenRunner) TearDown() error {
+	err := r.DestroyContainers()
+	if err != nil {
+		return err
 	}
 
 	return os.RemoveAll(r.tmpdir)
