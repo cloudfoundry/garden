@@ -204,19 +204,19 @@ var _ = Describe("The Warden server", func() {
 
 		Context("when a Create request is in-flight", func() {
 			BeforeEach(func() {
-				serverBackend = fake_backend.NewSlow(1 * time.Second)
+				serverBackend = fake_backend.NewSlow(100 * time.Millisecond)
 			})
 
 			It("waits for it to complete and stops accepting requests", func() {
 				writeMessages(&protocol.CreateRequest{})
 
-				time.Sleep(100 * time.Millisecond)
+				time.Sleep(10 * time.Millisecond)
 
 				before := time.Now()
 
 				wardenServer.Stop()
 
-				Expect(time.Since(before)).To(BeNumerically(">", 500*time.Millisecond))
+				Expect(time.Since(before)).To(BeNumerically(">", 50*time.Millisecond))
 
 				readResponse(&protocol.CreateResponse{})
 
@@ -245,7 +245,7 @@ var _ = Describe("The Warden server", func() {
 
 			Context(fmt.Sprintf("when a %T request is in-flight", request), func() {
 				BeforeEach(func() {
-					serverBackend = fake_backend.NewSlow(1 * time.Second)
+					serverBackend = fake_backend.NewSlow(100 * time.Millisecond)
 
 					container, err := serverBackend.Create(backend.ContainerSpec{Handle: "some-handle"})
 					Expect(err).ToNot(HaveOccurred())
@@ -264,13 +264,13 @@ var _ = Describe("The Warden server", func() {
 				It("does not wait for it to complete", func() {
 					writeMessages(request)
 
-					time.Sleep(100 * time.Millisecond)
+					time.Sleep(10 * time.Millisecond)
 
 					before := time.Now()
 
 					wardenServer.Stop()
 
-					Expect(time.Since(before)).To(BeNumerically("<", 500*time.Millisecond))
+					Expect(time.Since(before)).To(BeNumerically("<", 50*time.Millisecond))
 
 					response := protocol.ResponseMessageForType(protocol.TypeForMessage(request))
 					readResponse(response)
@@ -282,18 +282,3 @@ var _ = Describe("The Warden server", func() {
 		}
 	})
 })
-
-func ErrorDialingUnix(socketPath string) func() error {
-	return func() error {
-		conn, err := net.Dial("unix", socketPath)
-		if err == nil {
-			conn.Close()
-		}
-
-		return err
-	}
-}
-
-func uint64ptr(n uint64) *uint64 {
-	return &n
-}

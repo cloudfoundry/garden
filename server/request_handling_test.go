@@ -270,7 +270,7 @@ var _ = Describe("When a client connects", func() {
 		Context("when background is true", func() {
 			It("stops async and returns immediately", func(done Done) {
 				fakeContainer.StopCallback = func() {
-					time.Sleep(500 * time.Millisecond)
+					time.Sleep(100 * time.Millisecond)
 				}
 
 				writeMessages(&protocol.StopRequest{
