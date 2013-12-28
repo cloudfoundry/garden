@@ -21,9 +21,10 @@ type WardenServer struct {
 	socketPath string
 	backend    backend.Backend
 
-	listener     net.Listener
-	stopping     bool
-	openRequests *sync.WaitGroup
+	listener      net.Listener
+	stopping      bool
+	stoppingMutex *sync.RWMutex
+	openRequests  *sync.WaitGroup
 }
 
 type UnhandledRequestError struct {
@@ -39,7 +40,8 @@ func New(socketPath string, backend backend.Backend) *WardenServer {
 		socketPath: socketPath,
 		backend:    backend,
 
-		openRequests: new(sync.WaitGroup),
+		stoppingMutex: new(sync.RWMutex),
+		openRequests:  new(sync.WaitGroup),
 	}
 }
 
@@ -58,13 +60,20 @@ func (s *WardenServer) Start() error {
 
 	os.Chmod(s.socketPath, 0777)
 
+	// wait group must have Add() called before wait, which may not happen if
+	// the server does not handle a request before stopping
+	s.openRequests.Add(1)
+
 	go s.handleConnections(listener)
 
 	return nil
 }
 
 func (s *WardenServer) Stop() {
-	s.stopping = true
+	// release the one added in .Start
+	s.openRequests.Add(-1)
+
+	s.setStopping()
 	s.listener.Close()
 	s.openRequests.Wait()
 }
@@ -88,7 +97,7 @@ func (s *WardenServer) serveConnection(conn net.Conn) {
 		var response proto.Message
 		var err error
 
-		if s.stopping {
+		if s.isStopping() {
 			conn.Close()
 			break
 		}
@@ -103,7 +112,7 @@ func (s *WardenServer) serveConnection(conn net.Conn) {
 			continue
 		}
 
-		if s.stopping {
+		if s.isStopping() {
 			conn.Close()
 			break
 		}
@@ -169,6 +178,20 @@ func (s *WardenServer) serveConnection(conn net.Conn) {
 
 		s.openRequests.Done()
 	}
+}
+
+func (s *WardenServer) setStopping() {
+	s.stoppingMutex.Lock()
+	defer s.stoppingMutex.Unlock()
+
+	s.stopping = true
+}
+
+func (s *WardenServer) isStopping() bool {
+	s.stoppingMutex.RLock()
+	defer s.stoppingMutex.RUnlock()
+
+	return s.stopping
 }
 
 func (s *WardenServer) removeExistingSocket() error {

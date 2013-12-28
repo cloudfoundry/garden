@@ -1,6 +1,8 @@
 package fake_backend
 
 import (
+	"sync"
+
 	"github.com/vito/garden/backend"
 )
 
@@ -11,7 +13,8 @@ type FakeContainer struct {
 	Started    bool
 
 	StopError    error
-	Stopped      []StopSpec
+	stopped      []StopSpec
+	stopMutex    *sync.RWMutex
 	StopCallback func()
 
 	CopyInError error
@@ -80,7 +83,11 @@ type StopSpec struct {
 }
 
 func NewFakeContainer(spec backend.ContainerSpec) *FakeContainer {
-	return &FakeContainer{Spec: spec}
+	return &FakeContainer{
+		Spec: spec,
+
+		stopMutex: new(sync.RWMutex),
+	}
 }
 
 func (c *FakeContainer) ID() string {
@@ -110,9 +117,21 @@ func (c *FakeContainer) Stop(kill bool) error {
 		c.StopCallback()
 	}
 
-	c.Stopped = append(c.Stopped, StopSpec{kill})
+	// stops can happen asynchronously in tests (i.e. StopRequest with
+	// Background: true), so we need a mutex here
+	c.stopMutex.Lock()
+	defer c.stopMutex.Unlock()
+
+	c.stopped = append(c.stopped, StopSpec{kill})
 
 	return nil
+}
+
+func (c *FakeContainer) Stopped() []StopSpec {
+	c.stopMutex.RLock()
+	defer c.stopMutex.RUnlock()
+
+	return c.stopped
 }
 
 func (c *FakeContainer) Info() (backend.ContainerInfo, error) {

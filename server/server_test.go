@@ -309,7 +309,7 @@ var _ = Describe("The Warden server", func() {
 				var response protocol.StopResponse
 				readResponse(&response)
 
-				Expect(fakeContainer.Stopped).To(ContainElement(
+				Expect(fakeContainer.Stopped()).To(ContainElement(
 					fake_backend.StopSpec{
 						Killed: true,
 					},
@@ -321,7 +321,7 @@ var _ = Describe("The Warden server", func() {
 			Context("when background is true", func() {
 				It("stops async and returns immediately", func(done Done) {
 					fakeContainer.StopCallback = func() {
-						time.Sleep(1 * time.Second)
+						time.Sleep(500 * time.Millisecond)
 					}
 
 					writeMessages(&protocol.StopRequest{
@@ -333,7 +333,8 @@ var _ = Describe("The Warden server", func() {
 					var response protocol.StopResponse
 					readResponse(&response)
 
-					Expect(fakeContainer.Stopped).To(BeEmpty())
+					Expect(fakeContainer.Stopped()).To(BeEmpty())
+					Eventually(fakeContainer.Stopped).ShouldNot(BeEmpty())
 
 					close(done)
 				}, 1.0)
