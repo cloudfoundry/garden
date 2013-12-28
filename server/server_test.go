@@ -3,6 +3,7 @@ package server_test
 import (
 	"bufio"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"net"
 	"os"
@@ -76,7 +77,10 @@ var _ = Describe("The Warden server", func() {
 
 	Context("when a client connects", func() {
 		var socketPath string
+
 		var serverBackend *fake_backend.FakeBackend
+
+		var wardenServer *server.WardenServer
 
 		var serverConnection net.Conn
 		var responses *bufio.Reader
@@ -88,7 +92,7 @@ var _ = Describe("The Warden server", func() {
 			socketPath = path.Join(tmpdir, "warden.sock")
 			serverBackend = fake_backend.New()
 
-			wardenServer := server.New(socketPath, serverBackend)
+			wardenServer = server.New(socketPath, serverBackend)
 
 			err = wardenServer.Start()
 			Expect(err).ToNot(HaveOccurred())
@@ -1906,6 +1910,152 @@ var _ = Describe("The Warden server", func() {
 				}, 1.0)
 			})
 		})
+	})
+
+	Describe("shutting down", func() {
+		var socketPath string
+
+		var serverBackend backend.Backend
+		var fakeBackend *fake_backend.FakeBackend
+
+		var wardenServer *server.WardenServer
+
+		var serverConnection net.Conn
+		var responses *bufio.Reader
+
+		BeforeEach(func() {
+			tmpdir, err := ioutil.TempDir(os.TempDir(), "warden-server-test")
+			Expect(err).ToNot(HaveOccurred())
+
+			socketPath = path.Join(tmpdir, "warden.sock")
+			fakeBackend = fake_backend.New()
+
+			serverBackend = fakeBackend
+		})
+
+		JustBeforeEach(func() {
+			wardenServer = server.New(socketPath, serverBackend)
+
+			err := wardenServer.Start()
+			Expect(err).ToNot(HaveOccurred())
+
+			Eventually(ErrorDialingUnix(socketPath)).ShouldNot(HaveOccurred())
+
+			serverConnection, err = net.Dial("unix", socketPath)
+			Expect(err).ToNot(HaveOccurred())
+
+			responses = bufio.NewReader(serverConnection)
+		})
+
+		writeMessages := func(message proto.Message) {
+			num, err := protocol.Messages(message).WriteTo(serverConnection)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(num).ToNot(Equal(0))
+		}
+
+		readResponse := func(response proto.Message) {
+			err := message_reader.ReadMessage(responses, response)
+			Expect(err).ToNot(HaveOccurred())
+		}
+
+		It("stops accepting new connections", func() {
+			go wardenServer.Stop()
+			Eventually(ErrorDialingUnix(socketPath)).Should(HaveOccurred())
+		})
+
+		It("stops handling requests on existing connections", func() {
+			writeMessages(&protocol.PingRequest{})
+			readResponse(&protocol.PingResponse{})
+
+			go wardenServer.Stop()
+
+			// server was already reading a request
+			_, err := protocol.Messages(&protocol.PingRequest{}).WriteTo(serverConnection)
+			Expect(err).ToNot(HaveOccurred())
+
+			// server will not actually handle it
+			err = message_reader.ReadMessage(responses, &protocol.PingResponse{})
+			Expect(err).To(HaveOccurred())
+		})
+
+		Context("when a Create request is in-flight", func() {
+			BeforeEach(func() {
+				serverBackend = fake_backend.NewSlow(1 * time.Second)
+			})
+
+			It("waits for it to complete and stops accepting requests", func() {
+				writeMessages(&protocol.CreateRequest{})
+
+				time.Sleep(100 * time.Millisecond)
+
+				before := time.Now()
+
+				wardenServer.Stop()
+
+				Expect(time.Since(before)).To(BeNumerically(">", 500*time.Millisecond))
+
+				readResponse(&protocol.CreateResponse{})
+
+				_, err := protocol.Messages(&protocol.PingRequest{}).WriteTo(serverConnection)
+				Expect(err).To(HaveOccurred())
+			})
+		})
+
+		dontWaitRequests := []proto.Message{
+			&protocol.LinkRequest{
+				Handle: proto.String("some-handle"),
+				JobId:  proto.Uint32(1),
+			},
+			&protocol.StreamRequest{
+				Handle: proto.String("some-handle"),
+				JobId:  proto.Uint32(1),
+			},
+			&protocol.RunRequest{
+				Handle: proto.String("some-handle"),
+				Script: proto.String("some-script"),
+			},
+		}
+
+		for _, req := range dontWaitRequests {
+			request := req
+
+			Context(fmt.Sprintf("when a %T request is in-flight", request), func() {
+				BeforeEach(func() {
+					serverBackend = fake_backend.NewSlow(1 * time.Second)
+
+					container, err := serverBackend.Create(backend.ContainerSpec{Handle: "some-handle"})
+					Expect(err).ToNot(HaveOccurred())
+
+					exitStatus := uint32(42)
+
+					fakeContainer := container.(*fake_backend.FakeContainer)
+
+					fakeContainer.StreamedJobChunks = []backend.JobStream{
+						{
+							ExitStatus: &exitStatus,
+						},
+					}
+				})
+
+				It("does not wait for it to complete", func() {
+					writeMessages(request)
+
+					time.Sleep(100 * time.Millisecond)
+
+					before := time.Now()
+
+					wardenServer.Stop()
+
+					Expect(time.Since(before)).To(BeNumerically("<", 500*time.Millisecond))
+
+					response := protocol.ResponseMessageForType(protocol.TypeForMessage(request))
+					readResponse(response)
+
+					_, err := protocol.Messages(&protocol.PingRequest{}).WriteTo(serverConnection)
+					Expect(err).To(HaveOccurred())
+				})
+			})
+		}
 	})
 })
 

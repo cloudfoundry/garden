@@ -4,8 +4,11 @@ import (
 	"flag"
 	"log"
 	"net"
+	"os"
+	"os/signal"
 	"path"
 	"runtime"
+	"syscall"
 
 	"github.com/vito/garden/backend"
 	"github.com/vito/garden/backend/fake_backend"
@@ -164,6 +167,17 @@ func main() {
 	if err != nil {
 		log.Fatalln("failed to start:", err)
 	}
+
+	signals := make(chan os.Signal, 1)
+
+	go func() {
+		<-signals
+		log.Println("stopping...")
+		wardenServer.Stop()
+		os.Exit(0)
+	}()
+
+	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
 
 	select {}
 }

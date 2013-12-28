@@ -7,6 +7,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"sync"
 	"time"
 
 	"code.google.com/p/gogoprotobuf/proto"
@@ -19,6 +20,10 @@ import (
 type WardenServer struct {
 	socketPath string
 	backend    backend.Backend
+
+	listener     net.Listener
+	stopping     bool
+	openRequests *sync.WaitGroup
 }
 
 type UnhandledRequestError struct {
@@ -33,6 +38,8 @@ func New(socketPath string, backend backend.Backend) *WardenServer {
 	return &WardenServer{
 		socketPath: socketPath,
 		backend:    backend,
+
+		openRequests: new(sync.WaitGroup),
 	}
 }
 
@@ -47,6 +54,8 @@ func (s *WardenServer) Start() error {
 		return err
 	}
 
+	s.listener = listener
+
 	os.Chmod(s.socketPath, 0777)
 
 	go s.handleConnections(listener)
@@ -54,12 +63,18 @@ func (s *WardenServer) Start() error {
 	return nil
 }
 
+func (s *WardenServer) Stop() {
+	s.stopping = true
+	s.listener.Close()
+	s.openRequests.Wait()
+}
+
 func (s *WardenServer) handleConnections(listener net.Listener) {
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
-			log.Println("error accepting connection:", err)
-			continue
+			// listener closed
+			break
 		}
 
 		go s.serveConnection(conn)
@@ -73,6 +88,11 @@ func (s *WardenServer) serveConnection(conn net.Conn) {
 		var response proto.Message
 		var err error
 
+		if s.stopping {
+			conn.Close()
+			break
+		}
+
 		request, err := message_reader.ReadRequest(read)
 		if err == io.EOF {
 			break
@@ -82,6 +102,13 @@ func (s *WardenServer) serveConnection(conn net.Conn) {
 			log.Println("error reading request:", err)
 			continue
 		}
+
+		if s.stopping {
+			conn.Close()
+			break
+		}
+
+		s.openRequests.Add(1)
 
 		switch request.(type) {
 		case *protocol.PingRequest:
@@ -103,11 +130,17 @@ func (s *WardenServer) serveConnection(conn net.Conn) {
 		case *protocol.SpawnRequest:
 			response, err = s.handleSpawn(request.(*protocol.SpawnRequest))
 		case *protocol.LinkRequest:
+			s.openRequests.Done()
 			response, err = s.handleLink(request.(*protocol.LinkRequest))
+			s.openRequests.Add(1)
 		case *protocol.StreamRequest:
+			s.openRequests.Done()
 			response, err = s.handleStream(conn, request.(*protocol.StreamRequest))
+			s.openRequests.Add(1)
 		case *protocol.RunRequest:
+			s.openRequests.Done()
 			response, err = s.handleRun(request.(*protocol.RunRequest))
+			s.openRequests.Add(1)
 		case *protocol.LimitBandwidthRequest:
 			response, err = s.handleLimitBandwidth(request.(*protocol.LimitBandwidthRequest))
 		case *protocol.LimitMemoryRequest:
@@ -133,6 +166,8 @@ func (s *WardenServer) serveConnection(conn net.Conn) {
 		}
 
 		protocol.Messages(response).WriteTo(conn)
+
+		s.openRequests.Done()
 	}
 }
 
