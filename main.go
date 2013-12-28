@@ -29,6 +29,12 @@ var socketFilePath = flag.String(
 	"where to put the wardern server .sock file",
 )
 
+var snapshotsPath = flag.String(
+	"snapshots",
+	"",
+	"directory in which to store container state to persist through restarts",
+)
+
 var backendName = flag.String(
 	"backend",
 	"linux",
@@ -161,7 +167,7 @@ func main() {
 
 	log.Println("starting server; listening on", *socketFilePath)
 
-	wardenServer := server.New(*socketFilePath, backend)
+	wardenServer := server.New(*socketFilePath, *snapshotsPath, backend)
 
 	err = wardenServer.Start()
 	if err != nil {

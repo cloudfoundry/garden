@@ -18,8 +18,9 @@ import (
 )
 
 type WardenServer struct {
-	socketPath string
-	backend    backend.Backend
+	socketPath    string
+	snapshotsPath string
+	backend       backend.Backend
 
 	listener      net.Listener
 	stopping      bool
@@ -35,10 +36,11 @@ func (e UnhandledRequestError) Error() string {
 	return fmt.Sprintf("unhandled request type: %T", e.Request)
 }
 
-func New(socketPath string, backend backend.Backend) *WardenServer {
+func New(socketPath, snapshotsPath string, backend backend.Backend) *WardenServer {
 	return &WardenServer{
-		socketPath: socketPath,
-		backend:    backend,
+		socketPath:    socketPath,
+		snapshotsPath: snapshotsPath,
+		backend:       backend,
 
 		stoppingMutex: new(sync.RWMutex),
 		openRequests:  new(sync.WaitGroup),
@@ -49,6 +51,13 @@ func (s *WardenServer) Start() error {
 	err := s.removeExistingSocket()
 	if err != nil {
 		return err
+	}
+
+	if s.snapshotsPath != "" {
+		err = os.MkdirAll(s.snapshotsPath, 0755)
+		if err != nil {
+			return err
+		}
 	}
 
 	listener, err := net.Listen("unix", s.socketPath)
