@@ -38,6 +38,14 @@ func (e UnhandledRequestError) Error() string {
 	return fmt.Sprintf("unhandled request type: %T", e.Request)
 }
 
+type FailedToSnapshotError struct {
+	OriginalError error
+}
+
+func (e FailedToSnapshotError) Error() string {
+	return fmt.Sprintf("failed to save snapshot: %s", e.OriginalError)
+}
+
 func New(socketPath, snapshotsPath string, backend backend.Backend) *WardenServer {
 	return &WardenServer{
 		socketPath:    socketPath,
@@ -115,6 +123,41 @@ func (s *WardenServer) restoreSnapshots() error {
 	}
 
 	return nil
+}
+
+func (s *WardenServer) saveSnapshot(container backend.Container) error {
+	if s.snapshotsPath == "" {
+		return nil
+	}
+
+	tmpfile, err := ioutil.TempFile(os.TempDir(), "snapshot-"+container.ID())
+	if err != nil {
+		return &FailedToSnapshotError{err}
+	}
+
+	err = container.Snapshot(tmpfile)
+	if err != nil {
+		return &FailedToSnapshotError{err}
+	}
+
+	snapshotPath := filepath.Join(s.snapshotsPath, container.ID())
+
+	err = os.Rename(tmpfile.Name(), snapshotPath)
+	if err != nil {
+		return &FailedToSnapshotError{err}
+	}
+
+	return nil
+}
+
+func (s *WardenServer) removeSnapshot(container backend.Container) {
+	if s.snapshotsPath == "" {
+		return
+	}
+
+	snapshotPath := filepath.Join(s.snapshotsPath, container.ID())
+
+	os.Remove(snapshotPath)
 }
 
 func (s *WardenServer) handleConnections(listener net.Listener) {
@@ -280,6 +323,11 @@ func (s *WardenServer) handleCreate(create *protocol.CreateRequest) (proto.Messa
 		return nil, err
 	}
 
+	err = s.saveSnapshot(container)
+	if err != nil {
+		return nil, err
+	}
+
 	return &protocol.CreateResponse{
 		Handle: proto.String(container.Handle()),
 	}, nil
@@ -288,10 +336,17 @@ func (s *WardenServer) handleCreate(create *protocol.CreateRequest) (proto.Messa
 func (s *WardenServer) handleDestroy(destroy *protocol.DestroyRequest) (proto.Message, error) {
 	handle := destroy.GetHandle()
 
-	err := s.backend.Destroy(handle)
+	container, err := s.backend.Lookup(handle)
 	if err != nil {
 		return nil, err
 	}
+
+	err = s.backend.Destroy(handle)
+	if err != nil {
+		return nil, err
+	}
+
+	s.removeSnapshot(container)
 
 	return &protocol.DestroyResponse{}, nil
 }
@@ -341,9 +396,20 @@ func (s *WardenServer) handleStop(request *protocol.StopRequest) (proto.Message,
 	}
 
 	if background {
-		go container.Stop(kill)
+		go func() {
+			err := container.Stop(kill)
+
+			if err == nil {
+				s.saveSnapshot(container)
+			}
+		}()
 	} else {
 		err = container.Stop(kill)
+		if err != nil {
+			return nil, err
+		}
+
+		err = s.saveSnapshot(container)
 		if err != nil {
 			return nil, err
 		}
@@ -393,6 +459,11 @@ func (s *WardenServer) handleSpawn(request *protocol.SpawnRequest) (proto.Messag
 	}
 
 	jobID, err := container.Spawn(jobSpec)
+	if err != nil {
+		return nil, err
+	}
+
+	err = s.saveSnapshot(container)
 	if err != nil {
 		return nil, err
 	}
@@ -448,6 +519,11 @@ func (s *WardenServer) handleRun(request *protocol.RunRequest) (proto.Message, e
 		return nil, err
 	}
 
+	err = s.saveSnapshot(container)
+	if err != nil {
+		return nil, err
+	}
+
 	jobResult, err := container.Link(jobID)
 	if err != nil {
 		return nil, err
@@ -478,6 +554,11 @@ func (s *WardenServer) handleLimitBandwidth(request *protocol.LimitBandwidthRequ
 		return nil, err
 	}
 
+	err = s.saveSnapshot(container)
+	if err != nil {
+		return nil, err
+	}
+
 	limits, err := container.CurrentBandwidthLimits()
 	if err != nil {
 		return nil, err
@@ -502,6 +583,12 @@ func (s *WardenServer) handleLimitMemory(request *protocol.LimitMemoryRequest) (
 		err = container.LimitMemory(backend.MemoryLimits{
 			LimitInBytes: limitInBytes,
 		})
+
+		if err != nil {
+			return nil, err
+		}
+
+		err = s.saveSnapshot(container)
 		if err != nil {
 			return nil, err
 		}
@@ -583,6 +670,11 @@ func (s *WardenServer) handleLimitDisk(request *protocol.LimitDiskRequest) (prot
 		}
 	}
 
+	err = s.saveSnapshot(container)
+	if err != nil {
+		return nil, err
+	}
+
 	limits, err := container.CurrentDiskLimits()
 	if err != nil {
 		return nil, err
@@ -616,6 +708,11 @@ func (s *WardenServer) handleLimitCpu(request *protocol.LimitCpuRequest) (proto.
 		}
 	}
 
+	err = s.saveSnapshot(container)
+	if err != nil {
+		return nil, err
+	}
+
 	limits, err := container.CurrentCPULimits()
 	if err != nil {
 		return nil, err
@@ -641,6 +738,11 @@ func (s *WardenServer) handleNetIn(request *protocol.NetInRequest) (proto.Messag
 		return nil, err
 	}
 
+	err = s.saveSnapshot(container)
+	if err != nil {
+		return nil, err
+	}
+
 	return &protocol.NetInResponse{
 		HostPort:      proto.Uint32(hostPort),
 		ContainerPort: proto.Uint32(containerPort),
@@ -658,6 +760,11 @@ func (s *WardenServer) handleNetOut(request *protocol.NetOutRequest) (proto.Mess
 	}
 
 	err = container.NetOut(network, port)
+	if err != nil {
+		return nil, err
+	}
+
+	err = s.saveSnapshot(container)
 	if err != nil {
 		return nil, err
 	}

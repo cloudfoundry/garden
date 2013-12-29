@@ -1,9 +1,15 @@
 package backend
 
+import (
+	"io"
+)
+
 type Container interface {
 	ID() string
 
 	Handle() string
+
+	Snapshot(io.Writer) error
 
 	Start() error
 	Stop(kill bool) error

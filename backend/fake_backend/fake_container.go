@@ -1,6 +1,7 @@
 package fake_backend
 
 import (
+	"io"
 	"sync"
 
 	"github.com/vito/garden/backend"
@@ -71,6 +72,9 @@ type FakeContainer struct {
 
 	InfoError    error
 	ReportedInfo backend.ContainerInfo
+
+	SnapshotError  error
+	SavedSnapshots []io.Writer
 }
 
 type NetOutSpec struct {
@@ -91,11 +95,21 @@ func NewFakeContainer(spec backend.ContainerSpec) *FakeContainer {
 }
 
 func (c *FakeContainer) ID() string {
-	return c.Spec.Handle
+	return "some-container-id"
 }
 
 func (c *FakeContainer) Handle() string {
 	return c.Spec.Handle
+}
+
+func (c *FakeContainer) Snapshot(snapshot io.Writer) error {
+	if c.SnapshotError != nil {
+		return c.SnapshotError
+	}
+
+	c.SavedSnapshots = append(c.SavedSnapshots, snapshot)
+
+	return nil
 }
 
 func (c *FakeContainer) Start() error {

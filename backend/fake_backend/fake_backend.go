@@ -7,6 +7,7 @@ import (
 )
 
 type FakeBackend struct {
+	CreateResult    *FakeContainer
 	CreateError     error
 	RestoreError    error
 	DestroyError    error
@@ -39,7 +40,13 @@ func (b *FakeBackend) Create(spec backend.ContainerSpec) (backend.Container, err
 		return nil, b.CreateError
 	}
 
-	container := NewFakeContainer(spec)
+	var container *FakeContainer
+
+	if b.CreateResult != nil {
+		container = b.CreateResult
+	} else {
+		container = NewFakeContainer(spec)
+	}
 
 	b.CreatedContainers[container.Handle()] = container
 
