@@ -13,7 +13,7 @@ type ContainerSnapshot struct {
 
 	Limits LimitsSnapshot
 
-	Resources ResourcesSnapshot
+	Resources Resources
 
 	Jobs []JobSnapshot
 

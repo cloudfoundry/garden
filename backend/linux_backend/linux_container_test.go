@@ -157,46 +157,45 @@ var _ = Describe("Linux containers", func() {
 			err = json.NewDecoder(out).Decode(&snapshot)
 			Expect(err).ToNot(HaveOccurred())
 
-			Expect(snapshot).To(Equal(
-				linux_backend.ContainerSnapshot{
-					ID:     "some-id",
-					Handle: "some-handle",
+			Expect(snapshot.ID).To(Equal("some-id"))
+			Expect(snapshot.Handle).To(Equal("some-handle"))
 
-					State:  "stopped",
-					Events: []string{"out of memory"},
+			Expect(snapshot.State).To(Equal("stopped"))
+			Expect(snapshot.Events).To(Equal([]string{"out of memory"}))
 
-					Limits: linux_backend.LimitsSnapshot{
-						Memory:    &memoryLimits,
-						Disk:      &diskLimits,
-						Bandwidth: &bandwidthLimits,
-						CPU:       &cpuLimits,
+			Expect(snapshot.Limits).To(Equal(
+				linux_backend.LimitsSnapshot{
+					Memory:    &memoryLimits,
+					Disk:      &diskLimits,
+					Bandwidth: &bandwidthLimits,
+					CPU:       &cpuLimits,
+				},
+			))
+
+			Expect(snapshot.Resources).To(Equal(*containerResources))
+
+			Expect(snapshot.NetIns).To(Equal(
+				[]linux_backend.NetInSpec{
+					{
+						HostPort:      1,
+						ContainerPort: 2,
 					},
-
-					Resources: linux_backend.ResourcesSnapshot{
-						UID:     containerResources.UID,
-						Network: containerResources.Network.String(),
+					{
+						HostPort:      3,
+						ContainerPort: 4,
 					},
+				},
+			))
 
-					NetIns: []linux_backend.NetInSpec{
-						{
-							HostPort:      1,
-							ContainerPort: 2,
-						},
-						{
-							HostPort:      3,
-							ContainerPort: 4,
-						},
+			Expect(snapshot.NetOuts).To(Equal(
+				[]linux_backend.NetOutSpec{
+					{
+						Network: "network-a",
+						Port:    1,
 					},
-
-					NetOuts: []linux_backend.NetOutSpec{
-						{
-							Network: "network-a",
-							Port:    1,
-						},
-						{
-							Network: "network-b",
-							Port:    2,
-						},
+					{
+						Network: "network-b",
+						Port:    2,
 					},
 				},
 			))

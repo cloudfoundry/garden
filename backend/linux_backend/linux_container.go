@@ -69,10 +69,10 @@ type LinuxContainer struct {
 
 type Resources struct {
 	UID     uint32
-	Network network.Network
+	Network *network.Network
 	Ports   []uint32
 
-	sync.Mutex
+	sync.Mutex `json:-`
 }
 
 func (r *Resources) AddPort(port uint32) {
@@ -200,10 +200,7 @@ func (c *LinuxContainer) Snapshot(out io.Writer) error {
 				Memory:    c.currentMemoryLimits,
 			},
 
-			Resources: ResourcesSnapshot{
-				UID:     c.resources.UID,
-				Network: c.resources.Network.String(),
-			},
+			Resources: *c.resources,
 
 			NetIns:  c.netIns,
 			NetOuts: c.netOuts,

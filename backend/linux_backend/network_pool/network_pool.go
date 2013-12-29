@@ -8,46 +8,27 @@ import (
 )
 
 type NetworkPool interface {
-	Acquire() (network.Network, error)
-	Release(network.Network)
+	Acquire() (*network.Network, error)
+	Release(*network.Network)
 	Network() *net.IPNet
 }
 
 type RealNetworkPool struct {
 	ipNet *net.IPNet
 
-	pool []*Network
+	pool []*network.Network
 
 	sync.Mutex
-}
-
-type Network struct {
-	ipNet *net.IPNet
-
-	hostIP      net.IP
-	containerIP net.IP
-}
-
-func (n Network) String() string {
-	return n.ipNet.String()
-}
-
-func (n Network) HostIP() net.IP {
-	return n.hostIP
-}
-
-func (n Network) ContainerIP() net.IP {
-	return n.containerIP
 }
 
 type PoolExhaustedError struct{}
 
 func (e PoolExhaustedError) Error() string {
-	return "Network pool is exhausted"
+	return "network pool is exhausted"
 }
 
 func New(ipNet *net.IPNet) *RealNetworkPool {
-	pool := []*Network{}
+	pool := []*network.Network{}
 
 	_, startNet, err := net.ParseCIDR(ipNet.IP.String() + "/30")
 	if err != nil {
@@ -65,7 +46,7 @@ func New(ipNet *net.IPNet) *RealNetworkPool {
 	}
 }
 
-func (p *RealNetworkPool) Acquire() (network.Network, error) {
+func (p *RealNetworkPool) Acquire() (*network.Network, error) {
 	p.Lock()
 	defer p.Unlock()
 
@@ -79,10 +60,8 @@ func (p *RealNetworkPool) Acquire() (network.Network, error) {
 	return acquired, nil
 }
 
-func (p *RealNetworkPool) Release(n network.Network) {
-	network := n.(*Network)
-
-	if !p.ipNet.Contains(network.ipNet.IP) {
+func (p *RealNetworkPool) Release(network *network.Network) {
+	if !p.ipNet.Contains(network.IP()) {
 		return
 	}
 
@@ -96,12 +75,12 @@ func (p *RealNetworkPool) Network() *net.IPNet {
 	return p.ipNet
 }
 
-func networkFor(ipNet *net.IPNet) *Network {
-	return &Network{
-		ipNet:       ipNet,
-		hostIP:      nextIP(ipNet.IP),
-		containerIP: nextIP(nextIP(ipNet.IP)),
-	}
+func networkFor(ipNet *net.IPNet) *network.Network {
+	return network.New(
+		ipNet,
+		nextIP(ipNet.IP),
+		nextIP(nextIP(ipNet.IP)),
+	)
 }
 
 func nextSubnet(ipNet *net.IPNet) *net.IPNet {

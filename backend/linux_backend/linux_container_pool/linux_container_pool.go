@@ -182,10 +182,7 @@ func (p *LinuxContainerPool) Restore(snapshot io.Reader) (backend.Container, err
 		id,
 		containerSnapshot.Handle,
 		containerPath,
-		&linux_backend.Resources{
-		//UID:     containerSnapshot.Resources.UID,
-		//Network: containerSnapshot.Resources.Network,
-		},
+		&containerSnapshot.Resources,
 		p.portPool,
 		p.runner,
 		cgroupsManager,

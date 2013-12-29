@@ -15,24 +15,6 @@ type FakeNetworkPool struct {
 	Released []string
 }
 
-type FakeNetwork struct {
-	network     net.IP
-	hostIP      net.IP
-	containerIP net.IP
-}
-
-func (n FakeNetwork) String() string {
-	return n.network.String() + "/30"
-}
-
-func (n FakeNetwork) HostIP() net.IP {
-	return n.hostIP
-}
-
-func (n FakeNetwork) ContainerIP() net.IP {
-	return n.containerIP
-}
-
 func New(ipNet *net.IPNet) *FakeNetworkPool {
 	return &FakeNetworkPool{
 		ipNet: ipNet,
@@ -41,12 +23,16 @@ func New(ipNet *net.IPNet) *FakeNetworkPool {
 	}
 }
 
-func (p *FakeNetworkPool) Acquire() (network.Network, error) {
+func (p *FakeNetworkPool) Acquire() (*network.Network, error) {
 	if p.AcquireError != nil {
 		return nil, p.AcquireError
 	}
 
-	network := net.ParseIP(p.nextNetwork.String())
+	_, ipNet, err := net.ParseCIDR(p.nextNetwork.String() + "/30")
+	if err != nil {
+		return nil, err
+	}
+
 	inc(p.nextNetwork)
 
 	hostIP := net.ParseIP(p.nextNetwork.String())
@@ -57,14 +43,10 @@ func (p *FakeNetworkPool) Acquire() (network.Network, error) {
 
 	inc(p.nextNetwork)
 
-	return &FakeNetwork{
-		network:     network,
-		hostIP:      hostIP,
-		containerIP: containerIP,
-	}, nil
+	return network.New(ipNet, hostIP, containerIP), nil
 }
 
-func (p *FakeNetworkPool) Release(network network.Network) {
+func (p *FakeNetworkPool) Release(network *network.Network) {
 	p.Released = append(p.Released, network.String())
 }
 
