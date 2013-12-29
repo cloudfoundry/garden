@@ -5,8 +5,8 @@ set -e -x
 
 if [ "$TRAVIS" = "true" ]; then
   source $HOME/.gvm/scripts/gvm
-  gvm install go1.1
-  gvm use go1.1
+  gvm install go1.2
+  gvm use go1.2
 
   export GOPATH=$HOME/gopath:$GOPATH
 fi
