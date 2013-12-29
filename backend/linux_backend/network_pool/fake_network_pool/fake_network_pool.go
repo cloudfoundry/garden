@@ -11,8 +11,10 @@ type FakeNetworkPool struct {
 	nextNetwork net.IP
 
 	AcquireError error
+	RemoveError  error
 
 	Released []string
+	Removed  []string
 }
 
 func New(ipNet *net.IPNet) *FakeNetworkPool {
@@ -34,16 +36,21 @@ func (p *FakeNetworkPool) Acquire() (*network.Network, error) {
 	}
 
 	inc(p.nextNetwork)
-
-	hostIP := net.ParseIP(p.nextNetwork.String())
+	inc(p.nextNetwork)
+	inc(p.nextNetwork)
 	inc(p.nextNetwork)
 
-	containerIP := net.ParseIP(p.nextNetwork.String())
-	inc(p.nextNetwork)
+	return network.New(ipNet), nil
+}
 
-	inc(p.nextNetwork)
+func (p *FakeNetworkPool) Remove(network *network.Network) error {
+	if p.RemoveError != nil {
+		return p.RemoveError
+	}
 
-	return network.New(ipNet, hostIP, containerIP), nil
+	p.Removed = append(p.Removed, network.String())
+
+	return nil
 }
 
 func (p *FakeNetworkPool) Release(network *network.Network) {

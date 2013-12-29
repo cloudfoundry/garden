@@ -1,6 +1,7 @@
 package uid_pool
 
 import (
+	"fmt"
 	"sync"
 )
 
@@ -17,6 +18,14 @@ type PoolExhaustedError struct{}
 
 func (e PoolExhaustedError) Error() string {
 	return "UID pool is exhausted"
+}
+
+type UIDTakenError struct {
+	UID uint32
+}
+
+func (e UIDTakenError) Error() string {
+	return fmt.Sprintf("uid already acquired: %d", e.UID)
 }
 
 func New(start, size uint32) *UnixUIDPool {
@@ -47,6 +56,30 @@ func (p *UnixUIDPool) Acquire() (uint32, error) {
 	p.pool = p.pool[1:]
 
 	return uid, nil
+}
+
+func (p *UnixUIDPool) Remove(uid uint32) error {
+	idx := 0
+	found := false
+
+	p.Lock()
+	defer p.Unlock()
+
+	for i, existingUID := range p.pool {
+		if existingUID == uid {
+			idx = i
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		return UIDTakenError{uid}
+	}
+
+	p.pool = append(p.pool[:idx], p.pool[idx+1:]...)
+
+	return nil
 }
 
 func (p *UnixUIDPool) Release(uid uint32) {

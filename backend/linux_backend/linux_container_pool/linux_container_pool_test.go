@@ -14,6 +14,7 @@ import (
 	"github.com/vito/garden/backend"
 	"github.com/vito/garden/backend/linux_backend"
 	"github.com/vito/garden/backend/linux_backend/linux_container_pool"
+	"github.com/vito/garden/backend/linux_backend/network"
 	"github.com/vito/garden/backend/linux_backend/network_pool/fake_network_pool"
 	"github.com/vito/garden/backend/linux_backend/port_pool/fake_port_pool"
 	"github.com/vito/garden/backend/linux_backend/quota_manager/fake_quota_manager"
@@ -306,15 +307,28 @@ var _ = Describe("Linux Container pool", func() {
 	FDescribe("restoring", func() {
 		var snapshot io.Reader
 
+		var restoredNetwork *network.Network
+
 		BeforeEach(func() {
 			buf := new(bytes.Buffer)
 
 			snapshot = buf
 
-			err := json.NewEncoder(buf).Encode(
+			_, ipNet, err := net.ParseCIDR("10.244.0.0/30")
+			Expect(err).ToNot(HaveOccurred())
+
+			restoredNetwork = network.New(ipNet)
+
+			err = json.NewEncoder(buf).Encode(
 				linux_backend.ContainerSnapshot{
 					ID:     "some-restored-id",
 					Handle: "some-restored-handle",
+
+					Resources: linux_backend.Resources{
+						UID:     10000,
+						Network: restoredNetwork,
+						Ports:   []uint32{61001, 61002, 61003},
+					},
 				},
 			)
 			Expect(err).ToNot(HaveOccurred())
@@ -331,13 +345,27 @@ var _ = Describe("Linux Container pool", func() {
 			//Expect(container.ID()).ToNot(Equal(container2.ID()))
 		})
 
-		PIt("removes its UID from the pool", func() {
+		It("removes its UID from the pool", func() {
+			_, err := pool.Restore(snapshot)
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(fakeUIDPool.Removed).To(ContainElement(uint32(10000)))
 		})
 
-		PIt("removes its network from the pool", func() {
+		It("removes its network from the pool", func() {
+			_, err := pool.Restore(snapshot)
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(fakeNetworkPool.Removed).To(ContainElement(restoredNetwork.String()))
 		})
 
-		PIt("removes its ports from the pool", func() {
+		It("removes its ports from the pool", func() {
+			_, err := pool.Restore(snapshot)
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(fakePortPool.Removed).To(ContainElement(uint32(61001)))
+			Expect(fakePortPool.Removed).To(ContainElement(uint32(61002)))
+			Expect(fakePortPool.Removed).To(ContainElement(uint32(61003)))
 		})
 
 		Context("when decoding the snapshot fails", func() {
@@ -351,46 +379,50 @@ var _ = Describe("Linux Container pool", func() {
 			})
 		})
 
-		PContext("when acquiring a UID fails", func() {
-			nastyError := errors.New("oh no!")
+		Context("when removing the UID from the pool fails", func() {
+			disaster := errors.New("oh no!")
 
 			JustBeforeEach(func() {
-				fakeUIDPool.AcquireError = nastyError
+				fakeUIDPool.RemoveError = disaster
 			})
 
 			It("returns the error", func() {
-				_, err := pool.Create(backend.ContainerSpec{})
-				Expect(err).To(Equal(nastyError))
+				_, err := pool.Restore(snapshot)
+				Expect(err).To(Equal(disaster))
 			})
 		})
 
-		PContext("when acquiring a network fails", func() {
-			nastyError := errors.New("oh no!")
+		Context("when removing the network from the pool fails", func() {
+			disaster := errors.New("oh no!")
 
 			JustBeforeEach(func() {
-				fakeNetworkPool.AcquireError = nastyError
+				fakeNetworkPool.RemoveError = disaster
 			})
 
 			It("returns the error and releases the uid", func() {
-				_, err := pool.Create(backend.ContainerSpec{})
-				Expect(err).To(Equal(nastyError))
+				_, err := pool.Restore(snapshot)
+				Expect(err).To(Equal(disaster))
 
 				Expect(fakeUIDPool.Released).To(ContainElement(uint32(10000)))
 			})
 		})
 
-		PContext("when acquiring a network fails", func() {
-			nastyError := errors.New("oh no!")
+		Context("when removing a port from the pool fails", func() {
+			disaster := errors.New("oh no!")
 
 			JustBeforeEach(func() {
-				fakeNetworkPool.AcquireError = nastyError
+				fakePortPool.RemoveError = disaster
 			})
 
-			It("returns the error and releases the uid", func() {
-				_, err := pool.Create(backend.ContainerSpec{})
-				Expect(err).To(Equal(nastyError))
+			It("returns the error and releases the uid, network, and all ports", func() {
+				_, err := pool.Restore(snapshot)
+				Expect(err).To(Equal(disaster))
 
 				Expect(fakeUIDPool.Released).To(ContainElement(uint32(10000)))
+				Expect(fakeNetworkPool.Released).To(ContainElement(restoredNetwork.String()))
+				Expect(fakePortPool.Released).To(ContainElement(uint32(61001)))
+				Expect(fakePortPool.Released).To(ContainElement(uint32(61002)))
+				Expect(fakePortPool.Released).To(ContainElement(uint32(61003)))
 			})
 		})
 	})

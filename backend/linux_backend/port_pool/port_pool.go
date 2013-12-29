@@ -1,6 +1,7 @@
 package port_pool
 
 import (
+	"fmt"
 	"sync"
 )
 
@@ -16,7 +17,15 @@ type PortPool struct {
 type PoolExhaustedError struct{}
 
 func (e PoolExhaustedError) Error() string {
-	return "Port pool is exhausted"
+	return "port pool is exhausted"
+}
+
+type PortTakenError struct {
+	Port uint32
+}
+
+func (e PortTakenError) Error() string {
+	return fmt.Sprintf("port already acquired: %d", e.Port)
 }
 
 func New(start, size uint32) *PortPool {
@@ -49,6 +58,30 @@ func (p *PortPool) Acquire() (uint32, error) {
 	return port, nil
 }
 
+func (p *PortPool) Remove(port uint32) error {
+	idx := 0
+	found := false
+
+	p.Lock()
+	defer p.Unlock()
+
+	for i, existingPort := range p.pool {
+		if existingPort == port {
+			idx = i
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		return PortTakenError{port}
+	}
+
+	p.pool = append(p.pool[:idx], p.pool[idx+1:]...)
+
+	return nil
+}
+
 func (p *PortPool) Release(port uint32) {
 	if port < p.start || port >= p.start+p.size {
 		return
@@ -56,6 +89,12 @@ func (p *PortPool) Release(port uint32) {
 
 	p.Lock()
 	defer p.Unlock()
+
+	for _, existingPort := range p.pool {
+		if existingPort == port {
+			return
+		}
+	}
 
 	p.pool = append(p.pool, port)
 }

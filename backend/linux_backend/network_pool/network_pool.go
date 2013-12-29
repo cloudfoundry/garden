@@ -1,6 +1,7 @@
 package network_pool
 
 import (
+	"fmt"
 	"net"
 	"sync"
 
@@ -10,6 +11,7 @@ import (
 type NetworkPool interface {
 	Acquire() (*network.Network, error)
 	Release(*network.Network)
+	Remove(*network.Network) error
 	Network() *net.IPNet
 }
 
@@ -27,6 +29,14 @@ func (e PoolExhaustedError) Error() string {
 	return "network pool is exhausted"
 }
 
+type NetworkTakenError struct {
+	Network *network.Network
+}
+
+func (e NetworkTakenError) Error() string {
+	return fmt.Sprintf("network already acquired: %s", e.Network.String())
+}
+
 func New(ipNet *net.IPNet) *RealNetworkPool {
 	pool := []*network.Network{}
 
@@ -36,7 +46,7 @@ func New(ipNet *net.IPNet) *RealNetworkPool {
 	}
 
 	for subnet := startNet; ipNet.Contains(subnet.IP); subnet = nextSubnet(subnet) {
-		pool = append(pool, networkFor(subnet))
+		pool = append(pool, network.New(subnet))
 	}
 
 	return &RealNetworkPool{
@@ -60,6 +70,30 @@ func (p *RealNetworkPool) Acquire() (*network.Network, error) {
 	return acquired, nil
 }
 
+func (p *RealNetworkPool) Remove(network *network.Network) error {
+	idx := 0
+	found := false
+
+	p.Lock()
+	defer p.Unlock()
+
+	for i, existingNetwork := range p.pool {
+		if existingNetwork.String() == network.String() {
+			idx = i
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		return NetworkTakenError{network}
+	}
+
+	p.pool = append(p.pool[:idx], p.pool[idx+1:]...)
+
+	return nil
+}
+
 func (p *RealNetworkPool) Release(network *network.Network) {
 	if !p.ipNet.Contains(network.IP()) {
 		return
@@ -73,14 +107,6 @@ func (p *RealNetworkPool) Release(network *network.Network) {
 
 func (p *RealNetworkPool) Network() *net.IPNet {
 	return p.ipNet
-}
-
-func networkFor(ipNet *net.IPNet) *network.Network {
-	return network.New(
-		ipNet,
-		nextIP(ipNet.IP),
-		nextIP(nextIP(ipNet.IP)),
-	)
 }
 
 func nextSubnet(ipNet *net.IPNet) *net.IPNet {
@@ -97,12 +123,6 @@ func nextSubnet(ipNet *net.IPNet) *net.IPNet {
 	}
 
 	return nextNet
-}
-
-func nextIP(ip net.IP) net.IP {
-	next := net.ParseIP(ip.String())
-	inc(next)
-	return next
 }
 
 func inc(ip net.IP) {

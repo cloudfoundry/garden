@@ -12,11 +12,11 @@ type Network struct {
 	containerIP net.IP
 }
 
-func New(ipNet *net.IPNet, hostIP, containerIP net.IP) *Network {
+func New(ipNet *net.IPNet) *Network {
 	return &Network{
 		ipNet:       ipNet,
-		hostIP:      hostIP,
-		containerIP: containerIP,
+		hostIP:      nextIP(ipNet.IP),
+		containerIP: nextIP(nextIP(ipNet.IP)),
 	}
 }
 
@@ -68,4 +68,19 @@ func (n *Network) UnmarshalJSON(data []byte) error {
 	n.containerIP = tmp.ContainerIP
 
 	return nil
+}
+
+func nextIP(ip net.IP) net.IP {
+	next := net.ParseIP(ip.String())
+	inc(next)
+	return next
+}
+
+func inc(ip net.IP) {
+	for j := len(ip) - 1; j >= 0; j-- {
+		ip[j]++
+		if ip[j] > 0 {
+			break
+		}
+	}
 }

@@ -170,6 +170,32 @@ func (p *LinuxContainerPool) Restore(snapshot io.Reader) (backend.Container, err
 	}
 
 	id := containerSnapshot.ID
+	resources := &containerSnapshot.Resources
+
+	err = p.uidPool.Remove(resources.UID)
+	if err != nil {
+		return nil, err
+	}
+
+	err = p.networkPool.Remove(resources.Network)
+	if err != nil {
+		p.uidPool.Release(resources.UID)
+		return nil, err
+	}
+
+	for _, port := range resources.Ports {
+		err = p.portPool.Remove(port)
+		if err != nil {
+			p.uidPool.Release(resources.UID)
+			p.networkPool.Release(resources.Network)
+
+			for _, port := range resources.Ports {
+				p.portPool.Release(port)
+			}
+
+			return nil, err
+		}
+	}
 
 	containerPath := path.Join(p.depotPath, id)
 
@@ -181,7 +207,7 @@ func (p *LinuxContainerPool) Restore(snapshot io.Reader) (backend.Container, err
 		id,
 		containerSnapshot.Handle,
 		containerPath,
-		&containerSnapshot.Resources,
+		resources,
 		p.portPool,
 		p.runner,
 		cgroupsManager,

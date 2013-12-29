@@ -37,6 +37,34 @@ var _ = Describe("Unix UID pool", func() {
 		})
 	})
 
+	Describe("removing", func() {
+		It("acquires a specific UID from the pool", func() {
+			pool := uid_pool.New(10000, 2)
+
+			err := pool.Remove(10000)
+			Expect(err).ToNot(HaveOccurred())
+
+			uid, err := pool.Acquire()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(uid).To(Equal(uint32(10001)))
+
+			_, err = pool.Acquire()
+			Expect(err).To(HaveOccurred())
+		})
+
+		Context("when the resource is already acquired", func() {
+			It("returns a UIDTakenError", func() {
+				pool := uid_pool.New(10000, 2)
+
+				uid, err := pool.Acquire()
+				Expect(err).ToNot(HaveOccurred())
+
+				err = pool.Remove(uid)
+				Expect(err).To(Equal(uid_pool.UIDTakenError{uid}))
+			})
+		})
+	})
+
 	Describe("releasing", func() {
 		It("places a uid back at the end of the pool", func() {
 			pool := uid_pool.New(10000, 2)

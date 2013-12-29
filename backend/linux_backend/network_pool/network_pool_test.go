@@ -6,6 +6,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
+	"github.com/vito/garden/backend/linux_backend/network"
 	"github.com/vito/garden/backend/linux_backend/network_pool"
 )
 
@@ -41,6 +42,35 @@ var _ = Describe("Network Pool", func() {
 
 				_, err := pool.Acquire()
 				Expect(err).To(HaveOccurred())
+			})
+		})
+	})
+
+	Describe("removing", func() {
+		It("acquires a specific network from the pool", func() {
+			_, ipNet, err := net.ParseCIDR("10.254.0.0/30")
+			Expect(err).ToNot(HaveOccurred())
+
+			err = pool.Remove(network.New(ipNet))
+			Expect(err).ToNot(HaveOccurred())
+
+			for i := 0; i < (256 - 1); i++ {
+				network, err := pool.Acquire()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(network.String()).ToNot(Equal("10.254.0.0/30"))
+			}
+
+			_, err = pool.Acquire()
+			Expect(err).To(HaveOccurred())
+		})
+
+		Context("when the resource is already acquired", func() {
+			It("returns a PortTakenError", func() {
+				network, err := pool.Acquire()
+				Expect(err).ToNot(HaveOccurred())
+
+				err = pool.Remove(network)
+				Expect(err).To(Equal(network_pool.NetworkTakenError{network}))
 			})
 		})
 	})

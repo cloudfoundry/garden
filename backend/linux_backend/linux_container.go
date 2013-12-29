@@ -94,6 +94,7 @@ type NetOutSpec struct {
 
 type PortPool interface {
 	Acquire() (uint32, error)
+	Remove(uint32) error
 	Release(uint32)
 }
 
