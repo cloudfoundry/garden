@@ -1,7 +1,10 @@
 package linux_container_pool_test
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
+	"io"
 	"net"
 	"os/exec"
 
@@ -296,6 +299,87 @@ var _ = Describe("Linux Container pool", func() {
 
 				Expect(fakeUIDPool.Released).To(ContainElement(uint32(10000)))
 				Expect(fakeNetworkPool.Released).To(ContainElement("1.2.0.0/30"))
+			})
+		})
+	})
+
+	FDescribe("restoring", func() {
+		var snapshot io.Reader
+
+		BeforeEach(func() {
+			buf := new(bytes.Buffer)
+
+			snapshot = buf
+
+			err := json.NewEncoder(buf).Encode(
+				linux_backend.ContainerSnapshot{
+					ID:     "some-restored-id",
+					Handle: "some-restored-handle",
+				},
+			)
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("constructs a container from the snapshot", func() {
+			container, err := pool.Restore(snapshot)
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(container.ID()).To(Equal("some-restored-id"))
+			Expect(container.Handle()).To(Equal("some-restored-handle"))
+
+			//Expect(container.State()).To(Equal("some-restored-state"))
+			//Expect(container1.ID()).ToNot(Equal(container2.ID()))
+		})
+
+		PIt("removes its UID from the pool", func() {
+		})
+
+		PIt("removes its network from the pool", func() {
+		})
+
+		PIt("removes its ports from the pool", func() {
+		})
+
+		PContext("when acquiring a UID fails", func() {
+			nastyError := errors.New("oh no!")
+
+			JustBeforeEach(func() {
+				fakeUIDPool.AcquireError = nastyError
+			})
+
+			It("returns the error", func() {
+				_, err := pool.Create(backend.ContainerSpec{})
+				Expect(err).To(Equal(nastyError))
+			})
+		})
+
+		PContext("when acquiring a network fails", func() {
+			nastyError := errors.New("oh no!")
+
+			JustBeforeEach(func() {
+				fakeNetworkPool.AcquireError = nastyError
+			})
+
+			It("returns the error and releases the uid", func() {
+				_, err := pool.Create(backend.ContainerSpec{})
+				Expect(err).To(Equal(nastyError))
+
+				Expect(fakeUIDPool.Released).To(ContainElement(uint32(10000)))
+			})
+		})
+
+		PContext("when acquiring a network fails", func() {
+			nastyError := errors.New("oh no!")
+
+			JustBeforeEach(func() {
+				fakeNetworkPool.AcquireError = nastyError
+			})
+
+			It("returns the error and releases the uid", func() {
+				_, err := pool.Create(backend.ContainerSpec{})
+				Expect(err).To(Equal(nastyError))
+
+				Expect(fakeUIDPool.Released).To(ContainElement(uint32(10000)))
 			})
 		})
 	})

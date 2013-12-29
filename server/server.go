@@ -116,7 +116,7 @@ func (s *WardenServer) restoreSnapshots() error {
 			return err
 		}
 
-		err = s.backend.Restore(file)
+		_, err = s.backend.Restore(file)
 		if err != nil {
 			return err
 		}

@@ -1,6 +1,8 @@
 package fake_container_pool
 
 import (
+	"io"
+
 	"github.com/vito/garden/backend"
 	"github.com/vito/garden/backend/fake_backend"
 )
@@ -9,12 +11,14 @@ type FakeContainerPool struct {
 	DidSetup bool
 
 	CreateError  error
+	RestoreError error
 	DestroyError error
 
 	ContainerSetup func(*fake_backend.FakeContainer)
 
 	CreatedContainers   []backend.Container
 	DestroyedContainers []backend.Container
+	RestoredSnapshots   []io.Reader
 }
 
 func New() *FakeContainerPool {
@@ -39,6 +43,22 @@ func (p *FakeContainerPool) Create(spec backend.ContainerSpec) (backend.Containe
 	}
 
 	p.CreatedContainers = append(p.CreatedContainers, container)
+
+	return container, nil
+}
+
+func (p *FakeContainerPool) Restore(snapshot io.Reader) (backend.Container, error) {
+	if p.RestoreError != nil {
+		return nil, p.RestoreError
+	}
+
+	container := fake_backend.NewFakeContainer(
+		backend.ContainerSpec{
+			Handle: "some-restored-handle",
+		},
+	)
+
+	p.RestoredSnapshots = append(p.RestoredSnapshots, snapshot)
 
 	return container, nil
 }

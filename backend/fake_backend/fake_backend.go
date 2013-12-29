@@ -53,14 +53,14 @@ func (b *FakeBackend) Create(spec backend.ContainerSpec) (backend.Container, err
 	return container, nil
 }
 
-func (b *FakeBackend) Restore(snapshot io.Reader) error {
+func (b *FakeBackend) Restore(snapshot io.Reader) (backend.Container, error) {
 	if b.RestoreError != nil {
-		return b.RestoreError
+		return nil, b.RestoreError
 	}
 
 	b.RestoredContainers = append(b.RestoredContainers, snapshot)
 
-	return nil
+	return NewFakeContainer(backend.ContainerSpec{}), nil
 }
 
 func (b *FakeBackend) Destroy(handle string) error {

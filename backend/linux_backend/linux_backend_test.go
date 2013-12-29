@@ -1,7 +1,9 @@
 package linux_backend_test
 
 import (
+	"bytes"
 	"errors"
+	"io"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -101,6 +103,52 @@ var _ = Describe("Create", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			Expect(containers).To(BeEmpty())
+		})
+	})
+})
+
+var _ = Describe("Restore", func() {
+	var snapshot io.Reader
+
+	BeforeEach(func() {
+		fakeContainerPool = fake_container_pool.New()
+		linuxBackend = linux_backend.New(fakeContainerPool)
+
+		snapshot = new(bytes.Buffer)
+	})
+
+	It("restores the container using the pool", func() {
+		Expect(fakeContainerPool.RestoredSnapshots).To(BeEmpty())
+
+		_, err := linuxBackend.Restore(snapshot)
+		Expect(err).ToNot(HaveOccurred())
+
+		Expect(fakeContainerPool.RestoredSnapshots).To(ContainElement(snapshot))
+	})
+
+	It("registers the container", func() {
+		container, err := linuxBackend.Restore(snapshot)
+		Expect(err).ToNot(HaveOccurred())
+
+		foundContainer, err := linuxBackend.Lookup(container.Handle())
+		Expect(err).ToNot(HaveOccurred())
+
+		Expect(foundContainer).To(Equal(container))
+	})
+
+	Context("when restoring the container fails", func() {
+		disaster := errors.New("oh no!")
+
+		BeforeEach(func() {
+			fakeContainerPool.RestoreError = disaster
+		})
+
+		It("returns the error", func() {
+			container, err := linuxBackend.Restore(snapshot)
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(Equal(disaster))
+
+			Expect(container).To(BeNil())
 		})
 	})
 })

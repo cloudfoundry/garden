@@ -13,10 +13,11 @@ import (
 )
 
 type GardenRunner struct {
-	SocketPath string
-	DepotPath  string
-	RootPath   string
-	RootFSPath string
+	SocketPath    string
+	DepotPath     string
+	RootPath      string
+	RootFSPath    string
+	SnapshotsPath string
 
 	gardenBin string
 	gardenCmd *exec.Cmd
@@ -43,10 +44,11 @@ func New(rootPath, rootFSPath string) (*GardenRunner, error) {
 	}
 
 	return &GardenRunner{
-		SocketPath: filepath.Join(tmpdir, "garden.sock"),
-		DepotPath:  depotPath,
-		RootPath:   rootPath,
-		RootFSPath: rootFSPath,
+		SocketPath:    filepath.Join(tmpdir, "garden.sock"),
+		DepotPath:     depotPath,
+		RootPath:      rootPath,
+		RootFSPath:    rootFSPath,
+		SnapshotsPath: filepath.Join(tmpdir, "snapshots"),
 
 		gardenBin: gardenBin,
 
@@ -61,6 +63,7 @@ func (r *GardenRunner) Start() error {
 		"--root", r.RootPath,
 		"--depot", r.DepotPath,
 		"--rootfs", r.RootFSPath,
+		"--snapshots", r.SnapshotsPath,
 	)
 
 	garden.Stdout = os.Stdout

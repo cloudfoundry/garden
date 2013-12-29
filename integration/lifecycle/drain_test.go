@@ -46,7 +46,7 @@ var _ = Describe("Through a restart", func() {
 		Expect(res.GetHandles()).To(ContainElement(handle))
 	})
 
-	Describe("a started job", func() {
+	PDescribe("a started job", func() {
 		It("continues to stream", func(done Done) {
 			res, err := client.Spawn(handle, "while true; do echo hi; sleep 0.5; done", false)
 			Expect(err).ToNot(HaveOccurred())
@@ -107,7 +107,7 @@ var _ = Describe("Through a restart", func() {
 		})
 	})
 
-	Describe("a memory limit", func() {
+	PDescribe("a memory limit", func() {
 		It("is still enforced", func() {
 			_, err := client.LimitMemory(handle, 32*1024*1024)
 			Expect(err).ToNot(HaveOccurred())
@@ -125,7 +125,7 @@ var _ = Describe("Through a restart", func() {
 		})
 	})
 
-	Describe("a container's active job", func() {
+	PDescribe("a container's active job", func() {
 		It("is still tracked", func() {
 			res, err := client.Spawn(handle, "while true; do echo hi; sleep 0.5; done", true)
 			Expect(err).ToNot(HaveOccurred())
@@ -141,7 +141,7 @@ var _ = Describe("Through a restart", func() {
 		})
 	})
 
-	Describe("a container's list of events", func() {
+	PDescribe("a container's list of events", func() {
 		It("is still reported", func() {
 			_, err := client.LimitMemory(handle, 32*1024*1024)
 			Expect(err).ToNot(HaveOccurred())
@@ -159,7 +159,7 @@ var _ = Describe("Through a restart", func() {
 		})
 	})
 
-	Describe("a container's state", func() {
+	PDescribe("a container's state", func() {
 		It("is still reported", func() {
 			info, err := client.Info(handle)
 			Expect(err).ToNot(HaveOccurred())
@@ -185,7 +185,7 @@ var _ = Describe("Through a restart", func() {
 		})
 	})
 
-	Describe("a container's network", func() {
+	PDescribe("a container's network", func() {
 		It("does not get reused", func() {
 			infoA, err := client.Info(handle)
 			Expect(err).ToNot(HaveOccurred())
@@ -203,7 +203,7 @@ var _ = Describe("Through a restart", func() {
 		})
 	})
 
-	Describe("a container's mapped port", func() {
+	PDescribe("a container's mapped port", func() {
 		It("does not get reused", func() {
 			netInA, err := client.NetIn(handle)
 			Expect(err).ToNot(HaveOccurred())
@@ -221,7 +221,7 @@ var _ = Describe("Through a restart", func() {
 		})
 	})
 
-	Describe("a container's user", func() {
+	PDescribe("a container's user", func() {
 		It("does not get reused", func() {
 			idResA, err := client.Run(handle, "id -u")
 			Expect(err).ToNot(HaveOccurred())

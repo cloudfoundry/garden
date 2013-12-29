@@ -8,7 +8,7 @@ import (
 type Backend interface {
 	Setup() error
 	Create(ContainerSpec) (Container, error)
-	Restore(io.Reader) error
+	Restore(io.Reader) (Container, error)
 	Destroy(handle string) error
 	Containers() ([]Container, error)
 	Lookup(handle string) (Container, error)

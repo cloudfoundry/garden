@@ -1,7 +1,9 @@
 package linux_container_pool
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
 	"os/exec"
 	"path"
 	"strconv"
@@ -155,6 +157,41 @@ func (p *LinuxContainerPool) Create(spec backend.ContainerSpec) (backend.Contain
 	if err != nil {
 		return nil, err
 	}
+
+	return container, nil
+}
+
+func (p *LinuxContainerPool) Restore(snapshot io.Reader) (backend.Container, error) {
+	var containerSnapshot linux_backend.ContainerSnapshot
+
+	err := json.NewDecoder(snapshot).Decode(&containerSnapshot)
+	if err != nil {
+		panic("XXX")
+		return nil, nil
+	}
+
+	id := containerSnapshot.ID
+
+	containerPath := path.Join(p.depotPath, id)
+
+	cgroupsManager := cgroups_manager.New("/tmp/warden/cgroup", id, p.runner)
+
+	bandwidthManager := bandwidth_manager.New(containerPath, id, p.runner)
+
+	container := linux_backend.NewLinuxContainer(
+		id,
+		containerSnapshot.Handle,
+		containerPath,
+		&linux_backend.Resources{
+		//UID:     containerSnapshot.Resources.UID,
+		//Network: containerSnapshot.Resources.Network,
+		},
+		p.portPool,
+		p.runner,
+		cgroupsManager,
+		p.quotaManager,
+		bandwidthManager,
+	)
 
 	return container, nil
 }

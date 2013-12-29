@@ -10,6 +10,7 @@ import (
 type ContainerPool interface {
 	Setup() error
 	Create(backend.ContainerSpec) (backend.Container, error)
+	Restore(io.Reader) (backend.Container, error)
 	Destroy(backend.Container) error
 }
 
@@ -61,8 +62,19 @@ func (b *LinuxBackend) Create(spec backend.ContainerSpec) (backend.Container, er
 	return container, nil
 }
 
-func (b *LinuxBackend) Restore(io.Reader) error {
-	return nil
+func (b *LinuxBackend) Restore(snapshot io.Reader) (backend.Container, error) {
+	container, err := b.containerPool.Restore(snapshot)
+	if err != nil {
+		return nil, err
+	}
+
+	b.Lock()
+
+	b.containers[container.Handle()] = container
+
+	b.Unlock()
+
+	return container, nil
 }
 
 func (b *LinuxBackend) Destroy(handle string) error {
