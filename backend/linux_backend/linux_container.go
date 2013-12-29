@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"io"
 	"log"
 	"os/exec"
 	"path"
@@ -137,6 +138,10 @@ func (c *LinuxContainer) Events() []string {
 
 func (c *LinuxContainer) Resources() *Resources {
 	return c.resources
+}
+
+func (c *LinuxContainer) Snapshot(io.Writer) error {
+	return nil
 }
 
 func (c *LinuxContainer) Start() error {
