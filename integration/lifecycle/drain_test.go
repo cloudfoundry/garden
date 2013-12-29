@@ -185,7 +185,7 @@ var _ = Describe("Through a restart", func() {
 		})
 	})
 
-	PDescribe("a container's network", func() {
+	Describe("a container's network", func() {
 		It("does not get reused", func() {
 			infoA, err := client.Info(handle)
 			Expect(err).ToNot(HaveOccurred())
@@ -203,7 +203,7 @@ var _ = Describe("Through a restart", func() {
 		})
 	})
 
-	PDescribe("a container's mapped port", func() {
+	Describe("a container's mapped port", func() {
 		It("does not get reused", func() {
 			netInA, err := client.NetIn(handle)
 			Expect(err).ToNot(HaveOccurred())
@@ -221,7 +221,7 @@ var _ = Describe("Through a restart", func() {
 		})
 	})
 
-	PDescribe("a container's user", func() {
+	Describe("a container's user", func() {
 		It("does not get reused", func() {
 			idResA, err := client.Run(handle, "id -u")
 			Expect(err).ToNot(HaveOccurred())
