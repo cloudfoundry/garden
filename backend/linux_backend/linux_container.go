@@ -3,6 +3,7 @@ package linux_backend
 import (
 	"bufio"
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -47,8 +48,23 @@ type LinuxContainer struct {
 	oomMutex    sync.RWMutex
 	oomNotifier *exec.Cmd
 
-	currentBandwidthLimits backend.BandwidthLimits
+	currentBandwidthLimits *backend.BandwidthLimits
 	bandwidthMutex         sync.RWMutex
+
+	currentDiskLimits *backend.DiskLimits
+	diskMutex         sync.RWMutex
+
+	currentMemoryLimits *backend.MemoryLimits
+	memoryMutex         sync.RWMutex
+
+	currentCPULimits *backend.CPULimits
+	cpuMutex         sync.RWMutex
+
+	netIns      []NetInSpec
+	netInsMutex sync.RWMutex
+
+	netOuts      []NetOutSpec
+	netOutsMutex sync.RWMutex
 }
 
 type Resources struct {
@@ -64,6 +80,16 @@ func (r *Resources) AddPort(port uint32) {
 	defer r.Unlock()
 
 	r.Ports = append(r.Ports, port)
+}
+
+type NetInSpec struct {
+	HostPort      uint32
+	ContainerPort uint32
+}
+
+type NetOutSpec struct {
+	Network string
+	Port    uint32
 }
 
 type PortPool interface {
@@ -140,8 +166,49 @@ func (c *LinuxContainer) Resources() *Resources {
 	return c.resources
 }
 
-func (c *LinuxContainer) Snapshot(io.Writer) error {
-	return nil
+func (c *LinuxContainer) Snapshot(out io.Writer) error {
+	c.bandwidthMutex.RLock()
+	defer c.bandwidthMutex.RUnlock()
+
+	c.cpuMutex.RLock()
+	defer c.cpuMutex.RUnlock()
+
+	c.diskMutex.RLock()
+	defer c.diskMutex.RUnlock()
+
+	c.memoryMutex.RLock()
+	defer c.memoryMutex.RUnlock()
+
+	c.netInsMutex.RLock()
+	defer c.netInsMutex.RUnlock()
+
+	c.netOutsMutex.RLock()
+	defer c.netOutsMutex.RUnlock()
+
+	return json.NewEncoder(out).Encode(
+		ContainerSnapshot{
+			ID:     c.id,
+			Handle: c.handle,
+
+			State:  string(c.State()),
+			Events: c.Events(),
+
+			Limits: LimitsSnapshot{
+				Bandwidth: c.currentBandwidthLimits,
+				CPU:       c.currentCPULimits,
+				Disk:      c.currentDiskLimits,
+				Memory:    c.currentMemoryLimits,
+			},
+
+			Resources: ResourcesSnapshot{
+				UID:     c.resources.UID,
+				Network: c.resources.Network.String(),
+			},
+
+			NetIns:  c.netIns,
+			NetOuts: c.netOuts,
+		},
+	)
 }
 
 func (c *LinuxContainer) Start() error {
@@ -276,7 +343,7 @@ func (c *LinuxContainer) LimitBandwidth(limits backend.BandwidthLimits) error {
 	c.bandwidthMutex.Lock()
 	defer c.bandwidthMutex.Unlock()
 
-	c.currentBandwidthLimits = limits
+	c.currentBandwidthLimits = &limits
 
 	return nil
 }
@@ -285,11 +352,25 @@ func (c *LinuxContainer) CurrentBandwidthLimits() (backend.BandwidthLimits, erro
 	c.bandwidthMutex.RLock()
 	defer c.bandwidthMutex.RUnlock()
 
-	return c.currentBandwidthLimits, nil
+	if c.currentBandwidthLimits == nil {
+		return backend.BandwidthLimits{}, nil
+	}
+
+	return *c.currentBandwidthLimits, nil
 }
 
 func (c *LinuxContainer) LimitDisk(limits backend.DiskLimits) error {
-	return c.quotaManager.SetLimits(c.resources.UID, limits)
+	err := c.quotaManager.SetLimits(c.resources.UID, limits)
+	if err != nil {
+		return err
+	}
+
+	c.diskMutex.Lock()
+	defer c.diskMutex.Unlock()
+
+	c.currentDiskLimits = &limits
+
+	return nil
 }
 
 func (c *LinuxContainer) CurrentDiskLimits() (backend.DiskLimits, error) {
@@ -324,6 +405,11 @@ func (c *LinuxContainer) LimitMemory(limits backend.MemoryLimits) error {
 		return err
 	}
 
+	c.memoryMutex.Lock()
+	defer c.memoryMutex.Unlock()
+
+	c.currentMemoryLimits = &limits
+
 	return nil
 }
 
@@ -346,7 +432,17 @@ func (c *LinuxContainer) LimitCPU(limits backend.CPULimits) error {
 
 	limit := fmt.Sprintf("%d", limits.LimitInShares)
 
-	return c.cgroupsManager.Set("cpu", "cpu.shares", limit)
+	err := c.cgroupsManager.Set("cpu", "cpu.shares", limit)
+	if err != nil {
+		return err
+	}
+
+	c.cpuMutex.Lock()
+	defer c.cpuMutex.Unlock()
+
+	c.currentCPULimits = &limits
+
+	return nil
 }
 
 func (c *LinuxContainer) CurrentCPULimits() (backend.CPULimits, error) {
@@ -438,7 +534,17 @@ func (c *LinuxContainer) NetIn(hostPort uint32, containerPort uint32) (uint32, u
 		},
 	}
 
-	return hostPort, containerPort, c.runner.Run(net)
+	err := c.runner.Run(net)
+	if err != nil {
+		return 0, 0, err
+	}
+
+	c.netInsMutex.Lock()
+	defer c.netInsMutex.Unlock()
+
+	c.netIns = append(c.netIns, NetInSpec{hostPort, containerPort})
+
+	return hostPort, containerPort, nil
 }
 
 func (c *LinuxContainer) NetOut(network string, port uint32) error {
@@ -473,7 +579,17 @@ func (c *LinuxContainer) NetOut(network string, port uint32) error {
 		}
 	}
 
-	return c.runner.Run(net)
+	err := c.runner.Run(net)
+	if err != nil {
+		return err
+	}
+
+	c.netOutsMutex.Lock()
+	defer c.netOutsMutex.Unlock()
+
+	c.netOuts = append(c.netOuts, NetOutSpec{network, port})
+
+	return nil
 }
 
 func (c *LinuxContainer) setState(state State) {

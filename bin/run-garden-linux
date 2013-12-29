@@ -12,4 +12,5 @@ sudo ./out/garden \
   -depot=/opt/warden/containers \
   -root=$PWD/root \
   -rootfs=/opt/warden/rootfs \
+  -snapshots=/opt/warden/snapshots \
   "$@"

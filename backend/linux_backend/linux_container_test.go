@@ -1,6 +1,8 @@
 package linux_backend_test
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
@@ -79,6 +81,152 @@ var _ = Describe("Linux containers", func() {
 			},
 		)
 	}
+
+	Describe("Snapshotting", func() {
+		It("writes a JSON ContainerSnapshot", func() {
+			var err error
+
+			err = container.Start()
+			Expect(err).ToNot(HaveOccurred())
+
+			memoryLimits := backend.MemoryLimits{
+				LimitInBytes: 1,
+			}
+
+			diskLimits := backend.DiskLimits{
+				BlockLimit: 1,
+				Block:      2,
+				BlockSoft:  3,
+				BlockHard:  4,
+
+				InodeLimit: 11,
+				Inode:      12,
+				InodeSoft:  13,
+				InodeHard:  14,
+
+				ByteLimit: 21,
+				Byte:      22,
+				ByteSoft:  23,
+				ByteHard:  24,
+			}
+
+			bandwidthLimits := backend.BandwidthLimits{
+				RateInBytesPerSecond:      1,
+				BurstRateInBytesPerSecond: 2,
+			}
+
+			cpuLimits := backend.CPULimits{
+				LimitInShares: 1,
+			}
+
+			err = container.LimitMemory(memoryLimits)
+			Expect(err).ToNot(HaveOccurred())
+
+			// oom exits immediately since it's faked out; should see event,
+			// and it should show up in the snapshot
+			Eventually(container.Events).Should(ContainElement("out of memory"))
+
+			err = container.LimitDisk(diskLimits)
+			Expect(err).ToNot(HaveOccurred())
+
+			err = container.LimitBandwidth(bandwidthLimits)
+			Expect(err).ToNot(HaveOccurred())
+
+			err = container.LimitCPU(cpuLimits)
+			Expect(err).ToNot(HaveOccurred())
+
+			_, _, err = container.NetIn(1, 2)
+			Expect(err).ToNot(HaveOccurred())
+
+			_, _, err = container.NetIn(3, 4)
+			Expect(err).ToNot(HaveOccurred())
+
+			err = container.NetOut("network-a", 1)
+			Expect(err).ToNot(HaveOccurred())
+
+			err = container.NetOut("network-b", 2)
+			Expect(err).ToNot(HaveOccurred())
+
+			out := new(bytes.Buffer)
+
+			err = container.Snapshot(out)
+			Expect(err).ToNot(HaveOccurred())
+
+			var snapshot linux_backend.ContainerSnapshot
+
+			err = json.NewDecoder(out).Decode(&snapshot)
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(snapshot).To(Equal(
+				linux_backend.ContainerSnapshot{
+					ID:     "some-id",
+					Handle: "some-handle",
+
+					State:  "stopped",
+					Events: []string{"out of memory"},
+
+					Limits: linux_backend.LimitsSnapshot{
+						Memory:    &memoryLimits,
+						Disk:      &diskLimits,
+						Bandwidth: &bandwidthLimits,
+						CPU:       &cpuLimits,
+					},
+
+					Resources: linux_backend.ResourcesSnapshot{
+						UID:     containerResources.UID,
+						Network: containerResources.Network.String(),
+					},
+
+					NetIns: []linux_backend.NetInSpec{
+						{
+							HostPort:      1,
+							ContainerPort: 2,
+						},
+						{
+							HostPort:      3,
+							ContainerPort: 4,
+						},
+					},
+
+					NetOuts: []linux_backend.NetOutSpec{
+						{
+							Network: "network-a",
+							Port:    1,
+						},
+						{
+							Network: "network-b",
+							Port:    2,
+						},
+					},
+				},
+			))
+		})
+
+		Context("with no limits set", func() {
+			It("saves them as nil, not zero values", func() {
+				var err error
+
+				out := new(bytes.Buffer)
+
+				err = container.Snapshot(out)
+				Expect(err).ToNot(HaveOccurred())
+
+				var snapshot linux_backend.ContainerSnapshot
+
+				err = json.NewDecoder(out).Decode(&snapshot)
+				Expect(err).ToNot(HaveOccurred())
+
+				Expect(snapshot.Limits).To(Equal(
+					linux_backend.LimitsSnapshot{
+						Memory:    nil,
+						Disk:      nil,
+						Bandwidth: nil,
+						CPU:       nil,
+					},
+				))
+			})
+		})
+	})
 
 	Describe("Starting", func() {
 		It("executes the container's start.sh with the correct environment", func() {
