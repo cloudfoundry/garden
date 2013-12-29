@@ -166,8 +166,7 @@ func (p *LinuxContainerPool) Restore(snapshot io.Reader) (backend.Container, err
 
 	err := json.NewDecoder(snapshot).Decode(&containerSnapshot)
 	if err != nil {
-		panic("XXX")
-		return nil, nil
+		return nil, err
 	}
 
 	id := containerSnapshot.ID

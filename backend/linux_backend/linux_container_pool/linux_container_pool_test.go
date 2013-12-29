@@ -328,7 +328,7 @@ var _ = Describe("Linux Container pool", func() {
 			Expect(container.Handle()).To(Equal("some-restored-handle"))
 
 			//Expect(container.State()).To(Equal("some-restored-state"))
-			//Expect(container1.ID()).ToNot(Equal(container2.ID()))
+			//Expect(container.ID()).ToNot(Equal(container2.ID()))
 		})
 
 		PIt("removes its UID from the pool", func() {
@@ -338,6 +338,17 @@ var _ = Describe("Linux Container pool", func() {
 		})
 
 		PIt("removes its ports from the pool", func() {
+		})
+
+		Context("when decoding the snapshot fails", func() {
+			BeforeEach(func() {
+				snapshot = new(bytes.Buffer)
+			})
+
+			It("fails", func() {
+				_, err := pool.Restore(snapshot)
+				Expect(err).To(HaveOccurred())
+			})
 		})
 
 		PContext("when acquiring a UID fails", func() {
