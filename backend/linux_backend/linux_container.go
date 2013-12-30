@@ -186,6 +186,15 @@ func (c *LinuxContainer) Snapshot(out io.Writer) error {
 	c.netOutsMutex.RLock()
 	defer c.netOutsMutex.RUnlock()
 
+	jobSnapshots := []JobSnapshot{}
+
+	for _, job := range c.jobTracker.ActiveJobs() {
+		jobSnapshots = append(
+			jobSnapshots,
+			JobSnapshot{ID: job.ID, DiscardOutput: job.DiscardOutput},
+		)
+	}
+
 	return json.NewEncoder(out).Encode(
 		ContainerSnapshot{
 			ID:     c.id,
@@ -205,6 +214,8 @@ func (c *LinuxContainer) Snapshot(out io.Writer) error {
 
 			NetIns:  c.netIns,
 			NetOuts: c.netOuts,
+
+			Jobs: jobSnapshots,
 		},
 	)
 }
@@ -221,6 +232,10 @@ func (c *LinuxContainer) Restore(snapshot ContainerSnapshot) error {
 		if err != nil {
 			return err
 		}
+	}
+
+	for _, job := range snapshot.Jobs {
+		c.jobTracker.Restore(job.ID, job.DiscardOutput)
 	}
 
 	return nil
@@ -299,13 +314,18 @@ func (c *LinuxContainer) Info() (backend.ContainerInfo, error) {
 		return backend.ContainerInfo{}, err
 	}
 
+	jobIDs := []uint32{}
+	for _, job := range c.jobTracker.ActiveJobs() {
+		jobIDs = append(jobIDs, job.ID)
+	}
+
 	return backend.ContainerInfo{
 		State:         string(c.State()),
 		Events:        c.Events(),
 		HostIP:        c.resources.Network.HostIP().String(),
 		ContainerIP:   c.resources.Network.ContainerIP().String(),
 		ContainerPath: c.path,
-		JobIDs:        c.jobTracker.ActiveJobs(),
+		JobIDs:        jobIDs,
 		MemoryStat:    parseMemoryStat(memoryStat),
 		CPUStat:       parseCPUStat(cpuUsage, cpuStat),
 		DiskStat:      diskStat,

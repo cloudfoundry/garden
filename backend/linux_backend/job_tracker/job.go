@@ -17,10 +17,10 @@ import (
 )
 
 type Job struct {
-	id            uint32
-	discardOutput bool
+	ID            uint32
+	DiscardOutput bool
+
 	containerPath string
-	cmd           *exec.Cmd
 	runner        command_runner.CommandRunner
 
 	waitingLinks *sync.Cond
@@ -40,14 +40,13 @@ func NewJob(
 	id uint32,
 	discardOutput bool,
 	containerPath string,
-	cmd *exec.Cmd,
 	runner command_runner.CommandRunner,
 ) *Job {
 	return &Job{
-		id:            id,
-		discardOutput: discardOutput,
+		ID:            id,
+		DiscardOutput: discardOutput,
+
 		containerPath: containerPath,
-		cmd:           cmd,
 		runner:        runner,
 
 		waitingLinks: sync.NewCond(&sync.Mutex{}),
@@ -56,12 +55,12 @@ func NewJob(
 	}
 }
 
-func (j *Job) Spawn() (ready, active chan error) {
+func (j *Job) Spawn(cmd *exec.Cmd) (ready, active chan error) {
 	ready = make(chan error, 1)
 	active = make(chan error, 1)
 
 	spawnPath := path.Join(j.containerPath, "bin", "iomux-spawn")
-	jobDir := path.Join(j.containerPath, "jobs", fmt.Sprintf("%d", j.id))
+	jobDir := path.Join(j.containerPath, "jobs", fmt.Sprintf("%d", j.ID))
 
 	mkdir := &exec.Cmd{
 		Path: "mkdir",
@@ -76,13 +75,13 @@ func (j *Job) Spawn() (ready, active chan error) {
 
 	spawn := &exec.Cmd{
 		Path:  spawnPath,
-		Stdin: j.cmd.Stdin,
+		Stdin: cmd.Stdin,
 	}
 
-	spawn.Args = append([]string{jobDir}, j.cmd.Path)
-	spawn.Args = append(spawn.Args, j.cmd.Args...)
+	spawn.Args = append([]string{jobDir}, cmd.Path)
+	spawn.Args = append(spawn.Args, cmd.Args...)
 
-	spawn.Env = j.cmd.Env
+	spawn.Env = cmd.Env
 
 	spawnR, spawnW, err := os.Pipe()
 	if err != nil {
@@ -151,14 +150,14 @@ func (j *Job) Stream() chan backend.JobStream {
 
 func (j *Job) runLinker() {
 	linkPath := path.Join(j.containerPath, "bin", "iomux-link")
-	jobDir := path.Join(j.containerPath, "jobs", fmt.Sprintf("%d", j.id))
+	jobDir := path.Join(j.containerPath, "jobs", fmt.Sprintf("%d", j.ID))
 
 	stdout := new(bytes.Buffer)
 	stderr := new(bytes.Buffer)
 
 	var cmdStdout, cmdStderr io.Writer
 
-	if j.discardOutput {
+	if j.DiscardOutput {
 		cmdStdout = ioutil.Discard
 		cmdStderr = ioutil.Discard
 	} else {

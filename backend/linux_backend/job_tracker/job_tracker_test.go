@@ -177,6 +177,58 @@ var _ = Describe("Spawning jobs", func() {
 	})
 })
 
+var _ = Describe("Restoring jobs", func() {
+	BeforeEach(func() {
+		fakeRunner = fake_command_runner.New()
+		jobTracker = job_tracker.New("/depot/some-id", fakeRunner)
+	})
+
+	It("makes the next job ID be higher than the highest restored ID", func() {
+		setupSuccessfulSpawn()
+
+		jobTracker.Restore(0, true)
+
+		cmd := &exec.Cmd{Path: "/bin/bash"}
+
+		cmd.Stdin = bytes.NewBufferString("echo hi")
+
+		jobID, err := jobTracker.Spawn(cmd, false, true)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(jobID).To(Equal(uint32(1)))
+
+		jobTracker.Restore(5, true)
+
+		cmd = &exec.Cmd{Path: "/bin/bash"}
+
+		cmd.Stdin = bytes.NewBufferString("echo hi")
+
+		jobID, err = jobTracker.Spawn(cmd, false, true)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(jobID).To(Equal(uint32(6)))
+	})
+
+	It("tracks the restored job", func() {
+		jobTracker.Restore(2, true)
+
+		activeJobs := jobTracker.ActiveJobs()
+
+		Expect(activeJobs).To(HaveLen(1))
+		Expect(activeJobs[0].ID).To(Equal(uint32(2)))
+		Expect(activeJobs[0].DiscardOutput).To(Equal(true))
+	})
+
+	It("links to the restored job", func() {
+		jobTracker.Restore(2, true)
+
+		Eventually(fakeRunner).Should(HaveExecutedSerially(
+			fake_command_runner.CommandSpec{
+				Path: binPath("iomux-link"),
+				Args: []string{"/depot/some-id/jobs/2"},
+			},
+		))
+	})
+})
+
 var _ = Describe("Linking to jobs", func() {
 	BeforeEach(func() {
 		fakeRunner = fake_command_runner.New()
@@ -405,7 +457,7 @@ var _ = Describe("Listing active jobs", func() {
 	It("includes running job IDs", func() {
 		setupSuccessfulSpawn()
 
-		running := make(chan []uint32, 2)
+		running := make(chan []*job_tracker.Job, 2)
 
 		fakeRunner.WhenRunning(
 			fake_command_runner.CommandSpec{
@@ -425,7 +477,12 @@ var _ = Describe("Listing active jobs", func() {
 
 		totalRunning := append(<-running, <-running...)
 
-		Expect(totalRunning).To(ContainElement(jobID1))
-		Expect(totalRunning).To(ContainElement(jobID2))
+		runningIDs := []uint32{}
+		for _, job := range totalRunning {
+			runningIDs = append(runningIDs, job.ID)
+		}
+
+		Expect(runningIDs).To(ContainElement(jobID1))
+		Expect(runningIDs).To(ContainElement(jobID2))
 	})
 })

@@ -46,7 +46,7 @@ var _ = Describe("Through a restart", func() {
 		Expect(res.GetHandles()).To(ContainElement(handle))
 	})
 
-	PDescribe("a started job", func() {
+	Describe("a started job", func() {
 		It("continues to stream", func(done Done) {
 			res, err := client.Spawn(handle, "while true; do echo hi; sleep 0.5; done", false)
 			Expect(err).ToNot(HaveOccurred())
@@ -125,7 +125,7 @@ var _ = Describe("Through a restart", func() {
 		})
 	})
 
-	PDescribe("a container's active job", func() {
+	Describe("a container's active job", func() {
 		It("is still tracked", func() {
 			res, err := client.Spawn(handle, "while true; do echo hi; sleep 0.5; done", true)
 			Expect(err).ToNot(HaveOccurred())

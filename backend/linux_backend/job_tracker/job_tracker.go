@@ -42,13 +42,13 @@ func (t *JobTracker) Spawn(cmd *exec.Cmd, discardOutput, autoLink bool) (uint32,
 	jobID := t.nextJobID
 	t.nextJobID++
 
-	job := NewJob(jobID, discardOutput, t.containerPath, cmd, t.runner)
+	job := NewJob(jobID, discardOutput, t.containerPath, t.runner)
 
 	t.jobs[jobID] = job
 
 	t.Unlock()
 
-	ready, active := job.Spawn()
+	ready, active := job.Spawn(cmd)
 
 	err := <-ready
 	if err != nil {
@@ -65,6 +65,22 @@ func (t *JobTracker) Spawn(cmd *exec.Cmd, discardOutput, autoLink bool) (uint32,
 	}
 
 	return jobID, nil
+}
+
+func (t *JobTracker) Restore(jobID uint32, discardOutput bool) {
+	t.Lock()
+
+	job := NewJob(jobID, discardOutput, t.containerPath, t.runner)
+
+	t.jobs[jobID] = job
+
+	if jobID >= t.nextJobID {
+		t.nextJobID = jobID + 1
+	}
+
+	t.Unlock()
+
+	go t.Link(jobID)
 }
 
 func (t *JobTracker) Link(jobID uint32) (uint32, []byte, []byte, error) {
@@ -95,11 +111,14 @@ func (t *JobTracker) Stream(jobID uint32) (chan backend.JobStream, error) {
 	return job.Stream(), nil
 }
 
-func (t *JobTracker) ActiveJobs() []uint32 {
-	jobs := []uint32{}
+func (t *JobTracker) ActiveJobs() []*Job {
+	t.RLock()
+	defer t.RUnlock()
 
-	for id, _ := range t.jobs {
-		jobs = append(jobs, id)
+	jobs := []*Job{}
+
+	for _, job := range t.jobs {
+		jobs = append(jobs, job)
 	}
 
 	return jobs

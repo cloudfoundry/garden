@@ -147,6 +147,20 @@ var _ = Describe("Linux containers", func() {
 			err = container.NetOut("network-b", 2)
 			Expect(err).ToNot(HaveOccurred())
 
+			setupSuccessfulSpawn()
+
+			_, err = container.Spawn(backend.JobSpec{
+				DiscardOutput: true,
+				AutoLink:      false,
+			})
+			Expect(err).ToNot(HaveOccurred())
+
+			_, err = container.Spawn(backend.JobSpec{
+				DiscardOutput: false,
+				AutoLink:      false,
+			})
+			Expect(err).ToNot(HaveOccurred())
+
 			out := new(bytes.Buffer)
 
 			err = container.Snapshot(out)
@@ -199,6 +213,20 @@ var _ = Describe("Linux containers", func() {
 					},
 				},
 			))
+
+			Expect(snapshot.Jobs).To(ContainElement(
+				linux_backend.JobSnapshot{
+					ID:            0,
+					DiscardOutput: true,
+				},
+			))
+
+			Expect(snapshot.Jobs).To(ContainElement(
+				linux_backend.JobSnapshot{
+					ID:            1,
+					DiscardOutput: false,
+				},
+			))
 		})
 
 		Context("with no limits set", func() {
@@ -240,6 +268,82 @@ var _ = Describe("Linux containers", func() {
 				"out of memory",
 				"foo",
 			}))
+		})
+
+		It("restores job state", func() {
+			fakeRunner.WhenRunning(
+				fake_command_runner.CommandSpec{
+					Path: "/depot/some-id/bin/iomux-link",
+					Args: []string{"/depot/some-id/jobs/0"},
+				},
+				func(cmd *exec.Cmd) error {
+					cmd.Stdout.Write([]byte("hello\n"))
+					time.Sleep(1 * time.Second)
+					return nil
+				},
+			)
+
+			fakeRunner.WhenRunning(
+				fake_command_runner.CommandSpec{
+					Path: "/depot/some-id/bin/iomux-link",
+					Args: []string{"/depot/some-id/jobs/1"},
+				},
+				func(cmd *exec.Cmd) error {
+					cmd.Stdout.Write([]byte("goodbye\n"))
+					time.Sleep(1 * time.Second)
+					return nil
+				},
+			)
+
+			err := container.Restore(linux_backend.ContainerSnapshot{
+				State:  "active",
+				Events: []string{},
+
+				Jobs: []linux_backend.JobSnapshot{
+					{
+						ID:            0,
+						DiscardOutput: false,
+					},
+					{
+						ID:            1,
+						DiscardOutput: true,
+					},
+				},
+			})
+			Expect(err).ToNot(HaveOccurred())
+
+			res, err := container.Link(0)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(res.Stdout).To(Equal([]byte("hello\n")))
+
+			res, err = container.Link(1)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(res.Stdout).To(BeEmpty())
+		})
+
+		It("starts new job IDs after the highest restored ID", func() {
+			err := container.Restore(linux_backend.ContainerSnapshot{
+				State:  "active",
+				Events: []string{},
+
+				Jobs: []linux_backend.JobSnapshot{
+					{
+						ID:            0,
+						DiscardOutput: false,
+					},
+					{
+						ID:            1,
+						DiscardOutput: true,
+					},
+				},
+			})
+			Expect(err).ToNot(HaveOccurred())
+
+			setupSuccessfulSpawn()
+
+			jobID, err := container.Spawn(backend.JobSpec{})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(jobID).To(Equal(uint32(2)))
 		})
 
 		It("re-enforces the memory limit", func() {
