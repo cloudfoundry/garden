@@ -75,7 +75,7 @@ type FakeContainer struct {
 
 	SnapshotError  error
 	SavedSnapshots []io.Writer
-	snapshotMutex *sync.RWMutex
+	snapshotMutex  *sync.RWMutex
 }
 
 type NetOutSpec struct {
@@ -91,7 +91,7 @@ func NewFakeContainer(spec backend.ContainerSpec) *FakeContainer {
 	return &FakeContainer{
 		Spec: spec,
 
-		stopMutex: new(sync.RWMutex),
+		stopMutex:     new(sync.RWMutex),
 		snapshotMutex: new(sync.RWMutex),
 	}
 }

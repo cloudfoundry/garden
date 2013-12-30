@@ -230,7 +230,7 @@ var _ = Describe("Linux containers", func() {
 	Describe("Restoring", func() {
 		It("sets the container's state and events", func() {
 			err := container.Restore(linux_backend.ContainerSnapshot{
-				State: "active",
+				State:  "active",
 				Events: []string{"out of memory", "foo"},
 			})
 			Expect(err).ToNot(HaveOccurred())
