@@ -75,6 +75,7 @@ type FakeContainer struct {
 
 	SnapshotError  error
 	SavedSnapshots []io.Writer
+	snapshotMutex *sync.RWMutex
 }
 
 type NetOutSpec struct {
@@ -91,6 +92,7 @@ func NewFakeContainer(spec backend.ContainerSpec) *FakeContainer {
 		Spec: spec,
 
 		stopMutex: new(sync.RWMutex),
+		snapshotMutex: new(sync.RWMutex),
 	}
 }
 
@@ -106,6 +108,9 @@ func (c *FakeContainer) Snapshot(snapshot io.Writer) error {
 	if c.SnapshotError != nil {
 		return c.SnapshotError
 	}
+
+	c.snapshotMutex.Lock()
+	defer c.snapshotMutex.Unlock()
 
 	c.SavedSnapshots = append(c.SavedSnapshots, snapshot)
 
