@@ -177,8 +177,7 @@ func (j *Job) runLinker() {
 	exitStatus := uint32(255)
 
 	if link.ProcessState != nil {
-		// TODO: why do I need to modulo this?
-		exitStatus = uint32(link.ProcessState.Sys().(syscall.WaitStatus) % 255)
+		exitStatus = uint32(link.ProcessState.Sys().(syscall.WaitStatus).ExitStatus())
 	}
 
 	j.exitStatus = exitStatus
