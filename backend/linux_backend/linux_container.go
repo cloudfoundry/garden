@@ -255,6 +255,8 @@ func (c *LinuxContainer) Stop(kill bool) error {
 }
 
 func (c *LinuxContainer) Info() (backend.ContainerInfo, error) {
+	log.Println(c.id, "info")
+
 	memoryStat, err := c.cgroupsManager.Get("memory", "memory.stat")
 	if err != nil {
 		return backend.ContainerInfo{}, err
