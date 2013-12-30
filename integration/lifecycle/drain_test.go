@@ -141,7 +141,7 @@ var _ = Describe("Through a restart", func() {
 		})
 	})
 
-	PDescribe("a container's list of events", func() {
+	Describe("a container's list of events", func() {
 		It("is still reported", func() {
 			_, err := client.LimitMemory(handle, 32*1024*1024)
 			Expect(err).ToNot(HaveOccurred())
@@ -149,6 +149,13 @@ var _ = Describe("Through a restart", func() {
 			// trigger 'out of memory' event
 			_, err = client.Run(handle, "exec ruby -e '$stdout.sync = true; puts :hello; puts (\"x\" * 64 * 1024 * 1024).size; puts :goodbye; exit 42'")
 			Expect(err).ToNot(HaveOccurred())
+
+			Eventually(func() []string {
+				info, err := client.Info(handle)
+				Expect(err).ToNot(HaveOccurred())
+
+				return info.GetEvents()
+			}).Should(ContainElement("out of memory"))
 
 			restartServer()
 
@@ -159,7 +166,7 @@ var _ = Describe("Through a restart", func() {
 		})
 	})
 
-	PDescribe("a container's state", func() {
+	Describe("a container's state", func() {
 		It("is still reported", func() {
 			info, err := client.Info(handle)
 			Expect(err).ToNot(HaveOccurred())

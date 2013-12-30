@@ -304,7 +304,7 @@ var _ = Describe("Linux Container pool", func() {
 		})
 	})
 
-	FDescribe("restoring", func() {
+	Describe("restoring", func() {
 		var snapshot io.Reader
 
 		var restoredNetwork *network.Network
@@ -324,6 +324,12 @@ var _ = Describe("Linux Container pool", func() {
 					ID:     "some-restored-id",
 					Handle: "some-restored-handle",
 
+					State: "some-restored-state",
+					Events: []string{
+						"some-restored-event",
+						"some-other-restored-event",
+					},
+
 					Resources: linux_backend.Resources{
 						UID:     10000,
 						Network: restoredNetwork,
@@ -341,8 +347,13 @@ var _ = Describe("Linux Container pool", func() {
 			Expect(container.ID()).To(Equal("some-restored-id"))
 			Expect(container.Handle()).To(Equal("some-restored-handle"))
 
-			//Expect(container.State()).To(Equal("some-restored-state"))
-			//Expect(container.ID()).ToNot(Equal(container2.ID()))
+			linuxContainer := container.(*linux_backend.LinuxContainer)
+
+			Expect(linuxContainer.State()).To(Equal(linux_backend.State("some-restored-state")))
+			Expect(linuxContainer.Events()).To(Equal([]string{
+				"some-restored-event",
+				"some-other-restored-event",
+			}))
 		})
 
 		It("removes its UID from the pool", func() {

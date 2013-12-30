@@ -209,6 +209,16 @@ func (c *LinuxContainer) Snapshot(out io.Writer) error {
 	)
 }
 
+func (c *LinuxContainer) Restore(snapshot ContainerSnapshot) error {
+	c.setState(State(snapshot.State))
+
+	for _, ev := range snapshot.Events {
+		c.registerEvent(ev)
+	}
+
+	return nil
+}
+
 func (c *LinuxContainer) Start() error {
 	log.Println(c.id, "starting")
 

@@ -227,6 +227,22 @@ var _ = Describe("Linux containers", func() {
 		})
 	})
 
+	Describe("Restoring", func() {
+		It("sets the container's state and events", func() {
+			err := container.Restore(linux_backend.ContainerSnapshot{
+				State: "active",
+				Events: []string{"out of memory", "foo"},
+			})
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(container.State()).To(Equal(linux_backend.State("active")))
+			Expect(container.Events()).To(Equal([]string{
+				"out of memory",
+				"foo",
+			}))
+		})
+	})
+
 	Describe("Starting", func() {
 		It("executes the container's start.sh with the correct environment", func() {
 			err := container.Start()

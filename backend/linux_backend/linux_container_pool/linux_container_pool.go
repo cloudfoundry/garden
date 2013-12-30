@@ -215,6 +215,11 @@ func (p *LinuxContainerPool) Restore(snapshot io.Reader) (backend.Container, err
 		bandwidthManager,
 	)
 
+	err = container.Restore(containerSnapshot)
+	if err != nil {
+		return nil, err
+	}
+
 	return container, nil
 }
 
