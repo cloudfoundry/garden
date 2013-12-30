@@ -216,6 +216,13 @@ func (c *LinuxContainer) Restore(snapshot ContainerSnapshot) error {
 		c.registerEvent(ev)
 	}
 
+	if snapshot.Limits.Memory != nil {
+		err := c.LimitMemory(*snapshot.Limits.Memory)
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 

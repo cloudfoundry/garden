@@ -141,7 +141,7 @@ func (r *GardenRunner) DestroyContainers() error {
 		}
 	}
 
-	return nil
+	return os.RemoveAll(r.SnapshotsPath)
 }
 
 func (r *GardenRunner) TearDown() error {

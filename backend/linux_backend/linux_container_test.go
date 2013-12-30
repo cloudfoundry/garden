@@ -241,6 +241,75 @@ var _ = Describe("Linux containers", func() {
 				"foo",
 			}))
 		})
+
+		It("re-enforces the memory limit", func() {
+			err := container.Restore(linux_backend.ContainerSnapshot{
+				State:  "active",
+				Events: []string{},
+
+				Limits: linux_backend.LimitsSnapshot{
+					Memory: &backend.MemoryLimits{
+						LimitInBytes: 1024,
+					},
+				},
+			})
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(fakeCgroups.SetValues()).To(ContainElement(
+				fake_cgroups_manager.SetValue{
+					Subsystem: "memory",
+					Name:      "memory.limit_in_bytes",
+					Value:     "1024",
+				},
+			))
+
+			Expect(fakeCgroups.SetValues()).To(ContainElement(
+				fake_cgroups_manager.SetValue{
+					Subsystem: "memory",
+					Name:      "memory.memsw.limit_in_bytes",
+					Value:     "1024",
+				},
+			))
+
+			// oom will exit immediately as the command runner is faked out
+			Eventually(container.Events).Should(ContainElement("out of memory"))
+		})
+
+		Context("when no memory limit is present", func() {
+			It("does not set a limit", func() {
+				err := container.Restore(linux_backend.ContainerSnapshot{
+					State:  "active",
+					Events: []string{},
+				})
+				Expect(err).ToNot(HaveOccurred())
+
+				Expect(fakeCgroups.SetValues()).To(BeEmpty())
+			})
+		})
+
+		Context("when re-enforcing the memory limit fails", func() {
+			disaster := errors.New("oh no!")
+
+			BeforeEach(func() {
+				fakeCgroups.WhenSetting("memory", "memory.limit_in_bytes", func() error {
+					return disaster
+				})
+			})
+
+			It("returns the error", func() {
+				err := container.Restore(linux_backend.ContainerSnapshot{
+					State:  "active",
+					Events: []string{},
+
+					Limits: linux_backend.LimitsSnapshot{
+						Memory: &backend.MemoryLimits{
+							LimitInBytes: 1024,
+						},
+					},
+				})
+				Expect(err).To(Equal(disaster))
+			})
+		})
 	})
 
 	Describe("Starting", func() {

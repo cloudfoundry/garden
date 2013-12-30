@@ -107,7 +107,7 @@ var _ = Describe("Through a restart", func() {
 		})
 	})
 
-	PDescribe("a memory limit", func() {
+	Describe("a memory limit", func() {
 		It("is still enforced", func() {
 			_, err := client.LimitMemory(handle, 32*1024*1024)
 			Expect(err).ToNot(HaveOccurred())
