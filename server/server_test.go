@@ -268,6 +268,21 @@ var _ = Describe("The Warden server", func() {
 			Expect(err).To(HaveOccurred())
 		})
 
+		It("takes a final snapshot of each container", func() {
+			container1, err := serverBackend.Create(backend.ContainerSpec{Handle: "some-handle"})
+			Expect(err).ToNot(HaveOccurred())
+
+			container2, err := serverBackend.Create(backend.ContainerSpec{Handle: "some-other-handle"})
+			Expect(err).ToNot(HaveOccurred())
+
+			wardenServer.Stop()
+
+			fakeContainer1 := container1.(*fake_backend.FakeContainer)
+			fakeContainer2 := container2.(*fake_backend.FakeContainer)
+			Expect(fakeContainer1.SavedSnapshots).To(HaveLen(1))
+			Expect(fakeContainer2.SavedSnapshots).To(HaveLen(1))
+		})
+
 		Context("when a Create request is in-flight", func() {
 			BeforeEach(func() {
 				serverBackend = fake_backend.NewSlow(100 * time.Millisecond)

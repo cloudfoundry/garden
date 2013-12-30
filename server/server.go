@@ -100,6 +100,15 @@ func (s *WardenServer) Stop() {
 	s.setStopping()
 	s.listener.Close()
 	s.openRequests.Wait()
+
+	containers, err := s.backend.Containers()
+	if err != nil {
+		return
+	}
+
+	for _, container := range containers {
+		s.saveSnapshot(container)
+	}
 }
 
 func (s *WardenServer) restoreSnapshots() error {
