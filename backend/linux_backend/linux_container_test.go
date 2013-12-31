@@ -346,6 +346,108 @@ var _ = Describe("Linux containers", func() {
 			Expect(jobID).To(Equal(uint32(2)))
 		})
 
+		It("redoes network setup and net-in/net-outs", func() {
+			err := container.Restore(linux_backend.ContainerSnapshot{
+				State:  "active",
+				Events: []string{},
+
+				NetIns: []linux_backend.NetInSpec{
+					{
+						HostPort:      1234,
+						ContainerPort: 5678,
+					},
+					{
+						HostPort:      1235,
+						ContainerPort: 5679,
+					},
+				},
+
+				NetOuts: []linux_backend.NetOutSpec{
+					{
+						Network: "somehost.example.com",
+						Port:    80,
+					},
+					{
+						Network: "someotherhost.example.com",
+						Port:    8080,
+					},
+				},
+			})
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(fakeRunner).To(HaveExecutedSerially(
+				fake_command_runner.CommandSpec{
+					Path: "/depot/some-id/net.sh",
+					Args: []string{"setup"},
+				},
+				fake_command_runner.CommandSpec{
+					Path: "/depot/some-id/net.sh",
+					Args: []string{"in"},
+				},
+				fake_command_runner.CommandSpec{
+					Path: "/depot/some-id/net.sh",
+					Args: []string{"in"},
+				},
+				fake_command_runner.CommandSpec{
+					Path: "/depot/some-id/net.sh",
+					Args: []string{"out"},
+				},
+				fake_command_runner.CommandSpec{
+					Path: "/depot/some-id/net.sh",
+					Args: []string{"out"},
+				},
+			))
+		})
+
+		for _, cmd := range []string{"setup", "in", "out"} {
+			command := cmd
+
+			Context("when net.sh "+cmd+" fails", func() {
+				disaster := errors.New("oh no!")
+
+				BeforeEach(func() {
+					fakeRunner.WhenRunning(
+						fake_command_runner.CommandSpec{
+							Path: "/depot/some-id/net.sh",
+							Args: []string{command},
+						}, func(*exec.Cmd) error {
+							return disaster
+						},
+					)
+				})
+
+				It("returns the error", func() {
+					err := container.Restore(linux_backend.ContainerSnapshot{
+						State:  "active",
+						Events: []string{},
+
+						NetIns: []linux_backend.NetInSpec{
+							{
+								HostPort:      1234,
+								ContainerPort: 5678,
+							},
+							{
+								HostPort:      1235,
+								ContainerPort: 5679,
+							},
+						},
+
+						NetOuts: []linux_backend.NetOutSpec{
+							{
+								Network: "somehost.example.com",
+								Port:    80,
+							},
+							{
+								Network: "someotherhost.example.com",
+								Port:    8080,
+							},
+						},
+					})
+					Expect(err).To(Equal(disaster))
+				})
+			})
+		}
+
 		It("re-enforces the memory limit", func() {
 			err := container.Restore(linux_backend.ContainerSnapshot{
 				State:  "active",

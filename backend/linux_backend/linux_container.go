@@ -238,6 +238,30 @@ func (c *LinuxContainer) Restore(snapshot ContainerSnapshot) error {
 		c.jobTracker.Restore(job.ID, job.DiscardOutput)
 	}
 
+	net := &exec.Cmd{
+		Path: path.Join(c.path, "net.sh"),
+		Args: []string{"setup"},
+	}
+
+	err := c.runner.Run(net)
+	if err != nil {
+		return err
+	}
+
+	for _, in := range snapshot.NetIns {
+		_, _, err = c.NetIn(in.HostPort, in.ContainerPort)
+		if err != nil {
+			return err
+		}
+	}
+
+	for _, out := range snapshot.NetOuts {
+		err = c.NetOut(out.Network, out.Port)
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
