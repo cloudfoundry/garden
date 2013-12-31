@@ -157,6 +157,39 @@ var _ = Describe("Spawning jobs", func() {
 		}, 10.0)
 	})
 
+	Context("when output is discarded", func() {
+		It("successfully writes all output", func(done Done) {
+			fakeRunner.WhenRunning(
+				fake_command_runner.CommandSpec{
+					Path: binPath("iomux-link"),
+				},
+				func(cmd *exec.Cmd) error {
+					n, err := cmd.Stdout.Write([]byte("hi out\n"))
+					Expect(err).ToNot(HaveOccurred())
+					Expect(n).To(Equal(len("hi out\n")))
+
+					n, err = cmd.Stderr.Write([]byte("hi err\n"))
+					Expect(err).ToNot(HaveOccurred())
+					Expect(n).To(Equal(len("hi err\n")))
+
+					dummyCmd := exec.Command("/bin/bash", "-c", "exit 42")
+					dummyCmd.Run()
+
+					cmd.ProcessState = dummyCmd.ProcessState
+
+					close(done)
+
+					return nil
+				},
+			)
+
+			setupSuccessfulSpawn()
+
+			_, err := jobTracker.Spawn(exec.Command("xxx"), true, true)
+			Expect(err).ToNot(HaveOccurred())
+		}, 5.0)
+	})
+
 	Context("when spawning fails", func() {
 		disaster := errors.New("oh no!")
 

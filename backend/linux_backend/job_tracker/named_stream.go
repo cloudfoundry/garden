@@ -34,7 +34,7 @@ func (s *namedStream) Write(data []byte) (int, error) {
 	})
 
 	if s.discard {
-		return 0, nil
+		return len(data), nil
 	}
 
 	s.Lock()
