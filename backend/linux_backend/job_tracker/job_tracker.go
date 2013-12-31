@@ -106,7 +106,7 @@ func (t *JobTracker) Stream(jobID uint32) (chan backend.JobStream, error) {
 		return nil, UnknownJobError{jobID}
 	}
 
-	defer t.unregister(jobID)
+	go t.Link(jobID)
 
 	return job.Stream(), nil
 }

@@ -146,7 +146,6 @@ func (j *Job) Link() (uint32, []byte, []byte, error) {
 }
 
 func (j *Job) Stream() chan backend.JobStream {
-	go j.runningLink.Do(j.runLinker)
 	return j.registerStream()
 }
 
