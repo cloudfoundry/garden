@@ -398,6 +398,42 @@ var _ = Describe("Streaming jobs", func() {
 		close(done)
 	}, 5.0)
 
+	Context("when attaching after a job has already printed output", func() {
+		It("receives the missed output first", func(done Done) {
+			setupSuccessfulSpawn()
+
+			jobID, err := jobTracker.Spawn(exec.Command("xxx"), false, true)
+			Expect(err).ToNot(HaveOccurred())
+
+			jobStreamChannel1, err := jobTracker.Stream(jobID)
+			Expect(err).ToNot(HaveOccurred())
+
+			chunk1 := <-jobStreamChannel1
+			Expect(chunk1.Name).To(Equal("stdout"))
+			Expect(string(chunk1.Data)).To(Equal("hi out\n"))
+			Expect(chunk1.ExitStatus).To(BeNil())
+			Expect(chunk1.Info).To(BeNil())
+
+			// make another stream and ensure we see the first chunk as well
+			jobStreamChannel2, err := jobTracker.Stream(jobID)
+			Expect(err).ToNot(HaveOccurred())
+
+			chunk1 = <-jobStreamChannel2
+			Expect(chunk1.Name).To(Equal("stdout"))
+			Expect(string(chunk1.Data)).To(Equal("hi out\n"))
+			Expect(chunk1.ExitStatus).To(BeNil())
+			Expect(chunk1.Info).To(BeNil())
+
+			chunk2 := <-jobStreamChannel2
+			Expect(chunk2.Name).To(Equal("stderr"))
+			Expect(string(chunk2.Data)).To(Equal("hi err\n"))
+			Expect(chunk2.ExitStatus).To(BeNil())
+			Expect(chunk2.Info).To(BeNil())
+
+			close(done)
+		}, 5.0)
+	})
+
 	Context("when the job is not yet linked to", func() {
 		It("runs iomux-link", func() {
 			setupSuccessfulSpawn()

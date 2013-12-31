@@ -2,10 +2,7 @@ package job_tracker
 
 import (
 	"bufio"
-	"bytes"
 	"fmt"
-	"io"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path"
@@ -32,8 +29,8 @@ type Job struct {
 	completed bool
 
 	exitStatus uint32
-	stdout     *bytes.Buffer
-	stderr     *bytes.Buffer
+	stdout     *namedStream
+	stderr     *namedStream
 }
 
 func NewJob(
@@ -42,7 +39,7 @@ func NewJob(
 	containerPath string,
 	runner command_runner.CommandRunner,
 ) *Job {
-	return &Job{
+	j := &Job{
 		ID:            id,
 		DiscardOutput: discardOutput,
 
@@ -53,6 +50,11 @@ func NewJob(
 		runningLink:  &sync.Once{},
 		streamLock:   &sync.RWMutex{},
 	}
+
+	j.stdout = newNamedStream(j, "stdout", j.DiscardOutput)
+	j.stderr = newNamedStream(j, "stderr", j.DiscardOutput)
+
+	return j
 }
 
 func (j *Job) Spawn(cmd *exec.Cmd) (ready, active chan error) {
@@ -152,24 +154,11 @@ func (j *Job) runLinker() {
 	linkPath := path.Join(j.containerPath, "bin", "iomux-link")
 	jobDir := path.Join(j.containerPath, "jobs", fmt.Sprintf("%d", j.ID))
 
-	stdout := new(bytes.Buffer)
-	stderr := new(bytes.Buffer)
-
-	var cmdStdout, cmdStderr io.Writer
-
-	if j.DiscardOutput {
-		cmdStdout = ioutil.Discard
-		cmdStderr = ioutil.Discard
-	} else {
-		cmdStdout = stdout
-		cmdStderr = stderr
-	}
-
 	link := &exec.Cmd{
 		Path:   linkPath,
 		Args:   []string{jobDir},
-		Stdout: newNamedStream(j, "stdout", cmdStdout),
-		Stderr: newNamedStream(j, "stderr", cmdStderr),
+		Stdout: j.stdout,
+		Stderr: j.stderr,
 	}
 
 	j.runner.Run(link)
@@ -181,8 +170,6 @@ func (j *Job) runLinker() {
 	}
 
 	j.exitStatus = exitStatus
-	j.stdout = stdout
-	j.stderr = stderr
 
 	j.completed = true
 
@@ -196,7 +183,24 @@ func (j *Job) registerStream() chan backend.JobStream {
 	j.streamLock.Lock()
 	defer j.streamLock.Unlock()
 
-	stream := make(chan backend.JobStream)
+	stream := make(chan backend.JobStream, 2)
+
+	stdout := j.stdout.Bytes()
+	stderr := j.stderr.Bytes()
+
+	if len(stdout) > 0 {
+		stream <- backend.JobStream{
+			Name: "stdout",
+			Data: stdout,
+		}
+	}
+
+	if len(stderr) > 0 {
+		stream <- backend.JobStream{
+			Name: "stderr",
+			Data: stderr,
+		}
+	}
 
 	j.streams = append(j.streams, stream)
 

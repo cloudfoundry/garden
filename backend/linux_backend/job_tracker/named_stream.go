@@ -1,7 +1,7 @@
 package job_tracker
 
 import (
-	"io"
+	"bytes"
 	"sync"
 
 	"github.com/vito/garden/backend"
@@ -10,16 +10,20 @@ import (
 type namedStream struct {
 	job         *Job
 	name        string
-	destination io.Writer
+	discard     bool
+
+	destination *bytes.Buffer
 
 	sync.RWMutex
 }
 
-func newNamedStream(job *Job, name string, destination io.Writer) *namedStream {
+func newNamedStream(job *Job, name string, discard bool) *namedStream {
 	return &namedStream{
-		job:         job,
-		name:        name,
-		destination: destination,
+		job:     job,
+		name:    name,
+		discard: discard,
+
+		destination: new(bytes.Buffer),
 	}
 }
 
@@ -29,5 +33,19 @@ func (s *namedStream) Write(data []byte) (int, error) {
 		Data: data,
 	})
 
+	if s.discard {
+		return 0, nil
+	}
+
+	s.Lock()
+	defer s.Unlock()
+
 	return s.destination.Write(data)
+}
+
+func (s *namedStream) Bytes() []byte {
+	s.RLock()
+	defer s.RUnlock()
+
+	return s.destination.Bytes()
 }
