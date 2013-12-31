@@ -72,6 +72,21 @@ var _ = Describe("Starting commands", func() {
 
 		Expect(cmd.ProcessState).ToNot(BeNil())
 	})
+
+	It("does not propagate signals to the child", func() {
+		runner := command_runner.New(false)
+
+		cmd := &exec.Cmd{
+			Path: "/bin/bash",
+			Args: []string{"-c", "exit 0"},
+		}
+
+		err := runner.Start(cmd)
+		Expect(err).ToNot(HaveOccurred())
+
+		Expect(cmd.SysProcAttr).ToNot(BeNil())
+		Expect(cmd.SysProcAttr.Setpgid).To(BeTrue())
+	})
 })
 
 var _ = Describe("Waiting on commands", func() {

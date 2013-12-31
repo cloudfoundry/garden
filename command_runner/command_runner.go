@@ -61,6 +61,14 @@ func (r *RealCommandRunner) Run(cmd *exec.Cmd) error {
 }
 
 func (r *RealCommandRunner) Start(cmd *exec.Cmd) error {
+	if cmd.SysProcAttr == nil {
+		cmd.SysProcAttr = &syscall.SysProcAttr{
+			Setpgid: true,
+		}
+	} else {
+		cmd.SysProcAttr.Setpgid = true
+	}
+
 	if r.debug {
 		log.Printf("\x1b[40;36mspawning: %s\x1b[0m\n", prettyCommand(cmd))
 		r.tee(cmd)
