@@ -282,7 +282,7 @@ var _ = Describe("Linux containers", func() {
 				},
 				func(cmd *exec.Cmd) error {
 					cmd.Stdout.Write([]byte("hello\n"))
-					time.Sleep(1 * time.Second)
+					time.Sleep(500 * time.Millisecond)
 					return nil
 				},
 			)
@@ -297,7 +297,7 @@ var _ = Describe("Linux containers", func() {
 				},
 				func(cmd *exec.Cmd) error {
 					cmd.Stdout.Write([]byte("goodbye\n"))
-					time.Sleep(1 * time.Second)
+					time.Sleep(500 * time.Millisecond)
 					return nil
 				},
 			)
@@ -319,13 +319,24 @@ var _ = Describe("Linux containers", func() {
 			})
 			Expect(err).ToNot(HaveOccurred())
 
-			res, err := container.Link(0)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(res.Stdout).To(Equal([]byte("hello\n")))
+			linked := make(chan bool)
 
-			res, err = container.Link(1)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(res.Stdout).To(BeEmpty())
+			go func() {
+				res, err := container.Link(0)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(res.Stdout).To(Equal([]byte("hello\n")))
+				linked <- true
+			}()
+
+			go func() {
+				res, err := container.Link(1)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(res.Stdout).To(BeEmpty())
+				linked <- true
+			}()
+
+			<-linked
+			<-linked
 		})
 
 		It("starts new job IDs after the highest restored ID", func() {
