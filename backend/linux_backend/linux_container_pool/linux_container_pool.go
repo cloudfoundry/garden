@@ -87,7 +87,7 @@ func (p *LinuxContainerPool) Setup() error {
 	return nil
 }
 
-func (p *LinuxContainerPool) Create(spec backend.ContainerSpec) (backend.Container, error) {
+func (p *LinuxContainerPool) Create(spec backend.ContainerSpec) (linux_backend.Container, error) {
 	uid, err := p.uidPool.Acquire()
 	if err != nil {
 		return nil, err
@@ -161,7 +161,7 @@ func (p *LinuxContainerPool) Create(spec backend.ContainerSpec) (backend.Contain
 	return container, nil
 }
 
-func (p *LinuxContainerPool) Restore(snapshot io.Reader) (backend.Container, error) {
+func (p *LinuxContainerPool) Restore(snapshot io.Reader) (linux_backend.Container, error) {
 	var containerSnapshot linux_backend.ContainerSnapshot
 
 	err := json.NewDecoder(snapshot).Decode(&containerSnapshot)
@@ -223,7 +223,7 @@ func (p *LinuxContainerPool) Restore(snapshot io.Reader) (backend.Container, err
 	return container, nil
 }
 
-func (p *LinuxContainerPool) Destroy(container backend.Container) error {
+func (p *LinuxContainerPool) Destroy(container linux_backend.Container) error {
 	destroy := &exec.Cmd{
 		Path: path.Join(p.rootPath, "destroy.sh"),
 		Args: []string{path.Join(p.depotPath, container.ID())},

@@ -23,7 +23,6 @@ import (
 
 var _ = Describe("When a client connects", func() {
 	var socketPath string
-	var snapshotsPath string
 
 	var serverBackend *fake_backend.FakeBackend
 
@@ -37,12 +36,11 @@ var _ = Describe("When a client connects", func() {
 		Expect(err).ToNot(HaveOccurred())
 
 		socketPath = path.Join(tmpdir, "warden.sock")
-		snapshotsPath = path.Join(tmpdir, "snapshots")
 		serverBackend = fake_backend.New()
 	})
 
 	JustBeforeEach(func() {
-		wardenServer = server.New(socketPath, snapshotsPath, serverBackend)
+		wardenServer = server.New(socketPath, serverBackend)
 
 		err := wardenServer.Start()
 		Expect(err).ToNot(HaveOccurred())
@@ -64,65 +62,6 @@ var _ = Describe("When a client connects", func() {
 	readResponse := func(response proto.Message) {
 		err := message_reader.ReadMessage(responses, response)
 		Expect(err).ToNot(HaveOccurred())
-	}
-
-	itSavesSnapshots := func(request proto.Message) {
-		It("saves a snapshot", func(done Done) {
-			writeMessages(request)
-
-			response := protocol.ResponseMessageForType(protocol.TypeForMessage(request))
-			readResponse(response)
-
-			container, found := serverBackend.CreatedContainers["some-handle"]
-			Expect(found).To(BeTrue())
-
-			Expect(container.SavedSnapshots).To(HaveLen(1))
-
-			close(done)
-		}, 1.0)
-
-		Context("when snapshots are not enabled", func() {
-			BeforeEach(func() {
-				snapshotsPath = ""
-			})
-
-			It("does not save a snapshot", func(done Done) {
-				writeMessages(request)
-
-				response := protocol.ResponseMessageForType(protocol.TypeForMessage(request))
-				readResponse(response)
-
-				container, found := serverBackend.CreatedContainers["some-handle"]
-				Expect(found).To(BeTrue())
-
-				if found {
-					Expect(container.SavedSnapshots).To(BeEmpty())
-				}
-
-				close(done)
-			}, 1.0)
-		})
-
-		Context("when saving the snapshot fails", func() {
-			disaster := errors.New("oh no!")
-
-			BeforeEach(func() {
-				container, found := serverBackend.CreatedContainers["some-handle"]
-				Expect(found).To(BeTrue())
-
-				container.SnapshotError = disaster
-			})
-
-			It("returns a FailedToSnapshotError", func(done Done) {
-				writeMessages(request)
-
-				response := protocol.ResponseMessageForType(protocol.TypeForMessage(request))
-				err := message_reader.ReadMessage(responses, response)
-				Expect(err).To(Equal(&message_reader.WardenError{Message: "failed to save snapshot: oh no!"}))
-
-				close(done)
-			}, 1.0)
-		})
 	}
 
 	Context("and the client sends a PingRequest", func() {
@@ -204,72 +143,6 @@ var _ = Describe("When a client connects", func() {
 			close(done)
 		}, 1.0)
 
-		It("saves a snapshot", func(done Done) {
-			request := &protocol.CreateRequest{Handle: proto.String("some-handle")}
-
-			writeMessages(request)
-
-			response := protocol.ResponseMessageForType(protocol.TypeForMessage(request))
-			readResponse(response)
-
-			container, found := serverBackend.CreatedContainers["some-handle"]
-			Expect(found).To(BeTrue())
-
-			Expect(container.SavedSnapshots).To(HaveLen(1))
-
-			close(done)
-		}, 1.0)
-
-		Context("when snapshots are not enabled", func() {
-			BeforeEach(func() {
-				snapshotsPath = ""
-			})
-
-			It("does not save a snapshot", func(done Done) {
-				request := &protocol.CreateRequest{Handle: proto.String("some-handle")}
-
-				writeMessages(request)
-
-				response := protocol.ResponseMessageForType(protocol.TypeForMessage(request))
-				readResponse(response)
-
-				container, found := serverBackend.CreatedContainers["some-handle"]
-				Expect(found).To(BeTrue())
-
-				if found {
-					Expect(container.SavedSnapshots).To(BeEmpty())
-				}
-
-				close(done)
-			}, 1.0)
-		})
-
-		Context("when saving the snapshot fails", func() {
-			disaster := errors.New("oh no!")
-
-			BeforeEach(func() {
-				spec := backend.ContainerSpec{Handle: "some-handle"}
-
-				fakeContainer := fake_backend.NewFakeContainer(spec)
-
-				serverBackend.CreateResult = fakeContainer
-
-				fakeContainer.SnapshotError = disaster
-			})
-
-			It("returns a FailedToSnapshotError", func(done Done) {
-				request := &protocol.CreateRequest{Handle: proto.String("some-handle")}
-
-				writeMessages(request)
-
-				response := protocol.ResponseMessageForType(protocol.TypeForMessage(request))
-				err := message_reader.ReadMessage(responses, response)
-				Expect(err).To(Equal(&message_reader.WardenError{Message: "failed to save snapshot: oh no!"}))
-
-				close(done)
-			}, 1.0)
-		})
-
 		Context("when creating the container fails", func() {
 			BeforeEach(func() {
 				serverBackend.CreateError = errors.New("oh no!")
@@ -307,57 +180,6 @@ var _ = Describe("When a client connects", func() {
 
 			close(done)
 		}, 1.0)
-
-		Context("when the container is not found", func() {
-			BeforeEach(func() {
-				serverBackend.Destroy("some-handle")
-			})
-
-			It("sends a WardenError response", func(done Done) {
-				writeMessages(&protocol.DestroyRequest{
-					Handle: proto.String("some-handle"),
-				})
-
-				var response protocol.DestroyResponse
-				err := message_reader.ReadMessage(responses, &response)
-				Expect(err).To(Equal(&message_reader.WardenError{
-					Message: "unknown handle: some-handle",
-				}))
-
-				close(done)
-			}, 1.0)
-		})
-
-		Context("when the container has a snapshot", func() {
-			var snapshotPath string
-
-			BeforeEach(func() {
-				snapshotPath = path.Join(snapshotsPath, "some-container-id")
-
-				err := os.MkdirAll(snapshotsPath, 0755)
-				Expect(err).ToNot(HaveOccurred())
-
-				_, err = os.Create(snapshotPath)
-				Expect(err).ToNot(HaveOccurred())
-			})
-
-			It("removes it", func(done Done) {
-				_, err := os.Stat(snapshotPath)
-				Expect(err).ToNot(HaveOccurred())
-
-				writeMessages(&protocol.DestroyRequest{
-					Handle: proto.String("some-handle"),
-				})
-
-				var response protocol.DestroyResponse
-				readResponse(&response)
-
-				_, err = os.Stat(snapshotPath)
-				Expect(err).To(HaveOccurred())
-
-				close(done)
-			}, 1.0)
-		})
 
 		Context("when destroying the container fails", func() {
 			BeforeEach(func() {
@@ -443,12 +265,6 @@ var _ = Describe("When a client connects", func() {
 
 			close(done)
 		}, 1.0)
-
-		itSavesSnapshots(
-			&protocol.StopRequest{
-				Handle: proto.String("some-handle"),
-			},
-		)
 
 		Context("when background is true", func() {
 			It("stops async and returns immediately", func(done Done) {
@@ -724,13 +540,6 @@ var _ = Describe("When a client connects", func() {
 
 			close(done)
 		}, 1.0)
-
-		itSavesSnapshots(
-			&protocol.SpawnRequest{
-				Handle: proto.String("some-handle"),
-				Script: proto.String("foo"),
-			},
-		)
 
 		Context("when the container is not found", func() {
 			BeforeEach(func() {
@@ -1036,13 +845,6 @@ var _ = Describe("When a client connects", func() {
 			close(done)
 		}, 1.0)
 
-		itSavesSnapshots(
-			&protocol.RunRequest{
-				Handle: proto.String("some-handle"),
-				Script: proto.String("foo"),
-			},
-		)
-
 		Context("when the container is not found", func() {
 			BeforeEach(func() {
 				serverBackend.Destroy(fakeContainer.Handle())
@@ -1146,14 +948,6 @@ var _ = Describe("When a client connects", func() {
 			close(done)
 		}, 1.0)
 
-		itSavesSnapshots(
-			&protocol.LimitBandwidthRequest{
-				Handle: proto.String("some-handle"),
-				Rate:   proto.Uint64(1),
-				Burst:  proto.Uint64(2),
-			},
-		)
-
 		Context("when the container is not found", func() {
 			BeforeEach(func() {
 				serverBackend.Destroy(fakeContainer.Handle())
@@ -1247,13 +1041,6 @@ var _ = Describe("When a client connects", func() {
 
 			close(done)
 		}, 1.0)
-
-		itSavesSnapshots(
-			&protocol.LimitMemoryRequest{
-				Handle:       proto.String("some-handle"),
-				LimitInBytes: proto.Uint64(1),
-			},
-		)
 
 		Context("when no limit is given", func() {
 			It("does not change the memory limit", func(done Done) {
@@ -1395,18 +1182,6 @@ var _ = Describe("When a client connects", func() {
 
 			close(done)
 		}, 1.0)
-
-		itSavesSnapshots(
-			&protocol.LimitDiskRequest{
-				Handle:    proto.String("some-handle"),
-				BlockSoft: proto.Uint64(111),
-				BlockHard: proto.Uint64(222),
-				InodeSoft: proto.Uint64(333),
-				InodeHard: proto.Uint64(444),
-				ByteSoft:  proto.Uint64(555),
-				ByteHard:  proto.Uint64(666),
-			},
-		)
 
 		Context("when no limits are given", func() {
 			It("does not change the disk limit", func(done Done) {
@@ -1699,13 +1474,6 @@ var _ = Describe("When a client connects", func() {
 			close(done)
 		}, 1.0)
 
-		itSavesSnapshots(
-			&protocol.LimitCpuRequest{
-				Handle:        proto.String("some-handle"),
-				LimitInShares: proto.Uint64(111),
-			},
-		)
-
 		Context("when no limit is given", func() {
 			It("does not change the CPU shares", func(done Done) {
 				effectiveLimits := backend.CPULimits{456}
@@ -1817,14 +1585,6 @@ var _ = Describe("When a client connects", func() {
 			close(done)
 		}, 1.0)
 
-		itSavesSnapshots(
-			&protocol.NetInRequest{
-				Handle:        proto.String("some-handle"),
-				HostPort:      proto.Uint32(123),
-				ContainerPort: proto.Uint32(456),
-			},
-		)
-
 		Context("when the container is not found", func() {
 			BeforeEach(func() {
 				serverBackend.Destroy(fakeContainer.Handle())
@@ -1894,14 +1654,6 @@ var _ = Describe("When a client connects", func() {
 
 			close(done)
 		}, 1.0)
-
-		itSavesSnapshots(
-			&protocol.NetOutRequest{
-				Handle:  proto.String("some-handle"),
-				Network: proto.String("1.2.3.4/22"),
-				Port:    proto.Uint32(456),
-			},
-		)
 
 		Context("when the container is not found", func() {
 			BeforeEach(func() {

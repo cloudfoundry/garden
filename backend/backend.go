@@ -1,14 +1,15 @@
 package backend
 
 import (
-	"io"
 	"time"
 )
 
 type Backend interface {
 	Setup() error
+	Start() error
+	Stop()
+
 	Create(ContainerSpec) (Container, error)
-	Restore(io.Reader) (Container, error)
 	Destroy(handle string) error
 	Containers() ([]Container, error)
 	Lookup(handle string) (Container, error)

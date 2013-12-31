@@ -153,7 +153,7 @@ func main() {
 			quotaManager,
 		)
 
-		backend = linux_backend.New(pool)
+		backend = linux_backend.New(pool, *snapshotsPath)
 	case "fake":
 		backend = fake_backend.New()
 	}
@@ -167,7 +167,7 @@ func main() {
 
 	log.Println("starting server; listening on", *socketFilePath)
 
-	wardenServer := server.New(*socketFilePath, *snapshotsPath, backend)
+	wardenServer := server.New(*socketFilePath, backend)
 
 	err = wardenServer.Start()
 	if err != nil {

@@ -1,10 +1,12 @@
 package fake_container_pool
 
 import (
+	"fmt"
 	"io"
 
 	"github.com/vito/garden/backend"
 	"github.com/vito/garden/backend/fake_backend"
+	"github.com/vito/garden/backend/linux_backend"
 )
 
 type FakeContainerPool struct {
@@ -16,8 +18,8 @@ type FakeContainerPool struct {
 
 	ContainerSetup func(*fake_backend.FakeContainer)
 
-	CreatedContainers   []backend.Container
-	DestroyedContainers []backend.Container
+	CreatedContainers   []linux_backend.Container
+	DestroyedContainers []linux_backend.Container
 	RestoredSnapshots   []io.Reader
 }
 
@@ -31,7 +33,7 @@ func (p *FakeContainerPool) Setup() error {
 	return nil
 }
 
-func (p *FakeContainerPool) Create(spec backend.ContainerSpec) (backend.Container, error) {
+func (p *FakeContainerPool) Create(spec backend.ContainerSpec) (linux_backend.Container, error) {
 	if p.CreateError != nil {
 		return nil, p.CreateError
 	}
@@ -47,14 +49,21 @@ func (p *FakeContainerPool) Create(spec backend.ContainerSpec) (backend.Containe
 	return container, nil
 }
 
-func (p *FakeContainerPool) Restore(snapshot io.Reader) (backend.Container, error) {
+func (p *FakeContainerPool) Restore(snapshot io.Reader) (linux_backend.Container, error) {
 	if p.RestoreError != nil {
 		return nil, p.RestoreError
 	}
 
+	var handle string
+
+	_, err := fmt.Fscanf(snapshot, "%s", &handle)
+	if err != nil && err != io.EOF {
+		return nil, err
+	}
+
 	container := fake_backend.NewFakeContainer(
 		backend.ContainerSpec{
-			Handle: "some-restored-handle",
+			Handle: handle,
 		},
 	)
 
@@ -63,7 +72,7 @@ func (p *FakeContainerPool) Restore(snapshot io.Reader) (backend.Container, erro
 	return container, nil
 }
 
-func (p *FakeContainerPool) Destroy(container backend.Container) error {
+func (p *FakeContainerPool) Destroy(container linux_backend.Container) error {
 	if p.DestroyError != nil {
 		return p.DestroyError
 	}

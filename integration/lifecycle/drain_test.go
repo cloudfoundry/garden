@@ -83,7 +83,7 @@ var _ = Describe("Through a restart", func() {
 			Expect(jobID1).ToNot(Equal(jobID2))
 		})
 
-		FContext("that prints monotonously increasing output", func() {
+		Context("that prints monotonously increasing output", func() {
 			It("does not duplicate its output on reconnect", func(done Done) {
 				receivedNumbers := make(chan int, 2048)
 

@@ -4,11 +4,9 @@ import (
 	"bufio"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"net"
 	"os"
-	"path/filepath"
 	"sync"
 	"time"
 
@@ -20,9 +18,8 @@ import (
 )
 
 type WardenServer struct {
-	socketPath    string
-	snapshotsPath string
-	backend       backend.Backend
+	socketPath string
+	backend    backend.Backend
 
 	listener      net.Listener
 	stopping      bool
@@ -38,19 +35,10 @@ func (e UnhandledRequestError) Error() string {
 	return fmt.Sprintf("unhandled request type: %T", e.Request)
 }
 
-type FailedToSnapshotError struct {
-	OriginalError error
-}
-
-func (e FailedToSnapshotError) Error() string {
-	return fmt.Sprintf("failed to save snapshot: %s", e.OriginalError)
-}
-
-func New(socketPath, snapshotsPath string, backend backend.Backend) *WardenServer {
+func New(socketPath string, backend backend.Backend) *WardenServer {
 	return &WardenServer{
-		socketPath:    socketPath,
-		snapshotsPath: snapshotsPath,
-		backend:       backend,
+		socketPath: socketPath,
+		backend:    backend,
 
 		stoppingMutex: new(sync.RWMutex),
 		openRequests:  new(sync.WaitGroup),
@@ -63,16 +51,9 @@ func (s *WardenServer) Start() error {
 		return err
 	}
 
-	if s.snapshotsPath != "" {
-		err = os.MkdirAll(s.snapshotsPath, 0755)
-		if err != nil {
-			return err
-		}
-
-		err = s.restoreSnapshots()
-		if err != nil {
-			return err
-		}
+	err = s.backend.Start()
+	if err != nil {
+		return err
 	}
 
 	listener, err := net.Listen("unix", s.socketPath)
@@ -100,74 +81,7 @@ func (s *WardenServer) Stop() {
 	s.setStopping()
 	s.listener.Close()
 	s.openRequests.Wait()
-
-	containers, err := s.backend.Containers()
-	if err != nil {
-		return
-	}
-
-	for _, container := range containers {
-		container.Cleanup()
-		s.saveSnapshot(container)
-	}
-}
-
-func (s *WardenServer) restoreSnapshots() error {
-	entries, err := ioutil.ReadDir(s.snapshotsPath)
-	if err != nil {
-		return err
-	}
-
-	for _, entry := range entries {
-		snapshot := filepath.Join(s.snapshotsPath, entry.Name())
-
-		file, err := os.Open(snapshot)
-		if err != nil {
-			return err
-		}
-
-		_, err = s.backend.Restore(file)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (s *WardenServer) saveSnapshot(container backend.Container) error {
-	if s.snapshotsPath == "" {
-		return nil
-	}
-
-	tmpfile, err := ioutil.TempFile(os.TempDir(), "snapshot-"+container.ID())
-	if err != nil {
-		return &FailedToSnapshotError{err}
-	}
-
-	err = container.Snapshot(tmpfile)
-	if err != nil {
-		return &FailedToSnapshotError{err}
-	}
-
-	snapshotPath := filepath.Join(s.snapshotsPath, container.ID())
-
-	err = os.Rename(tmpfile.Name(), snapshotPath)
-	if err != nil {
-		return &FailedToSnapshotError{err}
-	}
-
-	return nil
-}
-
-func (s *WardenServer) removeSnapshot(container backend.Container) {
-	if s.snapshotsPath == "" {
-		return
-	}
-
-	snapshotPath := filepath.Join(s.snapshotsPath, container.ID())
-
-	os.Remove(snapshotPath)
+	s.backend.Stop()
 }
 
 func (s *WardenServer) handleConnections(listener net.Listener) {
@@ -333,11 +247,6 @@ func (s *WardenServer) handleCreate(create *protocol.CreateRequest) (proto.Messa
 		return nil, err
 	}
 
-	err = s.saveSnapshot(container)
-	if err != nil {
-		return nil, err
-	}
-
 	return &protocol.CreateResponse{
 		Handle: proto.String(container.Handle()),
 	}, nil
@@ -346,17 +255,10 @@ func (s *WardenServer) handleCreate(create *protocol.CreateRequest) (proto.Messa
 func (s *WardenServer) handleDestroy(destroy *protocol.DestroyRequest) (proto.Message, error) {
 	handle := destroy.GetHandle()
 
-	container, err := s.backend.Lookup(handle)
+	err := s.backend.Destroy(handle)
 	if err != nil {
 		return nil, err
 	}
-
-	err = s.backend.Destroy(handle)
-	if err != nil {
-		return nil, err
-	}
-
-	s.removeSnapshot(container)
 
 	return &protocol.DestroyResponse{}, nil
 }
@@ -406,20 +308,9 @@ func (s *WardenServer) handleStop(request *protocol.StopRequest) (proto.Message,
 	}
 
 	if background {
-		go func() {
-			err := container.Stop(kill)
-
-			if err == nil {
-				s.saveSnapshot(container)
-			}
-		}()
+		go container.Stop(kill)
 	} else {
 		err = container.Stop(kill)
-		if err != nil {
-			return nil, err
-		}
-
-		err = s.saveSnapshot(container)
 		if err != nil {
 			return nil, err
 		}
@@ -469,11 +360,6 @@ func (s *WardenServer) handleSpawn(request *protocol.SpawnRequest) (proto.Messag
 	}
 
 	jobID, err := container.Spawn(jobSpec)
-	if err != nil {
-		return nil, err
-	}
-
-	err = s.saveSnapshot(container)
 	if err != nil {
 		return nil, err
 	}
@@ -529,11 +415,6 @@ func (s *WardenServer) handleRun(request *protocol.RunRequest) (proto.Message, e
 		return nil, err
 	}
 
-	err = s.saveSnapshot(container)
-	if err != nil {
-		return nil, err
-	}
-
 	jobResult, err := container.Link(jobID)
 	if err != nil {
 		return nil, err
@@ -564,11 +445,6 @@ func (s *WardenServer) handleLimitBandwidth(request *protocol.LimitBandwidthRequ
 		return nil, err
 	}
 
-	err = s.saveSnapshot(container)
-	if err != nil {
-		return nil, err
-	}
-
 	limits, err := container.CurrentBandwidthLimits()
 	if err != nil {
 		return nil, err
@@ -594,11 +470,6 @@ func (s *WardenServer) handleLimitMemory(request *protocol.LimitMemoryRequest) (
 			LimitInBytes: limitInBytes,
 		})
 
-		if err != nil {
-			return nil, err
-		}
-
-		err = s.saveSnapshot(container)
 		if err != nil {
 			return nil, err
 		}
@@ -680,11 +551,6 @@ func (s *WardenServer) handleLimitDisk(request *protocol.LimitDiskRequest) (prot
 		}
 	}
 
-	err = s.saveSnapshot(container)
-	if err != nil {
-		return nil, err
-	}
-
 	limits, err := container.CurrentDiskLimits()
 	if err != nil {
 		return nil, err
@@ -718,11 +584,6 @@ func (s *WardenServer) handleLimitCpu(request *protocol.LimitCpuRequest) (proto.
 		}
 	}
 
-	err = s.saveSnapshot(container)
-	if err != nil {
-		return nil, err
-	}
-
 	limits, err := container.CurrentCPULimits()
 	if err != nil {
 		return nil, err
@@ -748,11 +609,6 @@ func (s *WardenServer) handleNetIn(request *protocol.NetInRequest) (proto.Messag
 		return nil, err
 	}
 
-	err = s.saveSnapshot(container)
-	if err != nil {
-		return nil, err
-	}
-
 	return &protocol.NetInResponse{
 		HostPort:      proto.Uint32(hostPort),
 		ContainerPort: proto.Uint32(containerPort),
@@ -770,11 +626,6 @@ func (s *WardenServer) handleNetOut(request *protocol.NetOutRequest) (proto.Mess
 	}
 
 	err = container.NetOut(network, port)
-	if err != nil {
-		return nil, err
-	}
-
-	err = s.saveSnapshot(container)
 	if err != nil {
 		return nil, err
 	}

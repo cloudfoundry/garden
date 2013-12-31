@@ -7,6 +7,11 @@ import (
 )
 
 type FakeBackend struct {
+	Started    bool
+	StartError error
+
+	Stopped bool
+
 	CreateResult    *FakeContainer
 	CreateError     error
 	RestoreError    error
@@ -33,6 +38,20 @@ func New() *FakeBackend {
 
 func (b *FakeBackend) Setup() error {
 	return nil
+}
+
+func (b *FakeBackend) Start() error {
+	if b.StartError != nil {
+		return b.StartError
+	}
+
+	b.Started = true
+
+	return nil
+}
+
+func (b *FakeBackend) Stop() {
+	b.Stopped = true
 }
 
 func (b *FakeBackend) Create(spec backend.ContainerSpec) (backend.Container, error) {

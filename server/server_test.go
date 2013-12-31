@@ -29,9 +29,7 @@ var _ = Describe("The Warden server", func() {
 
 		socketPath := path.Join(tmpdir, "warden.sock")
 
-		snapshotsPath := path.Join(tmpdir, "snapshots")
-
-		wardenServer := server.New(socketPath, snapshotsPath, fake_backend.New())
+		wardenServer := server.New(socketPath, fake_backend.New())
 
 		err = wardenServer.Start()
 		Expect(err).ToNot(HaveOccurred())
@@ -50,75 +48,53 @@ var _ = Describe("The Warden server", func() {
 
 		socketPath := path.Join(tmpdir, "warden.sock")
 
-		snapshotsPath := path.Join(tmpdir, "snapshots")
-
 		socket, err := os.Create(socketPath)
 		Expect(err).ToNot(HaveOccurred())
 		socket.WriteString("oops")
 		socket.Close()
 
-		wardenServer := server.New(socketPath, snapshotsPath, fake_backend.New())
+		wardenServer := server.New(socketPath, fake_backend.New())
 
 		err = wardenServer.Start()
 		Expect(err).ToNot(HaveOccurred())
 	})
 
-	It("creates the snapshots directory if it's not already there", func() {
+	It("starts the backend", func() {
 		tmpdir, err := ioutil.TempDir(os.TempDir(), "warden-server-test")
 		Expect(err).ToNot(HaveOccurred())
 
 		socketPath := path.Join(tmpdir, "warden.sock")
 
-		snapshotsPath := path.Join(tmpdir, "snapshots")
+		fakeBackend := fake_backend.New()
 
-		wardenServer := server.New(socketPath, snapshotsPath, fake_backend.New())
+		wardenServer := server.New(socketPath, fakeBackend)
 
 		err = wardenServer.Start()
 		Expect(err).ToNot(HaveOccurred())
 
-		stat, err := os.Stat(snapshotsPath)
-		Expect(err).ToNot(HaveOccurred())
-
-		Expect(stat.IsDir()).To(BeTrue())
+		Expect(fakeBackend.Started).To(BeTrue())
 	})
 
-	Context("when the snapshots directory fails to be created", func() {
+	Context("when starting the backend fails", func() {
+		disaster := errors.New("oh no!")
+
 		It("fails to start", func() {
 			tmpdir, err := ioutil.TempDir(os.TempDir(), "warden-server-test")
 			Expect(err).ToNot(HaveOccurred())
 
-			tmpfile, err := ioutil.TempFile(os.TempDir(), "warden-server-test")
-			Expect(err).ToNot(HaveOccurred())
+			socketPath := path.Join(tmpdir, "warden.sock")
 
-			wardenServer := server.New(
-				path.Join(tmpdir, "warden.sock"),
-				// weird scenario: /foo/X/snapshots with X being a file
-				path.Join(tmpfile.Name(), "snapshots"),
-				fake_backend.New(),
-			)
+			fakeBackend := fake_backend.New()
+			fakeBackend.StartError = disaster
+
+			wardenServer := server.New(socketPath, fakeBackend)
 
 			err = wardenServer.Start()
-			Expect(err).To(HaveOccurred())
+			Expect(err).To(Equal(disaster))
 		})
 	})
 
-	Context("when no snapshots directory is given", func() {
-		It("successfully starts", func() {
-			tmpdir, err := ioutil.TempDir(os.TempDir(), "warden-server-test")
-			Expect(err).ToNot(HaveOccurred())
-
-			wardenServer := server.New(
-				path.Join(tmpdir, "warden.sock"),
-				"",
-				fake_backend.New(),
-			)
-
-			err = wardenServer.Start()
-			Expect(err).ToNot(HaveOccurred())
-		})
-	})
-
-	Context("when starting fails", func() {
+	Context("when listening on the socket fails", func() {
 		It("fails to start", func() {
 			tmpfile, err := ioutil.TempFile(os.TempDir(), "warden-server-test")
 			Expect(err).ToNot(HaveOccurred())
@@ -126,7 +102,6 @@ var _ = Describe("The Warden server", func() {
 			wardenServer := server.New(
 				// weird scenario: /foo/X/warden.sock with X being a file
 				path.Join(tmpfile.Name(), "warden.sock"),
-				path.Join(tmpfile.Name(), "snapshots"),
 				fake_backend.New(),
 			)
 
@@ -135,74 +110,8 @@ var _ = Describe("The Warden server", func() {
 		})
 	})
 
-	Describe("when snapshots are present", func() {
-		var fakeBackend *fake_backend.FakeBackend
-		var socketPath, snapshotsPath string
-
-		BeforeEach(func() {
-			tmpdir, err := ioutil.TempDir(os.TempDir(), "warden-server-test")
-			Expect(err).ToNot(HaveOccurred())
-
-			socketPath = path.Join(tmpdir, "warden.sock")
-			snapshotsPath = path.Join(tmpdir, "snapshots")
-			fakeBackend = fake_backend.New()
-
-			err = os.MkdirAll(snapshotsPath, 0755)
-			Expect(err).ToNot(HaveOccurred())
-
-			file, err := os.Create(path.Join(snapshotsPath, "some-id"))
-			Expect(err).ToNot(HaveOccurred())
-
-			file.Write([]byte("snapshot-a"))
-			file.Close()
-
-			file, err = os.Create(path.Join(snapshotsPath, "some-other-id"))
-			Expect(err).ToNot(HaveOccurred())
-
-			file.Write([]byte("snapshot-b"))
-			file.Close()
-		})
-
-		It("restores them via the backend", func() {
-			wardenServer := server.New(socketPath, snapshotsPath, fakeBackend)
-
-			err := wardenServer.Start()
-			Expect(err).ToNot(HaveOccurred())
-
-			Expect(fakeBackend.RestoredContainers).To(HaveLen(2))
-
-			buf := make([]byte, len("snapshot-X"))
-
-			_, err = fakeBackend.RestoredContainers[0].Read(buf[:])
-			Expect(err).ToNot(HaveOccurred())
-
-			Expect(string(buf)).To(Equal("snapshot-a"))
-
-			_, err = fakeBackend.RestoredContainers[1].Read(buf[:])
-			Expect(err).ToNot(HaveOccurred())
-
-			Expect(string(buf)).To(Equal("snapshot-b"))
-		})
-
-		Context("when restoring a snapshot fails", func() {
-			disaster := errors.New("oh no!")
-
-			BeforeEach(func() {
-				fakeBackend.RestoreError = errors.New("oh no!")
-			})
-
-			It("fails to start", func() {
-				wardenServer := server.New(socketPath, snapshotsPath, fakeBackend)
-
-				err := wardenServer.Start()
-				Expect(err).To(Equal(disaster))
-			})
-		})
-	})
-
 	Describe("shutting down", func() {
 		var socketPath string
-		var snapshotsPath string
 
 		var serverBackend backend.Backend
 		var fakeBackend *fake_backend.FakeBackend
@@ -217,14 +126,13 @@ var _ = Describe("The Warden server", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			socketPath = path.Join(tmpdir, "warden.sock")
-			snapshotsPath = path.Join(tmpdir, "snapshots")
 			fakeBackend = fake_backend.New()
 
 			serverBackend = fakeBackend
 		})
 
 		JustBeforeEach(func() {
-			wardenServer = server.New(socketPath, snapshotsPath, serverBackend)
+			wardenServer = server.New(socketPath, serverBackend)
 
 			err := wardenServer.Start()
 			Expect(err).ToNot(HaveOccurred())
@@ -268,34 +176,10 @@ var _ = Describe("The Warden server", func() {
 			Expect(err).To(HaveOccurred())
 		})
 
-		It("takes a final snapshot of each container", func() {
-			container1, err := serverBackend.Create(backend.ContainerSpec{Handle: "some-handle"})
-			Expect(err).ToNot(HaveOccurred())
-
-			container2, err := serverBackend.Create(backend.ContainerSpec{Handle: "some-other-handle"})
-			Expect(err).ToNot(HaveOccurred())
-
+		It("stops the backend", func() {
 			wardenServer.Stop()
 
-			fakeContainer1 := container1.(*fake_backend.FakeContainer)
-			fakeContainer2 := container2.(*fake_backend.FakeContainer)
-			Expect(fakeContainer1.SavedSnapshots).To(HaveLen(1))
-			Expect(fakeContainer2.SavedSnapshots).To(HaveLen(1))
-		})
-
-		It("cleans up each container", func() {
-			container1, err := serverBackend.Create(backend.ContainerSpec{Handle: "some-handle"})
-			Expect(err).ToNot(HaveOccurred())
-
-			container2, err := serverBackend.Create(backend.ContainerSpec{Handle: "some-other-handle"})
-			Expect(err).ToNot(HaveOccurred())
-
-			wardenServer.Stop()
-
-			fakeContainer1 := container1.(*fake_backend.FakeContainer)
-			fakeContainer2 := container2.(*fake_backend.FakeContainer)
-			Expect(fakeContainer1.CleanedUp).To(BeTrue())
-			Expect(fakeContainer2.CleanedUp).To(BeTrue())
+			Expect(fakeBackend.Stopped).To(BeTrue())
 		})
 
 		Context("when a Create request is in-flight", func() {
