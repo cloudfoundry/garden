@@ -438,6 +438,101 @@ var _ = Describe("Linux Container pool", func() {
 		})
 	})
 
+	Describe("pruning", func() {
+		It("destroys any containers that are not in the given map", func() {
+			fakeRunner.WhenRunning(
+				fake_command_runner.CommandSpec{
+					Path: "ls",
+					Args: []string{"/depot/path"},
+				}, func(cmd *exec.Cmd) error {
+					Expect(cmd.Stdout).ToNot(BeNil())
+
+					cmd.Stdout.Write([]byte("container-1\n"))
+					cmd.Stdout.Write([]byte("container-2\n"))
+					cmd.Stdout.Write([]byte("tmp\n"))
+					cmd.Stdout.Write([]byte("container-3\n"))
+
+					return nil
+				},
+			)
+
+			err := pool.Prune(map[string]bool{"container-2": true})
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(fakeRunner).To(HaveExecutedSerially(
+				fake_command_runner.CommandSpec{
+					Path: "/root/path/destroy.sh",
+					Args: []string{"/depot/path/container-1"},
+				},
+				fake_command_runner.CommandSpec{
+					Path: "/root/path/destroy.sh",
+					Args: []string{"/depot/path/container-3"},
+				},
+			))
+
+			Expect(fakeRunner).ToNot(HaveExecutedSerially(
+				fake_command_runner.CommandSpec{
+					Path: "/root/path/destroy.sh",
+					Args: []string{"/depot/path/container-2"},
+				},
+			))
+		})
+
+		Context("when ls fails", func() {
+			disaster := errors.New("ls failed")
+
+			BeforeEach(func() {
+				fakeRunner.WhenRunning(
+					fake_command_runner.CommandSpec{
+						Path: "ls",
+					}, func(cmd *exec.Cmd) error {
+						return disaster
+					},
+				)
+			})
+
+			It("returns the error", func() {
+				err := pool.Prune(map[string]bool{})
+				Expect(err).To(Equal(disaster))
+			})
+		})
+
+		Context("when destroy.sh fails", func() {
+			disaster := errors.New("destroy.sh failed")
+
+			BeforeEach(func() {
+				fakeRunner.WhenRunning(
+					fake_command_runner.CommandSpec{
+						Path: "/root/path/destroy.sh",
+					}, func(cmd *exec.Cmd) error {
+						return disaster
+					},
+				)
+			})
+
+			It("returns the error", func() {
+				fakeRunner.WhenRunning(
+					fake_command_runner.CommandSpec{
+						Path: "ls",
+						Args: []string{"/depot/path"},
+					}, func(cmd *exec.Cmd) error {
+						Expect(cmd.Stdout).ToNot(BeNil())
+
+						cmd.Stdout.Write([]byte("container-1\n"))
+						cmd.Stdout.Write([]byte("container-2\n"))
+						cmd.Stdout.Write([]byte("tmp\n"))
+						cmd.Stdout.Write([]byte("container-3\n"))
+
+						return nil
+					},
+				)
+
+				err := pool.Prune(map[string]bool{})
+				Expect(err).To(Equal(disaster))
+			})
+		})
+	})
+
 	Describe("destroying", func() {
 		var createdContainer *linux_backend.LinuxContainer
 
@@ -459,10 +554,6 @@ var _ = Describe("Linux Container pool", func() {
 				fake_command_runner.CommandSpec{
 					Path: "/root/path/destroy.sh",
 					Args: []string{"/depot/path/" + createdContainer.ID()},
-					Env: []string{
-						"id=" + createdContainer.ID(),
-						"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
-					},
 				},
 			))
 		})

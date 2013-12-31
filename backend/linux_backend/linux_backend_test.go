@@ -15,10 +15,10 @@ import (
 	"github.com/vito/garden/backend/linux_backend/linux_container_pool/fake_container_pool"
 )
 
-var fakeContainerPool *fake_container_pool.FakeContainerPool
-var linuxBackend *linux_backend.LinuxBackend
-
 var _ = Describe("Setup", func() {
+	var fakeContainerPool *fake_container_pool.FakeContainerPool
+	var linuxBackend *linux_backend.LinuxBackend
+
 	BeforeEach(func() {
 		fakeContainerPool = fake_container_pool.New()
 		linuxBackend = linux_backend.New(fakeContainerPool, "")
@@ -33,6 +33,8 @@ var _ = Describe("Setup", func() {
 })
 
 var _ = Describe("Start", func() {
+	var fakeContainerPool *fake_container_pool.FakeContainerPool
+
 	var tmpdir string
 
 	BeforeEach(func() {
@@ -84,13 +86,10 @@ var _ = Describe("Start", func() {
 	})
 
 	Describe("when snapshots are present", func() {
-		var linuxBackend *linux_backend.LinuxBackend
 		var snapshotsPath string
 
 		BeforeEach(func() {
 			snapshotsPath = path.Join(tmpdir, "snapshots")
-
-			linuxBackend = linux_backend.New(fakeContainerPool, snapshotsPath)
 
 			err := os.MkdirAll(snapshotsPath, 0755)
 			Expect(err).ToNot(HaveOccurred())
@@ -109,6 +108,8 @@ var _ = Describe("Start", func() {
 		})
 
 		It("restores them via the container pool", func() {
+			linuxBackend := linux_backend.New(fakeContainerPool, snapshotsPath)
+
 			Expect(fakeContainerPool.RestoredSnapshots).To(BeEmpty())
 
 			err := linuxBackend.Start()
@@ -118,6 +119,8 @@ var _ = Describe("Start", func() {
 		})
 
 		It("registers the containers", func() {
+			linuxBackend := linux_backend.New(fakeContainerPool, snapshotsPath)
+
 			err := linuxBackend.Start()
 			Expect(err).ToNot(HaveOccurred())
 
@@ -127,22 +130,65 @@ var _ = Describe("Start", func() {
 			Expect(containers).To(HaveLen(2))
 		})
 
+		It("keeps them when pruning the container pool", func() {
+			linuxBackend := linux_backend.New(fakeContainerPool, snapshotsPath)
+
+			err := linuxBackend.Start()
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(fakeContainerPool.Pruned).To(BeTrue())
+			Expect(fakeContainerPool.KeptContainers).To(Equal(map[string]bool{
+				"handle-a": true,
+				"handle-b": true,
+			}))
+		})
+
 		Context("when restoring the container fails", func() {
-			disaster := errors.New("oh no!")
+			disaster := errors.New("failed to restore")
 
 			BeforeEach(func() {
 				fakeContainerPool.RestoreError = disaster
 			})
 
 			It("returns the error", func() {
+				linuxBackend := linux_backend.New(fakeContainerPool, snapshotsPath)
+
 				err := linuxBackend.Start()
 				Expect(err).To(Equal(disaster))
 			})
 		})
 	})
+
+	It("prunes the container pool", func() {
+		linuxBackend := linux_backend.New(fakeContainerPool, "")
+
+		err := linuxBackend.Start()
+		Expect(err).ToNot(HaveOccurred())
+
+		Expect(fakeContainerPool.Pruned).To(BeTrue())
+		Expect(fakeContainerPool.KeptContainers).To(Equal(map[string]bool{}))
+	})
+
+	Context("when pruning the container pool fails", func() {
+		disaster := errors.New("failed to prune")
+
+		BeforeEach(func() {
+			fakeContainerPool.PruneError = disaster
+		})
+
+		It("returns the error", func() {
+			linuxBackend := linux_backend.New(fakeContainerPool, "")
+
+			err := linuxBackend.Start()
+			Expect(err).To(Equal(disaster))
+		})
+	})
 })
 
 var _ = Describe("Stop", func() {
+	var fakeContainerPool *fake_container_pool.FakeContainerPool
+	var linuxBackend *linux_backend.LinuxBackend
+
 	BeforeEach(func() {
 		tmpdir, err := ioutil.TempDir(os.TempDir(), "warden-server-test")
 		Expect(err).ToNot(HaveOccurred())
@@ -186,6 +232,9 @@ var _ = Describe("Stop", func() {
 })
 
 var _ = Describe("Create", func() {
+	var fakeContainerPool *fake_container_pool.FakeContainerPool
+	var linuxBackend *linux_backend.LinuxBackend
+
 	BeforeEach(func() {
 		fakeContainerPool = fake_container_pool.New()
 		linuxBackend = linux_backend.New(fakeContainerPool, "")
@@ -217,7 +266,7 @@ var _ = Describe("Create", func() {
 	})
 
 	Context("when creating the container fails", func() {
-		disaster := errors.New("oh no!")
+		disaster := errors.New("failed to create")
 
 		BeforeEach(func() {
 			fakeContainerPool.CreateError = disaster
@@ -233,7 +282,7 @@ var _ = Describe("Create", func() {
 	})
 
 	Context("when starting the container fails", func() {
-		disaster := errors.New("oh no!")
+		disaster := errors.New("failed to start")
 
 		BeforeEach(func() {
 			fakeContainerPool.ContainerSetup = func(c *fake_backend.FakeContainer) {
@@ -262,6 +311,9 @@ var _ = Describe("Create", func() {
 })
 
 var _ = Describe("Destroy", func() {
+	var fakeContainerPool *fake_container_pool.FakeContainerPool
+	var linuxBackend *linux_backend.LinuxBackend
+
 	var container backend.Container
 
 	BeforeEach(func() {
@@ -301,7 +353,7 @@ var _ = Describe("Destroy", func() {
 	})
 
 	Context("when destroying the container fails", func() {
-		disaster := errors.New("oh no!")
+		disaster := errors.New("failed to destroy")
 
 		BeforeEach(func() {
 			fakeContainerPool.DestroyError = disaster
@@ -325,6 +377,9 @@ var _ = Describe("Destroy", func() {
 })
 
 var _ = Describe("Lookup", func() {
+	var fakeContainerPool *fake_container_pool.FakeContainerPool
+	var linuxBackend *linux_backend.LinuxBackend
+
 	BeforeEach(func() {
 		fakeContainerPool = fake_container_pool.New()
 		linuxBackend = linux_backend.New(fakeContainerPool, "")
@@ -352,6 +407,9 @@ var _ = Describe("Lookup", func() {
 })
 
 var _ = Describe("Containers", func() {
+	var fakeContainerPool *fake_container_pool.FakeContainerPool
+	var linuxBackend *linux_backend.LinuxBackend
+
 	BeforeEach(func() {
 		fakeContainerPool = fake_container_pool.New()
 		linuxBackend = linux_backend.New(fakeContainerPool, "")

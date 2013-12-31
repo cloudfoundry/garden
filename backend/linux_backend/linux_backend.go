@@ -23,6 +23,7 @@ type ContainerPool interface {
 	Create(backend.ContainerSpec) (Container, error)
 	Restore(io.Reader) (Container, error)
 	Destroy(Container) error
+	Prune(keep map[string]bool) error
 }
 
 type LinuxBackend struct {
@@ -76,7 +77,18 @@ func (b *LinuxBackend) Start() error {
 		}
 	}
 
-	return nil
+	keep := map[string]bool{}
+
+	containers, err := b.Containers()
+	if err != nil {
+		return err
+	}
+
+	for _, container := range containers {
+		keep[container.ID()] = true
+	}
+
+	return b.containerPool.Prune(keep)
 }
 
 func (b *LinuxBackend) Create(spec backend.ContainerSpec) (backend.Container, error) {

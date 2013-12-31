@@ -12,6 +12,10 @@ import (
 type FakeContainerPool struct {
 	DidSetup bool
 
+	Pruned         bool
+	PruneError     error
+	KeptContainers map[string]bool
+
 	CreateError  error
 	RestoreError error
 	DestroyError error
@@ -29,6 +33,17 @@ func New() *FakeContainerPool {
 
 func (p *FakeContainerPool) Setup() error {
 	p.DidSetup = true
+
+	return nil
+}
+
+func (p *FakeContainerPool) Prune(keep map[string]bool) error {
+	if p.PruneError != nil {
+		return p.PruneError
+	}
+
+	p.Pruned = true
+	p.KeptContainers = keep
 
 	return nil
 }

@@ -1,6 +1,8 @@
 package linux_container_pool
 
 import (
+	"bufio"
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -82,6 +84,50 @@ func (p *LinuxContainerPool) Setup() error {
 	err := p.runner.Run(setup)
 	if err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func (p *LinuxContainerPool) Prune(keep map[string]bool) error {
+	ls := &exec.Cmd{
+		Path: "ls",
+		Args: []string{p.depotPath},
+	}
+
+	out := new(bytes.Buffer)
+
+	ls.Stdout = out
+
+	err := p.runner.Run(ls)
+	if err != nil {
+		return err
+	}
+
+	reader := bufio.NewReader(out)
+
+	for {
+		container, err := reader.ReadString('\n')
+		if err != nil {
+			break
+		}
+
+		// trim linebreak
+		id := container[0 : len(container)-1]
+
+		if id == "tmp" {
+			continue
+		}
+
+		_, found := keep[id]
+		if found {
+			continue
+		}
+
+		err = p.destroy(id)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -224,16 +270,7 @@ func (p *LinuxContainerPool) Restore(snapshot io.Reader) (linux_backend.Containe
 }
 
 func (p *LinuxContainerPool) Destroy(container linux_backend.Container) error {
-	destroy := &exec.Cmd{
-		Path: path.Join(p.rootPath, "destroy.sh"),
-		Args: []string{path.Join(p.depotPath, container.ID())},
-		Env: []string{
-			"id=" + container.ID(),
-			"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
-		},
-	}
-
-	err := p.runner.Run(destroy)
+	err := p.destroy(container.ID())
 	if err != nil {
 		return err
 	}
@@ -251,6 +288,15 @@ func (p *LinuxContainerPool) Destroy(container linux_backend.Container) error {
 	p.networkPool.Release(resources.Network)
 
 	return nil
+}
+
+func (p *LinuxContainerPool) destroy(id string) error {
+	destroy := &exec.Cmd{
+		Path: path.Join(p.rootPath, "destroy.sh"),
+		Args: []string{path.Join(p.depotPath, id)},
+	}
+
+	return p.runner.Run(destroy)
 }
 
 func (p *LinuxContainerPool) generateContainerID() string {

@@ -99,7 +99,7 @@ func NewFakeContainer(spec backend.ContainerSpec) *FakeContainer {
 }
 
 func (c *FakeContainer) ID() string {
-	return "some-container-id"
+	return c.Spec.Handle
 }
 
 func (c *FakeContainer) Handle() string {
