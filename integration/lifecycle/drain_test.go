@@ -58,7 +58,7 @@ var _ = Describe("Through a restart", func() {
 			stream, err := client.Stream(handle, jobID)
 			Expect(err).ToNot(HaveOccurred())
 
-			Expect((<-stream).GetData()).To(Equal("hi\n"))
+			Expect((<-stream).GetData()).To(ContainSubstring("hi\n"))
 
 			close(done)
 		}, 10.0)
