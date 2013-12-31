@@ -256,7 +256,10 @@ var _ = Describe("Restoring jobs", func() {
 		Eventually(fakeRunner).Should(HaveExecutedSerially(
 			fake_command_runner.CommandSpec{
 				Path: binPath("iomux-link"),
-				Args: []string{"/depot/some-id/jobs/2"},
+				Args: []string{
+					"-w", "/depot/some-id/jobs/2/cursors",
+					"/depot/some-id/jobs/2",
+				},
 			},
 		))
 	})

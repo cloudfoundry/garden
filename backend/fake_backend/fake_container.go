@@ -18,6 +18,8 @@ type FakeContainer struct {
 	stopMutex    *sync.RWMutex
 	StopCallback func()
 
+	CleanedUp bool
+
 	CopyInError error
 	CopiedIn    [][]string
 
@@ -317,4 +319,8 @@ func (c *FakeContainer) NetOut(network string, port uint32) error {
 	c.PermittedOut = append(c.PermittedOut, NetOutSpec{network, port})
 
 	return nil
+}
+
+func (c *FakeContainer) Cleanup() {
+	c.CleanedUp = true
 }

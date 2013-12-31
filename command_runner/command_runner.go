@@ -14,6 +14,7 @@ type CommandRunner interface {
 	Start(*exec.Cmd) error
 	Wait(*exec.Cmd) error
 	Kill(*exec.Cmd) error
+	Signal(*exec.Cmd, os.Signal) error
 	ServerRoot() string
 }
 
@@ -97,6 +98,14 @@ func (r *RealCommandRunner) Kill(cmd *exec.Cmd) error {
 	}
 
 	return cmd.Process.Kill()
+}
+
+func (r *RealCommandRunner) Signal(cmd *exec.Cmd, signal os.Signal) error {
+	if cmd.Process == nil {
+		return CommandNotRunningError{cmd}
+	}
+
+	return cmd.Process.Signal(signal)
 }
 
 func (r *RealCommandRunner) ServerRoot() string {

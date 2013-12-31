@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math"
 	"net"
+	"os"
 	"os/exec"
 	"time"
 
@@ -274,7 +275,10 @@ var _ = Describe("Linux containers", func() {
 			fakeRunner.WhenRunning(
 				fake_command_runner.CommandSpec{
 					Path: "/depot/some-id/bin/iomux-link",
-					Args: []string{"/depot/some-id/jobs/0"},
+					Args: []string{
+						"-w", "/depot/some-id/jobs/0/cursors",
+						"/depot/some-id/jobs/0",
+					},
 				},
 				func(cmd *exec.Cmd) error {
 					cmd.Stdout.Write([]byte("hello\n"))
@@ -286,7 +290,10 @@ var _ = Describe("Linux containers", func() {
 			fakeRunner.WhenRunning(
 				fake_command_runner.CommandSpec{
 					Path: "/depot/some-id/bin/iomux-link",
-					Args: []string{"/depot/some-id/jobs/1"},
+					Args: []string{
+						"-w", "/depot/some-id/jobs/1/cursors",
+						"/depot/some-id/jobs/1",
+					},
 				},
 				func(cmd *exec.Cmd) error {
 					cmd.Stdout.Write([]byte("goodbye\n"))
@@ -653,6 +660,79 @@ var _ = Describe("Linux containers", func() {
 				Expect(fakeRunner).To(HaveKilled(fake_command_runner.CommandSpec{
 					Path: "/depot/some-id/bin/oom",
 				}))
+			})
+		})
+	})
+
+	Describe("Cleaning up", func() {
+		Context("when the container has an oom notifier running", func() {
+			BeforeEach(func() {
+				err := container.LimitMemory(backend.MemoryLimits{
+					LimitInBytes: 42,
+				})
+
+				Expect(err).ToNot(HaveOccurred())
+			})
+
+			It("stops it", func() {
+				container.Cleanup()
+
+				Expect(fakeRunner).To(HaveKilled(fake_command_runner.CommandSpec{
+					Path: "/depot/some-id/bin/oom",
+				}))
+			})
+		})
+
+		Context("when there are active jobs", func() {
+			linked := make(chan bool)
+
+			BeforeEach(func() {
+				setupSuccessfulSpawn()
+
+				fakeRunner.WhenRunning(
+					fake_command_runner.CommandSpec{
+						Path: "/depot/some-id/bin/iomux-link",
+					}, func(*exec.Cmd) error {
+						linked <- true
+						select {}
+						return nil
+					},
+				)
+
+				_, err := container.Spawn(backend.JobSpec{AutoLink: true})
+				Expect(err).ToNot(HaveOccurred())
+
+				_, err = container.Spawn(backend.JobSpec{AutoLink: true})
+				Expect(err).ToNot(HaveOccurred())
+			})
+
+			It("interrupts their iomux-link", func() {
+				<-linked
+				<-linked
+
+				container.Cleanup()
+
+				Expect(fakeRunner).To(HaveSignalled(
+					fake_command_runner.CommandSpec{
+						Path: "/depot/some-id/bin/iomux-link",
+						Args: []string{
+							"-w", "/depot/some-id/jobs/0/cursors",
+							"/depot/some-id/jobs/0",
+						},
+					},
+					os.Interrupt,
+				))
+
+				Expect(fakeRunner).To(HaveSignalled(
+					fake_command_runner.CommandSpec{
+						Path: "/depot/some-id/bin/iomux-link",
+						Args: []string{
+							"-w", "/depot/some-id/jobs/1/cursors",
+							"/depot/some-id/jobs/1",
+						},
+					},
+					os.Interrupt,
+				))
 			})
 		})
 	})

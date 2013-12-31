@@ -107,6 +107,7 @@ func (s *WardenServer) Stop() {
 	}
 
 	for _, container := range containers {
+		container.Cleanup()
 		s.saveSnapshot(container)
 	}
 }

@@ -310,6 +310,14 @@ func (c *LinuxContainer) Stop(kill bool) error {
 	return nil
 }
 
+func (c *LinuxContainer) Cleanup() {
+	c.stopOomNotifier()
+
+	for _, job := range c.jobTracker.ActiveJobs() {
+		job.Unlink()
+	}
+}
+
 func (c *LinuxContainer) Info() (backend.ContainerInfo, error) {
 	log.Println(c.id, "info")
 

@@ -1,11 +1,15 @@
 package lifecycle_test
 
 import (
+	"bytes"
 	"fmt"
+	"io"
 	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+
+	"github.com/vito/gordon/warden"
 )
 
 var _ = Describe("Through a restart", func() {
@@ -77,6 +81,43 @@ var _ = Describe("Through a restart", func() {
 			jobID2 := res.GetJobId()
 
 			Expect(jobID1).ToNot(Equal(jobID2))
+		})
+
+		FContext("that prints monotonously increasing output", func() {
+			It("does not duplicate its output on reconnect", func(done Done) {
+				receivedNumbers := make(chan int, 2048)
+
+				res, err := client.Spawn(
+					handle,
+					"for i in $(seq 10); do echo $i; sleep 0.5; done; echo goodbye; while true; do sleep 1; done",
+					false,
+				)
+				Expect(err).ToNot(HaveOccurred())
+
+				jobID := res.GetJobId()
+
+				stream, err := client.Stream(handle, jobID)
+				Expect(err).ToNot(HaveOccurred())
+
+				go streamNumbersTo(receivedNumbers, stream)
+
+				time.Sleep(500 * time.Millisecond)
+
+				restartServer()
+
+				stream, err = client.Stream(handle, jobID)
+				Expect(err).ToNot(HaveOccurred())
+
+				go streamNumbersTo(receivedNumbers, stream)
+
+				lastNum := 0
+				for num := range receivedNumbers {
+					Expect(num).To(BeNumerically(">", lastNum))
+					lastNum = num
+				}
+
+				close(done)
+			}, 10.0)
 		})
 
 		Context("with output discarded", func() {
@@ -241,9 +282,35 @@ var _ = Describe("Through a restart", func() {
 			idResB, err := client.Run(createRes.GetHandle(), "id -u")
 			Expect(err).ToNot(HaveOccurred())
 
-			fmt.Println("A", "B", idResA, idResB)
-
 			Expect(idResB.GetStdout()).ToNot(Equal(idResA.GetStdout()))
 		})
 	})
 })
+
+func streamNumbersTo(destination chan<- int, source <-chan *warden.StreamResponse) {
+	for {
+		out, ok := <-source
+		if !ok {
+			break
+		}
+
+		buf := bytes.NewBufferString(out.GetData())
+
+		var num int
+
+		for {
+			_, err := fmt.Fscanf(buf, "%d\n", &num)
+			if err == io.EOF {
+				break
+			}
+
+			// got goodbye
+			if err != nil {
+				close(destination)
+				return
+			}
+
+			destination <- num
+		}
+	}
+}

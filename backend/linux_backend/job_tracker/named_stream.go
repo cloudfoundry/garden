@@ -8,9 +8,9 @@ import (
 )
 
 type namedStream struct {
-	job         *Job
-	name        string
-	discard     bool
+	job     *Job
+	name    string
+	discard bool
 
 	destination *bytes.Buffer
 

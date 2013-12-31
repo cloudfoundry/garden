@@ -22,6 +22,8 @@ type Job struct {
 
 	waitingLinks *sync.Cond
 	runningLink  *sync.Once
+	link         *exec.Cmd
+	unlinked     bool
 
 	streams    []chan backend.JobStream
 	streamLock *sync.RWMutex
@@ -145,6 +147,15 @@ func (j *Job) Link() (uint32, []byte, []byte, error) {
 	return j.exitStatus, j.stdout.Bytes(), j.stderr.Bytes(), nil
 }
 
+func (j *Job) Unlink() error {
+	if j.link != nil {
+		j.unlinked = true
+		return j.runner.Signal(j.link, os.Interrupt)
+	}
+
+	return nil
+}
+
 func (j *Job) Stream() chan backend.JobStream {
 	return j.registerStream()
 }
@@ -153,19 +164,25 @@ func (j *Job) runLinker() {
 	linkPath := path.Join(j.containerPath, "bin", "iomux-link")
 	jobDir := path.Join(j.containerPath, "jobs", fmt.Sprintf("%d", j.ID))
 
-	link := &exec.Cmd{
+	j.link = &exec.Cmd{
 		Path:   linkPath,
-		Args:   []string{jobDir},
+		Args:   []string{"-w", path.Join(jobDir, "cursors"), jobDir},
 		Stdout: j.stdout,
 		Stderr: j.stderr,
 	}
 
-	j.runner.Run(link)
+	j.runner.Run(j.link)
+
+	if j.unlinked {
+		// iomux-link was killed on shutdown via .Unlink; command didn't
+		// actually exit, so just block forever until server dies and re-links
+		select {}
+	}
 
 	exitStatus := uint32(255)
 
-	if link.ProcessState != nil {
-		exitStatus = uint32(link.ProcessState.Sys().(syscall.WaitStatus).ExitStatus())
+	if j.link.ProcessState != nil {
+		exitStatus = uint32(j.link.ProcessState.Sys().(syscall.WaitStatus).ExitStatus())
 	}
 
 	j.exitStatus = exitStatus

@@ -64,6 +64,7 @@ func (r *GardenRunner) Start() error {
 		"--depot", r.DepotPath,
 		"--rootfs", r.RootFSPath,
 		"--snapshots", r.SnapshotsPath,
+		"--debug",
 	)
 
 	garden.Stdout = os.Stdout

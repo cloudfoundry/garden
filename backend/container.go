@@ -10,6 +10,7 @@ type Container interface {
 	Handle() string
 
 	Snapshot(io.Writer) error
+	Cleanup()
 
 	Start() error
 	Stop(kill bool) error
