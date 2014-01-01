@@ -66,12 +66,17 @@ func (b *LinuxBackend) Setup() error {
 
 func (b *LinuxBackend) Start() error {
 	if b.snapshotsPath != "" {
-		err := os.MkdirAll(b.snapshotsPath, 0755)
-		if err != nil {
-			return err
+		_, err := os.Stat(b.snapshotsPath)
+		if err == nil {
+			err = b.restoreSnapshots()
+			if err != nil {
+				return err
+			}
+
+			os.RemoveAll(b.snapshotsPath)
 		}
 
-		err = b.restoreSnapshots()
+		err = os.MkdirAll(b.snapshotsPath, 0755)
 		if err != nil {
 			return err
 		}

@@ -118,6 +118,21 @@ var _ = Describe("Start", func() {
 			Expect(fakeContainerPool.RestoredSnapshots).To(HaveLen(2))
 		})
 
+		It("removes the snapshots", func() {
+			linuxBackend := linux_backend.New(fakeContainerPool, snapshotsPath)
+
+			Expect(fakeContainerPool.RestoredSnapshots).To(BeEmpty())
+
+			err := linuxBackend.Start()
+			Expect(err).ToNot(HaveOccurred())
+
+			_, err = os.Stat(path.Join(snapshotsPath, "some-id"))
+			Expect(err).To(HaveOccurred())
+
+			_, err = os.Stat(path.Join(snapshotsPath, "some-other-id"))
+			Expect(err).To(HaveOccurred())
+		})
+
 		It("registers the containers", func() {
 			linuxBackend := linux_backend.New(fakeContainerPool, snapshotsPath)
 
