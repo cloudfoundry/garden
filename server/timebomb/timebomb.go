@@ -38,6 +38,7 @@ func (b *TimeBomb) Strap() {
 			select {
 			case <-time.After(b.countdown):
 				b.detonate()
+				return
 			case <-b.reset:
 			case <-b.defuse:
 				return

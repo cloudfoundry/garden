@@ -30,6 +30,33 @@ var _ = Describe("THE TIMEBOMB", func() {
 			Expect((<-detonated).Sub(before)).To(BeNumerically(">=", countdown))
 		})
 
+		It("DOES NOT DETONATE AGAIN", func() {
+			detonated := make(chan time.Time)
+
+			countdown := 100 * time.Millisecond
+
+			bomb := timebomb.New(
+				countdown,
+				func() {
+					detonated <- time.Now()
+				},
+			)
+
+			before := time.Now()
+
+			bomb.Strap()
+
+			Expect((<-detonated).Sub(before)).To(BeNumerically(">=", countdown))
+
+			delay := 50 * time.Millisecond
+
+			select {
+			case <-detonated:
+				Fail("MILLIONS ARE DEAD...AGAIN")
+			case <-time.After(countdown + delay):
+			}
+		})
+
 		Context("AND THEN DEFUSED", func() {
 			It("DOES NOT DETONATE", func() {
 				detonated := make(chan time.Time)
