@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"os/exec"
 	"path"
 	"strconv"
@@ -124,6 +125,8 @@ func (p *LinuxContainerPool) Prune(keep map[string]bool) error {
 			continue
 		}
 
+		log.Println("pruning", id)
+
 		err = p.destroy(id)
 		if err != nil {
 			return err
@@ -216,6 +219,9 @@ func (p *LinuxContainerPool) Restore(snapshot io.Reader) (linux_backend.Containe
 	}
 
 	id := containerSnapshot.ID
+
+	log.Println("restoring", id)
+
 	resources := &containerSnapshot.Resources
 
 	err = p.uidPool.Remove(resources.UID)

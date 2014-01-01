@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"os"
 	"path"
 	"sync"
@@ -178,6 +179,8 @@ func (b *LinuxBackend) restoreSnapshots() error {
 	for _, entry := range entries {
 		snapshot := path.Join(b.snapshotsPath, entry.Name())
 
+		log.Println("loading snapshot for", entry.Name())
+
 		file, err := os.Open(snapshot)
 		if err != nil {
 			return err
@@ -196,6 +199,8 @@ func (b *LinuxBackend) saveSnapshot(container Container) error {
 	if b.snapshotsPath == "" {
 		return nil
 	}
+
+	log.Println("saving snapshot for", container.ID())
 
 	tmpfile, err := ioutil.TempFile(os.TempDir(), "snapshot-"+container.ID())
 	if err != nil {
