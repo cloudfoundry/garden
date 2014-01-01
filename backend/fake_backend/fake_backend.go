@@ -2,6 +2,7 @@ package fake_backend
 
 import (
 	"io"
+	"sync"
 
 	"github.com/vito/garden/backend"
 )
@@ -18,8 +19,11 @@ type FakeBackend struct {
 	DestroyError    error
 	ContainersError error
 
-	CreatedContainers  map[string]*FakeContainer
-	RestoredContainers []io.Reader
+	CreatedContainers   map[string]*FakeContainer
+	DestroyedContainers []string
+	RestoredContainers  []io.Reader
+
+	sync.RWMutex
 }
 
 type UnknownHandleError struct {
@@ -67,6 +71,9 @@ func (b *FakeBackend) Create(spec backend.ContainerSpec) (backend.Container, err
 		container = NewFakeContainer(spec)
 	}
 
+	b.Lock()
+	defer b.Unlock()
+
 	b.CreatedContainers[container.Handle()] = container
 
 	return container, nil
@@ -76,6 +83,9 @@ func (b *FakeBackend) Restore(snapshot io.Reader) (backend.Container, error) {
 	if b.RestoreError != nil {
 		return nil, b.RestoreError
 	}
+
+	b.Lock()
+	defer b.Unlock()
 
 	b.RestoredContainers = append(b.RestoredContainers, snapshot)
 
@@ -87,7 +97,12 @@ func (b *FakeBackend) Destroy(handle string) error {
 		return b.DestroyError
 	}
 
+	b.Lock()
+	defer b.Unlock()
+
 	delete(b.CreatedContainers, handle)
+
+	b.DestroyedContainers = append(b.DestroyedContainers, handle)
 
 	return nil
 }
@@ -98,6 +113,9 @@ func (b *FakeBackend) Containers() (containers []backend.Container, err error) {
 		return
 	}
 
+	b.RLock()
+	defer b.RUnlock()
+
 	for _, c := range b.CreatedContainers {
 		containers = append(containers, c)
 	}
@@ -106,6 +124,9 @@ func (b *FakeBackend) Containers() (containers []backend.Container, err error) {
 }
 
 func (b *FakeBackend) Lookup(handle string) (backend.Container, error) {
+	b.RLock()
+	defer b.RUnlock()
+
 	container, found := b.CreatedContainers[handle]
 	if !found {
 		return nil, UnknownHandleError{handle}

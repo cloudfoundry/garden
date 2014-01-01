@@ -1,12 +1,16 @@
 package linux_backend
 
 import (
+	"time"
+
 	"github.com/vito/garden/backend"
 )
 
 type ContainerSnapshot struct {
 	ID     string
 	Handle string
+
+	GraceTime time.Duration
 
 	State  string
 	Events []string

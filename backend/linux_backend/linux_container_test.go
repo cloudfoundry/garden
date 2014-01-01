@@ -61,6 +61,7 @@ var _ = Describe("Linux containers", func() {
 			"some-id",
 			"some-handle",
 			"/depot/some-id",
+			1*time.Second,
 			containerResources,
 			fakePortPool,
 			fakeRunner,
@@ -174,6 +175,8 @@ var _ = Describe("Linux containers", func() {
 
 			Expect(snapshot.ID).To(Equal("some-id"))
 			Expect(snapshot.Handle).To(Equal("some-handle"))
+
+			Expect(snapshot.GraceTime).To(Equal(1 * time.Second))
 
 			Expect(snapshot.State).To(Equal("stopped"))
 			Expect(snapshot.Events).To(Equal([]string{"out of memory"}))

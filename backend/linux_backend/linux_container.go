@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/vito/garden/backend"
 	"github.com/vito/garden/backend/linux_backend/bandwidth_manager"
@@ -26,6 +27,8 @@ type LinuxContainer struct {
 	id     string
 	handle string
 	path   string
+
+	graceTime time.Duration
 
 	state      State
 	stateMutex sync.RWMutex
@@ -108,6 +111,7 @@ const (
 
 func NewLinuxContainer(
 	id, handle, path string,
+	graceTime time.Duration,
 	resources *Resources,
 	portPool PortPool,
 	runner command_runner.CommandRunner,
@@ -119,6 +123,8 @@ func NewLinuxContainer(
 		id:     id,
 		handle: handle,
 		path:   path,
+
+		graceTime: graceTime,
 
 		state:  StateBorn,
 		events: []string{},
@@ -143,6 +149,10 @@ func (c *LinuxContainer) ID() string {
 
 func (c *LinuxContainer) Handle() string {
 	return c.handle
+}
+
+func (c *LinuxContainer) GraceTime() time.Duration {
+	return c.graceTime
 }
 
 func (c *LinuxContainer) State() State {
@@ -199,6 +209,8 @@ func (c *LinuxContainer) Snapshot(out io.Writer) error {
 		ContainerSnapshot{
 			ID:     c.id,
 			Handle: c.handle,
+
+			GraceTime: c.graceTime,
 
 			State:  string(c.State()),
 			Events: c.Events(),

@@ -15,16 +15,21 @@ import (
 	"github.com/vito/garden/backend"
 	"github.com/vito/garden/message_reader"
 	protocol "github.com/vito/garden/protocol"
+	"github.com/vito/garden/server/timebomb"
 )
 
 type WardenServer struct {
-	socketPath string
-	backend    backend.Backend
+	socketPath         string
+	containerGraceTime time.Duration
+	backend            backend.Backend
 
 	listener      net.Listener
 	stopping      bool
 	stoppingMutex *sync.RWMutex
 	openRequests  *sync.WaitGroup
+
+	timeBombs      map[string]*timebomb.TimeBomb
+	timeBombsMutex *sync.RWMutex
 }
 
 type UnhandledRequestError struct {
@@ -35,13 +40,21 @@ func (e UnhandledRequestError) Error() string {
 	return fmt.Sprintf("unhandled request type: %T", e.Request)
 }
 
-func New(socketPath string, backend backend.Backend) *WardenServer {
+func New(
+	socketPath string,
+	containerGraceTime time.Duration,
+	backend backend.Backend,
+) *WardenServer {
 	return &WardenServer{
-		socketPath: socketPath,
-		backend:    backend,
+		socketPath:         socketPath,
+		containerGraceTime: containerGraceTime,
+		backend:            backend,
 
 		stoppingMutex: new(sync.RWMutex),
 		openRequests:  new(sync.WaitGroup),
+
+		timeBombs:      make(map[string]*timebomb.TimeBomb),
+		timeBombsMutex: new(sync.RWMutex),
 	}
 }
 
@@ -69,6 +82,15 @@ func (s *WardenServer) Start() error {
 	// the server does not handle a request before stopping
 	s.openRequests.Add(1)
 
+	containers, err := s.backend.Containers()
+	if err != nil {
+		return err
+	}
+
+	for _, container := range containers {
+		s.strapTimeBomb(container)
+	}
+
 	go s.handleConnections(listener)
 
 	return nil
@@ -82,6 +104,65 @@ func (s *WardenServer) Stop() {
 	s.listener.Close()
 	s.openRequests.Wait()
 	s.backend.Stop()
+}
+
+func (s *WardenServer) strapTimeBomb(container backend.Container) {
+	if container.GraceTime() == 0 {
+		return
+	}
+
+	s.timeBombsMutex.Lock()
+	defer s.timeBombsMutex.Unlock()
+
+	bomb := timebomb.New(
+		container.GraceTime(),
+		func() {
+			log.Printf("reaping %s (idle for %s)\n", container.Handle(), container.GraceTime())
+			s.backend.Destroy(container.Handle())
+		},
+	)
+
+	s.timeBombs[container.Handle()] = bomb
+
+	bomb.Strap()
+}
+
+func (s *WardenServer) pauseTimeBomb(container backend.Container) {
+	s.timeBombsMutex.RLock()
+	defer s.timeBombsMutex.RUnlock()
+
+	bomb, found := s.timeBombs[container.Handle()]
+	if !found {
+		return
+	}
+
+	bomb.Pause()
+}
+
+func (s *WardenServer) defuseTimeBomb(handle string) {
+	s.timeBombsMutex.Lock()
+	defer s.timeBombsMutex.Unlock()
+
+	bomb, found := s.timeBombs[handle]
+	if !found {
+		return
+	}
+
+	bomb.Defuse()
+
+	delete(s.timeBombs, handle)
+}
+
+func (s *WardenServer) unpauseTimeBomb(container backend.Container) {
+	s.timeBombsMutex.RLock()
+	defer s.timeBombsMutex.RUnlock()
+
+	bomb, found := s.timeBombs[container.Handle()]
+	if !found {
+		return
+	}
+
+	bomb.Unpause()
 }
 
 func (s *WardenServer) handleConnections(listener net.Listener) {
@@ -235,9 +316,15 @@ func (s *WardenServer) handleCreate(create *protocol.CreateRequest) (proto.Messa
 		bindMounts = append(bindMounts, bindMount)
 	}
 
+	graceTime := s.containerGraceTime
+
+	if create.GraceTime != nil {
+		graceTime = time.Duration(create.GetGraceTime()) * time.Second
+	}
+
 	container, err := s.backend.Create(backend.ContainerSpec{
 		Handle:     create.GetHandle(),
-		GraceTime:  time.Duration(create.GetGraceTime()) * time.Second,
+		GraceTime:  graceTime,
 		RootFSPath: create.GetRootfs(),
 		Network:    create.GetNetwork(),
 		BindMounts: bindMounts,
@@ -246,6 +333,8 @@ func (s *WardenServer) handleCreate(create *protocol.CreateRequest) (proto.Messa
 	if err != nil {
 		return nil, err
 	}
+
+	s.strapTimeBomb(container)
 
 	return &protocol.CreateResponse{
 		Handle: proto.String(container.Handle()),
@@ -259,6 +348,8 @@ func (s *WardenServer) handleDestroy(destroy *protocol.DestroyRequest) (proto.Me
 	if err != nil {
 		return nil, err
 	}
+
+	s.defuseTimeBomb(handle)
 
 	return &protocol.DestroyResponse{}, nil
 }
@@ -289,6 +380,9 @@ func (s *WardenServer) handleCopyOut(copyOut *protocol.CopyOutRequest) (proto.Me
 		return nil, err
 	}
 
+	s.pauseTimeBomb(container)
+	defer s.unpauseTimeBomb(container)
+
 	err = container.CopyOut(srcPath, dstPath, owner)
 	if err != nil {
 		return nil, err
@@ -306,6 +400,9 @@ func (s *WardenServer) handleStop(request *protocol.StopRequest) (proto.Message,
 	if err != nil {
 		return nil, err
 	}
+
+	s.pauseTimeBomb(container)
+	defer s.unpauseTimeBomb(container)
 
 	if background {
 		go container.Stop(kill)
@@ -329,6 +426,9 @@ func (s *WardenServer) handleCopyIn(copyIn *protocol.CopyInRequest) (proto.Messa
 		return nil, err
 	}
 
+	s.pauseTimeBomb(container)
+	defer s.unpauseTimeBomb(container)
+
 	err = container.CopyIn(srcPath, dstPath)
 	if err != nil {
 		return nil, err
@@ -347,6 +447,9 @@ func (s *WardenServer) handleSpawn(request *protocol.SpawnRequest) (proto.Messag
 	if err != nil {
 		return nil, err
 	}
+
+	s.pauseTimeBomb(container)
+	defer s.unpauseTimeBomb(container)
 
 	jobSpec := backend.JobSpec{
 		Script:        script,
@@ -376,6 +479,9 @@ func (s *WardenServer) handleLink(link *protocol.LinkRequest) (proto.Message, er
 		return nil, err
 	}
 
+	s.pauseTimeBomb(container)
+	defer s.unpauseTimeBomb(container)
+
 	jobResult, err := container.Link(jobID)
 	if err != nil {
 		return nil, err
@@ -398,6 +504,9 @@ func (s *WardenServer) handleRun(request *protocol.RunRequest) (proto.Message, e
 	if err != nil {
 		return nil, err
 	}
+
+	s.pauseTimeBomb(container)
+	defer s.unpauseTimeBomb(container)
 
 	jobSpec := backend.JobSpec{
 		Script:        script,
@@ -437,6 +546,9 @@ func (s *WardenServer) handleLimitBandwidth(request *protocol.LimitBandwidthRequ
 		return nil, err
 	}
 
+	s.pauseTimeBomb(container)
+	defer s.unpauseTimeBomb(container)
+
 	err = container.LimitBandwidth(backend.BandwidthLimits{
 		RateInBytesPerSecond:      rate,
 		BurstRateInBytesPerSecond: burst,
@@ -464,6 +576,9 @@ func (s *WardenServer) handleLimitMemory(request *protocol.LimitMemoryRequest) (
 	if err != nil {
 		return nil, err
 	}
+
+	s.pauseTimeBomb(container)
+	defer s.unpauseTimeBomb(container)
 
 	if request.LimitInBytes != nil {
 		err = container.LimitMemory(backend.MemoryLimits{
@@ -537,6 +652,9 @@ func (s *WardenServer) handleLimitDisk(request *protocol.LimitDiskRequest) (prot
 		return nil, err
 	}
 
+	s.pauseTimeBomb(container)
+	defer s.unpauseTimeBomb(container)
+
 	if settingLimit {
 		err = container.LimitDisk(backend.DiskLimits{
 			BlockSoft: blockSoft,
@@ -575,6 +693,9 @@ func (s *WardenServer) handleLimitCpu(request *protocol.LimitCpuRequest) (proto.
 		return nil, err
 	}
 
+	s.pauseTimeBomb(container)
+	defer s.unpauseTimeBomb(container)
+
 	if request.LimitInShares != nil {
 		err = container.LimitCPU(backend.CPULimits{
 			LimitInShares: limitInShares,
@@ -604,6 +725,9 @@ func (s *WardenServer) handleNetIn(request *protocol.NetInRequest) (proto.Messag
 		return nil, err
 	}
 
+	s.pauseTimeBomb(container)
+	defer s.unpauseTimeBomb(container)
+
 	hostPort, containerPort, err = container.NetIn(hostPort, containerPort)
 	if err != nil {
 		return nil, err
@@ -625,6 +749,9 @@ func (s *WardenServer) handleNetOut(request *protocol.NetOutRequest) (proto.Mess
 		return nil, err
 	}
 
+	s.pauseTimeBomb(container)
+	defer s.unpauseTimeBomb(container)
+
 	err = container.NetOut(network, port)
 	if err != nil {
 		return nil, err
@@ -641,6 +768,9 @@ func (s *WardenServer) handleStream(conn net.Conn, request *protocol.StreamReque
 	if err != nil {
 		return nil, err
 	}
+
+	s.pauseTimeBomb(container)
+	defer s.unpauseTimeBomb(container)
 
 	stream, err := container.Stream(jobID)
 	if err != nil {
@@ -674,6 +804,9 @@ func (s *WardenServer) handleInfo(request *protocol.InfoRequest) (proto.Message,
 	if err != nil {
 		return nil, err
 	}
+
+	s.pauseTimeBomb(container)
+	defer s.unpauseTimeBomb(container)
 
 	info, err := container.Info()
 	if err != nil {

@@ -285,6 +285,37 @@ var _ = Describe("Through a restart", func() {
 			Expect(idResB.GetStdout()).ToNot(Equal(idResA.GetStdout()))
 		})
 	})
+
+	Describe("a container's grace time", func() {
+		BeforeEach(func() {
+			err := runner.Stop()
+			Expect(err).ToNot(HaveOccurred())
+
+			err = runner.Start("--containerGraceTime", "5")
+			Expect(err).ToNot(HaveOccurred())
+
+			res, err := client.Create()
+			Expect(err).ToNot(HaveOccurred())
+
+			handle = res.GetHandle()
+		})
+
+		It("is still enforced", func() {
+			restartServer()
+
+			listRes, err := client.List()
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(listRes.GetHandles()).To(ContainElement(handle))
+
+			time.Sleep(6 * time.Second)
+
+			listRes, err = client.List()
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(listRes.GetHandles()).ToNot(ContainElement(handle))
+		})
+	})
 })
 
 func streamNumbersTo(destination chan<- int, source <-chan *warden.StreamResponse) {

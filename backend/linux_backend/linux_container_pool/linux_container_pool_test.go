@@ -7,6 +7,7 @@ import (
 	"io"
 	"net"
 	"os/exec"
+	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -108,6 +109,15 @@ var _ = Describe("Linux Container pool", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			Expect(container1.ID()).ToNot(Equal(container2.ID()))
+		})
+
+		It("creates containers with the correct grace time", func() {
+			container, err := pool.Create(backend.ContainerSpec{
+				GraceTime: 1 * time.Second,
+			})
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(container.GraceTime()).To(Equal(1 * time.Second))
 		})
 
 		It("executes create.sh with the correct args and environment", func() {
@@ -324,6 +334,8 @@ var _ = Describe("Linux Container pool", func() {
 					ID:     "some-restored-id",
 					Handle: "some-restored-handle",
 
+					GraceTime: 1 * time.Second,
+
 					State: "some-restored-state",
 					Events: []string{
 						"some-restored-event",
@@ -346,6 +358,7 @@ var _ = Describe("Linux Container pool", func() {
 
 			Expect(container.ID()).To(Equal("some-restored-id"))
 			Expect(container.Handle()).To(Equal("some-restored-handle"))
+			Expect(container.GraceTime()).To(Equal(1 * time.Second))
 
 			linuxContainer := container.(*linux_backend.LinuxContainer)
 

@@ -9,6 +9,7 @@ import (
 	"path"
 	"runtime"
 	"syscall"
+	"time"
 
 	"github.com/vito/garden/backend"
 	"github.com/vito/garden/backend/fake_backend"
@@ -75,6 +76,12 @@ var disableQuotas = flag.Bool(
 	"disableQuotas",
 	false,
 	"disable disk quotas",
+)
+
+var containerGraceTime = flag.Int(
+	"containerGraceTime",
+	0,
+	"time (in seconds) after which to destroy idle containers",
 )
 
 var debug = flag.Bool(
@@ -167,7 +174,9 @@ func main() {
 
 	log.Println("starting server; listening on", *socketFilePath)
 
-	wardenServer := server.New(*socketFilePath, backend)
+	graceTime := time.Duration(*containerGraceTime) * time.Second
+
+	wardenServer := server.New(*socketFilePath, graceTime, backend)
 
 	err = wardenServer.Start()
 	if err != nil {

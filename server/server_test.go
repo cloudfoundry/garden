@@ -29,7 +29,7 @@ var _ = Describe("The Warden server", func() {
 
 		socketPath := path.Join(tmpdir, "warden.sock")
 
-		wardenServer := server.New(socketPath, fake_backend.New())
+		wardenServer := server.New(socketPath, 0, fake_backend.New())
 
 		err = wardenServer.Start()
 		Expect(err).ToNot(HaveOccurred())
@@ -53,7 +53,7 @@ var _ = Describe("The Warden server", func() {
 		socket.WriteString("oops")
 		socket.Close()
 
-		wardenServer := server.New(socketPath, fake_backend.New())
+		wardenServer := server.New(socketPath, 0, fake_backend.New())
 
 		err = wardenServer.Start()
 		Expect(err).ToNot(HaveOccurred())
@@ -67,12 +67,44 @@ var _ = Describe("The Warden server", func() {
 
 		fakeBackend := fake_backend.New()
 
-		wardenServer := server.New(socketPath, fakeBackend)
+		wardenServer := server.New(socketPath, 0, fakeBackend)
 
 		err = wardenServer.Start()
 		Expect(err).ToNot(HaveOccurred())
 
 		Expect(fakeBackend.Started).To(BeTrue())
+	})
+
+	It("destroys containers that have been idle for their grace time", func() {
+		tmpdir, err := ioutil.TempDir(os.TempDir(), "warden-server-test")
+		Expect(err).ToNot(HaveOccurred())
+
+		socketPath := path.Join(tmpdir, "warden.sock")
+
+		fakeBackend := fake_backend.New()
+
+		_, err = fakeBackend.Create(backend.ContainerSpec{
+			Handle:    "doomed",
+			GraceTime: 100 * time.Millisecond,
+		})
+		Expect(err).ToNot(HaveOccurred())
+
+		wardenServer := server.New(socketPath, 0, fakeBackend)
+
+		before := time.Now()
+
+		err = wardenServer.Start()
+		Expect(err).ToNot(HaveOccurred())
+
+		_, err = fakeBackend.Lookup("doomed")
+		Expect(err).ToNot(HaveOccurred())
+
+		Eventually(func() error {
+			_, err := fakeBackend.Lookup("doomed")
+			return err
+		}).Should(HaveOccurred())
+
+		Expect(time.Since(before)).To(BeNumerically(">", 100*time.Millisecond))
 	})
 
 	Context("when starting the backend fails", func() {
@@ -87,7 +119,7 @@ var _ = Describe("The Warden server", func() {
 			fakeBackend := fake_backend.New()
 			fakeBackend.StartError = disaster
 
-			wardenServer := server.New(socketPath, fakeBackend)
+			wardenServer := server.New(socketPath, 0, fakeBackend)
 
 			err = wardenServer.Start()
 			Expect(err).To(Equal(disaster))
@@ -102,6 +134,7 @@ var _ = Describe("The Warden server", func() {
 			wardenServer := server.New(
 				// weird scenario: /foo/X/warden.sock with X being a file
 				path.Join(tmpfile.Name(), "warden.sock"),
+				0,
 				fake_backend.New(),
 			)
 
@@ -132,7 +165,7 @@ var _ = Describe("The Warden server", func() {
 		})
 
 		JustBeforeEach(func() {
-			wardenServer = server.New(socketPath, serverBackend)
+			wardenServer = server.New(socketPath, 0, serverBackend)
 
 			err := wardenServer.Start()
 			Expect(err).ToNot(HaveOccurred())

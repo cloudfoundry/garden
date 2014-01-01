@@ -56,15 +56,18 @@ func New(rootPath, rootFSPath string) (*GardenRunner, error) {
 	}, nil
 }
 
-func (r *GardenRunner) Start() error {
+func (r *GardenRunner) Start(argv ...string) error {
 	garden := exec.Command(
 		r.gardenBin,
-		"--socket", r.SocketPath,
-		"--root", r.RootPath,
-		"--depot", r.DepotPath,
-		"--rootfs", r.RootFSPath,
-		"--snapshots", r.SnapshotsPath,
-		"--debug",
+		append(
+			argv,
+			"--socket", r.SocketPath,
+			"--root", r.RootPath,
+			"--depot", r.DepotPath,
+			"--rootfs", r.RootFSPath,
+			"--snapshots", r.SnapshotsPath,
+			"--debug",
+		)...,
 	)
 
 	garden.Stdout = os.Stdout

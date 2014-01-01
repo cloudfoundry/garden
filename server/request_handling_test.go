@@ -3,6 +3,7 @@ package server_test
 import (
 	"bufio"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"net"
 	"os"
@@ -26,6 +27,8 @@ var _ = Describe("When a client connects", func() {
 
 	var serverBackend *fake_backend.FakeBackend
 
+	var serverContainerGraceTime time.Duration
+
 	var wardenServer *server.WardenServer
 
 	var serverConnection net.Conn
@@ -37,12 +40,15 @@ var _ = Describe("When a client connects", func() {
 
 		socketPath = path.Join(tmpdir, "warden.sock")
 		serverBackend = fake_backend.New()
-	})
+		serverContainerGraceTime = 42 * time.Second
 
-	JustBeforeEach(func() {
-		wardenServer = server.New(socketPath, serverBackend)
+		wardenServer = server.New(
+			socketPath,
+			serverContainerGraceTime,
+			serverBackend,
+		)
 
-		err := wardenServer.Start()
+		err = wardenServer.Start()
 		Expect(err).ToNot(HaveOccurred())
 
 		Eventually(ErrorDialingUnix(socketPath)).ShouldNot(HaveOccurred())
@@ -62,6 +68,40 @@ var _ = Describe("When a client connects", func() {
 	readResponse := func(response proto.Message) {
 		err := message_reader.ReadMessage(responses, response)
 		Expect(err).ToNot(HaveOccurred())
+	}
+
+	itResetsGraceTimeWhenHandling := func(request proto.Message) {
+		Context(fmt.Sprintf("when handling a %T", request), func() {
+			It("resets the container's grace time", func(done Done) {
+				writeMessages(&protocol.CreateRequest{
+					Handle:    proto.String("some-handle"),
+					GraceTime: proto.Uint32(1),
+				})
+
+				var response protocol.CreateResponse
+				readResponse(&response)
+
+				for i := 0; i < 11; i++ {
+					time.Sleep(100 * time.Millisecond)
+
+					writeMessages(request)
+
+					response := protocol.ResponseMessageForType(protocol.TypeForMessage(request))
+					readResponse(response)
+				}
+
+				before := time.Now()
+
+				Eventually(func() error {
+					_, err := serverBackend.Lookup("some-handle")
+					return err
+				}, 2.0).Should(HaveOccurred())
+
+				Expect(time.Since(before)).To(BeNumerically(">", 1*time.Second))
+
+				close(done)
+			}, 5.0)
+		})
 	}
 
 	Context("and the client sends a PingRequest", func() {
@@ -143,6 +183,50 @@ var _ = Describe("When a client connects", func() {
 			close(done)
 		}, 1.0)
 
+		Context("when a grace time is given", func() {
+			It("destroys the container after it has been idle for the grace time", func(done Done) {
+				before := time.Now()
+
+				writeMessages(&protocol.CreateRequest{
+					Handle:    proto.String("some-handle"),
+					GraceTime: proto.Uint32(1),
+				})
+
+				var response protocol.CreateResponse
+				readResponse(&response)
+
+				_, err := serverBackend.Lookup("some-handle")
+				Expect(err).ToNot(HaveOccurred())
+
+				Eventually(func() error {
+					_, err := serverBackend.Lookup("some-handle")
+					return err
+				}, 2.0).Should(HaveOccurred())
+
+				Expect(time.Since(before)).To(BeNumerically(">", 1*time.Second))
+
+				close(done)
+			}, 5.0)
+		})
+
+		Context("when a grace time is not given", func() {
+			It("defaults it to the server's grace time", func(done Done) {
+				writeMessages(&protocol.CreateRequest{
+					Handle: proto.String("some-handle"),
+				})
+
+				var response protocol.CreateResponse
+				readResponse(&response)
+
+				container, err := serverBackend.Lookup("some-handle")
+				Expect(err).ToNot(HaveOccurred())
+
+				Expect(container.GraceTime()).To(Equal(serverContainerGraceTime))
+
+				close(done)
+			}, 1.0)
+		})
+
 		Context("when creating the container fails", func() {
 			BeforeEach(func() {
 				serverBackend.CreateError = errors.New("oh no!")
@@ -198,6 +282,29 @@ var _ = Describe("When a client connects", func() {
 				close(done)
 			}, 1.0)
 		})
+
+		It("removes the grace timer", func(done Done) {
+			writeMessages(&protocol.CreateRequest{
+				Handle:    proto.String("some-other-handle"),
+				GraceTime: proto.Uint32(1),
+			})
+
+			var response protocol.CreateResponse
+			readResponse(&response)
+
+			writeMessages(&protocol.DestroyRequest{
+				Handle: proto.String("some-other-handle"),
+			})
+
+			var destroyResponse protocol.DestroyResponse
+			readResponse(&destroyResponse)
+
+			time.Sleep(2 * time.Second)
+
+			Expect(serverBackend.DestroyedContainers).To(HaveLen(1))
+
+			close(done)
+		}, 5.0)
 	})
 
 	Context("and the client sends a ListRequest", func() {
@@ -325,6 +432,12 @@ var _ = Describe("When a client connects", func() {
 				close(done)
 			}, 1.0)
 		})
+
+		itResetsGraceTimeWhenHandling(
+			&protocol.StopRequest{
+				Handle: proto.String("some-handle"),
+			},
+		)
 	})
 
 	Context("and the client sends a CopyInRequest", func() {
@@ -353,6 +466,12 @@ var _ = Describe("When a client connects", func() {
 
 			close(done)
 		}, 1.0)
+
+		itResetsGraceTimeWhenHandling(&protocol.CopyInRequest{
+			Handle:  proto.String("some-handle"),
+			SrcPath: proto.String("/src/path"),
+			DstPath: proto.String("/dst/path"),
+		})
 
 		Context("when the container is not found", func() {
 			BeforeEach(func() {
@@ -424,6 +543,12 @@ var _ = Describe("When a client connects", func() {
 
 			close(done)
 		}, 1.0)
+
+		itResetsGraceTimeWhenHandling(&protocol.CopyOutRequest{
+			Handle:  proto.String("some-handle"),
+			SrcPath: proto.String("/src/path"),
+			DstPath: proto.String("/dst/path"),
+		})
 
 		Context("when the container is not found", func() {
 			BeforeEach(func() {
@@ -541,6 +666,11 @@ var _ = Describe("When a client connects", func() {
 			close(done)
 		}, 1.0)
 
+		itResetsGraceTimeWhenHandling(&protocol.SpawnRequest{
+			Handle: proto.String("some-handle"),
+			Script: proto.String("/some/script"),
+		})
+
 		Context("when the container is not found", func() {
 			BeforeEach(func() {
 				serverBackend.Destroy(fakeContainer.Handle())
@@ -617,6 +747,11 @@ var _ = Describe("When a client connects", func() {
 
 			close(done)
 		}, 1.0)
+
+		itResetsGraceTimeWhenHandling(&protocol.LinkRequest{
+			Handle: proto.String("some-handle"),
+			JobId:  proto.Uint32(123),
+		})
 
 		Context("when the container is not found", func() {
 			BeforeEach(func() {
@@ -720,6 +855,63 @@ var _ = Describe("When a client connects", func() {
 
 			close(done)
 		}, 1.0)
+
+		It("resets the container's grace time as long as it's streaming", func(done Done) {
+			writeMessages(&protocol.CreateRequest{
+				Handle:    proto.String("some-handle"),
+				GraceTime: proto.Uint32(1),
+			})
+
+			var response protocol.CreateResponse
+			readResponse(&response)
+
+			fakeContainer := serverBackend.CreatedContainers["some-handle"]
+
+			exitStatus := uint32(42)
+
+			fakeContainer.StreamedJobChunks = []backend.JobStream{
+				{
+					Name:       "stdout",
+					Data:       []byte("job out\n"),
+					ExitStatus: nil,
+				},
+				{
+					Name:       "stderr",
+					Data:       []byte("job err\n"),
+					ExitStatus: nil,
+				},
+				{
+					ExitStatus: &exitStatus,
+				},
+			}
+
+			fakeContainer.StreamDelay = 1 * time.Second
+
+			writeMessages(&protocol.StreamRequest{
+				Handle: proto.String(fakeContainer.Handle()),
+				JobId:  proto.Uint32(123),
+			})
+
+			var response1 protocol.StreamResponse
+			readResponse(&response1)
+
+			var response2 protocol.StreamResponse
+			readResponse(&response2)
+
+			var response3 protocol.StreamResponse
+			readResponse(&response3)
+
+			before := time.Now()
+
+			Eventually(func() error {
+				_, err := serverBackend.Lookup("some-handle")
+				return err
+			}, 2.0).Should(HaveOccurred())
+
+			Expect(time.Since(before)).To(BeNumerically(">", 1*time.Second))
+
+			close(done)
+		}, 5.0)
 
 		Context("when the container is not found", func() {
 			BeforeEach(func() {
@@ -845,6 +1037,11 @@ var _ = Describe("When a client connects", func() {
 			close(done)
 		}, 1.0)
 
+		itResetsGraceTimeWhenHandling(&protocol.RunRequest{
+			Handle: proto.String("some-handle"),
+			Script: proto.String("/some/script"),
+		})
+
 		Context("when the container is not found", func() {
 			BeforeEach(func() {
 				serverBackend.Destroy(fakeContainer.Handle())
@@ -948,6 +1145,12 @@ var _ = Describe("When a client connects", func() {
 			close(done)
 		}, 1.0)
 
+		itResetsGraceTimeWhenHandling(&protocol.LimitBandwidthRequest{
+			Handle: proto.String("some-handle"),
+			Rate:   proto.Uint64(123),
+			Burst:  proto.Uint64(456),
+		})
+
 		Context("when the container is not found", func() {
 			BeforeEach(func() {
 				serverBackend.Destroy(fakeContainer.Handle())
@@ -1041,6 +1244,11 @@ var _ = Describe("When a client connects", func() {
 
 			close(done)
 		}, 1.0)
+
+		itResetsGraceTimeWhenHandling(&protocol.LimitMemoryRequest{
+			Handle:       proto.String("some-handle"),
+			LimitInBytes: proto.Uint64(123),
+		})
 
 		Context("when no limit is given", func() {
 			It("does not change the memory limit", func(done Done) {
@@ -1182,6 +1390,14 @@ var _ = Describe("When a client connects", func() {
 
 			close(done)
 		}, 1.0)
+
+		itResetsGraceTimeWhenHandling(&protocol.LimitDiskRequest{
+			Handle:    proto.String("some-handle"),
+			BlockSoft: proto.Uint64(111),
+			Block:     proto.Uint64(222),
+			InodeSoft: proto.Uint64(333),
+			InodeHard: proto.Uint64(444),
+		})
 
 		Context("when no limits are given", func() {
 			It("does not change the disk limit", func(done Done) {
@@ -1474,6 +1690,11 @@ var _ = Describe("When a client connects", func() {
 			close(done)
 		}, 1.0)
 
+		itResetsGraceTimeWhenHandling(&protocol.LimitCpuRequest{
+			Handle:        proto.String("some-handle"),
+			LimitInShares: proto.Uint64(123),
+		})
+
 		Context("when no limit is given", func() {
 			It("does not change the CPU shares", func(done Done) {
 				effectiveLimits := backend.CPULimits{456}
@@ -1585,6 +1806,12 @@ var _ = Describe("When a client connects", func() {
 			close(done)
 		}, 1.0)
 
+		itResetsGraceTimeWhenHandling(&protocol.NetInRequest{
+			Handle:        proto.String("some-handle"),
+			HostPort:      proto.Uint32(123),
+			ContainerPort: proto.Uint32(456),
+		})
+
 		Context("when the container is not found", func() {
 			BeforeEach(func() {
 				serverBackend.Destroy(fakeContainer.Handle())
@@ -1654,6 +1881,12 @@ var _ = Describe("When a client connects", func() {
 
 			close(done)
 		}, 1.0)
+
+		itResetsGraceTimeWhenHandling(&protocol.NetOutRequest{
+			Handle:  proto.String("some-handle"),
+			Network: proto.String("1.2.3.4/22"),
+			Port:    proto.Uint32(456),
+		})
 
 		Context("when the container is not found", func() {
 			BeforeEach(func() {
@@ -1820,6 +2053,10 @@ var _ = Describe("When a client connects", func() {
 
 			close(done)
 		}, 1.0)
+
+		itResetsGraceTimeWhenHandling(&protocol.InfoRequest{
+			Handle: proto.String("some-handle"),
+		})
 
 		Context("when the container is not found", func() {
 			BeforeEach(func() {

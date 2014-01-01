@@ -169,6 +169,7 @@ func (p *LinuxContainerPool) Create(spec backend.ContainerSpec) (linux_backend.C
 		id,
 		handle,
 		containerPath,
+		spec.GraceTime,
 		&linux_backend.Resources{
 			UID:     uid,
 			Network: network,
@@ -259,6 +260,7 @@ func (p *LinuxContainerPool) Restore(snapshot io.Reader) (linux_backend.Containe
 		id,
 		containerSnapshot.Handle,
 		containerPath,
+		containerSnapshot.GraceTime,
 		resources,
 		p.portPool,
 		p.runner,

@@ -3,6 +3,7 @@ package fake_backend
 import (
 	"io"
 	"sync"
+	"time"
 
 	"github.com/vito/garden/backend"
 )
@@ -37,6 +38,7 @@ type FakeContainer struct {
 	StreamError       error
 	StreamedJobChunks []backend.JobStream
 	Streamed          []uint32
+	StreamDelay       time.Duration
 
 	DidLimitBandwidth   bool
 	LimitBandwidthError error
@@ -104,6 +106,10 @@ func (c *FakeContainer) ID() string {
 
 func (c *FakeContainer) Handle() string {
 	return c.Spec.Handle
+}
+
+func (c *FakeContainer) GraceTime() time.Duration {
+	return c.Spec.GraceTime
 }
 
 func (c *FakeContainer) Snapshot(snapshot io.Writer) error {
@@ -283,6 +289,7 @@ func (c *FakeContainer) Stream(jobID uint32) (<-chan backend.JobStream, error) {
 	stream := make(chan backend.JobStream, len(c.StreamedJobChunks))
 
 	for _, chunk := range c.StreamedJobChunks {
+		time.Sleep(c.StreamDelay)
 		stream <- chunk
 	}
 

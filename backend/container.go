@@ -1,8 +1,13 @@
 package backend
 
+import (
+	"time"
+)
+
 type Container interface {
 	ID() string
 	Handle() string
+	GraceTime() time.Duration
 
 	Start() error
 	Stop(kill bool) error
