@@ -30,8 +30,7 @@ type LinuxContainer struct {
 
 	graceTime time.Duration
 
-	state      State
-	stateMutex sync.RWMutex
+	state State
 
 	events      []string
 	eventsMutex sync.RWMutex
@@ -156,9 +155,6 @@ func (c *LinuxContainer) GraceTime() time.Duration {
 }
 
 func (c *LinuxContainer) State() State {
-	c.stateMutex.RLock()
-	defer c.stateMutex.RUnlock()
-
 	return c.state
 }
 
@@ -233,7 +229,7 @@ func (c *LinuxContainer) Snapshot(out io.Writer) error {
 }
 
 func (c *LinuxContainer) Restore(snapshot ContainerSnapshot) error {
-	c.setState(State(snapshot.State))
+	c.state = State(snapshot.State)
 
 	for _, ev := range snapshot.Events {
 		c.registerEvent(ev)
@@ -294,7 +290,7 @@ func (c *LinuxContainer) Start() error {
 		return err
 	}
 
-	c.setState(StateActive)
+	c.state = StateActive
 
 	return nil
 }
@@ -317,7 +313,7 @@ func (c *LinuxContainer) Stop(kill bool) error {
 
 	c.stopOomNotifier()
 
-	c.setState(StateStopped)
+	c.state = StateStopped
 
 	return nil
 }
@@ -671,13 +667,6 @@ func (c *LinuxContainer) NetOut(network string, port uint32) error {
 	c.netOuts = append(c.netOuts, NetOutSpec{network, port})
 
 	return nil
-}
-
-func (c *LinuxContainer) setState(state State) {
-	c.stateMutex.Lock()
-	defer c.stateMutex.Unlock()
-
-	c.state = state
 }
 
 func (c *LinuxContainer) registerEvent(event string) {
