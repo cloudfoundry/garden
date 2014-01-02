@@ -6,7 +6,7 @@ import (
 
 	"github.com/vito/garden/backend"
 	"github.com/vito/garden/backend/fake_backend"
-	"github.com/vito/garden/backend/linux_backend"
+	"github.com/vito/garden/linux_backend"
 )
 
 type FakeContainerPool struct {

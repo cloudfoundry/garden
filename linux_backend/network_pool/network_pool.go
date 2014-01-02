@@ -5,7 +5,7 @@ import (
 	"net"
 	"sync"
 
-	"github.com/vito/garden/backend/linux_backend/network"
+	"github.com/vito/garden/linux_backend/network"
 )
 
 type NetworkPool interface {

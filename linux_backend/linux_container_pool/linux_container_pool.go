@@ -14,12 +14,12 @@ import (
 	"time"
 
 	"github.com/vito/garden/backend"
-	"github.com/vito/garden/backend/linux_backend"
-	"github.com/vito/garden/backend/linux_backend/bandwidth_manager"
-	"github.com/vito/garden/backend/linux_backend/cgroups_manager"
-	"github.com/vito/garden/backend/linux_backend/network_pool"
-	"github.com/vito/garden/backend/linux_backend/quota_manager"
-	"github.com/vito/garden/backend/linux_backend/uid_pool"
+	"github.com/vito/garden/linux_backend"
+	"github.com/vito/garden/linux_backend/bandwidth_manager"
+	"github.com/vito/garden/linux_backend/cgroups_manager"
+	"github.com/vito/garden/linux_backend/network_pool"
+	"github.com/vito/garden/linux_backend/quota_manager"
+	"github.com/vito/garden/linux_backend/uid_pool"
 	"github.com/vito/garden/command_runner"
 )
 

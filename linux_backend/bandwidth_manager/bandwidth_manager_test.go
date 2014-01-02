@@ -9,7 +9,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/vito/garden/backend"
-	"github.com/vito/garden/backend/linux_backend/bandwidth_manager"
+	"github.com/vito/garden/linux_backend/bandwidth_manager"
 	"github.com/vito/garden/command_runner/fake_command_runner"
 	. "github.com/vito/garden/command_runner/fake_command_runner/matchers"
 )
