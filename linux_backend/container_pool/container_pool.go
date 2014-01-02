@@ -10,7 +10,6 @@ import (
 	"os/exec"
 	"path"
 	"strconv"
-	"sync"
 	"time"
 
 	"github.com/vito/garden/backend"
@@ -36,9 +35,7 @@ type LinuxContainerPool struct {
 
 	quotaManager quota_manager.QuotaManager
 
-	nextContainer int64
-
-	sync.RWMutex
+	containerIDs chan string
 }
 
 func New(
@@ -49,7 +46,7 @@ func New(
 	runner command_runner.CommandRunner,
 	quotaManager quota_manager.QuotaManager,
 ) *LinuxContainerPool {
-	return &LinuxContainerPool{
+	pool := &LinuxContainerPool{
 		rootPath:   rootPath,
 		depotPath:  depotPath,
 		rootFSPath: rootFSPath,
@@ -62,8 +59,12 @@ func New(
 
 		quotaManager: quotaManager,
 
-		nextContainer: time.Now().UnixNano(),
+		containerIDs: make(chan string),
 	}
+
+	go pool.generateContainerIDs()
+
+	return pool
 }
 
 func (p *LinuxContainerPool) Setup() error {
@@ -148,11 +149,7 @@ func (p *LinuxContainerPool) Create(spec backend.ContainerSpec) (linux_backend.C
 		return nil, err
 	}
 
-	p.Lock()
-
-	id := p.generateContainerID()
-
-	p.Unlock()
+	id := <-p.containerIDs
 
 	containerPath := path.Join(p.depotPath, id)
 
@@ -307,21 +304,21 @@ func (p *LinuxContainerPool) destroy(id string) error {
 	return p.runner.Run(destroy)
 }
 
-func (p *LinuxContainerPool) generateContainerID() string {
-	p.nextContainer++
+func (p *LinuxContainerPool) generateContainerIDs() string {
+	for containerNum := time.Now().UnixNano(); ; containerNum++ {
+		containerID := []byte{}
 
-	containerID := []byte{}
+		var i uint
+		for i = 0; i < 11; i++ {
+			containerID = strconv.AppendInt(
+				containerID,
+				(containerNum>>(55-(i+1)*5))&31,
+				32,
+			)
+		}
 
-	var i uint
-	for i = 0; i < 11; i++ {
-		containerID = strconv.AppendInt(
-			containerID,
-			(p.nextContainer>>(55-(i+1)*5))&31,
-			32,
-		)
+		p.containerIDs <- string(containerID)
 	}
-
-	return string(containerID)
 }
 
 func (p *LinuxContainerPool) writeBindMounts(
