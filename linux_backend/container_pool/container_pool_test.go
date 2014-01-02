@@ -1,4 +1,4 @@
-package linux_container_pool_test
+package container_pool_test
 
 import (
 	"bytes"
@@ -13,24 +13,24 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/vito/garden/backend"
+	"github.com/vito/garden/command_runner/fake_command_runner"
+	. "github.com/vito/garden/command_runner/fake_command_runner/matchers"
 	"github.com/vito/garden/linux_backend"
-	"github.com/vito/garden/linux_backend/linux_container_pool"
+	"github.com/vito/garden/linux_backend/container_pool"
 	"github.com/vito/garden/linux_backend/network"
 	"github.com/vito/garden/linux_backend/network_pool/fake_network_pool"
 	"github.com/vito/garden/linux_backend/port_pool/fake_port_pool"
 	"github.com/vito/garden/linux_backend/quota_manager/fake_quota_manager"
 	"github.com/vito/garden/linux_backend/uid_pool/fake_uid_pool"
-	"github.com/vito/garden/command_runner/fake_command_runner"
-	. "github.com/vito/garden/command_runner/fake_command_runner/matchers"
 )
 
-var _ = Describe("Linux Container pool", func() {
+var _ = Describe("Container pool", func() {
 	var fakeRunner *fake_command_runner.FakeCommandRunner
 	var fakeUIDPool *fake_uid_pool.FakeUIDPool
 	var fakeNetworkPool *fake_network_pool.FakeNetworkPool
 	var fakeQuotaManager *fake_quota_manager.FakeQuotaManager
 	var fakePortPool *fake_port_pool.FakePortPool
-	var pool *linux_container_pool.LinuxContainerPool
+	var pool *container_pool.LinuxContainerPool
 
 	BeforeEach(func() {
 		_, ipNet, err := net.ParseCIDR("1.2.0.0/20")
@@ -43,7 +43,7 @@ var _ = Describe("Linux Container pool", func() {
 		fakeQuotaManager = fake_quota_manager.New()
 		fakePortPool = fake_port_pool.New(1000)
 
-		pool = linux_container_pool.New(
+		pool = container_pool.New(
 			"/root/path",
 			"/depot/path",
 			"/rootfs/path",

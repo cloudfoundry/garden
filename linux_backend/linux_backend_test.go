@@ -12,7 +12,7 @@ import (
 	"github.com/vito/garden/backend"
 	"github.com/vito/garden/backend/fake_backend"
 	"github.com/vito/garden/linux_backend"
-	"github.com/vito/garden/linux_backend/linux_container_pool/fake_container_pool"
+	"github.com/vito/garden/linux_backend/container_pool/fake_container_pool"
 )
 
 var _ = Describe("Setup", func() {

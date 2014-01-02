@@ -13,14 +13,14 @@ import (
 
 	"github.com/vito/garden/backend"
 	"github.com/vito/garden/backend/fake_backend"
+	"github.com/vito/garden/command_runner"
+	"github.com/vito/garden/command_runner/remote_command_runner"
 	"github.com/vito/garden/linux_backend"
-	"github.com/vito/garden/linux_backend/linux_container_pool"
+	"github.com/vito/garden/linux_backend/container_pool"
 	"github.com/vito/garden/linux_backend/network_pool"
 	"github.com/vito/garden/linux_backend/port_pool"
 	"github.com/vito/garden/linux_backend/quota_manager"
 	"github.com/vito/garden/linux_backend/uid_pool"
-	"github.com/vito/garden/command_runner"
-	"github.com/vito/garden/command_runner/remote_command_runner"
 	"github.com/vito/garden/server"
 )
 
@@ -149,7 +149,7 @@ func main() {
 			quotaManager.Disable()
 		}
 
-		pool := linux_container_pool.New(
+		pool := container_pool.New(
 			path.Join(*rootPath, "linux"),
 			*depotPath,
 			*rootFSPath,

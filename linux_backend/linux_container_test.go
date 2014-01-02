@@ -15,14 +15,14 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/vito/garden/backend"
+	"github.com/vito/garden/command_runner/fake_command_runner"
+	. "github.com/vito/garden/command_runner/fake_command_runner/matchers"
 	"github.com/vito/garden/linux_backend"
 	"github.com/vito/garden/linux_backend/bandwidth_manager/fake_bandwidth_manager"
 	"github.com/vito/garden/linux_backend/cgroups_manager/fake_cgroups_manager"
 	"github.com/vito/garden/linux_backend/network_pool"
 	"github.com/vito/garden/linux_backend/port_pool/fake_port_pool"
 	"github.com/vito/garden/linux_backend/quota_manager/fake_quota_manager"
-	"github.com/vito/garden/command_runner/fake_command_runner"
-	. "github.com/vito/garden/command_runner/fake_command_runner/matchers"
 )
 
 var fakeCgroups *fake_cgroups_manager.FakeCgroupsManager

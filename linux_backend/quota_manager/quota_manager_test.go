@@ -8,9 +8,9 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/vito/garden/backend"
-	"github.com/vito/garden/linux_backend/quota_manager"
 	"github.com/vito/garden/command_runner/fake_command_runner"
 	. "github.com/vito/garden/command_runner/fake_command_runner/matchers"
+	"github.com/vito/garden/linux_backend/quota_manager"
 )
 
 var _ = Describe("Linux Quota Manager initialization", func() {

@@ -15,12 +15,12 @@ import (
 	"time"
 
 	"github.com/vito/garden/backend"
+	"github.com/vito/garden/command_runner"
 	"github.com/vito/garden/linux_backend/bandwidth_manager"
 	"github.com/vito/garden/linux_backend/cgroups_manager"
 	"github.com/vito/garden/linux_backend/job_tracker"
 	"github.com/vito/garden/linux_backend/network"
 	"github.com/vito/garden/linux_backend/quota_manager"
-	"github.com/vito/garden/command_runner"
 )
 
 type LinuxContainer struct {
