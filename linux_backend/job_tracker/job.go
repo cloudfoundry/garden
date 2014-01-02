@@ -25,8 +25,9 @@ type Job struct {
 	link         *exec.Cmd
 	unlinked     bool
 
-	streams    []chan backend.JobStream
-	streamLock *sync.RWMutex
+	streams      chan backend.JobStream
+	closeStreams chan bool
+	addStream    chan chan backend.JobStream
 
 	completed bool
 
@@ -48,13 +49,18 @@ func NewJob(
 		containerPath: containerPath,
 		runner:        runner,
 
+		streams:      make(chan backend.JobStream),
+		closeStreams: make(chan bool),
+		addStream:    make(chan chan backend.JobStream),
+
 		waitingLinks: sync.NewCond(&sync.Mutex{}),
 		runningLink:  &sync.Once{},
-		streamLock:   &sync.RWMutex{},
 	}
 
 	j.stdout = newNamedStream(j, "stdout", j.DiscardOutput)
 	j.stderr = newNamedStream(j, "stderr", j.DiscardOutput)
+
+	go j.dispatchStreams()
 
 	return j
 }
@@ -190,15 +196,12 @@ func (j *Job) runLinker() {
 	j.completed = true
 
 	j.sendToStreams(backend.JobStream{ExitStatus: &exitStatus})
-	j.closeStreams()
+	j.closeStreams <- true
 
 	j.waitingLinks.Broadcast()
 }
 
 func (j *Job) registerStream() chan backend.JobStream {
-	j.streamLock.Lock()
-	defer j.streamLock.Unlock()
-
 	stream := make(chan backend.JobStream, 2)
 
 	stdout := j.stdout.Bytes()
@@ -218,25 +221,34 @@ func (j *Job) registerStream() chan backend.JobStream {
 		}
 	}
 
-	j.streams = append(j.streams, stream)
+	j.addStream <- stream
 
 	return stream
 }
 
 func (j *Job) sendToStreams(chunk backend.JobStream) {
-	j.streamLock.RLock()
-	defer j.streamLock.RUnlock()
-
-	for _, sink := range j.streams {
-		sink <- chunk
-	}
+	j.streams <- chunk
 }
 
-func (j *Job) closeStreams() {
-	j.streamLock.RLock()
-	defer j.streamLock.RUnlock()
+func (j *Job) dispatchStreams() {
+	streams := []chan backend.JobStream{}
 
-	for _, sink := range j.streams {
-		close(sink)
+	for {
+		select {
+		case stream := <-j.addStream:
+			streams = append(streams, stream)
+
+		case chunk := <-j.streams:
+			for _, stream := range streams {
+				stream <- chunk
+			}
+
+		case <-j.closeStreams:
+			for _, stream := range streams {
+				close(stream)
+			}
+
+			return
+		}
 	}
 }
