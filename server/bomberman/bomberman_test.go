@@ -107,7 +107,7 @@ var _ = Describe("Bomberman", func() {
 
 				select {
 				case <-detonated:
-					Expect(time.Since(before)).To(BeNumerically(">=", 100 * time.Millisecond))
+					Expect(time.Since(before)).To(BeNumerically(">=", 100*time.Millisecond))
 				case <-time.After(container.GraceTime() + 50*time.Millisecond):
 					Fail("did not detonate!")
 				}

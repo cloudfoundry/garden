@@ -50,7 +50,7 @@ func New(
 
 		stopping: make(chan bool),
 
-		openRequests:  drain.New(),
+		openRequests: drain.New(),
 	}
 }
 
