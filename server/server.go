@@ -52,7 +52,6 @@ func New(
 		backend:            backend,
 
 		stoppingMutex: new(sync.RWMutex),
-		openRequests:  new(sync.WaitGroup),
 		openRequests:  drain.New(),
 
 		timeBombs:      make(map[string]*timebomb.TimeBomb),
