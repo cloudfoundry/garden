@@ -13,6 +13,7 @@ import (
 	"code.google.com/p/gogoprotobuf/proto"
 
 	"github.com/vito/garden/backend"
+	"github.com/vito/garden/drain"
 	"github.com/vito/garden/message_reader"
 	protocol "github.com/vito/garden/protocol"
 	"github.com/vito/garden/server/timebomb"
@@ -26,7 +27,7 @@ type WardenServer struct {
 	listener      net.Listener
 	stopping      bool
 	stoppingMutex *sync.RWMutex
-	openRequests  *sync.WaitGroup
+	openRequests  *drain.Drain
 
 	timeBombs      map[string]*timebomb.TimeBomb
 	timeBombsMutex *sync.RWMutex
@@ -52,6 +53,7 @@ func New(
 
 		stoppingMutex: new(sync.RWMutex),
 		openRequests:  new(sync.WaitGroup),
+		openRequests:  drain.New(),
 
 		timeBombs:      make(map[string]*timebomb.TimeBomb),
 		timeBombsMutex: new(sync.RWMutex),
@@ -78,10 +80,6 @@ func (s *WardenServer) Start() error {
 
 	os.Chmod(s.socketPath, 0777)
 
-	// wait group must have Add() called before wait, which may not happen if
-	// the server does not handle a request before stopping
-	s.openRequests.Add(1)
-
 	containers, err := s.backend.Containers()
 	if err != nil {
 		return err
@@ -97,9 +95,6 @@ func (s *WardenServer) Start() error {
 }
 
 func (s *WardenServer) Stop() {
-	// release the one added in .Start
-	s.openRequests.Add(-1)
-
 	s.setStopping()
 	s.listener.Close()
 	s.openRequests.Wait()
@@ -204,7 +199,7 @@ func (s *WardenServer) serveConnection(conn net.Conn) {
 			break
 		}
 
-		s.openRequests.Add(1)
+		s.openRequests.Incr()
 
 		switch request.(type) {
 		case *protocol.PingRequest:
@@ -226,17 +221,17 @@ func (s *WardenServer) serveConnection(conn net.Conn) {
 		case *protocol.SpawnRequest:
 			response, err = s.handleSpawn(request.(*protocol.SpawnRequest))
 		case *protocol.LinkRequest:
-			s.openRequests.Done()
+			s.openRequests.Decr()
 			response, err = s.handleLink(request.(*protocol.LinkRequest))
-			s.openRequests.Add(1)
+			s.openRequests.Incr()
 		case *protocol.StreamRequest:
-			s.openRequests.Done()
+			s.openRequests.Decr()
 			response, err = s.handleStream(conn, request.(*protocol.StreamRequest))
-			s.openRequests.Add(1)
+			s.openRequests.Incr()
 		case *protocol.RunRequest:
-			s.openRequests.Done()
+			s.openRequests.Decr()
 			response, err = s.handleRun(request.(*protocol.RunRequest))
-			s.openRequests.Add(1)
+			s.openRequests.Incr()
 		case *protocol.LimitBandwidthRequest:
 			response, err = s.handleLimitBandwidth(request.(*protocol.LimitBandwidthRequest))
 		case *protocol.LimitMemoryRequest:
@@ -263,7 +258,7 @@ func (s *WardenServer) serveConnection(conn net.Conn) {
 
 		protocol.Messages(response).WriteTo(conn)
 
-		s.openRequests.Done()
+		s.openRequests.Decr()
 	}
 }
 

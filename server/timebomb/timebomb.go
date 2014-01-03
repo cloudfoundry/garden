@@ -1,8 +1,9 @@
 package timebomb
 
 import (
-	"sync"
 	"time"
+
+	"github.com/vito/garden/drain"
 )
 
 type TimeBomb struct {
@@ -11,7 +12,7 @@ type TimeBomb struct {
 
 	reset    chan bool
 	defuse   chan bool
-	cooldown *sync.WaitGroup
+	cooldown *drain.Drain
 }
 
 func New(countdown time.Duration, detonate func()) *TimeBomb {
@@ -21,13 +22,11 @@ func New(countdown time.Duration, detonate func()) *TimeBomb {
 
 		reset:    make(chan bool),
 		defuse:   make(chan bool),
-		cooldown: &sync.WaitGroup{},
+		cooldown: drain.New(),
 	}
 }
 
 func (b *TimeBomb) Strap() {
-	b.cooldown.Add(1)
-
 	go func() {
 		for {
 			cool := b.waitForCooldown()
@@ -45,12 +44,10 @@ func (b *TimeBomb) Strap() {
 			}
 		}
 	}()
-
-	go b.cooldown.Done()
 }
 
 func (b *TimeBomb) Pause() {
-	b.cooldown.Add(1)
+	b.cooldown.Incr()
 	b.reset <- true
 }
 
@@ -59,7 +56,7 @@ func (b *TimeBomb) Defuse() {
 }
 
 func (b *TimeBomb) Unpause() {
-	b.cooldown.Done()
+	b.cooldown.Decr()
 }
 
 func (b *TimeBomb) waitForCooldown() bool {
