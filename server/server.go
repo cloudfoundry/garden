@@ -24,8 +24,10 @@ type WardenServer struct {
 	backend            backend.Backend
 
 	listener     net.Listener
-	stopping     chan bool
 	openRequests *drain.Drain
+
+	setStopping chan bool
+	stopping    chan bool
 
 	bomberman *bomberman.Bomberman
 }
@@ -48,7 +50,8 @@ func New(
 		containerGraceTime: containerGraceTime,
 		backend:            backend,
 
-		stopping: make(chan bool),
+		setStopping: make(chan bool),
+		stopping:    make(chan bool),
 
 		openRequests: drain.New(),
 	}
@@ -92,7 +95,7 @@ func (s *WardenServer) Start() error {
 }
 
 func (s *WardenServer) Stop() {
-	s.stopping <- true
+	s.setStopping <- true
 	s.listener.Close()
 	s.openRequests.Wait()
 	s.backend.Stop()
@@ -103,7 +106,7 @@ func (s *WardenServer) trackStopping() {
 
 	for {
 		select {
-		case stopping = <-s.stopping:
+		case stopping = <-s.setStopping:
 		case s.stopping <- stopping:
 		}
 	}
