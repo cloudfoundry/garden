@@ -7,7 +7,6 @@ import (
 	"log"
 	"net"
 	"os"
-	"sync"
 	"time"
 
 	"code.google.com/p/gogoprotobuf/proto"
@@ -24,10 +23,9 @@ type WardenServer struct {
 	containerGraceTime time.Duration
 	backend            backend.Backend
 
-	listener      net.Listener
-	stopping      bool
-	stoppingMutex *sync.RWMutex
-	openRequests  *drain.Drain
+	listener     net.Listener
+	stopping     chan bool
+	openRequests *drain.Drain
 
 	bomberman *bomberman.Bomberman
 }
@@ -50,7 +48,8 @@ func New(
 		containerGraceTime: containerGraceTime,
 		backend:            backend,
 
-		stoppingMutex: new(sync.RWMutex),
+		stopping: make(chan bool),
+
 		openRequests:  drain.New(),
 	}
 }
@@ -86,16 +85,28 @@ func (s *WardenServer) Start() error {
 		s.bomberman.Strap(container)
 	}
 
+	go s.trackStopping()
 	go s.handleConnections(listener)
 
 	return nil
 }
 
 func (s *WardenServer) Stop() {
-	s.setStopping()
+	s.stopping <- true
 	s.listener.Close()
 	s.openRequests.Wait()
 	s.backend.Stop()
+}
+
+func (s *WardenServer) trackStopping() {
+	stopping := false
+
+	for {
+		select {
+		case stopping = <-s.stopping:
+		case s.stopping <- stopping:
+		}
+	}
 }
 
 func (s *WardenServer) handleConnections(listener net.Listener) {
@@ -117,7 +128,7 @@ func (s *WardenServer) serveConnection(conn net.Conn) {
 		var response proto.Message
 		var err error
 
-		if s.isStopping() {
+		if <-s.stopping {
 			conn.Close()
 			break
 		}
@@ -132,7 +143,7 @@ func (s *WardenServer) serveConnection(conn net.Conn) {
 			continue
 		}
 
-		if s.isStopping() {
+		if <-s.stopping {
 			conn.Close()
 			break
 		}
@@ -198,20 +209,6 @@ func (s *WardenServer) serveConnection(conn net.Conn) {
 
 		s.openRequests.Decr()
 	}
-}
-
-func (s *WardenServer) setStopping() {
-	s.stoppingMutex.Lock()
-	defer s.stoppingMutex.Unlock()
-
-	s.stopping = true
-}
-
-func (s *WardenServer) isStopping() bool {
-	s.stoppingMutex.RLock()
-	defer s.stoppingMutex.RUnlock()
-
-	return s.stopping
 }
 
 func (s *WardenServer) removeExistingSocket() error {
