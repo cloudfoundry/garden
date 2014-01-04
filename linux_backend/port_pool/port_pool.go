@@ -9,9 +9,8 @@ type PortPool struct {
 	start uint32
 	size  uint32
 
-	pool []uint32
-
-	sync.Mutex
+	pool      []uint32
+	poolMutex sync.Mutex
 }
 
 type PoolExhaustedError struct{}
@@ -44,8 +43,8 @@ func New(start, size uint32) *PortPool {
 }
 
 func (p *PortPool) Acquire() (uint32, error) {
-	p.Lock()
-	defer p.Unlock()
+	p.poolMutex.Lock()
+	defer p.poolMutex.Unlock()
 
 	if len(p.pool) == 0 {
 		return 0, PoolExhaustedError{}
@@ -62,8 +61,8 @@ func (p *PortPool) Remove(port uint32) error {
 	idx := 0
 	found := false
 
-	p.Lock()
-	defer p.Unlock()
+	p.poolMutex.Lock()
+	defer p.poolMutex.Unlock()
 
 	for i, existingPort := range p.pool {
 		if existingPort == port {
@@ -87,8 +86,8 @@ func (p *PortPool) Release(port uint32) {
 		return
 	}
 
-	p.Lock()
-	defer p.Unlock()
+	p.poolMutex.Lock()
+	defer p.poolMutex.Unlock()
 
 	for _, existingPort := range p.pool {
 		if existingPort == port {

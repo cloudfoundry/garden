@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/vito/garden/backend"
+	"github.com/vito/garden/linux_backend/network"
 )
 
 type ContainerSnapshot struct {
@@ -17,7 +18,7 @@ type ContainerSnapshot struct {
 
 	Limits LimitsSnapshot
 
-	Resources Resources
+	Resources ResourcesSnapshot
 
 	Jobs []JobSnapshot
 
@@ -34,7 +35,7 @@ type LimitsSnapshot struct {
 
 type ResourcesSnapshot struct {
 	UID     uint32
-	Network string
+	Network *network.Network
 	Ports   []uint32
 }
 

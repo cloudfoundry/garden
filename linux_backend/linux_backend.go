@@ -31,9 +31,8 @@ type LinuxBackend struct {
 	containerPool ContainerPool
 	snapshotsPath string
 
-	containers map[string]Container
-
-	sync.RWMutex
+	containers      map[string]Container
+	containersMutex *sync.RWMutex
 }
 
 type UnknownHandleError struct {
@@ -57,7 +56,8 @@ func New(containerPool ContainerPool, snapshotsPath string) *LinuxBackend {
 		containerPool: containerPool,
 		snapshotsPath: snapshotsPath,
 
-		containers: make(map[string]Container),
+		containers:      make(map[string]Container),
+		containersMutex: new(sync.RWMutex),
 	}
 }
 
@@ -108,11 +108,11 @@ func (b *LinuxBackend) Create(spec backend.ContainerSpec) (backend.Container, er
 		return nil, err
 	}
 
-	b.Lock()
+	b.containersMutex.Lock()
 
 	b.containers[container.Handle()] = container
 
-	b.Unlock()
+	b.containersMutex.Unlock()
 
 	return container, nil
 }
@@ -128,18 +128,18 @@ func (b *LinuxBackend) Destroy(handle string) error {
 		return err
 	}
 
-	b.Lock()
+	b.containersMutex.Lock()
 
 	delete(b.containers, container.Handle())
 
-	b.Unlock()
+	b.containersMutex.Unlock()
 
 	return nil
 }
 
 func (b *LinuxBackend) Containers() (containers []backend.Container, err error) {
-	b.RLock()
-	defer b.RUnlock()
+	b.containersMutex.RLock()
+	defer b.containersMutex.RUnlock()
 
 	for _, container := range b.containers {
 		containers = append(containers, container)
@@ -149,8 +149,8 @@ func (b *LinuxBackend) Containers() (containers []backend.Container, err error) 
 }
 
 func (b *LinuxBackend) Lookup(handle string) (backend.Container, error) {
-	b.RLock()
-	defer b.RUnlock()
+	b.containersMutex.RLock()
+	defer b.containersMutex.RUnlock()
 
 	container, found := b.containers[handle]
 	if !found {
@@ -161,8 +161,8 @@ func (b *LinuxBackend) Lookup(handle string) (backend.Container, error) {
 }
 
 func (b *LinuxBackend) Stop() {
-	b.RLock()
-	defer b.RUnlock()
+	b.containersMutex.RLock()
+	defer b.containersMutex.RUnlock()
 
 	for _, container := range b.containers {
 		container.Cleanup()
@@ -228,11 +228,11 @@ func (b *LinuxBackend) restore(snapshot io.Reader) (backend.Container, error) {
 		return nil, err
 	}
 
-	b.Lock()
+	b.containersMutex.Lock()
 
 	b.containers[container.Handle()] = container
 
-	b.Unlock()
+	b.containersMutex.Unlock()
 
 	return container, nil
 }

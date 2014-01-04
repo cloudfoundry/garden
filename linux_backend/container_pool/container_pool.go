@@ -167,10 +167,7 @@ func (p *LinuxContainerPool) Create(spec backend.ContainerSpec) (linux_backend.C
 		handle,
 		containerPath,
 		spec.GraceTime,
-		&linux_backend.Resources{
-			UID:     uid,
-			Network: network,
-		},
+		linux_backend.NewResources(uid, network, []uint32{}),
 		p.portPool,
 		p.runner,
 		cgroupsManager,
@@ -220,7 +217,7 @@ func (p *LinuxContainerPool) Restore(snapshot io.Reader) (linux_backend.Containe
 
 	log.Println("restoring", id)
 
-	resources := &containerSnapshot.Resources
+	resources := containerSnapshot.Resources
 
 	err = p.uidPool.Remove(resources.UID)
 	if err != nil {
@@ -258,7 +255,11 @@ func (p *LinuxContainerPool) Restore(snapshot io.Reader) (linux_backend.Containe
 		containerSnapshot.Handle,
 		containerPath,
 		containerSnapshot.GraceTime,
-		resources,
+		linux_backend.NewResources(
+			resources.UID,
+			resources.Network,
+			resources.Ports,
+		),
 		p.portPool,
 		p.runner,
 		cgroupsManager,

@@ -12,9 +12,8 @@ type namedStream struct {
 	name    string
 	discard bool
 
-	destination *bytes.Buffer
-
-	sync.RWMutex
+	destination      *bytes.Buffer
+	destinationMutex *sync.RWMutex
 }
 
 func newNamedStream(job *Job, name string, discard bool) *namedStream {
@@ -23,7 +22,8 @@ func newNamedStream(job *Job, name string, discard bool) *namedStream {
 		name:    name,
 		discard: discard,
 
-		destination: new(bytes.Buffer),
+		destination:      new(bytes.Buffer),
+		destinationMutex: new(sync.RWMutex),
 	}
 }
 
@@ -37,15 +37,15 @@ func (s *namedStream) Write(data []byte) (int, error) {
 		return len(data), nil
 	}
 
-	s.Lock()
-	defer s.Unlock()
+	s.destinationMutex.Lock()
+	defer s.destinationMutex.Unlock()
 
 	return s.destination.Write(data)
 }
 
 func (s *namedStream) Bytes() []byte {
-	s.RLock()
-	defer s.RUnlock()
+	s.destinationMutex.RLock()
+	defer s.destinationMutex.RUnlock()
 
 	return s.destination.Bytes()
 }

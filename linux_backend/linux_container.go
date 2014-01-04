@@ -19,7 +19,6 @@ import (
 	"github.com/vito/garden/linux_backend/bandwidth_manager"
 	"github.com/vito/garden/linux_backend/cgroups_manager"
 	"github.com/vito/garden/linux_backend/job_tracker"
-	"github.com/vito/garden/linux_backend/network"
 	"github.com/vito/garden/linux_backend/quota_manager"
 )
 
@@ -68,21 +67,6 @@ type LinuxContainer struct {
 
 	netOuts      []NetOutSpec
 	netOutsMutex sync.RWMutex
-}
-
-type Resources struct {
-	UID     uint32
-	Network *network.Network
-	Ports   []uint32
-
-	sync.Mutex `json:-`
-}
-
-func (r *Resources) AddPort(port uint32) {
-	r.Lock()
-	defer r.Unlock()
-
-	r.Ports = append(r.Ports, port)
 }
 
 type NetInSpec struct {
@@ -222,7 +206,11 @@ func (c *LinuxContainer) Snapshot(out io.Writer) error {
 				Memory:    c.currentMemoryLimits,
 			},
 
-			Resources: *c.resources,
+			Resources: ResourcesSnapshot{
+				UID:     c.resources.UID,
+				Network: c.resources.Network,
+				Ports:   c.resources.Ports,
+			},
 
 			NetIns:  c.netIns,
 			NetOuts: c.netOuts,

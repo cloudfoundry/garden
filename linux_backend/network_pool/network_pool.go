@@ -18,9 +18,8 @@ type NetworkPool interface {
 type RealNetworkPool struct {
 	ipNet *net.IPNet
 
-	pool []*network.Network
-
-	sync.Mutex
+	pool      []*network.Network
+	poolMutex *sync.Mutex
 }
 
 type PoolExhaustedError struct{}
@@ -52,13 +51,14 @@ func New(ipNet *net.IPNet) *RealNetworkPool {
 	return &RealNetworkPool{
 		ipNet: ipNet,
 
-		pool: pool,
+		pool:      pool,
+		poolMutex: new(sync.Mutex),
 	}
 }
 
 func (p *RealNetworkPool) Acquire() (*network.Network, error) {
-	p.Lock()
-	defer p.Unlock()
+	p.poolMutex.Lock()
+	defer p.poolMutex.Unlock()
 
 	if len(p.pool) == 0 {
 		return nil, PoolExhaustedError{}
@@ -74,8 +74,8 @@ func (p *RealNetworkPool) Remove(network *network.Network) error {
 	idx := 0
 	found := false
 
-	p.Lock()
-	defer p.Unlock()
+	p.poolMutex.Lock()
+	defer p.poolMutex.Unlock()
 
 	for i, existingNetwork := range p.pool {
 		if existingNetwork.String() == network.String() {
@@ -99,8 +99,8 @@ func (p *RealNetworkPool) Release(network *network.Network) {
 		return
 	}
 
-	p.Lock()
-	defer p.Unlock()
+	p.poolMutex.Lock()
+	defer p.poolMutex.Unlock()
 
 	p.pool = append(p.pool, network)
 }

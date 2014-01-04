@@ -9,9 +9,8 @@ type UnixUIDPool struct {
 	start uint32
 	size  uint32
 
-	pool []uint32
-
-	sync.Mutex
+	pool      []uint32
+	poolMutex *sync.Mutex
 }
 
 type PoolExhaustedError struct{}
@@ -39,13 +38,14 @@ func New(start, size uint32) *UnixUIDPool {
 		start: start,
 		size:  size,
 
-		pool: pool,
+		pool:      pool,
+		poolMutex: new(sync.Mutex),
 	}
 }
 
 func (p *UnixUIDPool) Acquire() (uint32, error) {
-	p.Lock()
-	defer p.Unlock()
+	p.poolMutex.Lock()
+	defer p.poolMutex.Unlock()
 
 	if len(p.pool) == 0 {
 		return 0, PoolExhaustedError{}
@@ -62,8 +62,8 @@ func (p *UnixUIDPool) Remove(uid uint32) error {
 	idx := 0
 	found := false
 
-	p.Lock()
-	defer p.Unlock()
+	p.poolMutex.Lock()
+	defer p.poolMutex.Unlock()
 
 	for i, existingUID := range p.pool {
 		if existingUID == uid {
@@ -87,8 +87,8 @@ func (p *UnixUIDPool) Release(uid uint32) {
 		return
 	}
 
-	p.Lock()
-	defer p.Unlock()
+	p.poolMutex.Lock()
+	defer p.poolMutex.Unlock()
 
 	p.pool = append(p.pool, uid)
 }

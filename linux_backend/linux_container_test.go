@@ -52,10 +52,11 @@ var _ = Describe("Linux containers", func() {
 		network, err := networkPool.Acquire()
 		Expect(err).ToNot(HaveOccurred())
 
-		containerResources = &linux_backend.Resources{
-			UID:     1234,
-			Network: network,
-		}
+		containerResources = linux_backend.NewResources(
+			1234,
+			network,
+			[]uint32{},
+		)
 
 		container = linux_backend.NewLinuxContainer(
 			"some-id",
@@ -190,7 +191,13 @@ var _ = Describe("Linux containers", func() {
 				},
 			))
 
-			Expect(snapshot.Resources).To(Equal(*containerResources))
+			Expect(snapshot.Resources).To(Equal(
+				linux_backend.ResourcesSnapshot{
+					UID:     containerResources.UID,
+					Network: containerResources.Network,
+					Ports:   containerResources.Ports,
+				},
+			))
 
 			Expect(snapshot.NetIns).To(Equal(
 				[]linux_backend.NetInSpec{

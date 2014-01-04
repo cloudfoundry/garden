@@ -15,8 +15,7 @@ type JobTracker struct {
 
 	jobs      map[uint32]*Job
 	nextJobID uint32
-
-	sync.RWMutex
+	jobsMutex *sync.RWMutex
 }
 
 type UnknownJobError struct {
@@ -32,12 +31,13 @@ func New(containerPath string, runner command_runner.CommandRunner) *JobTracker 
 		containerPath: containerPath,
 		runner:        runner,
 
-		jobs: make(map[uint32]*Job),
+		jobs:      make(map[uint32]*Job),
+		jobsMutex: new(sync.RWMutex),
 	}
 }
 
 func (t *JobTracker) Spawn(cmd *exec.Cmd, discardOutput, autoLink bool) (uint32, error) {
-	t.Lock()
+	t.jobsMutex.Lock()
 
 	jobID := t.nextJobID
 	t.nextJobID++
@@ -46,7 +46,7 @@ func (t *JobTracker) Spawn(cmd *exec.Cmd, discardOutput, autoLink bool) (uint32,
 
 	t.jobs[jobID] = job
 
-	t.Unlock()
+	t.jobsMutex.Unlock()
 
 	ready, active := job.Spawn(cmd)
 
@@ -68,7 +68,7 @@ func (t *JobTracker) Spawn(cmd *exec.Cmd, discardOutput, autoLink bool) (uint32,
 }
 
 func (t *JobTracker) Restore(jobID uint32, discardOutput bool) {
-	t.Lock()
+	t.jobsMutex.Lock()
 
 	job := NewJob(jobID, discardOutput, t.containerPath, t.runner)
 
@@ -78,15 +78,15 @@ func (t *JobTracker) Restore(jobID uint32, discardOutput bool) {
 		t.nextJobID = jobID + 1
 	}
 
-	t.Unlock()
+	t.jobsMutex.Unlock()
 
 	go t.Link(jobID)
 }
 
 func (t *JobTracker) Link(jobID uint32) (uint32, []byte, []byte, error) {
-	t.RLock()
+	t.jobsMutex.RLock()
 	job, ok := t.jobs[jobID]
-	t.RUnlock()
+	t.jobsMutex.RUnlock()
 
 	if !ok {
 		return 0, nil, nil, UnknownJobError{jobID}
@@ -98,9 +98,9 @@ func (t *JobTracker) Link(jobID uint32) (uint32, []byte, []byte, error) {
 }
 
 func (t *JobTracker) Stream(jobID uint32) (chan backend.JobStream, error) {
-	t.RLock()
+	t.jobsMutex.RLock()
 	job, ok := t.jobs[jobID]
-	t.RUnlock()
+	t.jobsMutex.RUnlock()
 
 	if !ok {
 		return nil, UnknownJobError{jobID}
@@ -112,8 +112,8 @@ func (t *JobTracker) Stream(jobID uint32) (chan backend.JobStream, error) {
 }
 
 func (t *JobTracker) ActiveJobs() []*Job {
-	t.RLock()
-	defer t.RUnlock()
+	t.jobsMutex.RLock()
+	defer t.jobsMutex.RUnlock()
 
 	jobs := []*Job{}
 
@@ -125,8 +125,8 @@ func (t *JobTracker) ActiveJobs() []*Job {
 }
 
 func (t *JobTracker) unregister(jobID uint32) {
-	t.Lock()
-	defer t.Unlock()
+	t.jobsMutex.Lock()
+	defer t.jobsMutex.Unlock()
 
 	delete(t.jobs, jobID)
 }

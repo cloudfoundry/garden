@@ -342,7 +342,7 @@ var _ = Describe("Container pool", func() {
 						"some-other-restored-event",
 					},
 
-					Resources: linux_backend.Resources{
+					Resources: linux_backend.ResourcesSnapshot{
 						UID:     10000,
 						Network: restoredNetwork,
 						Ports:   []uint32{61001, 61002, 61003},
