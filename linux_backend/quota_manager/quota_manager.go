@@ -7,7 +7,6 @@ import (
 	"os/exec"
 	"path"
 	"strings"
-	"syscall"
 
 	"github.com/vito/garden/backend"
 	"github.com/vito/garden/command_runner"
