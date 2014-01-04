@@ -135,6 +135,34 @@ var _ = Describe("THE TIMEBOMB", func() {
 
 					Expect((<-detonated).Sub(before)).To(BeNumerically(">=", countdown+delay))
 				})
+
+				Context("AND THEN PAUSED AGAIN", func() {
+					It("DOES NOT DETONATE", func() {
+						detonated := make(chan time.Time)
+
+						countdown := 100 * time.Millisecond
+
+						bomb := timebomb.New(
+							countdown,
+							func() {
+								detonated <- time.Now()
+							},
+						)
+
+						bomb.Strap()
+						bomb.Pause()
+						bomb.Unpause()
+						bomb.Pause()
+
+						delay := 50 * time.Millisecond
+
+						select {
+						case <-detonated:
+							Fail("MILLIONS ARE DEAD")
+						case <-time.After(countdown + delay):
+						}
+					})
+				})
 			})
 
 			Context("TWICE", func() {
