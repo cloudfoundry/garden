@@ -4,3 +4,7 @@ go:
   - 1.2
 
 script: sudo ./bin/test -skip="wshd Suite"
+
+env:
+  global:
+    secure: YnipY17l8jZxPromMNgwJXpJCCZ9xugm+ZbX6SIhJzz7SncwE1RW1/CbicLSQQQq6avPFSsBxg20550eQO6Krgpmz+PRTrdwOzDCj6v/qbGwMyHEuTThT44JRKuZLw1mcxNPKGodLa+rN5PJJBXL8piOdH7aE01Vgqc0hkQIvIo=

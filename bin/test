@@ -47,4 +47,13 @@ go get -v github.com/xoebus/gocart/gocart
 gocart install
 go install github.com/onsi/ginkgo/ginkgo
 
-ginkgo -race -r -i -skipMeasurements -randomizeAllSpecs "$@"
+ginkgo -cover -race -r -i -skipMeasurements -randomizeAllSpecs "$@"
+
+echo mode: set > all.coverprofile
+cat *.coverprofile | grep -v mode: >> all.coverprofile
+
+# don't leak coveralls token
+(
+  set +x
+  gocoverage -coverprofile=all.coverprofile $COVERALLS_TOKEN
+)
