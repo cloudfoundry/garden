@@ -3,7 +3,7 @@ language: go
 go:
   - 1.2
 
-script: sudo ./bin/test -skip="wshd Suite"
+script: ./bin/test -skip="wshd Suite" -skipMeasurements -skip=Lifecycle
 
 env:
   global:
