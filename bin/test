@@ -17,7 +17,9 @@ go install github.com/dustin/goveralls
 ginkgo -cover -race -r -i -skipMeasurements -randomizeAllSpecs "$@"
 
 echo mode: set > all.coverprofile
-cat *.coverprofile | grep -v mode: >> all.coverprofile
+for profile in $(ls *.coverprofile | grep -v fake); do
+  cat $profile | grep -v mode: >> all.coverprofile
+done
 
 # don't leak coveralls token
 (
