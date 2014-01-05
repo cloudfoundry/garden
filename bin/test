@@ -46,6 +46,8 @@ go get -v github.com/xoebus/gocart/gocart
 
 gocart install
 go install github.com/onsi/ginkgo/ginkgo
+go install code.google.com/p/go.tools/cmd/cover
+go install github.com/dustin/goveralls
 
 ginkgo -cover -race -r -i -skipMeasurements -randomizeAllSpecs "$@"
 
