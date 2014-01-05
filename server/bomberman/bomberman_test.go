@@ -84,6 +84,16 @@ var _ = Describe("Bomberman", func() {
 			}
 		})
 
+		Context("when the handle is invalid", func() {
+			It("doesn't launch any missiles or anything like that", func() {
+				bomberman := bomberman.New(func(container backend.Container) {
+					panic("dont call me")
+				})
+
+				bomberman.Pause("BOOM?!")
+			})
+		})
+
 		Describe("and then unpausing it", func() {
 			It("causes it to detonate after the countdown", func() {
 				detonated := make(chan backend.Container)
@@ -112,6 +122,16 @@ var _ = Describe("Bomberman", func() {
 					Fail("did not detonate!")
 				}
 			})
+
+			Context("when the handle is invalid", func() {
+				It("doesn't launch any missiles or anything like that", func() {
+					bomberman := bomberman.New(func(container backend.Container) {
+						panic("dont call me")
+					})
+
+					bomberman.Unpause("BOOM?!")
+				})
+			})
 		})
 	})
 
@@ -138,6 +158,16 @@ var _ = Describe("Bomberman", func() {
 				Fail("detonated!")
 			case <-time.After(container.GraceTime() + 50*time.Millisecond):
 			}
+		})
+
+		Context("when the handle is invalid", func() {
+			It("doesn't launch any missiles or anything like that", func() {
+				bomberman := bomberman.New(func(container backend.Container) {
+					panic("dont call me")
+				})
+
+				bomberman.Defuse("BOOM?!")
+			})
 		})
 	})
 })
