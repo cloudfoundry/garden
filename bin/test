@@ -22,5 +22,5 @@ cat *.coverprofile | grep -v mode: >> all.coverprofile
 # don't leak coveralls token
 (
   set +x
-  gocoverage -coverprofile=all.coverprofile $COVERALLS_TOKEN
+  goveralls -coverprofile=all.coverprofile $COVERALLS_TOKEN
 )
