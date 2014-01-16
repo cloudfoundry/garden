@@ -29,10 +29,21 @@ For development, you can just spin up the Vagrant VM and run the server
 locally, pointing at its host:
 
 ```bash
+# if you need it:
+vagrant plugin install vagrant-omnibus
+
+# then:
+librarian-chef install
 vagrant up
 ssh-copy-id vagrant@192.168.50.4
 ssh vagrant@192.168.50.4 sudo cp -r .ssh/ /root/.ssh/
 ./bin/run-garden-remote-linux
+
+# or run from inside the vm:
+vagrant ssh
+sudo su -
+goto garden
+./bin/run-garden-linux
 ```
 
 This runs the server locally and configures the Linux backend to do everything
