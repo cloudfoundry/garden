@@ -24,7 +24,7 @@ var _ = Describe("Running wshd", func() {
 
 	wsh := "../../root/linux/skeleton/bin/wsh"
 
-	shmTest, err := cmdtest.Build("github.com/vito/garden/integration/wshd/shm_test")
+	shmTest, err := cmdtest.Build("github.com/pivotal-cf-experimental/garden/integration/wshd/shm_test")
 	if err != nil {
 		panic(err)
 	}

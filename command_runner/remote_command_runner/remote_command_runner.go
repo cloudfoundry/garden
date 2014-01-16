@@ -5,7 +5,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/vito/garden/command_runner"
+	"github.com/pivotal-cf-experimental/garden/command_runner"
 )
 
 type RemoteCommandRunner struct {

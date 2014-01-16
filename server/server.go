@@ -11,11 +11,11 @@ import (
 
 	"code.google.com/p/gogoprotobuf/proto"
 
-	"github.com/vito/garden/backend"
-	"github.com/vito/garden/drain"
-	"github.com/vito/garden/message_reader"
-	protocol "github.com/vito/garden/protocol"
-	"github.com/vito/garden/server/bomberman"
+	"github.com/pivotal-cf-experimental/garden/backend"
+	"github.com/pivotal-cf-experimental/garden/drain"
+	"github.com/pivotal-cf-experimental/garden/message_reader"
+	protocol "github.com/pivotal-cf-experimental/garden/protocol"
+	"github.com/pivotal-cf-experimental/garden/server/bomberman"
 )
 
 type WardenServer struct {

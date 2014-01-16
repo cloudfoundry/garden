@@ -26,7 +26,7 @@ type GardenRunner struct {
 }
 
 func New(rootPath, rootFSPath string) (*GardenRunner, error) {
-	gardenBin, err := cmdtest.Build("github.com/vito/garden")
+	gardenBin, err := cmdtest.Build("github.com/pivotal-cf-experimental/garden")
 	if err != nil {
 		return nil, err
 	}

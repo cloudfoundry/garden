@@ -12,14 +12,14 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/vito/garden/backend"
-	"github.com/vito/garden/command_runner"
-	"github.com/vito/garden/linux_backend"
-	"github.com/vito/garden/linux_backend/bandwidth_manager"
-	"github.com/vito/garden/linux_backend/cgroups_manager"
-	"github.com/vito/garden/linux_backend/network_pool"
-	"github.com/vito/garden/linux_backend/quota_manager"
-	"github.com/vito/garden/linux_backend/uid_pool"
+	"github.com/pivotal-cf-experimental/garden/backend"
+	"github.com/pivotal-cf-experimental/garden/command_runner"
+	"github.com/pivotal-cf-experimental/garden/linux_backend"
+	"github.com/pivotal-cf-experimental/garden/linux_backend/bandwidth_manager"
+	"github.com/pivotal-cf-experimental/garden/linux_backend/cgroups_manager"
+	"github.com/pivotal-cf-experimental/garden/linux_backend/network_pool"
+	"github.com/pivotal-cf-experimental/garden/linux_backend/quota_manager"
+	"github.com/pivotal-cf-experimental/garden/linux_backend/uid_pool"
 )
 
 type LinuxContainerPool struct {

@@ -9,7 +9,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/vito/gordon"
 
-	"github.com/vito/garden/integration/garden_runner"
+	"github.com/pivotal-cf-experimental/garden/integration/garden_runner"
 )
 
 var runner *garden_runner.GardenRunner

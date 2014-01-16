@@ -7,9 +7,9 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	"github.com/vito/garden/command_runner/fake_command_runner"
-	. "github.com/vito/garden/command_runner/fake_command_runner/matchers"
-	"github.com/vito/garden/linux_backend/cgroups_manager"
+	"github.com/pivotal-cf-experimental/garden/command_runner/fake_command_runner"
+	. "github.com/pivotal-cf-experimental/garden/command_runner/fake_command_runner/matchers"
+	"github.com/pivotal-cf-experimental/garden/linux_backend/cgroups_manager"
 )
 
 var _ = Describe("Container cgroups", func() {

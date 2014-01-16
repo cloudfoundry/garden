@@ -14,12 +14,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/vito/garden/backend"
-	"github.com/vito/garden/command_runner"
-	"github.com/vito/garden/linux_backend/bandwidth_manager"
-	"github.com/vito/garden/linux_backend/cgroups_manager"
-	"github.com/vito/garden/linux_backend/job_tracker"
-	"github.com/vito/garden/linux_backend/quota_manager"
+	"github.com/pivotal-cf-experimental/garden/backend"
+	"github.com/pivotal-cf-experimental/garden/command_runner"
+	"github.com/pivotal-cf-experimental/garden/linux_backend/bandwidth_manager"
+	"github.com/pivotal-cf-experimental/garden/linux_backend/cgroups_manager"
+	"github.com/pivotal-cf-experimental/garden/linux_backend/job_tracker"
+	"github.com/pivotal-cf-experimental/garden/linux_backend/quota_manager"
 )
 
 type LinuxContainer struct {
