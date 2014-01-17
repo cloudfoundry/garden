@@ -152,7 +152,7 @@ func (p *LinuxContainerPool) Create(spec backend.ContainerSpec) (linux_backend.C
 
 	containerPath := path.Join(p.depotPath, id)
 
-	cgroupsManager := cgroups_manager.New("/tmp/warden/cgroup", id, p.runner)
+	cgroupsManager := cgroups_manager.New("/tmp/warden/cgroup", id)
 
 	bandwidthManager := bandwidth_manager.New(containerPath, id, p.runner)
 
@@ -245,7 +245,7 @@ func (p *LinuxContainerPool) Restore(snapshot io.Reader) (linux_backend.Containe
 
 	containerPath := path.Join(p.depotPath, id)
 
-	cgroupsManager := cgroups_manager.New("/tmp/warden/cgroup", id, p.runner)
+	cgroupsManager := cgroups_manager.New("/tmp/warden/cgroup", id)
 
 	bandwidthManager := bandwidth_manager.New(containerPath, id, p.runner)
 
