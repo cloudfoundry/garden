@@ -19,7 +19,9 @@ import (
 )
 
 type WardenServer struct {
-	socketPath         string
+	listenNetwork string
+	listenAddr    string
+
 	containerGraceTime time.Duration
 	backend            backend.Backend
 
@@ -41,12 +43,14 @@ func (e UnhandledRequestError) Error() string {
 }
 
 func New(
-	socketPath string,
+	listenNetwork, listenAddr string,
 	containerGraceTime time.Duration,
 	backend backend.Backend,
 ) *WardenServer {
 	return &WardenServer{
-		socketPath:         socketPath,
+		listenNetwork: listenNetwork,
+		listenAddr:    listenAddr,
+
 		containerGraceTime: containerGraceTime,
 		backend:            backend,
 
@@ -68,14 +72,16 @@ func (s *WardenServer) Start() error {
 		return err
 	}
 
-	listener, err := net.Listen("unix", s.socketPath)
+	listener, err := net.Listen(s.listenNetwork, s.listenAddr)
 	if err != nil {
 		return err
 	}
 
 	s.listener = listener
 
-	os.Chmod(s.socketPath, 0777)
+	if s.listenNetwork == "unix" {
+		os.Chmod(s.listenAddr, 0777)
+	}
 
 	containers, err := s.backend.Containers()
 	if err != nil {
@@ -215,11 +221,15 @@ func (s *WardenServer) serveConnection(conn net.Conn) {
 }
 
 func (s *WardenServer) removeExistingSocket() error {
-	if _, err := os.Stat(s.socketPath); os.IsNotExist(err) {
+	if s.listenNetwork != "unix" {
 		return nil
 	}
 
-	err := os.Remove(s.socketPath)
+	if _, err := os.Stat(s.listenAddr); os.IsNotExist(err) {
+		return nil
+	}
+
+	err := os.Remove(s.listenAddr)
 
 	if err != nil {
 		return fmt.Errorf("error deleting existing socket: %s", err)

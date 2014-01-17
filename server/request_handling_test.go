@@ -43,6 +43,7 @@ var _ = Describe("When a client connects", func() {
 		serverContainerGraceTime = 42 * time.Second
 
 		wardenServer = server.New(
+			"unix",
 			socketPath,
 			serverContainerGraceTime,
 			serverBackend,
@@ -51,7 +52,7 @@ var _ = Describe("When a client connects", func() {
 		err = wardenServer.Start()
 		Expect(err).ToNot(HaveOccurred())
 
-		Eventually(ErrorDialingUnix(socketPath)).ShouldNot(HaveOccurred())
+		Eventually(ErrorDialing("unix", socketPath)).ShouldNot(HaveOccurred())
 
 		serverConnection, err = net.Dial("unix", socketPath)
 		Expect(err).ToNot(HaveOccurred())
