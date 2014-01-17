@@ -24,7 +24,10 @@ var _ = Describe("The Warden server", func() {
 		socketPath := os.Getenv("WARDEN_TEST_SOCKET")
 		Eventually(ErrorDialingUnix(socketPath)).ShouldNot(HaveOccurred())
 
-		wardenClient = gordon.NewClient(&gordon.ConnectionInfo{SocketPath: socketPath})
+		wardenClient = gordon.NewClient(&gordon.ConnectionInfo{
+			Network: "unix",
+			Addr:    socketPath,
+		})
 
 		err := wardenClient.Connect()
 		Expect(err).ToNot(HaveOccurred())
