@@ -3,7 +3,7 @@
 
 set -e
 
-ssh -t vagrant@192.168.50.4 /vagrant/bin/run-garden-linux \
+ssh -t vagrant@192.168.50.5 /vagrant/bin/run-garden-linux \
   -listenNetwork=tcp \
-  -listenAddr=:7021 \
+  -listenAddr=:7031 \
   "$@"

@@ -8,7 +8,7 @@ Vagrant.configure("2") do |config|
 
   config.omnibus.chef_version = :latest
 
-  config.vm.network "private_network", ip: "192.168.50.4"
+  config.vm.network "private_network", ip: "192.168.50.5"
 
   20.times do |i|
     config.vm.network "forwarded_port", guest: 7012 + i, host: 7012 + i
