@@ -4,6 +4,6 @@ github.com/onsi/gomega	d7685fbd45fb7bef327b43ca2781368c68bf72b7
 github.com/onsi/ginkgo	70bba40592331fc3aa81ac7cc48b51167349d893
 github.com/onsi/ginkgo/ginkgo	d6b13df1865f79525395c741a261633103dc1bb0
 github.com/vito/cmdtest	4b86f8c2259c55e86e4b971cd7dc5dfb03e41b80
-github.com/vito/gordon	b7ae67fd311f6930693b6cf3b0052b56a358135a
+github.com/vito/gordon	dd0fca5043eb28525a337f607a3e1a1963166634
 code.google.com/p/go.tools/cmd/cover	fd14daeb8181
 github.com/dustin/goveralls	0bb6195525a794a8b9e0a10f4752e1ac6a0683c8
