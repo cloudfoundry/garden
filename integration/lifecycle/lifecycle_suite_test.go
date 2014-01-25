@@ -13,7 +13,7 @@ import (
 )
 
 var runner *garden_runner.GardenRunner
-var client *gordon.Client
+var client gordon.Client
 
 func TestLifecycle(t *testing.T) {
 	remote := os.Getenv("GARDEN_REMOTE_HOST")

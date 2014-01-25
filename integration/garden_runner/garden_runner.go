@@ -195,7 +195,7 @@ func (r *GardenRunner) TearDown() error {
 	return r.cmd("rm", "-rf", r.tmpdir).Run()
 }
 
-func (r *GardenRunner) NewClient() *gordon.Client {
+func (r *GardenRunner) NewClient() gordon.Client {
 	return gordon.NewClient(&gordon.ConnectionInfo{
 		Network: "tcp",
 		Addr:    r.addr(),

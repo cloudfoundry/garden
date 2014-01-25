@@ -16,7 +16,7 @@ import (
 )
 
 var _ = Describe("The Warden server", func() {
-	var wardenClient *gordon.Client
+	var wardenClient gordon.Client
 
 	runtime.GOMAXPROCS(runtime.NumCPU())
 
