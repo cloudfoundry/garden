@@ -5,7 +5,6 @@ code.google.com/p/gogoprotobuf/protoc-gen-gogo origin/master
 # Tests
 github.com/onsi/gomega origin/master
 github.com/onsi/ginkgo origin/master
-github.com/onsi/ginkgo/ginkgo origin/master
 github.com/vito/cmdtest origin/master
 github.com/vito/gordon origin/master
 
