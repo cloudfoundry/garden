@@ -74,7 +74,7 @@ var _ = Describe("The Warden server", func() {
 							results, err := wardenClient.Stream(handle, spawnRes.GetJobId())
 							Expect(err).ToNot(HaveOccurred())
 
-							go func(results chan *warden.StreamResponse) {
+							go func(results <-chan *warden.StreamResponse) {
 								for {
 									res, ok := <-results
 									if !ok {
