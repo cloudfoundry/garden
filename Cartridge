@@ -1,13 +1,13 @@
 # Runtime
-code.google.com/p/gogoprotobuf/proto origin/master
-code.google.com/p/gogoprotobuf/protoc-gen-gogo origin/master
+code.google.com/p/gogoprotobuf/proto *
+code.google.com/p/gogoprotobuf/protoc-gen-gogo *
 
 # Tests
-github.com/onsi/gomega origin/master
-github.com/onsi/ginkgo origin/master
-github.com/vito/cmdtest origin/master
-github.com/vito/gordon origin/master
+github.com/onsi/gomega * test
+github.com/onsi/ginkgo * test
+github.com/vito/cmdtest * test
+github.com/vito/gordon * test
 
 # Coverage
-code.google.com/p/go.tools/cmd/cover tip
-github.com/dustin/goveralls origin/master
+code.google.com/p/go.tools/cmd/cover * test
+github.com/dustin/goveralls * test
