@@ -1,8 +1,0 @@
-code.google.com/p/gogoprotobuf/proto	5ad34ffef55c3655a6ca3f46adf798484c3e1e2e
-code.google.com/p/gogoprotobuf/protoc-gen-gogo	5ad34ffef55c3655a6ca3f46adf798484c3e1e2e
-github.com/onsi/gomega	907e6fbe579ce639d5f28e6b21321e41ab0a8934
-github.com/onsi/ginkgo	7083fb7612a8bc8ef9a48c35b8364fd06fadf9ad
-github.com/vito/cmdtest	4b86f8c2259c55e86e4b971cd7dc5dfb03e41b80
-github.com/vito/gordon	03213627ae6d64e48685b2e4c7048ff412edf05d
-code.google.com/p/go.tools/cmd/cover	fd14daeb8181
-github.com/dustin/goveralls	0bb6195525a794a8b9e0a10f4752e1ac6a0683c8
