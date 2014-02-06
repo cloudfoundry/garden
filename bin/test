@@ -11,7 +11,7 @@ go get code.google.com/p/go.tools/cmd/cover
 go get github.com/dustin/goveralls
 
 # move workspace elsewhere so ginkgo -r doesn't run everything in it
-WORKSPACE=`mktemp -d garden-workspace.XXXXXXX`
+WORKSPACE=`mktemp -d /tmp/garden-workspace.XXXXXXX`
 mv $PWD/Godeps/_workspace $WORKSPACE/workspace
 
 export GOPATH=$WORKSPACE/workspace:$GOPATH
