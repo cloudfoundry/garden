@@ -4,19 +4,19 @@
 set -e -x
 
 FIRST_GOPATH=`echo $GOPATH | cut -d':' -f1`
-
 export PATH=$FIRST_GOPATH/bin:$PATH
 
 go get code.google.com/p/go.tools/cmd/cover
 go get github.com/dustin/goveralls
 
-go install github.com/onsi/ginkgo/ginkgo
-
 # move workspace elsewhere so ginkgo -r doesn't run everything in it
-WORKSPACE=`mktemp -d /tmp/garden-workspace.XXXXXXX`
-mv $PWD/Godeps/_workspace $WORKSPACE/workspace
+WORKSPACE=$(mktemp -d /tmp/garden-workspace.XXXXXXX)/workspace
+mv $PWD/Godeps/_workspace $WORKSPACE
 
-export GOPATH=$WORKSPACE/workspace:$GOPATH
+export GOPATH=$WORKSPACE:$GOPATH
+export PATH=$WORKSPACE/bin:$PATH
+
+go install github.com/onsi/ginkgo/ginkgo
 
 ginkgo -cover -race -r -i -skipMeasurements -randomizeAllSpecs "$@"
 
