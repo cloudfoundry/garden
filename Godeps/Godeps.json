@@ -11,11 +11,11 @@
 		},
 		{
 			"ImportPath": "github.com/onsi/ginkgo",
-			"Rev": "d16fe2b14fad464d5edde7b591b031e884ae478c"
+			"Rev": "dc83f6705d743045e1d2d399bfe0104501a25668"
 		},
 		{
 			"ImportPath": "github.com/onsi/gomega",
-			"Rev": "eb4854fbb3636f8ca054586384addf7f1b048466"
+			"Rev": "96f78f1eec17555a416b86839fe5a3c1c2086c8a"
 		},
 		{
 			"ImportPath": "github.com/vito/cmdtest",
@@ -23,7 +23,7 @@
 		},
 		{
 			"ImportPath": "github.com/vito/gordon",
-			"Rev": "03213627ae6d64e48685b2e4c7048ff412edf05d"
+			"Rev": "efbfec342dbbba9ab2c661a2c29efa9009f6ba6d"
 		}
 	]
 }
