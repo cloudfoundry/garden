@@ -463,11 +463,7 @@ func (c *LinuxContainer) LimitMemory(limits backend.MemoryLimits) error {
 	//
 	// so, write memory.limit_in_bytes before and after
 	c.cgroupsManager.Set("memory", "memory.limit_in_bytes", limit)
-
-	err = c.cgroupsManager.Set("memory", "memory.memsw.limit_in_bytes", limit)
-	if err != nil {
-		return err
-	}
+	c.cgroupsManager.Set("memory", "memory.memsw.limit_in_bytes", limit)
 
 	err = c.cgroupsManager.Set("memory", "memory.limit_in_bytes", limit)
 	if err != nil {

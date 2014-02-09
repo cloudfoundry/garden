@@ -1400,12 +1400,12 @@ var _ = Describe("Linux containers", func() {
 				})
 			})
 
-			It("returns the error", func() {
+			It("does not fail", func() {
 				err := container.LimitMemory(backend.MemoryLimits{
 					LimitInBytes: 102400,
 				})
 
-				Expect(err).To(Equal(disaster))
+				Expect(err).ToNot(HaveOccurred())
 			})
 		})
 
