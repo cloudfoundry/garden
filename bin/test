@@ -9,9 +9,7 @@ export PATH=$FIRST_GOPATH/bin:$PATH
 go get code.google.com/p/go.tools/cmd/cover
 go get github.com/dustin/goveralls
 
-# move workspace elsewhere so ginkgo -r doesn't run everything in it
-WORKSPACE=$(mktemp -d /tmp/garden-workspace.XXXXXXX)/workspace
-mv $PWD/Godeps/_workspace $WORKSPACE
+WORKSPACE=$PWD/Godeps/_workspace
 
 export GOPATH=$WORKSPACE:$GOPATH
 export PATH=$WORKSPACE/bin:$PATH
