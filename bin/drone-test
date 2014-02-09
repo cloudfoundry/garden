@@ -16,7 +16,4 @@ export PATH=$GODEPS_WORKSPACE/bin:$PATH
 
 go install github.com/onsi/ginkgo/ginkgo
 
-pushd integration
-  ginkgo -r -skipMeasurements -keepGoing
-popd
-
+ginkgo -r -skipMeasurements -keepGoing
