@@ -28,6 +28,7 @@ if [ -n "$COVERALLS_TOKEN" ]; then
   # don't leak coveralls token
   (
     set +x
-    goveralls -coverprofile=all.coverprofile $COVERALLS_TOKEN
+    goveralls -coverprofile=all.coverprofile $COVERALLS_TOKEN || \
+      echo "Coveralls failed!"
   )
 fi
