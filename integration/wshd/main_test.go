@@ -164,7 +164,10 @@ setup_fs
 		wshdSession, err := cmdtest.StartWrapped(wshdCommand, outWrapper, outWrapper)
 		Expect(err).ToNot(HaveOccurred())
 
-		Expect(wshdSession).To(ExitWith(0))
+		status, err := wshdSession.Wait(30 * time.Second)
+		Expect(err).ToNot(HaveOccurred())
+
+		Expect(status).To(Equal(0))
 
 		createdContainers = append(createdContainers, containerDir)
 
