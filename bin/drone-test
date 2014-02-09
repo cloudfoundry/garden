@@ -1,0 +1,52 @@
+#!/bin/bash
+
+set -e -x
+
+# net setup
+apt-get -y install iptables
+
+# disk quotas
+apt-get -y install quota
+
+# copy in/out
+apt-get -y install rsync
+
+# ifconfig, for tests
+apt-get -y install net-tools
+
+ROOTFS_FN=lucid64.dev.tgz
+ROOTFS_URI=http://cfstacks.s3.amazonaws.com/${ROOTFS_FN}
+ROOTFS_SHA=b2633b2ab4964f91402bb2d889f2f12449a8b828
+
+ROOTFS_INSTALL_DIR=$PWD
+
+mkdir -p "$ROOTFS_INSTALL_DIR"
+
+pushd "$ROOTFS_INSTALL_DIR"
+  echo "${ROOTFS_SHA}  ${ROOTFS_FN}" > checksum
+
+  if [ ! -f ${ROOTFS_FN} ] || ! shasum -s -c checksum; then
+    wget -q "${ROOTFS_URI}"
+  fi
+
+  mkdir -p ./rootfs
+  tar --numeric-owner -z -x -f ${ROOTFS_FN} -C ./rootfs || find ./rootfs
+popd
+
+export GARDEN_TEST_ROOTFS="${ROOTFS_INSTALL_DIR}/rootfs"
+
+# export GARDEN_TEST_ROOTFS=/opt/warden/rootfs
+
+make
+
+export GODEPS_WORKSPACE=$PWD/Godeps/_workspace
+
+export GOPATH=$GODEPS_WORKSPACE:$GOPATH
+export PATH=$GODEPS_WORKSPACE/bin:$PATH
+
+go install github.com/onsi/ginkgo/ginkgo
+
+pushd integration
+  ginkgo -r -skipMeasurements -keepGoing
+popd
+
