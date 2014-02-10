@@ -36,7 +36,10 @@ func TestWshd(t *testing.T) {
 				if err == nil {
 					proc, err := os.FindProcess(wshdPid)
 					if err == nil {
-						log.Println("killing", wshdPid, proc.Kill())
+						err := proc.Kill()
+						if err != nil {
+							log.Println("killing", wshdPid, err)
+						}
 					}
 				}
 			}
@@ -57,7 +60,9 @@ func TestWshd(t *testing.T) {
 					umount.Stderr = os.Stderr
 
 					err := umount.Run()
-					log.Println("unmounting", submount, err)
+					if err != nil {
+						log.Println("unmounting", submount, err)
+					}
 				}
 
 				umount := exec.Command("umount", path.Join(containerDir, "mnt"))
@@ -65,13 +70,11 @@ func TestWshd(t *testing.T) {
 				umount.Stderr = os.Stderr
 
 				err := umount.Run()
-
-				log.Println("unmounting", err)
-
 				if err == nil {
 					break
 				}
 
+				log.Println("unmounting", err)
 				time.Sleep(1 * time.Second)
 			}
 		}
@@ -79,12 +82,11 @@ func TestWshd(t *testing.T) {
 		for _, containerDir := range createdContainers {
 			for i := 0; i < 4; i++ {
 				err := os.RemoveAll(containerDir)
-
-				log.Println("destroying", err)
-
 				if err == nil {
 					break
 				}
+
+				log.Println("destroying", err)
 
 				time.Sleep(1 * time.Second)
 			}
