@@ -18,14 +18,14 @@ Vagrant.configure("2") do |config|
   config.vm.synced_folder ENV["GOPATH"], "/go"
 
   config.vm.provider :virtualbox do |v, override|
-    v.customize ["modifyvm", :id, "--memory", 3*1024]
+    v.customize ["modifyvm", :id, "--memory", 1*1024]
     v.customize ["modifyvm", :id, "--cpus", 4]
   end
 
   config.vm.provider :vmware_fusion do |v, override|
     override.vm.box_url = "http://files.vagrantup.com/precise64_vmware.box"
     v.vmx["numvcpus"] = "4"
-    v.vmx["memsize"] = 3 * 1024
+    v.vmx["memsize"] = 1 * 1024
   end
 
   config.vm.provision :chef_solo do |chef|
