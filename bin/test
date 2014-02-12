@@ -19,7 +19,7 @@ go install github.com/onsi/ginkgo/ginkgo
 ginkgo -cover -race -r -i -skipMeasurements -randomizeAllSpecs "$@"
 
 # don't leak coveralls token
-set +x
+set -x
 
 if [ -n "$COVERALLS_TOKEN" ]; then
   # don't report fakes
