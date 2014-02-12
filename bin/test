@@ -18,6 +18,9 @@ go install github.com/onsi/ginkgo/ginkgo
 
 ginkgo -cover -race -r -i -skipMeasurements -randomizeAllSpecs "$@"
 
+# don't leak coveralls token
+set +x
+
 if [ -n "$COVERALLS_TOKEN" ]; then
   # don't report fakes
   rm -f *fake*.coverprofile
@@ -25,10 +28,6 @@ if [ -n "$COVERALLS_TOKEN" ]; then
   echo mode: set > all.coverprofile
   cat *.coverprofile | grep -v mode: >> all.coverprofile
 
-  # don't leak coveralls token
-  (
-    set +x
-    goveralls -coverprofile=all.coverprofile $COVERALLS_TOKEN || \
-      echo "Coveralls failed!"
-  )
+  goveralls -coverprofile=all.coverprofile $COVERALLS_TOKEN || \
+    echo "Coveralls failed. :("
 fi
