@@ -27,18 +27,15 @@ type FakeContainer struct {
 	CopyOutError error
 	CopiedOut    [][]string
 
-	SpawnError   error
-	SpawnedJobID uint32
-	Spawned      []backend.JobSpec
+	RunError         error
+	RunningProcessID uint32
+	RunningProcesses []backend.ProcessSpec
 
-	LinkError       error
-	LinkedJobResult backend.JobResult
-	Linked          []uint32
+	AttachError error
+	Attached    []uint32
 
-	StreamError       error
-	StreamedJobChunks []backend.JobStream
-	Streamed          []uint32
-	StreamDelay       time.Duration
+	StreamedProcessChunks []backend.ProcessStream
+	StreamDelay           time.Duration
 
 	DidLimitBandwidth   bool
 	LimitBandwidthError error
@@ -269,43 +266,24 @@ func (c *FakeContainer) CurrentCPULimits() (backend.CPULimits, error) {
 	return c.CurrentCPULimitsResult, nil
 }
 
-func (c *FakeContainer) Spawn(spec backend.JobSpec) (uint32, error) {
-	if c.SpawnError != nil {
-		return 0, c.SpawnError
+func (c *FakeContainer) Run(spec backend.ProcessSpec) (uint32, <-chan backend.ProcessStream, error) {
+	if c.RunError != nil {
+		return 0, nil, c.RunError
 	}
 
-	c.Spawned = append(c.Spawned, spec)
+	c.RunningProcesses = append(c.RunningProcesses, spec)
 
-	return c.SpawnedJobID, nil
+	return c.RunningProcessID, c.fakeAttach(), nil
 }
 
-func (c *FakeContainer) Stream(jobID uint32) (<-chan backend.JobStream, error) {
-	if c.StreamError != nil {
-		return nil, c.StreamError
+func (c *FakeContainer) Attach(processID uint32) (<-chan backend.ProcessStream, error) {
+	if c.AttachError != nil {
+		return nil, c.AttachError
 	}
 
-	c.Streamed = append(c.Streamed, jobID)
+	c.Attached = append(c.Attached, processID)
 
-	stream := make(chan backend.JobStream, len(c.StreamedJobChunks))
-
-	for _, chunk := range c.StreamedJobChunks {
-		time.Sleep(c.StreamDelay)
-		stream <- chunk
-	}
-
-	close(stream)
-
-	return stream, nil
-}
-
-func (c *FakeContainer) Link(jobID uint32) (backend.JobResult, error) {
-	if c.LinkError != nil {
-		return backend.JobResult{}, c.LinkError
-	}
-
-	c.Linked = append(c.Linked, jobID)
-
-	return c.LinkedJobResult, nil
+	return c.fakeAttach(), nil
 }
 
 func (c *FakeContainer) NetIn(hostPort uint32, containerPort uint32) (uint32, uint32, error) {
@@ -330,4 +308,19 @@ func (c *FakeContainer) NetOut(network string, port uint32) error {
 
 func (c *FakeContainer) Cleanup() {
 	c.CleanedUp = true
+}
+
+func (c *FakeContainer) fakeAttach() chan backend.ProcessStream {
+	stream := make(chan backend.ProcessStream, len(c.StreamedProcessChunks))
+
+	go func() {
+		for _, chunk := range c.StreamedProcessChunks {
+			time.Sleep(c.StreamDelay)
+			stream <- chunk
+		}
+
+		close(stream)
+	}()
+
+	return stream
 }

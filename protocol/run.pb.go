@@ -18,8 +18,6 @@ type RunRequest struct {
 	Script           *string         `protobuf:"bytes,2,req,name=script" json:"script,omitempty"`
 	Privileged       *bool           `protobuf:"varint,3,opt,name=privileged,def=0" json:"privileged,omitempty"`
 	Rlimits          *ResourceLimits `protobuf:"bytes,4,opt,name=rlimits" json:"rlimits,omitempty"`
-	DiscardOutput    *bool           `protobuf:"varint,5,opt,name=discard_output,def=0" json:"discard_output,omitempty"`
-	LogTag           *string         `protobuf:"bytes,6,opt,name=log_tag" json:"log_tag,omitempty"`
 	XXX_unrecognized []byte          `json:"-"`
 }
 
@@ -28,7 +26,6 @@ func (m *RunRequest) String() string { return proto.CompactTextString(m) }
 func (*RunRequest) ProtoMessage()    {}
 
 const Default_RunRequest_Privileged bool = false
-const Default_RunRequest_DiscardOutput bool = false
 
 func (m *RunRequest) GetHandle() string {
 	if m != nil && m.Handle != nil {
@@ -54,60 +51,6 @@ func (m *RunRequest) GetPrivileged() bool {
 func (m *RunRequest) GetRlimits() *ResourceLimits {
 	if m != nil {
 		return m.Rlimits
-	}
-	return nil
-}
-
-func (m *RunRequest) GetDiscardOutput() bool {
-	if m != nil && m.DiscardOutput != nil {
-		return *m.DiscardOutput
-	}
-	return Default_RunRequest_DiscardOutput
-}
-
-func (m *RunRequest) GetLogTag() string {
-	if m != nil && m.LogTag != nil {
-		return *m.LogTag
-	}
-	return ""
-}
-
-type RunResponse struct {
-	ExitStatus       *uint32       `protobuf:"varint,1,opt,name=exit_status" json:"exit_status,omitempty"`
-	Stdout           *string       `protobuf:"bytes,2,opt,name=stdout" json:"stdout,omitempty"`
-	Stderr           *string       `protobuf:"bytes,3,opt,name=stderr" json:"stderr,omitempty"`
-	Info             *InfoResponse `protobuf:"bytes,4,opt,name=info" json:"info,omitempty"`
-	XXX_unrecognized []byte        `json:"-"`
-}
-
-func (m *RunResponse) Reset()         { *m = RunResponse{} }
-func (m *RunResponse) String() string { return proto.CompactTextString(m) }
-func (*RunResponse) ProtoMessage()    {}
-
-func (m *RunResponse) GetExitStatus() uint32 {
-	if m != nil && m.ExitStatus != nil {
-		return *m.ExitStatus
-	}
-	return 0
-}
-
-func (m *RunResponse) GetStdout() string {
-	if m != nil && m.Stdout != nil {
-		return *m.Stdout
-	}
-	return ""
-}
-
-func (m *RunResponse) GetStderr() string {
-	if m != nil && m.Stderr != nil {
-		return *m.Stderr
-	}
-	return ""
-}
-
-func (m *RunResponse) GetInfo() *InfoResponse {
-	if m != nil {
-		return m.Info
 	}
 	return nil
 }

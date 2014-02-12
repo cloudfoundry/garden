@@ -12,6 +12,26 @@ import (
 	"github.com/vito/gordon/warden"
 )
 
+func readUntilExit(stream <-chan *warden.ProcessPayload) (string, string, uint32) {
+	stdout := ""
+	stderr := ""
+	exitStatus := uint32(12234)
+
+	for payload := range stream {
+		switch payload.GetSource() {
+		case warden.ProcessPayload_stdout:
+			stdout += payload.GetData()
+
+		case warden.ProcessPayload_stderr:
+			stderr += payload.GetData()
+		}
+
+		exitStatus = payload.GetExitStatus()
+	}
+
+	return stdout, stderr, exitStatus
+}
+
 var _ = Describe("Through a restart", func() {
 	var handle string
 
@@ -52,14 +72,14 @@ var _ = Describe("Through a restart", func() {
 
 	Describe("a started job", func() {
 		It("continues to stream", func(done Done) {
-			res, err := client.Spawn(handle, "while true; do echo hi; sleep 0.5; done", false)
+			processID, runStream, err := client.Run(handle, "while true; do echo hi; sleep 0.5; done")
 			Expect(err).ToNot(HaveOccurred())
-
-			jobID := res.GetJobId()
 
 			restartServer()
 
-			stream, err := client.Stream(handle, jobID)
+			Eventually(runStream).Should(BeClosed())
+
+			stream, err := client.Attach(handle, processID)
 			Expect(err).ToNot(HaveOccurred())
 
 			Expect((<-stream).GetData()).To(ContainSubstring("hi\n"))
@@ -68,35 +88,28 @@ var _ = Describe("Through a restart", func() {
 		}, 10.0)
 
 		It("does not have its job ID repeated", func() {
-			res, err := client.Spawn(handle, "while true; do echo hi; sleep 0.5; done", false)
+			processID1, _, err := client.Run(handle, "while true; do echo hi; sleep 0.5; done")
 			Expect(err).ToNot(HaveOccurred())
-
-			jobID1 := res.GetJobId()
 
 			restartServer()
 
-			res, err = client.Spawn(handle, "while true; do echo hi; sleep 0.5; done", false)
+			processID2, _, err := client.Run(handle, "while true; do echo hi; sleep 0.5; done")
 			Expect(err).ToNot(HaveOccurred())
 
-			jobID2 := res.GetJobId()
-
-			Expect(jobID1).ToNot(Equal(jobID2))
+			Expect(processID1).ToNot(Equal(processID2))
 		})
 
 		Context("that prints monotonously increasing output", func() {
 			It("does not duplicate its output on reconnect", func(done Done) {
 				receivedNumbers := make(chan int, 2048)
 
-				res, err := client.Spawn(
+				processID, _, err := client.Run(
 					handle,
 					"for i in $(seq 10); do echo $i; sleep 0.5; done; echo goodbye; while true; do sleep 1; done",
-					false,
 				)
 				Expect(err).ToNot(HaveOccurred())
 
-				jobID := res.GetJobId()
-
-				stream, err := client.Stream(handle, jobID)
+				stream, err := client.Attach(handle, processID)
 				Expect(err).ToNot(HaveOccurred())
 
 				go streamNumbersTo(receivedNumbers, stream)
@@ -105,7 +118,7 @@ var _ = Describe("Through a restart", func() {
 
 				restartServer()
 
-				stream, err = client.Stream(handle, jobID)
+				stream, err = client.Attach(handle, processID)
 				Expect(err).ToNot(HaveOccurred())
 
 				go streamNumbersTo(receivedNumbers, stream)
@@ -119,33 +132,6 @@ var _ = Describe("Through a restart", func() {
 				close(done)
 			}, 10.0)
 		})
-
-		Context("with output discarded", func() {
-			It("continues to not collect output", func(done Done) {
-				res, err := client.Spawn(handle, "while true; do echo hi; sleep 0.5; done", true)
-				Expect(err).ToNot(HaveOccurred())
-
-				jobID := res.GetJobId()
-
-				restartServer()
-
-				go func() {
-					res, err := client.Link(handle, jobID)
-					Expect(err).ToNot(HaveOccurred())
-
-					Expect(res.GetStdout()).To(BeEmpty())
-					Expect(res.GetStderr()).To(BeEmpty())
-
-					close(done)
-				}()
-
-				time.Sleep(100 * time.Millisecond)
-
-				// stop container to kill running job
-				_, err = client.Stop(handle, false, false)
-				Expect(err).ToNot(HaveOccurred())
-			}, 10.0)
-		})
 	})
 
 	Describe("a memory limit", func() {
@@ -155,30 +141,30 @@ var _ = Describe("Through a restart", func() {
 
 			restartServer()
 
-			res, err := client.Run(handle, "exec ruby -e '$stdout.sync = true; puts :hello; puts (\"x\" * 64 * 1024 * 1024).size; puts :goodbye; exit 42'")
+			_, stream, err := client.Run(handle, "exec ruby -e '$stdout.sync = true; puts :hello; puts (\"x\" * 64 * 1024 * 1024).size; puts :goodbye; exit 42'")
 			Expect(err).ToNot(HaveOccurred())
 
 			// cgroups OOM killer seems to leave no trace of the process;
 			// there's no exit status indicator, so just assert that the one
 			// we tried to exit with after over-allocating is not seen
-			Expect(res.GetStdout()).To(Equal("hello\n"))
-			Expect(res.GetExitStatus()).ToNot(Equal(uint32(42)))
+
+			stdout, _, exitStatus := readUntilExit(stream)
+			Expect(stdout).To(Equal("hello\n"))
+			Expect(exitStatus).ToNot(Equal(uint32(42)))
 		})
 	})
 
 	Describe("a container's active job", func() {
 		It("is still tracked", func() {
-			res, err := client.Spawn(handle, "while true; do echo hi; sleep 0.5; done", true)
+			processID, _, err := client.Run(handle, "while true; do echo hi; sleep 0.5; done")
 			Expect(err).ToNot(HaveOccurred())
-
-			jobID := res.GetJobId()
 
 			restartServer()
 
 			info, err := client.Info(handle)
 			Expect(err).ToNot(HaveOccurred())
 
-			Expect(info.GetJobIds()).To(ContainElement(uint64(jobID)))
+			Expect(info.GetProcessIds()).To(ContainElement(uint64(processID)))
 		})
 	})
 
@@ -188,7 +174,7 @@ var _ = Describe("Through a restart", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			// trigger 'out of memory' event
-			_, err = client.Run(handle, "exec ruby -e '$stdout.sync = true; puts :hello; puts (\"x\" * 64 * 1024 * 1024).size; puts :goodbye; exit 42'")
+			_, _, err = client.Run(handle, "exec ruby -e '$stdout.sync = true; puts :hello; puts (\"x\" * 64 * 1024 * 1024).size; puts :goodbye; exit 42'")
 			Expect(err).ToNot(HaveOccurred())
 
 			Eventually(func() []string {
@@ -271,18 +257,29 @@ var _ = Describe("Through a restart", func() {
 
 	Describe("a container's user", func() {
 		It("does not get reused", func() {
-			idResA, err := client.Run(handle, "id -u")
+			idA := ""
+			idB := ""
+
+			_, streamA, err := client.Run(handle, "id -u")
 			Expect(err).ToNot(HaveOccurred())
+
+			for chunk := range streamA {
+				idA += chunk.GetData()
+			}
 
 			restartServer()
 
 			createRes, err := client.Create()
 			Expect(err).ToNot(HaveOccurred())
 
-			idResB, err := client.Run(createRes.GetHandle(), "id -u")
+			_, streamB, err := client.Run(createRes.GetHandle(), "id -u")
 			Expect(err).ToNot(HaveOccurred())
 
-			Expect(idResB.GetStdout()).ToNot(Equal(idResA.GetStdout()))
+			for chunk := range streamB {
+				idB += chunk.GetData()
+			}
+
+			Expect(idA).ToNot(Equal(idB))
 		})
 	})
 
@@ -318,13 +315,8 @@ var _ = Describe("Through a restart", func() {
 	})
 })
 
-func streamNumbersTo(destination chan<- int, source <-chan *warden.StreamResponse) {
-	for {
-		out, ok := <-source
-		if !ok {
-			break
-		}
-
+func streamNumbersTo(destination chan<- int, source <-chan *warden.ProcessPayload) {
+	for out := range source {
 		buf := bytes.NewBufferString(out.GetData())
 
 		var num int

@@ -29,35 +29,33 @@ type Container interface {
 	LimitMemory(limits MemoryLimits) error
 	CurrentMemoryLimits() (MemoryLimits, error)
 
-	Spawn(JobSpec) (uint32, error)
-	Stream(jobID uint32) (<-chan JobStream, error)
-	Link(jobID uint32) (JobResult, error)
+	Run(ProcessSpec) (uint32, <-chan ProcessStream, error)
+	Attach(processID uint32) (<-chan ProcessStream, error)
 
 	NetIn(hostPort, containerPort uint32) (uint32, uint32, error)
 	NetOut(network string, port uint32) error
 }
 
-type JobSpec struct {
-	Script        string
-	Privileged    bool
-	Limits        ResourceLimits
-	DiscardOutput bool
-	AutoLink      bool
+type ProcessSpec struct {
+	Script     string
+	Privileged bool
+	Limits     ResourceLimits
 }
 
-type JobResult struct {
-	ExitStatus uint32
-	Stdout     []byte
-	Stderr     []byte
-	Info       ContainerInfo
-}
-
-type JobStream struct {
-	Name       string
+type ProcessStream struct {
+	Source     ProcessStreamSource
 	Data       []byte
 	ExitStatus *uint32
-	Info       *ContainerInfo
 }
+
+type ProcessStreamSource int32
+
+const (
+	ProcessStreamSourceInvalid ProcessStreamSource = iota
+	ProcessStreamSourceStdin
+	ProcessStreamSourceStdout
+	ProcessStreamSourceStderr
+)
 
 type ContainerInfo struct {
 	State         string
@@ -65,7 +63,7 @@ type ContainerInfo struct {
 	HostIP        string
 	ContainerIP   string
 	ContainerPath string
-	JobIDs        []uint32
+	ProcessIDs    []uint32
 	MemoryStat    ContainerMemoryStat
 	CPUStat       ContainerCPUStat
 	DiskStat      ContainerDiskStat

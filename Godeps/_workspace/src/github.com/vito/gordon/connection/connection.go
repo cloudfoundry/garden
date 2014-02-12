@@ -108,93 +108,83 @@ func (c *Connection) Destroy(handle string) (*warden.DestroyResponse, error) {
 	return res.(*warden.DestroyResponse), nil
 }
 
-func (c *Connection) Spawn(handle, script string, discardOutput bool) (*warden.SpawnResponse, error) {
-	res, err := c.RoundTrip(
-		&warden.SpawnRequest{
-			Handle:        proto.String(handle),
-			Script:        proto.String(script),
-			DiscardOutput: proto.Bool(discardOutput),
-		},
-		&warden.SpawnResponse{},
-	)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return res.(*warden.SpawnResponse), nil
-}
-
-func (c *Connection) Run(handle, script string) (*warden.RunResponse, error) {
-	res, err := c.RoundTrip(
+func (c *Connection) Run(handle, script string) (uint32, chan *warden.ProcessPayload, error) {
+	err := c.sendMessage(
 		&warden.RunRequest{
 			Handle: proto.String(handle),
 			Script: proto.String(script),
 		},
-		&warden.RunResponse{},
 	)
 
 	if err != nil {
-		return nil, err
+		return 0, nil, err
 	}
 
-	return res.(*warden.RunResponse), nil
-}
+	responses := make(chan *warden.ProcessPayload)
 
-func (c *Connection) Link(handle string, jobID uint32) (*warden.LinkResponse, error) {
-	res, err := c.RoundTrip(
-		&warden.LinkRequest{
-			Handle: proto.String(handle),
-			JobId:  proto.Uint32(jobID),
-		},
-		&warden.LinkResponse{},
-	)
-
+	resMsg, err := c.readResponse(&warden.ProcessPayload{})
 	if err != nil {
-		return nil, err
+		return 0, nil, err
 	}
 
-	return res.(*warden.LinkResponse), nil
-}
-
-func (c *Connection) Stream(handle string, jobId uint32) (chan *warden.StreamResponse, chan bool, error) {
-	err := c.sendMessage(
-		&warden.StreamRequest{
-			Handle: proto.String(handle),
-			JobId:  proto.Uint32(jobId),
-		},
-	)
-
-	if err != nil {
-		return nil, nil, err
-	}
-
-	responses := make(chan *warden.StreamResponse)
-
-	streamDone := make(chan bool)
+	firstResponse := resMsg.(*warden.ProcessPayload)
 
 	go func() {
 		for {
-			resMsg, err := c.readResponse(&warden.StreamResponse{})
+			resMsg, err := c.readResponse(&warden.ProcessPayload{})
 			if err != nil {
 				close(responses)
-				close(streamDone)
 				break
 			}
 
-			response := resMsg.(*warden.StreamResponse)
+			response := resMsg.(*warden.ProcessPayload)
 
 			responses <- response
 
 			if response.ExitStatus != nil {
 				close(responses)
-				close(streamDone)
 				break
 			}
 		}
 	}()
 
-	return responses, streamDone, nil
+	return firstResponse.GetProcessId(), responses, nil
+}
+
+func (c *Connection) Attach(handle string, processID uint32) (chan *warden.ProcessPayload, error) {
+	err := c.sendMessage(
+		&warden.AttachRequest{
+			Handle:    proto.String(handle),
+			ProcessId: proto.Uint32(processID),
+		},
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	responses := make(chan *warden.ProcessPayload)
+
+	go func() {
+		for {
+			resMsg, err := c.readResponse(&warden.ProcessPayload{})
+			if err != nil {
+				close(responses)
+				break
+			}
+
+			response := resMsg.(*warden.ProcessPayload)
+
+			responses <- response
+
+			if response.ExitStatus != nil {
+				close(responses)
+				break
+			}
+		}
+	}()
+
+	return responses, nil
 }
 
 func (c *Connection) NetIn(handle string) (*warden.NetInResponse, error) {

@@ -6,6 +6,7 @@ import (
 	. "github.com/onsi/gomega"
 	. "github.com/vito/gordon/connection"
 	"math"
+	"time"
 
 	"code.google.com/p/gogoprotobuf/proto"
 	. "github.com/vito/gordon/test_helpers"
@@ -190,39 +191,6 @@ var _ = Describe("Connection", func() {
 		})
 	})
 
-	Describe("Spawning", func() {
-		BeforeEach(func() {
-			wardenMessages = append(wardenMessages,
-				&warden.SpawnResponse{JobId: proto.Uint32(42)},
-				&warden.SpawnResponse{JobId: proto.Uint32(43)},
-			)
-		})
-
-		It("should be able to spawn multiple jobs sequentially", func() {
-			resp, err := connection.Spawn("foo-handle", "echo hi", true)
-			Ω(err).ShouldNot(HaveOccurred())
-			Ω(resp.GetJobId()).Should(BeNumerically("==", 42))
-
-			assertWriteBufferContains(&warden.SpawnRequest{
-				Handle:        proto.String("foo-handle"),
-				Script:        proto.String("echo hi"),
-				DiscardOutput: proto.Bool(true),
-			})
-
-			writeBuffer.Reset()
-
-			resp, err = connection.Spawn("foo-handle", "echo bye", false)
-			Ω(err).ShouldNot(HaveOccurred())
-			Ω(resp.GetJobId()).Should(BeNumerically("==", 43))
-
-			assertWriteBufferContains(&warden.SpawnRequest{
-				Handle:        proto.String("foo-handle"),
-				Script:        proto.String("echo bye"),
-				DiscardOutput: proto.Bool(false),
-			})
-		})
-	})
-
 	Describe("NetIn", func() {
 		BeforeEach(func() {
 			wardenMessages = append(wardenMessages,
@@ -305,51 +273,6 @@ var _ = Describe("Connection", func() {
 		})
 	})
 
-	Describe("Linking", func() {
-		BeforeEach(func() {
-			wardenMessages = append(wardenMessages,
-				&warden.LinkResponse{
-					Stdout:     proto.String("some data for stdout"),
-					Stderr:     proto.String("some data for stderr"),
-					ExitStatus: proto.Uint32(137),
-				},
-			)
-		})
-
-		It("should link ot the process", func() {
-			resp, err := connection.Link("foo-handle", 42)
-			Ω(err).ShouldNot(HaveOccurred())
-
-			Ω(resp.GetExitStatus()).Should(BeNumerically("==", 137))
-			Ω(resp.GetStdout()).Should(Equal("some data for stdout"))
-			Ω(resp.GetStderr()).Should(Equal("some data for stderr"))
-
-			assertWriteBufferContains(&warden.LinkRequest{
-				Handle: proto.String("foo-handle"),
-				JobId:  proto.Uint32(42),
-			})
-		})
-	})
-
-	Describe("Running", func() {
-		BeforeEach(func() {
-			wardenMessages = append(wardenMessages,
-				&warden.RunResponse{ExitStatus: proto.Uint32(137)},
-			)
-		})
-
-		It("should start the process running", func() {
-			resp, err := connection.Run("foo-handle", "echo hi")
-			Ω(err).ShouldNot(HaveOccurred())
-			Ω(resp.GetExitStatus()).Should(BeNumerically("==", 137))
-
-			assertWriteBufferContains(&warden.RunRequest{
-				Handle: proto.String("foo-handle"),
-				Script: proto.String("echo hi"),
-			})
-		})
-	})
-
 	Describe("When a connection error occurs", func() {
 		BeforeEach(func() {
 			wardenMessages = append(wardenMessages,
@@ -376,7 +299,8 @@ var _ = Describe("Connection", func() {
 		})
 
 		It("should error", func() {
-			resp, err := connection.Run("foo-handle", "echo hi")
+			processID, resp, err := connection.Run("foo-handle", "echo hi")
+			Ω(processID).Should(BeZero())
 			Ω(resp).Should(BeNil())
 			Ω(err.Error()).Should(Equal("boo"))
 		})
@@ -385,68 +309,134 @@ var _ = Describe("Connection", func() {
 	Describe("Round tripping", func() {
 		BeforeEach(func() {
 			wardenMessages = append(wardenMessages,
-				&warden.RunResponse{ExitStatus: proto.Uint32(137)},
+				&warden.EchoResponse{Message: proto.String("pong")},
 			)
 		})
 
 		It("should do the round trip", func() {
 			resp, err := connection.RoundTrip(
-				&warden.RunRequest{
-					Handle: proto.String("some-handle"),
-					Script: proto.String("foo"),
-				},
-				&warden.RunResponse{},
+				&warden.EchoRequest{Message: proto.String("ping")},
+				&warden.EchoResponse{},
 			)
 
 			Ω(err).ShouldNot(HaveOccurred())
-			Ω(resp.(*warden.RunResponse).GetExitStatus()).Should(BeNumerically("==", 137))
+			Ω(resp.(*warden.EchoResponse).GetMessage()).Should(Equal("pong"))
 		})
 	})
 
-	Describe("Streaming", func() {
+	Describe("Running", func() {
+		stdout := warden.ProcessPayload_stdout
+		stderr := warden.ProcessPayload_stderr
+
+		Context("when running one process", func() {
+			BeforeEach(func() {
+				wardenMessages = append(wardenMessages,
+					&warden.ProcessPayload{ProcessId: proto.Uint32(42)},
+					&warden.ProcessPayload{ProcessId: proto.Uint32(42), Source: &stdout, Data: proto.String("1")},
+					&warden.ProcessPayload{ProcessId: proto.Uint32(42), Source: &stderr, Data: proto.String("2")},
+					&warden.ProcessPayload{ProcessId: proto.Uint32(42), ExitStatus: proto.Uint32(3)},
+				)
+			})
+
+			It("should start the process and stream output", func(done Done) {
+				processID, resp, err := connection.Run("foo-handle", "lol")
+				Ω(processID).Should(BeNumerically("==", 42))
+				Ω(err).ShouldNot(HaveOccurred())
+
+				assertWriteBufferContains(&warden.RunRequest{
+					Handle: proto.String("foo-handle"),
+					Script: proto.String("lol"),
+				})
+
+				response1 := <-resp
+				Ω(response1.GetSource()).Should(Equal(stdout))
+				Ω(response1.GetData()).Should(Equal("1"))
+
+				response2 := <-resp
+				Ω(response2.GetSource()).Should(Equal(stderr))
+				Ω(response2.GetData()).Should(Equal("2"))
+
+				response3, ok := <-resp
+				Ω(response3.GetExitStatus()).Should(BeNumerically("==", 3))
+				Ω(ok).Should(BeTrue())
+
+				Eventually(resp).Should(BeClosed())
+
+				close(done)
+			})
+		})
+
+		Context("spawning multiple processes", func() {
+			BeforeEach(func() {
+				wardenMessages = append(wardenMessages,
+					&warden.ProcessPayload{ProcessId: proto.Uint32(42)},
+					//we do this, so that the first Run has some output to read......
+					&warden.ProcessPayload{ProcessId: proto.Uint32(42)},
+					&warden.ProcessPayload{ProcessId: proto.Uint32(43)},
+				)
+			})
+
+			It("should be able to spawn multiple processes sequentially", func() {
+				processId, _, err := connection.Run("foo-handle", "echo hi")
+				Ω(err).ShouldNot(HaveOccurred())
+				Ω(processId).Should(BeNumerically("==", 42))
+
+				assertWriteBufferContains(&warden.RunRequest{
+					Handle: proto.String("foo-handle"),
+					Script: proto.String("echo hi"),
+				})
+
+				writeBuffer.Reset()
+
+				time.Sleep(1 * time.Second)
+
+				processId, _, err = connection.Run("foo-handle", "echo bye")
+				Ω(err).ShouldNot(HaveOccurred())
+				Ω(processId).Should(BeNumerically("==", 43))
+
+				assertWriteBufferContains(&warden.RunRequest{
+					Handle: proto.String("foo-handle"),
+					Script: proto.String("echo bye"),
+				})
+			})
+
+		})
+	})
+
+	Describe("Attaching", func() {
+
+		stdout := warden.ProcessPayload_stdout
+		stderr := warden.ProcessPayload_stderr
+
 		BeforeEach(func() {
 			wardenMessages = append(wardenMessages,
-				&warden.StreamResponse{Name: proto.String("stdout"), Data: proto.String("1")},
-				&warden.StreamResponse{Name: proto.String("stderr"), Data: proto.String("2")},
-				&warden.StreamResponse{ExitStatus: proto.Uint32(3)},
+				&warden.ProcessPayload{ProcessId: proto.Uint32(42), Source: &stdout, Data: proto.String("1")},
+				&warden.ProcessPayload{ProcessId: proto.Uint32(42), Source: &stderr, Data: proto.String("2")},
+				&warden.ProcessPayload{ProcessId: proto.Uint32(42), ExitStatus: proto.Uint32(3)},
 			)
 		})
 
 		It("should stream", func(done Done) {
-			resp, finishedStreaming, err := connection.Stream("foo-handle", 42)
+			resp, err := connection.Attach("foo-handle", 42)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			assertWriteBufferContains(&warden.StreamRequest{
-				Handle: proto.String("foo-handle"),
-				JobId:  proto.Uint32(42),
+			assertWriteBufferContains(&warden.AttachRequest{
+				Handle:    proto.String("foo-handle"),
+				ProcessId: proto.Uint32(42),
 			})
 
 			response1 := <-resp
-			Ω(response1.GetName()).Should(Equal("stdout"))
+			Ω(response1.GetSource()).Should(Equal(warden.ProcessPayload_stdout))
 			Ω(response1.GetData()).Should(Equal("1"))
 
-			select {
-			case <-finishedStreaming:
-				Fail("should not have finished streaming")
-			default:
-			}
-
 			response2 := <-resp
-			Ω(response2.GetName()).Should(Equal("stderr"))
+			Ω(response2.GetSource()).Should(Equal(warden.ProcessPayload_stderr))
 			Ω(response2.GetData()).Should(Equal("2"))
 
-			select {
-			case <-finishedStreaming:
-				Fail("should not have finished streaming")
-			default:
-			}
-
-			response3, ok := <-resp
+			response3 := <-resp
 			Ω(response3.GetExitStatus()).Should(BeNumerically("==", 3))
-			Ω(ok).Should(BeTrue())
 
-			_, ok = <-finishedStreaming
-			Ω(ok).Should(BeFalse())
+			Eventually(resp).Should(BeClosed())
 
 			close(done)
 		})

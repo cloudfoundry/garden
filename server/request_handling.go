@@ -152,105 +152,6 @@ func (s *WardenServer) handleCopyIn(copyIn *protocol.CopyInRequest) (proto.Messa
 	return &protocol.CopyInResponse{}, nil
 }
 
-func (s *WardenServer) handleSpawn(request *protocol.SpawnRequest) (proto.Message, error) {
-	handle := request.GetHandle()
-	script := request.GetScript()
-	privileged := request.GetPrivileged()
-	discardOutput := request.GetDiscardOutput()
-
-	container, err := s.backend.Lookup(handle)
-	if err != nil {
-		return nil, err
-	}
-
-	s.bomberman.Pause(container.Handle())
-	defer s.bomberman.Unpause(container.Handle())
-
-	jobSpec := backend.JobSpec{
-		Script:        script,
-		Privileged:    privileged,
-		DiscardOutput: discardOutput,
-		AutoLink:      true,
-	}
-
-	if request.Rlimits != nil {
-		jobSpec.Limits = resourceLimits(request.Rlimits)
-	}
-
-	jobID, err := container.Spawn(jobSpec)
-	if err != nil {
-		return nil, err
-	}
-
-	return &protocol.SpawnResponse{JobId: proto.Uint32(jobID)}, nil
-}
-
-func (s *WardenServer) handleLink(link *protocol.LinkRequest) (proto.Message, error) {
-	handle := link.GetHandle()
-	jobID := link.GetJobId()
-
-	container, err := s.backend.Lookup(handle)
-	if err != nil {
-		return nil, err
-	}
-
-	s.bomberman.Pause(container.Handle())
-	defer s.bomberman.Unpause(container.Handle())
-
-	jobResult, err := container.Link(jobID)
-	if err != nil {
-		return nil, err
-	}
-
-	return &protocol.LinkResponse{
-		ExitStatus: proto.Uint32(jobResult.ExitStatus),
-		Stdout:     proto.String(string(jobResult.Stdout)),
-		Stderr:     proto.String(string(jobResult.Stderr)),
-	}, nil
-}
-
-func (s *WardenServer) handleRun(request *protocol.RunRequest) (proto.Message, error) {
-	handle := request.GetHandle()
-	script := request.GetScript()
-	privileged := request.GetPrivileged()
-	discardOutput := request.GetDiscardOutput()
-
-	container, err := s.backend.Lookup(handle)
-	if err != nil {
-		return nil, err
-	}
-
-	s.bomberman.Pause(container.Handle())
-	defer s.bomberman.Unpause(container.Handle())
-
-	jobSpec := backend.JobSpec{
-		Script:        script,
-		Privileged:    privileged,
-		DiscardOutput: discardOutput,
-		AutoLink:      false,
-	}
-
-	if request.Rlimits != nil {
-		jobSpec.Limits = resourceLimits(request.Rlimits)
-	}
-
-	jobID, err := container.Spawn(jobSpec)
-	if err != nil {
-		return nil, err
-	}
-
-	jobResult, err := container.Link(jobID)
-	if err != nil {
-		return nil, err
-	}
-
-	return &protocol.RunResponse{
-		ExitStatus: proto.Uint32(jobResult.ExitStatus),
-		Stdout:     proto.String(string(jobResult.Stdout)),
-		Stderr:     proto.String(string(jobResult.Stderr)),
-	}, nil
-}
-
 func (s *WardenServer) handleLimitBandwidth(request *protocol.LimitBandwidthRequest) (proto.Message, error) {
 	handle := request.GetHandle()
 	rate := request.GetRate()
@@ -475,9 +376,40 @@ func (s *WardenServer) handleNetOut(request *protocol.NetOutRequest) (proto.Mess
 	return &protocol.NetOutResponse{}, nil
 }
 
-func (s *WardenServer) handleStream(conn net.Conn, request *protocol.StreamRequest) (proto.Message, error) {
+func (s *WardenServer) streamProcessToConnection(processID uint32, stream <-chan backend.ProcessStream, conn net.Conn) proto.Message {
+	for payload := range stream {
+		if payload.ExitStatus != nil {
+			return &protocol.ProcessPayload{
+				ProcessId:  proto.Uint32(processID),
+				ExitStatus: proto.Uint32(*payload.ExitStatus),
+			}
+		}
+
+		var payloadSource protocol.ProcessPayload_Source
+
+		switch payload.Source {
+		case backend.ProcessStreamSourceStdout:
+			payloadSource = protocol.ProcessPayload_stdout
+		case backend.ProcessStreamSourceStderr:
+			payloadSource = protocol.ProcessPayload_stderr
+		case backend.ProcessStreamSourceStdin:
+			payloadSource = protocol.ProcessPayload_stdin
+		}
+
+		protocol.Messages(&protocol.ProcessPayload{
+			ProcessId: proto.Uint32(processID),
+			Source:    &payloadSource,
+			Data:      proto.String(string(payload.Data)),
+		}).WriteTo(conn)
+	}
+
+	return nil
+}
+
+func (s *WardenServer) handleRun(conn net.Conn, request *protocol.RunRequest) (proto.Message, error) {
 	handle := request.GetHandle()
-	jobID := request.GetJobId()
+	script := request.GetScript()
+	privileged := request.GetPrivileged()
 
 	container, err := s.backend.Lookup(handle)
 	if err != nil {
@@ -487,29 +419,45 @@ func (s *WardenServer) handleStream(conn net.Conn, request *protocol.StreamReque
 	s.bomberman.Pause(container.Handle())
 	defer s.bomberman.Unpause(container.Handle())
 
-	stream, err := container.Stream(jobID)
+	ProcessSpec := backend.ProcessSpec{
+		Script:     script,
+		Privileged: privileged,
+	}
+
+	if request.Rlimits != nil {
+		ProcessSpec.Limits = resourceLimits(request.Rlimits)
+	}
+
+	processID, stream, err := container.Run(ProcessSpec)
 	if err != nil {
 		return nil, err
 	}
 
-	var response proto.Message
+	protocol.Messages(&protocol.ProcessPayload{
+		ProcessId: proto.Uint32(processID),
+	}).WriteTo(conn)
 
-	for chunk := range stream {
-		if chunk.ExitStatus != nil {
-			response = &protocol.StreamResponse{
-				ExitStatus: proto.Uint32(*chunk.ExitStatus),
-			}
+	return s.streamProcessToConnection(processID, stream, conn), nil
+}
 
-			break
-		}
+func (s *WardenServer) handleAttach(conn net.Conn, request *protocol.AttachRequest) (proto.Message, error) {
+	handle := request.GetHandle()
+	processID := request.GetProcessId()
 
-		protocol.Messages(&protocol.StreamResponse{
-			Name: proto.String(chunk.Name),
-			Data: proto.String(string(chunk.Data)),
-		}).WriteTo(conn)
+	container, err := s.backend.Lookup(handle)
+	if err != nil {
+		return nil, err
 	}
 
-	return response, nil
+	s.bomberman.Pause(container.Handle())
+	defer s.bomberman.Unpause(container.Handle())
+
+	stream, err := container.Attach(processID)
+	if err != nil {
+		return nil, err
+	}
+
+	return s.streamProcessToConnection(processID, stream, conn), nil
 }
 
 func (s *WardenServer) handleInfo(request *protocol.InfoRequest) (proto.Message, error) {
@@ -528,9 +476,9 @@ func (s *WardenServer) handleInfo(request *protocol.InfoRequest) (proto.Message,
 		return nil, err
 	}
 
-	jobIDs := make([]uint64, len(info.JobIDs))
-	for i, jobID := range info.JobIDs {
-		jobIDs[i] = uint64(jobID)
+	processIDs := make([]uint64, len(info.ProcessIDs))
+	for i, processID := range info.ProcessIDs {
+		processIDs[i] = uint64(processID)
 	}
 
 	return &protocol.InfoResponse{
@@ -539,7 +487,7 @@ func (s *WardenServer) handleInfo(request *protocol.InfoRequest) (proto.Message,
 		HostIp:        proto.String(info.HostIP),
 		ContainerIp:   proto.String(info.ContainerIP),
 		ContainerPath: proto.String(info.ContainerPath),
-		JobIds:        jobIDs,
+		ProcessIds:    processIDs,
 
 		MemoryStat: &protocol.InfoResponse_MemoryStat{
 			Cache:                   proto.Uint64(info.MemoryStat.Cache),

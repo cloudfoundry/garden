@@ -2,8 +2,6 @@ package measurements_test
 
 import (
 	"fmt"
-	"net"
-	"os"
 	"runtime"
 	"sync/atomic"
 	"time"
@@ -11,33 +9,17 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	"github.com/vito/gordon"
 	"github.com/vito/gordon/warden"
 )
 
 var _ = Describe("The Warden server", func() {
-	var wardenClient gordon.Client
-
 	runtime.GOMAXPROCS(runtime.NumCPU())
-
-	BeforeEach(func() {
-		socketPath := os.Getenv("WARDEN_TEST_SOCKET")
-		Eventually(ErrorDialingUnix(socketPath)).ShouldNot(HaveOccurred())
-
-		wardenClient = gordon.NewClient(&gordon.ConnectionInfo{
-			Network: "unix",
-			Addr:    socketPath,
-		})
-
-		err := wardenClient.Connect()
-		Expect(err).ToNot(HaveOccurred())
-	})
 
 	Describe("streaming output from a chatty job", func() {
 		var handle string
 
 		BeforeEach(func() {
-			res, err := wardenClient.Create()
+			res, err := client.Create()
 			Expect(err).ToNot(HaveOccurred())
 
 			handle = res.GetHandle()
@@ -64,17 +46,13 @@ var _ = Describe("The Warden server", func() {
 
 					for j := 0; j < numToSpawn; j++ {
 						go func() {
-							spawnRes, err := wardenClient.Spawn(
+							_, results, err := client.Run(
 								handle,
 								"cat /dev/zero",
-								true,
 							)
 							Expect(err).ToNot(HaveOccurred())
 
-							results, err := wardenClient.Stream(handle, spawnRes.GetJobId())
-							Expect(err).ToNot(HaveOccurred())
-
-							go func(results <-chan *warden.StreamResponse) {
+							go func(results <-chan *warden.ProcessPayload) {
 								for {
 									res, ok := <-results
 									if !ok {
@@ -95,7 +73,7 @@ var _ = Describe("The Warden server", func() {
 				})
 
 				AfterEach(func() {
-					_, err := wardenClient.Destroy(handle)
+					_, err := client.Destroy(handle)
 					Expect(err).ToNot(HaveOccurred())
 				})
 
@@ -103,7 +81,7 @@ var _ = Describe("The Warden server", func() {
 					var newHandle string
 
 					b.Time("creating another container", func() {
-						res, err := wardenClient.Create()
+						res, err := client.Create()
 						Expect(err).ToNot(HaveOccurred())
 
 						newHandle = res.GetHandle()
@@ -111,20 +89,24 @@ var _ = Describe("The Warden server", func() {
 
 					for i := 0; i < 10; i++ {
 						b.Time("getting container info (10x)", func() {
-							_, err := wardenClient.Info(newHandle)
+							_, err := client.Info(newHandle)
 							Expect(err).ToNot(HaveOccurred())
 						})
 					}
 
 					for i := 0; i < 10; i++ {
 						b.Time("running a job (10x)", func() {
-							_, err := wardenClient.Run(newHandle, "ls")
+							_, stream, err := client.Run(newHandle, "ls")
 							Expect(err).ToNot(HaveOccurred())
+
+							for _ = range stream {
+
+							}
 						})
 					}
 
 					b.Time("destroying the container", func() {
-						_, err := wardenClient.Destroy(newHandle)
+						_, err := client.Destroy(newHandle)
 						Expect(err).ToNot(HaveOccurred())
 					})
 
@@ -139,14 +121,3 @@ var _ = Describe("The Warden server", func() {
 		}
 	})
 })
-
-func ErrorDialingUnix(socketPath string) func() error {
-	return func() error {
-		conn, err := net.Dial("unix", socketPath)
-		if err == nil {
-			conn.Close()
-		}
-
-		return err
-	}
-}

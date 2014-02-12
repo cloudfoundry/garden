@@ -253,17 +253,13 @@ var _ = Describe("The Warden server", func() {
 		})
 
 		dontWaitRequests := []proto.Message{
-			&protocol.LinkRequest{
-				Handle: proto.String("some-handle"),
-				JobId:  proto.Uint32(1),
-			},
-			&protocol.StreamRequest{
-				Handle: proto.String("some-handle"),
-				JobId:  proto.Uint32(1),
-			},
 			&protocol.RunRequest{
 				Handle: proto.String("some-handle"),
 				Script: proto.String("some-script"),
+			},
+			&protocol.AttachRequest{
+				Handle:    proto.String("some-handle"),
+				ProcessId: proto.Uint32(1),
 			},
 		}
 
@@ -281,7 +277,7 @@ var _ = Describe("The Warden server", func() {
 
 					fakeContainer := container.(*fake_backend.FakeContainer)
 
-					fakeContainer.StreamedJobChunks = []backend.JobStream{
+					fakeContainer.StreamedProcessChunks = []backend.ProcessStream{
 						{
 							ExitStatus: &exitStatus,
 						},

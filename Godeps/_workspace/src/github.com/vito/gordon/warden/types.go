@@ -46,15 +46,6 @@ func TypeForMessage(msg proto.Message) Message_Type {
 	case *InfoRequest, *InfoResponse:
 		return Message_Info
 
-	case *SpawnRequest, *SpawnResponse:
-		return Message_Spawn
-	case *LinkRequest, *LinkResponse:
-		return Message_Link
-	case *RunRequest, *RunResponse:
-		return Message_Run
-	case *StreamRequest, *StreamResponse:
-		return Message_Stream
-
 	case *NetInRequest, *NetInResponse:
 		return Message_NetIn
 	case *NetOutRequest, *NetOutResponse:
@@ -73,6 +64,13 @@ func TypeForMessage(msg proto.Message) Message_Type {
 		return Message_LimitBandwidth
 	case *LimitCpuRequest, *LimitCpuResponse:
 		return Message_LimitCpu
+
+	case *RunRequest:
+		return Message_Run
+	case *AttachRequest:
+		return Message_Attach
+	case *ProcessPayload:
+		return Message_ProcessPayload
 
 	case *PingRequest, *PingResponse:
 		return Message_Ping
@@ -96,15 +94,6 @@ func RequestMessageForType(t Message_Type) proto.Message {
 	case Message_Info:
 		return &InfoRequest{}
 
-	case Message_Spawn:
-		return &SpawnRequest{}
-	case Message_Link:
-		return &LinkRequest{}
-	case Message_Run:
-		return &RunRequest{}
-	case Message_Stream:
-		return &StreamRequest{}
-
 	case Message_NetIn:
 		return &NetInRequest{}
 	case Message_NetOut:
@@ -123,6 +112,11 @@ func RequestMessageForType(t Message_Type) proto.Message {
 		return &LimitBandwidthRequest{}
 	case Message_LimitCpu:
 		return &LimitCpuRequest{}
+
+	case Message_Run:
+		return &RunRequest{}
+	case Message_Attach:
+		return &AttachRequest{}
 
 	case Message_Ping:
 		return &PingRequest{}
@@ -145,16 +139,6 @@ func ResponseMessageForType(t Message_Type) proto.Message {
 		return &DestroyResponse{}
 	case Message_Info:
 		return &InfoResponse{}
-
-	case Message_Spawn:
-		return &SpawnResponse{}
-	case Message_Link:
-		return &LinkResponse{}
-	case Message_Run:
-		return &RunResponse{}
-	case Message_Stream:
-		return &StreamResponse{}
-
 	case Message_NetIn:
 		return &NetInResponse{}
 	case Message_NetOut:
@@ -173,6 +157,9 @@ func ResponseMessageForType(t Message_Type) proto.Message {
 		return &LimitBandwidthResponse{}
 	case Message_LimitCpu:
 		return &LimitCpuResponse{}
+
+	case Message_Run, Message_Attach:
+		return &ProcessPayload{}
 
 	case Message_Ping:
 		return &PingResponse{}

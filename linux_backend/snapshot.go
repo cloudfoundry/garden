@@ -20,7 +20,7 @@ type ContainerSnapshot struct {
 
 	Resources ResourcesSnapshot
 
-	Jobs []JobSnapshot
+	Processes []ProcessSnapshot
 
 	NetIns  []NetInSpec
 	NetOuts []NetOutSpec
@@ -39,7 +39,6 @@ type ResourcesSnapshot struct {
 	Ports   []uint32
 }
 
-type JobSnapshot struct {
-	ID            uint32
-	DiscardOutput bool
+type ProcessSnapshot struct {
+	ID uint32
 }

@@ -21,10 +21,6 @@ const (
 	Message_Stop           Message_Type = 12
 	Message_Destroy        Message_Type = 13
 	Message_Info           Message_Type = 14
-	Message_Spawn          Message_Type = 21
-	Message_Link           Message_Type = 22
-	Message_Run            Message_Type = 23
-	Message_Stream         Message_Type = 24
 	Message_NetIn          Message_Type = 31
 	Message_NetOut         Message_Type = 32
 	Message_CopyIn         Message_Type = 41
@@ -33,6 +29,9 @@ const (
 	Message_LimitDisk      Message_Type = 52
 	Message_LimitBandwidth Message_Type = 53
 	Message_LimitCpu       Message_Type = 54
+	Message_Run            Message_Type = 71
+	Message_Attach         Message_Type = 72
+	Message_ProcessPayload Message_Type = 73
 	Message_Ping           Message_Type = 91
 	Message_List           Message_Type = 92
 	Message_Echo           Message_Type = 93
@@ -44,10 +43,6 @@ var Message_Type_name = map[int32]string{
 	12: "Stop",
 	13: "Destroy",
 	14: "Info",
-	21: "Spawn",
-	22: "Link",
-	23: "Run",
-	24: "Stream",
 	31: "NetIn",
 	32: "NetOut",
 	41: "CopyIn",
@@ -56,6 +51,9 @@ var Message_Type_name = map[int32]string{
 	52: "LimitDisk",
 	53: "LimitBandwidth",
 	54: "LimitCpu",
+	71: "Run",
+	72: "Attach",
+	73: "ProcessPayload",
 	91: "Ping",
 	92: "List",
 	93: "Echo",
@@ -66,10 +64,6 @@ var Message_Type_value = map[string]int32{
 	"Stop":           12,
 	"Destroy":        13,
 	"Info":           14,
-	"Spawn":          21,
-	"Link":           22,
-	"Run":            23,
-	"Stream":         24,
 	"NetIn":          31,
 	"NetOut":         32,
 	"CopyIn":         41,
@@ -78,6 +72,9 @@ var Message_Type_value = map[string]int32{
 	"LimitDisk":      52,
 	"LimitBandwidth": 53,
 	"LimitCpu":       54,
+	"Run":            71,
+	"Attach":         72,
+	"ProcessPayload": 73,
 	"Ping":           91,
 	"List":           92,
 	"Echo":           93,

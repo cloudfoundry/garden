@@ -1,4 +1,4 @@
-package job_tracker_test
+package process_tracker_test
 
 import (
 	. "github.com/onsi/ginkgo"
@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestJob_tracker(t *testing.T) {
+func TestProcess_tracker(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Job Tracker Suite")
+	RunSpecs(t, "Process Tracker Suite")
 }

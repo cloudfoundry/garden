@@ -159,51 +159,45 @@ func (s *WardenServer) serveConnection(conn net.Conn) {
 
 		s.openRequests.Incr()
 
-		switch request.(type) {
+		switch req := request.(type) {
 		case *protocol.PingRequest:
-			response, err = s.handlePing(request.(*protocol.PingRequest))
+			response, err = s.handlePing(req)
 		case *protocol.EchoRequest:
-			response, err = s.handleEcho(request.(*protocol.EchoRequest))
+			response, err = s.handleEcho(req)
 		case *protocol.CreateRequest:
-			response, err = s.handleCreate(request.(*protocol.CreateRequest))
+			response, err = s.handleCreate(req)
 		case *protocol.DestroyRequest:
-			response, err = s.handleDestroy(request.(*protocol.DestroyRequest))
+			response, err = s.handleDestroy(req)
 		case *protocol.ListRequest:
-			response, err = s.handleList(request.(*protocol.ListRequest))
+			response, err = s.handleList(req)
 		case *protocol.StopRequest:
-			response, err = s.handleStop(request.(*protocol.StopRequest))
+			response, err = s.handleStop(req)
 		case *protocol.CopyInRequest:
-			response, err = s.handleCopyIn(request.(*protocol.CopyInRequest))
+			response, err = s.handleCopyIn(req)
 		case *protocol.CopyOutRequest:
-			response, err = s.handleCopyOut(request.(*protocol.CopyOutRequest))
-		case *protocol.SpawnRequest:
-			response, err = s.handleSpawn(request.(*protocol.SpawnRequest))
-		case *protocol.LinkRequest:
-			s.openRequests.Decr()
-			response, err = s.handleLink(request.(*protocol.LinkRequest))
-			s.openRequests.Incr()
-		case *protocol.StreamRequest:
-			s.openRequests.Decr()
-			response, err = s.handleStream(conn, request.(*protocol.StreamRequest))
-			s.openRequests.Incr()
+			response, err = s.handleCopyOut(req)
 		case *protocol.RunRequest:
 			s.openRequests.Decr()
-			response, err = s.handleRun(request.(*protocol.RunRequest))
+			response, err = s.handleRun(conn, req)
+			s.openRequests.Incr()
+		case *protocol.AttachRequest:
+			s.openRequests.Decr()
+			response, err = s.handleAttach(conn, req)
 			s.openRequests.Incr()
 		case *protocol.LimitBandwidthRequest:
-			response, err = s.handleLimitBandwidth(request.(*protocol.LimitBandwidthRequest))
+			response, err = s.handleLimitBandwidth(req)
 		case *protocol.LimitMemoryRequest:
-			response, err = s.handleLimitMemory(request.(*protocol.LimitMemoryRequest))
+			response, err = s.handleLimitMemory(req)
 		case *protocol.LimitDiskRequest:
-			response, err = s.handleLimitDisk(request.(*protocol.LimitDiskRequest))
+			response, err = s.handleLimitDisk(req)
 		case *protocol.LimitCpuRequest:
-			response, err = s.handleLimitCpu(request.(*protocol.LimitCpuRequest))
+			response, err = s.handleLimitCpu(req)
 		case *protocol.NetInRequest:
-			response, err = s.handleNetIn(request.(*protocol.NetInRequest))
+			response, err = s.handleNetIn(req)
 		case *protocol.NetOutRequest:
-			response, err = s.handleNetOut(request.(*protocol.NetOutRequest))
+			response, err = s.handleNetOut(req)
 		case *protocol.InfoRequest:
-			response, err = s.handleInfo(request.(*protocol.InfoRequest))
+			response, err = s.handleInfo(req)
 		default:
 			err = UnhandledRequestError{request}
 		}

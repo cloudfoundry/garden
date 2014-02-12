@@ -25,6 +25,9 @@ var _ = Describe("Client", func() {
 
 	})
 
+	stdout := warden.ProcessPayload_stdout
+	stderr := warden.ProcessPayload_stderr
+
 	Describe("Connect", func() {
 		Context("with a successful provider", func() {
 			BeforeEach(func() {
@@ -90,16 +93,21 @@ var _ = Describe("Client", func() {
 		})
 	})
 
-	Describe("Spawning and streaming", func() {
+	Describe("Running", func() {
 		BeforeEach(func() {
 			provider = NewFakeConnectionProvider(
 				warden.Messages(
-					&warden.SpawnResponse{
-						JobId: proto.Uint32(42),
+					&warden.ProcessPayload{
+						ProcessId: proto.Uint32(1721),
 					},
-					&warden.StreamResponse{
-						Name: proto.String("stdout"),
-						Data: proto.String("some data for stdout"),
+					&warden.ProcessPayload{
+						ProcessId: proto.Uint32(1721),
+						Source:    &stdout,
+						Data:      proto.String("some data for stdout"),
+					},
+					&warden.ProcessPayload{
+						ProcessId:  proto.Uint32(1721),
+						ExitStatus: proto.Uint32(42),
 					},
 				),
 				writeBuffer,
@@ -111,42 +119,49 @@ var _ = Describe("Client", func() {
 		})
 
 		It("should spawn and stream succesfully", func(done Done) {
-			spawned, err := client.Spawn("foo", "echo some data for stdout", true)
+			processID, responses, err := client.Run("foo", "echo some data for stdout")
 			Ω(err).ShouldNot(HaveOccurred())
-
-			responses, err := client.Stream("foo", spawned.GetJobId())
-			Ω(err).ShouldNot(HaveOccurred())
+			Ω(processID).Should(BeNumerically("==", 1721))
 
 			expectedWriteBufferContents := string(warden.Messages(
-				&warden.SpawnRequest{
-					Handle:        proto.String("foo"),
-					Script:        proto.String("echo some data for stdout"),
-					DiscardOutput: proto.Bool(true),
+				&warden.RunRequest{
+					Handle: proto.String("foo"),
+					Script: proto.String("echo some data for stdout"),
 				},
-				&warden.StreamRequest{Handle: proto.String("foo"), JobId: proto.Uint32(42)},
 			).Bytes())
 
 			Ω(string(writeBuffer.Bytes())).Should(Equal(expectedWriteBufferContents))
 
 			res := <-responses
-			Ω(res.GetName()).Should(Equal("stdout"))
+			Ω(res.GetSource()).Should(Equal(stdout))
 			Ω(res.GetData()).Should(Equal("some data for stdout"))
+
+			res = <-responses
+			Ω(res.GetExitStatus()).Should(BeNumerically("==", 42))
+
+			Eventually(responses).Should(BeClosed())
 
 			close(done)
 		})
 	})
 
-	Describe("Spawning and linking", func() {
+	Describe("Attaching", func() {
 		BeforeEach(func() {
 			provider = NewFakeConnectionProvider(
 				warden.Messages(
-					&warden.SpawnResponse{
-						JobId: proto.Uint32(42),
+					&warden.ProcessPayload{
+						ProcessId: proto.Uint32(1721),
+						Source:    &stdout,
+						Data:      proto.String("some data for stdout"),
 					},
-					&warden.LinkResponse{
-						Stdout:     proto.String("some data for stdout"),
-						Stderr:     proto.String("some data for stderr"),
-						ExitStatus: proto.Uint32(137),
+					&warden.ProcessPayload{
+						ProcessId: proto.Uint32(1721),
+						Source:    &stderr,
+						Data:      proto.String("some data for stderr"),
+					},
+					&warden.ProcessPayload{
+						ProcessId:  proto.Uint32(1721),
+						ExitStatus: proto.Uint32(42),
 					},
 				),
 				writeBuffer,
@@ -157,27 +172,33 @@ var _ = Describe("Client", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 		})
 
-		It("should spawn and link succesfully", func() {
-			spawned, err := client.Spawn("foo", "echo some data for stdout", true)
-			Ω(err).ShouldNot(HaveOccurred())
-
-			res, err := client.Link("foo", spawned.GetJobId())
+		It("should spawn and stream succesfully", func(done Done) {
+			responses, err := client.Attach("foo", 1721)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			expectedWriteBufferContents := string(warden.Messages(
-				&warden.SpawnRequest{
-					Handle:        proto.String("foo"),
-					Script:        proto.String("echo some data for stdout"),
-					DiscardOutput: proto.Bool(true),
+				&warden.AttachRequest{
+					Handle:    proto.String("foo"),
+					ProcessId: proto.Uint32(1721),
 				},
-				&warden.LinkRequest{Handle: proto.String("foo"), JobId: proto.Uint32(42)},
 			).Bytes())
 
 			Ω(string(writeBuffer.Bytes())).Should(Equal(expectedWriteBufferContents))
 
-			Ω(res.GetStdout()).Should(Equal("some data for stdout"))
-			Ω(res.GetStderr()).Should(Equal("some data for stderr"))
-			Ω(res.GetExitStatus()).Should(Equal(uint32(137)))
+			res := <-responses
+			Ω(res.GetSource()).Should(Equal(stdout))
+			Ω(res.GetData()).Should(Equal("some data for stdout"))
+
+			res = <-responses
+			Ω(res.GetSource()).Should(Equal(stderr))
+			Ω(res.GetData()).Should(Equal("some data for stderr"))
+
+			res = <-responses
+			Ω(res.GetExitStatus()).Should(BeNumerically("==", 42))
+
+			Eventually(responses).Should(BeClosed())
+
+			close(done)
 		})
 	})
 

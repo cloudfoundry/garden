@@ -2,7 +2,7 @@ package garden_runner
 
 import (
 	"fmt"
-	"github.com/onsi/ginkgo/config"
+	"io/ioutil"
 	"net"
 	"os"
 	"os/exec"
@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/onsi/ginkgo/config"
 	"github.com/vito/cmdtest"
 	"github.com/vito/gordon"
 )
@@ -17,7 +18,8 @@ import (
 type GardenRunner struct {
 	Remote string
 
-	Port int
+	Network string
+	Addr    string
 
 	DepotPath     string
 	RootPath      string
@@ -31,9 +33,15 @@ type GardenRunner struct {
 }
 
 func New(rootPath, rootFSPath, remote string) (*GardenRunner, error) {
+	tmpdir, err := ioutil.TempDir(os.TempDir(), "garden-temp-socker")
+	if err != nil {
+		return nil, err
+	}
+
 	runner := &GardenRunner{
 		Remote:     remote,
-		Port:       config.GinkgoConfig.ParallelNode + 7012,
+		Network:    "unix",
+		Addr:       filepath.Join(tmpdir, "warden.sock"),
 		RootPath:   rootPath,
 		RootFSPath: rootFSPath,
 	}
@@ -96,8 +104,8 @@ func (r *GardenRunner) Start(argv ...string) error {
 	gardenArgs := argv
 	gardenArgs = append(
 		gardenArgs,
-		"--listenNetwork", "tcp",
-		"--listenAddr", fmt.Sprintf(":%d", r.Port),
+		"--listenNetwork", r.Network,
+		"--listenAddr", r.Addr,
 		"--root", r.RootPath,
 		"--depot", r.DepotPath,
 		"--rootfs", r.RootFSPath,
@@ -198,8 +206,8 @@ func (r *GardenRunner) TearDown() error {
 
 func (r *GardenRunner) NewClient() gordon.Client {
 	return gordon.NewClient(&gordon.ConnectionInfo{
-		Network: "tcp",
-		Addr:    r.addr(),
+		Network: r.Network,
+		Addr:    r.Addr,
 	})
 }
 
@@ -207,17 +215,13 @@ func (r *GardenRunner) waitForStart(started chan<- bool, stop <-chan bool) {
 	for {
 		var err error
 
-		if r.Remote == "" {
-			conn, dialErr := net.Dial("tcp", r.addr())
+		conn, dialErr := net.Dial(r.Network, r.Addr)
 
-			if dialErr == nil {
-				conn.Close()
-			}
-
-			err = dialErr
-		} else {
-			err = r.cmd("/vagrant/bin/integration/check_port", fmt.Sprintf("%d", r.Port)).Run()
+		if dialErr == nil {
+			conn.Close()
 		}
+
+		err = dialErr
 
 		if err == nil {
 			started <- true
@@ -236,17 +240,13 @@ func (r *GardenRunner) waitForStop(stopped chan<- bool, stop <-chan bool) {
 	for {
 		var err error
 
-		if r.Remote == "" {
-			conn, dialErr := net.Dial("tcp", r.addr())
+		conn, dialErr := net.Dial(r.Network, r.Addr)
 
-			if dialErr == nil {
-				conn.Close()
-			}
-
-			err = dialErr
-		} else {
-			err = r.cmd("/vagrant/bin/integration/check_port", fmt.Sprintf("%d", r.Port)).Run()
+		if dialErr == nil {
+			conn.Close()
 		}
+
+		err = dialErr
 
 		if err != nil {
 			stopped <- true
@@ -259,8 +259,4 @@ func (r *GardenRunner) waitForStop(stopped chan<- bool, stop <-chan bool) {
 		case <-time.After(100 * time.Millisecond):
 		}
 	}
-}
-
-func (r *GardenRunner) addr() string {
-	return fmt.Sprintf("127.0.0.1:%d", r.Port)
 }

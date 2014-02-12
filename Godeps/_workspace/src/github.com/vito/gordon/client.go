@@ -13,8 +13,8 @@ type Client interface {
 	Create() (*warden.CreateResponse, error)
 	Stop(handle string, background, kill bool) (*warden.StopResponse, error)
 	Destroy(handle string) (*warden.DestroyResponse, error)
-	Spawn(handle, script string, discardOutput bool) (*warden.SpawnResponse, error)
-	Link(handle string, jobID uint32) (*warden.LinkResponse, error)
+	Run(handle, script string) (uint32, <-chan *warden.ProcessPayload, error)
+	Attach(handle string, processID uint32) (<-chan *warden.ProcessPayload, error)
 	NetIn(handle string) (*warden.NetInResponse, error)
 	LimitMemory(handle string, limit uint64) (*warden.LimitMemoryResponse, error)
 	GetMemoryLimit(handle string) (uint64, error)
@@ -23,8 +23,6 @@ type Client interface {
 	List() (*warden.ListResponse, error)
 	Info(handle string) (*warden.InfoResponse, error)
 	CopyIn(handle, src, dst string) (*warden.CopyInResponse, error)
-	Stream(handle string, jobID uint32) (<-chan *warden.StreamResponse, error)
-	Run(handle, script string) (*warden.RunResponse, error)
 }
 
 type client struct {
@@ -71,18 +69,49 @@ func (c *client) Destroy(handle string) (*warden.DestroyResponse, error) {
 	return conn.Destroy(handle)
 }
 
-func (c *client) Spawn(handle, script string, discardOutput bool) (*warden.SpawnResponse, error) {
+func (c *client) Run(handle, script string) (uint32, <-chan *warden.ProcessPayload, error) {
 	conn := c.acquireConnection()
-	defer c.release(conn)
 
-	return conn.Spawn(handle, script, discardOutput)
+	processID, stream, err := conn.Run(handle, script)
+
+	if err != nil {
+		c.release(conn)
+		return 0, nil, err
+	}
+
+	proxy := make(chan *warden.ProcessPayload)
+
+	go func() {
+		for payload := range stream {
+			proxy <- payload
+		}
+		close(proxy)
+		c.release(conn)
+	}()
+
+	return processID, proxy, err
 }
 
-func (c *client) Link(handle string, jobID uint32) (*warden.LinkResponse, error) {
+func (c *client) Attach(handle string, jobID uint32) (<-chan *warden.ProcessPayload, error) {
 	conn := c.acquireConnection()
-	defer c.release(conn)
 
-	return conn.Link(handle, jobID)
+	stream, err := conn.Attach(handle, jobID)
+	if err != nil {
+		c.release(conn)
+		return nil, err
+	}
+
+	proxy := make(chan *warden.ProcessPayload)
+
+	go func() {
+		for payload := range stream {
+			proxy <- payload
+		}
+		close(proxy)
+		c.release(conn)
+	}()
+
+	return proxy, err
 }
 
 func (c *client) NetIn(handle string) (*warden.NetInResponse, error) {
@@ -139,30 +168,6 @@ func (c *client) CopyIn(handle, src, dst string) (*warden.CopyInResponse, error)
 	defer c.release(conn)
 
 	return conn.CopyIn(handle, src, dst)
-}
-
-func (c *client) Stream(handle string, jobID uint32) (<-chan *warden.StreamResponse, error) {
-	conn := c.acquireConnection()
-
-	responses, done, err := conn.Stream(handle, jobID)
-	if err != nil {
-		c.release(conn)
-		return nil, err
-	}
-
-	go func() {
-		<-done
-		c.release(conn)
-	}()
-
-	return responses, nil
-}
-
-func (c *client) Run(handle, script string) (*warden.RunResponse, error) {
-	conn := c.acquireConnection()
-	defer c.release(conn)
-
-	return conn.Run(handle, script)
 }
 
 func (c *client) serveConnection(conn *connection.Connection) {

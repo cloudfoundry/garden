@@ -152,16 +152,7 @@ var _ = Describe("Linux containers", func() {
 
 			setupSuccessfulSpawn()
 
-			_, err = container.Spawn(backend.JobSpec{
-				DiscardOutput: true,
-				AutoLink:      false,
-			})
-			Expect(err).ToNot(HaveOccurred())
-
-			_, err = container.Spawn(backend.JobSpec{
-				DiscardOutput: false,
-				AutoLink:      false,
-			})
+			_, _, err = container.Run(backend.ProcessSpec{})
 			Expect(err).ToNot(HaveOccurred())
 
 			out := new(bytes.Buffer)
@@ -225,17 +216,9 @@ var _ = Describe("Linux containers", func() {
 				},
 			))
 
-			Expect(snapshot.Jobs).To(ContainElement(
-				linux_backend.JobSnapshot{
-					ID:            0,
-					DiscardOutput: true,
-				},
-			))
-
-			Expect(snapshot.Jobs).To(ContainElement(
-				linux_backend.JobSnapshot{
-					ID:            1,
-					DiscardOutput: false,
+			Expect(snapshot.Processes).To(ContainElement(
+				linux_backend.ProcessSnapshot{
+					ID: 0,
 				},
 			))
 		})
@@ -281,33 +264,20 @@ var _ = Describe("Linux containers", func() {
 			}))
 		})
 
-		It("restores job state", func() {
-			fakeRunner.WhenRunning(
-				fake_command_runner.CommandSpec{
-					Path: "/depot/some-id/bin/iomux-link",
-					Args: []string{
-						"-w", "/depot/some-id/jobs/0/cursors",
-						"/depot/some-id/jobs/0",
-					},
-				},
-				func(cmd *exec.Cmd) error {
-					cmd.Stdout.Write([]byte("hello\n"))
-					time.Sleep(500 * time.Millisecond)
-					return nil
-				},
-			)
+		It("restores process state", func(done Done) {
+			writeHello := make(chan bool)
 
 			fakeRunner.WhenRunning(
 				fake_command_runner.CommandSpec{
 					Path: "/depot/some-id/bin/iomux-link",
 					Args: []string{
-						"-w", "/depot/some-id/jobs/1/cursors",
-						"/depot/some-id/jobs/1",
+						"-w", "/depot/some-id/processes/0/cursors",
+						"/depot/some-id/processes/0",
 					},
 				},
 				func(cmd *exec.Cmd) error {
-					cmd.Stdout.Write([]byte("goodbye\n"))
-					time.Sleep(500 * time.Millisecond)
+					<-writeHello
+					cmd.Stdout.Write([]byte("hello\n"))
 					return nil
 				},
 			)
@@ -316,14 +286,9 @@ var _ = Describe("Linux containers", func() {
 				State:  "active",
 				Events: []string{},
 
-				Jobs: []linux_backend.JobSnapshot{
+				Processes: []linux_backend.ProcessSnapshot{
 					{
-						ID:            0,
-						DiscardOutput: false,
-					},
-					{
-						ID:            1,
-						DiscardOutput: true,
+						ID: 0,
 					},
 				},
 			})
@@ -332,36 +297,35 @@ var _ = Describe("Linux containers", func() {
 			linked := make(chan bool)
 
 			go func() {
-				res, err := container.Link(0)
-				Expect(err).ToNot(HaveOccurred())
-				Expect(res.Stdout).To(Equal([]byte("hello\n")))
-				linked <- true
-			}()
+				payloads, err := container.Attach(0)
+				Expect(err).NotTo(HaveOccurred())
 
-			go func() {
-				res, err := container.Link(1)
-				Expect(err).ToNot(HaveOccurred())
-				Expect(res.Stdout).To(BeEmpty())
+				writeHello <- true
+
+				res, ok := <-payloads
+				Expect(ok).To(BeTrue())
+
+				Expect(res.Data).To(Equal([]byte("hello\n")))
+
 				linked <- true
 			}()
 
 			<-linked
-			<-linked
-		})
 
-		It("starts new job IDs after the highest restored ID", func() {
+			close(done)
+		}, 5.0)
+
+		It("starts new process IDs after the highest restored ID", func() {
 			err := container.Restore(linux_backend.ContainerSnapshot{
 				State:  "active",
 				Events: []string{},
 
-				Jobs: []linux_backend.JobSnapshot{
+				Processes: []linux_backend.ProcessSnapshot{
 					{
-						ID:            0,
-						DiscardOutput: false,
+						ID: 0,
 					},
 					{
-						ID:            1,
-						DiscardOutput: true,
+						ID: 1,
 					},
 				},
 			})
@@ -369,9 +333,9 @@ var _ = Describe("Linux containers", func() {
 
 			setupSuccessfulSpawn()
 
-			jobID, err := container.Spawn(backend.JobSpec{})
+			processID, _, err := container.Run(backend.ProcessSpec{})
 			Expect(err).ToNot(HaveOccurred())
-			Expect(jobID).To(Equal(uint32(2)))
+			Expect(processID).To(Equal(uint32(2)))
 		})
 
 		It("redoes network setup and net-in/net-outs", func() {
@@ -704,7 +668,7 @@ var _ = Describe("Linux containers", func() {
 			})
 		})
 
-		Context("when there are active jobs", func() {
+		Context("when there are active processes", func() {
 			linked := make(chan bool)
 
 			BeforeEach(func() {
@@ -720,10 +684,10 @@ var _ = Describe("Linux containers", func() {
 					},
 				)
 
-				_, err := container.Spawn(backend.JobSpec{AutoLink: true})
+				_, _, err := container.Run(backend.ProcessSpec{})
 				Expect(err).ToNot(HaveOccurred())
 
-				_, err = container.Spawn(backend.JobSpec{AutoLink: true})
+				_, _, err = container.Run(backend.ProcessSpec{})
 				Expect(err).ToNot(HaveOccurred())
 			})
 
@@ -737,8 +701,8 @@ var _ = Describe("Linux containers", func() {
 					fake_command_runner.CommandSpec{
 						Path: "/depot/some-id/bin/iomux-link",
 						Args: []string{
-							"-w", "/depot/some-id/jobs/0/cursors",
-							"/depot/some-id/jobs/0",
+							"-w", "/depot/some-id/processes/0/cursors",
+							"/depot/some-id/processes/0",
 						},
 					},
 					os.Interrupt,
@@ -748,8 +712,8 @@ var _ = Describe("Linux containers", func() {
 					fake_command_runner.CommandSpec{
 						Path: "/depot/some-id/bin/iomux-link",
 						Args: []string{
-							"-w", "/depot/some-id/jobs/1/cursors",
-							"/depot/some-id/jobs/1",
+							"-w", "/depot/some-id/processes/1/cursors",
+							"/depot/some-id/processes/1",
 						},
 					},
 					os.Interrupt,
@@ -882,11 +846,11 @@ var _ = Describe("Linux containers", func() {
 		})
 	})
 
-	Describe("Spawning", func() {
+	Describe("Running", func() {
 		It("runs the /bin/bash via wsh with the given script as the input, and rlimits in env", func() {
 			setupSuccessfulSpawn()
 
-			jobID, err := container.Spawn(backend.JobSpec{
+			processID, _, err := container.Run(backend.ProcessSpec{
 				Script: "/some/script",
 				Limits: backend.ResourceLimits{
 					As:         uint64ptr(1),
@@ -913,7 +877,7 @@ var _ = Describe("Linux containers", func() {
 				fake_command_runner.CommandSpec{
 					Path: "/depot/some-id/bin/iomux-spawn",
 					Args: []string{
-						fmt.Sprintf("/depot/some-id/jobs/%d", jobID),
+						fmt.Sprintf("/depot/some-id/processes/%d", processID),
 						"/depot/some-id/bin/wsh",
 						"--socket", "/depot/some-id/run/wshd.sock",
 						"--user", "vcap",
@@ -941,198 +905,7 @@ var _ = Describe("Linux containers", func() {
 			))
 		})
 
-		Context("when not all rlimits are set", func() {
-			It("only sets the given rlimits", func() {
-				setupSuccessfulSpawn()
-
-				jobID, err := container.Spawn(backend.JobSpec{
-					Script: "/some/script",
-					Limits: backend.ResourceLimits{
-						As:      uint64ptr(1),
-						Cpu:     uint64ptr(3),
-						Fsize:   uint64ptr(5),
-						Memlock: uint64ptr(7),
-						Nice:    uint64ptr(9),
-						Nproc:   uint64ptr(11),
-						Rtprio:  uint64ptr(13),
-						Stack:   uint64ptr(15),
-					},
-				})
-
-				Expect(err).ToNot(HaveOccurred())
-
-				Eventually(fakeRunner).Should(HaveStartedExecuting(
-					fake_command_runner.CommandSpec{
-						Path: "/depot/some-id/bin/iomux-spawn",
-						Args: []string{
-							fmt.Sprintf("/depot/some-id/jobs/%d", jobID),
-							"/depot/some-id/bin/wsh",
-							"--socket", "/depot/some-id/run/wshd.sock",
-							"--user", "vcap",
-							"/bin/bash",
-						},
-						Stdin: "/some/script",
-						Env: []string{
-							"RLIMIT_AS=1",
-							"RLIMIT_CPU=3",
-							"RLIMIT_FSIZE=5",
-							"RLIMIT_MEMLOCK=7",
-							"RLIMIT_NICE=9",
-							"RLIMIT_NPROC=11",
-							"RLIMIT_RTPRIO=13",
-							"RLIMIT_STACK=15",
-						},
-					},
-				))
-			})
-		})
-
-		It("returns a unique job ID", func() {
-			setupSuccessfulSpawn()
-
-			jobID1, err := container.Spawn(backend.JobSpec{
-				Script: "/some/script",
-			})
-			Expect(err).ToNot(HaveOccurred())
-
-			jobID2, err := container.Spawn(backend.JobSpec{
-				Script: "/some/script",
-			})
-			Expect(err).ToNot(HaveOccurred())
-
-			Expect(jobID1).ToNot(Equal(jobID2))
-		})
-
-		Context("with 'privileged' true", func() {
-			BeforeEach(setupSuccessfulSpawn)
-
-			It("runs with --user root", func() {
-				jobID, err := container.Spawn(backend.JobSpec{
-					Script:     "/some/script",
-					Privileged: true,
-				})
-
-				Expect(err).ToNot(HaveOccurred())
-
-				Eventually(fakeRunner).Should(HaveStartedExecuting(
-					fake_command_runner.CommandSpec{
-						Path: "/depot/some-id/bin/iomux-spawn",
-						Args: []string{
-							fmt.Sprintf("/depot/some-id/jobs/%d", jobID),
-							"/depot/some-id/bin/wsh",
-							"--socket", "/depot/some-id/run/wshd.sock",
-							"--user", "root",
-							"/bin/bash",
-						},
-						Stdin: "/some/script",
-					},
-				))
-			})
-		})
-
-		Context("when spawning fails", func() {
-			disaster := errors.New("oh no!")
-
-			BeforeEach(func() {
-				fakeRunner.WhenRunning(
-					fake_command_runner.CommandSpec{
-						Path: "/depot/some-id/bin/iomux-spawn",
-					}, func(*exec.Cmd) error {
-						return disaster
-					},
-				)
-			})
-
-			It("returns the error", func() {
-				_, err := container.Spawn(backend.JobSpec{
-					Script:     "/some/script",
-					Privileged: true,
-				})
-
-				Expect(err).To(Equal(disaster))
-			})
-		})
-	})
-
-	Describe("Linking", func() {
-		BeforeEach(setupSuccessfulSpawn)
-
-		Context("to a started job", func() {
-			BeforeEach(func() {
-				fakeRunner.WhenRunning(
-					fake_command_runner.CommandSpec{
-						Path: "/depot/some-id/bin/iomux-link",
-					}, func(cmd *exec.Cmd) error {
-						cmd.Stdout.Write([]byte("hi out\n"))
-						cmd.Stderr.Write([]byte("hi err\n"))
-
-						dummyCmd := exec.Command("/bin/bash", "-c", "exit 42")
-						dummyCmd.Run()
-
-						cmd.ProcessState = dummyCmd.ProcessState
-
-						return nil
-					},
-				)
-			})
-
-			It("returns the exit status, stdout, and stderr", func() {
-				jobID, err := container.Spawn(backend.JobSpec{
-					Script: "/some/script",
-				})
-				Expect(err).ToNot(HaveOccurred())
-
-				jobResult, err := container.Link(jobID)
-				Expect(err).ToNot(HaveOccurred())
-				Expect(jobResult.ExitStatus).To(Equal(uint32(42)))
-				Expect(jobResult.Stdout).To(Equal([]byte("hi out\n")))
-				Expect(jobResult.Stderr).To(Equal([]byte("hi err\n")))
-			})
-
-			Context("with output discarded", func() {
-				It("returns the exit status but not stdout or stderr", func() {
-					jobID, err := container.Spawn(backend.JobSpec{
-						Script:        "/some/script",
-						DiscardOutput: true,
-					})
-					Expect(err).ToNot(HaveOccurred())
-
-					jobResult, err := container.Link(jobID)
-					Expect(err).ToNot(HaveOccurred())
-					Expect(jobResult.ExitStatus).To(Equal(uint32(42)))
-					Expect(jobResult.Stdout).To(BeEmpty())
-					Expect(jobResult.Stderr).To(BeEmpty())
-				})
-			})
-		})
-
-		Context("to a job that has already completed", func() {
-			It("returns an error", func() {
-				jobID, err := container.Spawn(backend.JobSpec{
-					Script: "/some/script",
-				})
-				Expect(err).ToNot(HaveOccurred())
-
-				_, err = container.Link(jobID)
-				Expect(err).ToNot(HaveOccurred())
-
-				_, err = container.Link(jobID)
-				Expect(err).To(HaveOccurred())
-			})
-		})
-
-		Context("to an unknown job", func() {
-			It("returns an error", func() {
-				_, err := container.Link(42)
-				Expect(err).To(HaveOccurred())
-			})
-		})
-	})
-
-	Describe("Streaming", func() {
-		BeforeEach(setupSuccessfulSpawn)
-
-		Context("a started job", func() {
+		Describe("streaming", func() {
 			BeforeEach(func() {
 				fakeRunner.WhenRunning(
 					fake_command_runner.CommandSpec{
@@ -1159,56 +932,231 @@ var _ = Describe("Linux containers", func() {
 			})
 
 			It("streams stderr and stdout and exit status", func(done Done) {
-				jobID, err := container.Spawn(backend.JobSpec{
-					Script:   "/some/script",
-					AutoLink: true,
+				setupSuccessfulSpawn()
+
+				_, runningStreamChannel, err := container.Run(backend.ProcessSpec{
+					Script: "/some/script",
 				})
 				Expect(err).ToNot(HaveOccurred())
 
-				jobStreamChannel, err := container.Stream(jobID)
-				Expect(err).ToNot(HaveOccurred())
+				runChunk := <-runningStreamChannel
+				Expect(runChunk.Source).To(Equal(backend.ProcessStreamSourceStdout))
+				Expect(string(runChunk.Data)).To(Equal("hi out\n"))
+				Expect(runChunk.ExitStatus).To(BeNil())
 
-				chunk1 := <-jobStreamChannel
-				Expect(chunk1.Name).To(Equal("stdout"))
-				Expect(string(chunk1.Data)).To(Equal("hi out\n"))
-				Expect(chunk1.ExitStatus).To(BeNil())
-				Expect(chunk1.Info).To(BeNil())
+				runChunk = <-runningStreamChannel
+				Expect(runChunk.Source).To(Equal(backend.ProcessStreamSourceStderr))
+				Expect(string(runChunk.Data)).To(Equal("hi err\n"))
+				Expect(runChunk.ExitStatus).To(BeNil())
 
-				chunk2 := <-jobStreamChannel
-				Expect(chunk2.Name).To(Equal("stderr"))
-				Expect(string(chunk2.Data)).To(Equal("hi err\n"))
-				Expect(chunk2.ExitStatus).To(BeNil())
-				Expect(chunk2.Info).To(BeNil())
-
-				chunk3 := <-jobStreamChannel
-				Expect(chunk3.Name).To(Equal(""))
-				Expect(string(chunk3.Data)).To(Equal(""))
-				Expect(chunk3.ExitStatus).ToNot(BeNil())
-				Expect(*chunk3.ExitStatus).To(Equal(uint32(42)))
-				//Expect(chunk3.Info).ToNot(BeNil())
+				runChunk = <-runningStreamChannel
+				Expect(runChunk.Source).To(BeZero())
+				Expect(string(runChunk.Data)).To(Equal(""))
+				Expect(runChunk.ExitStatus).ToNot(BeNil())
+				Expect(*runChunk.ExitStatus).To(Equal(uint32(42)))
 
 				close(done)
 			}, 5.0)
 		})
 
-		Context("a job that has already completed", func() {
-			It("returns an error", func() {
-				jobID, err := container.Spawn(backend.JobSpec{
+		Context("when not all rlimits are set", func() {
+			It("only sets the given rlimits", func() {
+				setupSuccessfulSpawn()
+
+				processID, _, err := container.Run(backend.ProcessSpec{
+					Script: "/some/script",
+					Limits: backend.ResourceLimits{
+						As:      uint64ptr(1),
+						Cpu:     uint64ptr(3),
+						Fsize:   uint64ptr(5),
+						Memlock: uint64ptr(7),
+						Nice:    uint64ptr(9),
+						Nproc:   uint64ptr(11),
+						Rtprio:  uint64ptr(13),
+						Stack:   uint64ptr(15),
+					},
+				})
+
+				Expect(err).ToNot(HaveOccurred())
+
+				Eventually(fakeRunner).Should(HaveStartedExecuting(
+					fake_command_runner.CommandSpec{
+						Path: "/depot/some-id/bin/iomux-spawn",
+						Args: []string{
+							fmt.Sprintf("/depot/some-id/processes/%d", processID),
+							"/depot/some-id/bin/wsh",
+							"--socket", "/depot/some-id/run/wshd.sock",
+							"--user", "vcap",
+							"/bin/bash",
+						},
+						Stdin: "/some/script",
+						Env: []string{
+							"RLIMIT_AS=1",
+							"RLIMIT_CPU=3",
+							"RLIMIT_FSIZE=5",
+							"RLIMIT_MEMLOCK=7",
+							"RLIMIT_NICE=9",
+							"RLIMIT_NPROC=11",
+							"RLIMIT_RTPRIO=13",
+							"RLIMIT_STACK=15",
+						},
+					},
+				))
+			})
+		})
+
+		It("returns a unique process ID", func() {
+			setupSuccessfulSpawn()
+
+			processID1, _, err := container.Run(backend.ProcessSpec{
+				Script: "/some/script",
+			})
+			Expect(err).ToNot(HaveOccurred())
+
+			processID2, _, err := container.Run(backend.ProcessSpec{
+				Script: "/some/script",
+			})
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(processID1).ToNot(Equal(processID2))
+		})
+
+		Context("with 'privileged' true", func() {
+			BeforeEach(setupSuccessfulSpawn)
+
+			It("runs with --user root", func() {
+				processID, _, err := container.Run(backend.ProcessSpec{
+					Script:     "/some/script",
+					Privileged: true,
+				})
+
+				Expect(err).ToNot(HaveOccurred())
+
+				Eventually(fakeRunner).Should(HaveStartedExecuting(
+					fake_command_runner.CommandSpec{
+						Path: "/depot/some-id/bin/iomux-spawn",
+						Args: []string{
+							fmt.Sprintf("/depot/some-id/processes/%d", processID),
+							"/depot/some-id/bin/wsh",
+							"--socket", "/depot/some-id/run/wshd.sock",
+							"--user", "root",
+							"/bin/bash",
+						},
+						Stdin: "/some/script",
+					},
+				))
+			})
+		})
+
+		Context("when spawning fails", func() {
+			disaster := errors.New("oh no!")
+
+			BeforeEach(func() {
+				fakeRunner.WhenRunning(
+					fake_command_runner.CommandSpec{
+						Path: "/depot/some-id/bin/iomux-spawn",
+					}, func(*exec.Cmd) error {
+						return disaster
+					},
+				)
+			})
+
+			It("returns the error", func() {
+				_, _, err := container.Run(backend.ProcessSpec{
+					Script:     "/some/script",
+					Privileged: true,
+				})
+
+				Expect(err).To(Equal(disaster))
+			})
+		})
+	})
+
+	Describe("Attaching", func() {
+		BeforeEach(setupSuccessfulSpawn)
+
+		Context("a started process", func() {
+			BeforeEach(func() {
+				fakeRunner.WhenRunning(
+					fake_command_runner.CommandSpec{
+						Path: "/depot/some-id/bin/iomux-link",
+					}, func(cmd *exec.Cmd) error {
+						time.Sleep(100 * time.Millisecond)
+
+						cmd.Stdout.Write([]byte("hi out\n"))
+
+						time.Sleep(100 * time.Millisecond)
+
+						cmd.Stderr.Write([]byte("hi err\n"))
+
+						time.Sleep(100 * time.Millisecond)
+
+						dummyCmd := exec.Command("/bin/bash", "-c", "exit 42")
+						dummyCmd.Run()
+
+						cmd.ProcessState = dummyCmd.ProcessState
+
+						return nil
+					},
+				)
+			})
+
+			It("streams stderr and stdout and exit status", func(done Done) {
+				processID, runningStreamChannel, err := container.Run(backend.ProcessSpec{
 					Script: "/some/script",
 				})
 				Expect(err).ToNot(HaveOccurred())
 
-				_, err = container.Link(jobID)
+				attachStreamChannel, err := container.Attach(processID)
 				Expect(err).ToNot(HaveOccurred())
 
-				_, err = container.Stream(jobID)
-				Expect(err).To(HaveOccurred())
-			})
+				runChunk := <-runningStreamChannel
+				attachChunk := <-attachStreamChannel
+				Expect(attachChunk.Source).To(Equal(backend.ProcessStreamSourceStdout))
+				Expect(string(attachChunk.Data)).To(Equal("hi out\n"))
+				Expect(attachChunk.ExitStatus).To(BeNil())
+				Expect(runChunk).To(Equal(attachChunk))
+
+				runChunk = <-runningStreamChannel
+				attachChunk = <-attachStreamChannel
+				Expect(attachChunk.Source).To(Equal(backend.ProcessStreamSourceStderr))
+				Expect(string(attachChunk.Data)).To(Equal("hi err\n"))
+				Expect(attachChunk.ExitStatus).To(BeNil())
+				Expect(runChunk).To(Equal(attachChunk))
+
+				runChunk = <-runningStreamChannel
+				attachChunk = <-attachStreamChannel
+				Expect(attachChunk.Source).To(BeZero())
+				Expect(string(attachChunk.Data)).To(Equal(""))
+				Expect(attachChunk.ExitStatus).ToNot(BeNil())
+				Expect(*attachChunk.ExitStatus).To(Equal(uint32(42)))
+				Expect(runChunk).To(Equal(attachChunk))
+
+				close(done)
+			}, 5.0)
 		})
 
-		Context("an unknown job", func() {
+		Context("a process that has already completed", func() {
+			It("returns an error", func(done Done) {
+				processID, payloads, err := container.Run(backend.ProcessSpec{
+					Script: "/some/script",
+				})
+				Expect(err).ToNot(HaveOccurred())
+
+				for _ = range payloads {
+					// noop
+				}
+
+				_, err = container.Attach(processID)
+				Expect(err).To(HaveOccurred())
+
+				close(done)
+			}, 1.0)
+		})
+
+		Context("an unknown process", func() {
 			It("returns an error", func() {
-				_, err := container.Stream(42)
+				_, err := container.Attach(42)
 				Expect(err).To(HaveOccurred())
 			})
 		})
@@ -1860,35 +1808,35 @@ var _ = Describe("Linux containers", func() {
 			Expect(info.ContainerPath).To(Equal("/depot/some-id"))
 		})
 
-		Context("with running jobs", func() {
+		Context("with running processes", func() {
 			BeforeEach(setupSuccessfulSpawn)
 
-			It("returns their job IDs", func() {
+			It("returns their process IDs", func() {
 				fakeRunner.WhenRunning(
 					fake_command_runner.CommandSpec{
 						Path: "/depot/some-id/bin/iomux-link",
 					},
 					func(cmd *exec.Cmd) error {
-						// block forever so the job remains active
+						// block forever so the process remains active
 						select {}
 
 						return nil
 					},
 				)
 
-				jobID1, err := container.Spawn(backend.JobSpec{
+				processID1, _, err := container.Run(backend.ProcessSpec{
 					Script: "/some/script",
 				})
 				Expect(err).ToNot(HaveOccurred())
 
-				jobID2, err := container.Spawn(backend.JobSpec{
+				processID2, _, err := container.Run(backend.ProcessSpec{
 					Script: "/some/script",
 				})
 				Expect(err).ToNot(HaveOccurred())
 
 				info, err := container.Info()
 				Expect(err).ToNot(HaveOccurred())
-				Expect(info.JobIDs).To(Equal([]uint32{jobID1, jobID2}))
+				Expect(info.ProcessIDs).To(Equal([]uint32{processID1, processID2}))
 			})
 		})
 

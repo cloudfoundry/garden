@@ -18,7 +18,7 @@ import (
 	"github.com/pivotal-cf-experimental/garden/command_runner"
 	"github.com/pivotal-cf-experimental/garden/linux_backend/bandwidth_manager"
 	"github.com/pivotal-cf-experimental/garden/linux_backend/cgroups_manager"
-	"github.com/pivotal-cf-experimental/garden/linux_backend/job_tracker"
+	"github.com/pivotal-cf-experimental/garden/linux_backend/process_tracker"
 	"github.com/pivotal-cf-experimental/garden/linux_backend/quota_manager"
 )
 
@@ -45,7 +45,7 @@ type LinuxContainer struct {
 	quotaManager     quota_manager.QuotaManager
 	bandwidthManager bandwidth_manager.BandwidthManager
 
-	jobTracker *job_tracker.JobTracker
+	processTracker *process_tracker.ProcessTracker
 
 	oomMutex    sync.RWMutex
 	oomNotifier *exec.Cmd
@@ -123,7 +123,7 @@ func NewLinuxContainer(
 		quotaManager:     quotaManager,
 		bandwidthManager: bandwidthManager,
 
-		jobTracker: job_tracker.New(path, runner),
+		processTracker: process_tracker.New(path, runner),
 	}
 }
 
@@ -180,12 +180,12 @@ func (c *LinuxContainer) Snapshot(out io.Writer) error {
 	c.netOutsMutex.RLock()
 	defer c.netOutsMutex.RUnlock()
 
-	jobSnapshots := []JobSnapshot{}
+	processSnapshots := []ProcessSnapshot{}
 
-	for _, job := range c.jobTracker.ActiveJobs() {
-		jobSnapshots = append(
-			jobSnapshots,
-			JobSnapshot{ID: job.ID, DiscardOutput: job.DiscardOutput},
+	for _, process := range c.processTracker.ActiveProcesses() {
+		processSnapshots = append(
+			processSnapshots,
+			ProcessSnapshot{ID: process.ID},
 		)
 	}
 
@@ -215,7 +215,7 @@ func (c *LinuxContainer) Snapshot(out io.Writer) error {
 			NetIns:  c.netIns,
 			NetOuts: c.netOuts,
 
-			Jobs: jobSnapshots,
+			Processes: processSnapshots,
 		},
 	)
 }
@@ -234,8 +234,8 @@ func (c *LinuxContainer) Restore(snapshot ContainerSnapshot) error {
 		}
 	}
 
-	for _, job := range snapshot.Jobs {
-		c.jobTracker.Restore(job.ID, job.DiscardOutput)
+	for _, process := range snapshot.Processes {
+		c.processTracker.Restore(process.ID)
 	}
 
 	net := &exec.Cmd{
@@ -313,8 +313,8 @@ func (c *LinuxContainer) Stop(kill bool) error {
 func (c *LinuxContainer) Cleanup() {
 	c.stopOomNotifier()
 
-	for _, job := range c.jobTracker.ActiveJobs() {
-		job.Unlink()
+	for _, process := range c.processTracker.ActiveProcesses() {
+		process.Unlink()
 	}
 }
 
@@ -346,9 +346,9 @@ func (c *LinuxContainer) Info() (backend.ContainerInfo, error) {
 		return backend.ContainerInfo{}, err
 	}
 
-	jobIDs := []uint32{}
-	for _, job := range c.jobTracker.ActiveJobs() {
-		jobIDs = append(jobIDs, job.ID)
+	processIDs := []uint32{}
+	for _, process := range c.processTracker.ActiveProcesses() {
+		processIDs = append(processIDs, process.ID)
 	}
 
 	return backend.ContainerInfo{
@@ -357,7 +357,7 @@ func (c *LinuxContainer) Info() (backend.ContainerInfo, error) {
 		HostIP:        c.resources.Network.HostIP().String(),
 		ContainerIP:   c.resources.Network.ContainerIP().String(),
 		ContainerPath: c.path,
-		JobIDs:        jobIDs,
+		ProcessIDs:    processIDs,
 		MemoryStat:    parseMemoryStat(memoryStat),
 		CPUStat:       parseCPUStat(cpuUsage, cpuStat),
 		DiskStat:      diskStat,
@@ -524,8 +524,8 @@ func (c *LinuxContainer) CurrentCPULimits() (backend.CPULimits, error) {
 	return backend.CPULimits{uint64(numericLimit)}, nil
 }
 
-func (c *LinuxContainer) Spawn(spec backend.JobSpec) (uint32, error) {
-	log.Println(c.id, "spawning job:", spec.Script)
+func (c *LinuxContainer) Run(spec backend.ProcessSpec) (uint32, <-chan backend.ProcessStream, error) {
+	log.Println(c.id, "running process:", spec.Script)
 
 	wshPath := path.Join(c.path, "bin", "wsh")
 	sockPath := path.Join(c.path, "run", "wshd.sock")
@@ -543,27 +543,12 @@ func (c *LinuxContainer) Spawn(spec backend.JobSpec) (uint32, error) {
 
 	setRLimitsEnv(wsh, spec.Limits)
 
-	return c.jobTracker.Spawn(wsh, spec.DiscardOutput, spec.AutoLink)
+	return c.processTracker.Run(wsh)
 }
 
-func (c *LinuxContainer) Stream(jobID uint32) (<-chan backend.JobStream, error) {
-	log.Println(c.id, "streaming job", jobID)
-	return c.jobTracker.Stream(jobID)
-}
-
-func (c *LinuxContainer) Link(jobID uint32) (backend.JobResult, error) {
-	log.Println(c.id, "linking to job", jobID)
-
-	exitStatus, stdout, stderr, err := c.jobTracker.Link(jobID)
-	if err != nil {
-		return backend.JobResult{}, err
-	}
-
-	return backend.JobResult{
-		ExitStatus: exitStatus,
-		Stdout:     stdout,
-		Stderr:     stderr,
-	}, nil
+func (c *LinuxContainer) Attach(processID uint32) (<-chan backend.ProcessStream, error) {
+	log.Println(c.id, "attaching to process", processID)
+	return c.processTracker.Attach(processID)
 }
 
 func (c *LinuxContainer) NetIn(hostPort uint32, containerPort uint32) (uint32, uint32, error) {

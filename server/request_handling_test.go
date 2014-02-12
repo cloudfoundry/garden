@@ -68,7 +68,7 @@ var _ = Describe("When a client connects", func() {
 
 	readResponse := func(response proto.Message) {
 		err := message_reader.ReadMessage(responses, response)
-		Expect(err).ToNot(HaveOccurred())
+		ExpectWithOffset(1, err).ToNot(HaveOccurred())
 	}
 
 	itResetsGraceTimeWhenHandling := func(request proto.Message) {
@@ -596,7 +596,7 @@ var _ = Describe("When a client connects", func() {
 		})
 	})
 
-	Context("and the client sends a SpawnRequest", func() {
+	Context("and the client sends an AttachRequest", func() {
 		var fakeContainer *fake_backend.FakeContainer
 
 		BeforeEach(func() {
@@ -606,219 +606,18 @@ var _ = Describe("When a client connects", func() {
 			fakeContainer = container.(*fake_backend.FakeContainer)
 		})
 
-		It("spawns a job and sends a SpawnResponse", func(done Done) {
-			fakeContainer.SpawnedJobID = 42
-
-			writeMessages(&protocol.SpawnRequest{
-				Handle:        proto.String(fakeContainer.Handle()),
-				Script:        proto.String("/some/script"),
-				Privileged:    proto.Bool(true),
-				DiscardOutput: proto.Bool(true),
-				Rlimits: &protocol.ResourceLimits{
-					As:         proto.Uint64(1),
-					Core:       proto.Uint64(2),
-					Cpu:        proto.Uint64(3),
-					Data:       proto.Uint64(4),
-					Fsize:      proto.Uint64(5),
-					Locks:      proto.Uint64(6),
-					Memlock:    proto.Uint64(7),
-					Msgqueue:   proto.Uint64(8),
-					Nice:       proto.Uint64(9),
-					Nofile:     proto.Uint64(10),
-					Nproc:      proto.Uint64(11),
-					Rss:        proto.Uint64(12),
-					Rtprio:     proto.Uint64(13),
-					Sigpending: proto.Uint64(14),
-					Stack:      proto.Uint64(15),
-				},
-			})
-
-			var response protocol.SpawnResponse
-			readResponse(&response)
-
-			Expect(response.GetJobId()).To(Equal(uint32(42)))
-
-			Expect(fakeContainer.Spawned).To(ContainElement(
-				backend.JobSpec{
-					Script:        "/some/script",
-					Privileged:    true,
-					DiscardOutput: true,
-					AutoLink:      true,
-					Limits: backend.ResourceLimits{
-						As:         uint64ptr(1),
-						Core:       uint64ptr(2),
-						Cpu:        uint64ptr(3),
-						Data:       uint64ptr(4),
-						Fsize:      uint64ptr(5),
-						Locks:      uint64ptr(6),
-						Memlock:    uint64ptr(7),
-						Msgqueue:   uint64ptr(8),
-						Nice:       uint64ptr(9),
-						Nofile:     uint64ptr(10),
-						Nproc:      uint64ptr(11),
-						Rss:        uint64ptr(12),
-						Rtprio:     uint64ptr(13),
-						Sigpending: uint64ptr(14),
-						Stack:      uint64ptr(15),
-					},
-				},
-			))
-
-			close(done)
-		}, 1.0)
-
-		itResetsGraceTimeWhenHandling(&protocol.SpawnRequest{
-			Handle: proto.String("some-handle"),
-			Script: proto.String("/some/script"),
-		})
-
-		Context("when the container is not found", func() {
-			BeforeEach(func() {
-				serverBackend.Destroy(fakeContainer.Handle())
-			})
-
-			It("sends a WardenError response", func(done Done) {
-				writeMessages(&protocol.SpawnRequest{
-					Handle: proto.String(fakeContainer.Handle()),
-					Script: proto.String("/some/script"),
-				})
-
-				var response protocol.SpawnResponse
-
-				err := message_reader.ReadMessage(responses, &response)
-				Expect(err).To(Equal(&message_reader.WardenError{
-					Message: "unknown handle: some-handle",
-				}))
-
-				close(done)
-			}, 1.0)
-		})
-
-		Context("when spawning fails", func() {
-			BeforeEach(func() {
-				fakeContainer.SpawnError = errors.New("oh no!")
-			})
-
-			It("sends a WardenError response", func(done Done) {
-				writeMessages(&protocol.SpawnRequest{
-					Handle: proto.String(fakeContainer.Handle()),
-					Script: proto.String("/some/script"),
-				})
-
-				var response protocol.SpawnResponse
-
-				err := message_reader.ReadMessage(responses, &response)
-				Expect(err).To(Equal(&message_reader.WardenError{Message: "oh no!"}))
-
-				close(done)
-			}, 1.0)
-		})
-	})
-
-	Context("and the client sends a LinkRequest", func() {
-		var fakeContainer *fake_backend.FakeContainer
-
-		BeforeEach(func() {
-			container, err := serverBackend.Create(backend.ContainerSpec{Handle: "some-handle"})
-			Expect(err).ToNot(HaveOccurred())
-
-			fakeContainer = container.(*fake_backend.FakeContainer)
-		})
-
-		It("links to the job and sends a LinkResponse", func(done Done) {
-			fakeContainer.LinkedJobResult = backend.JobResult{
-				ExitStatus: 42,
-				Stdout:     []byte("job out\n"),
-				Stderr:     []byte("job err\n"),
-			}
-
-			writeMessages(&protocol.LinkRequest{
-				Handle: proto.String(fakeContainer.Handle()),
-				JobId:  proto.Uint32(123),
-			})
-
-			var response protocol.LinkResponse
-			readResponse(&response)
-
-			Expect(response.GetExitStatus()).To(Equal(uint32(42)))
-			Expect(response.GetStdout()).To(Equal("job out\n"))
-			Expect(response.GetStderr()).To(Equal("job err\n"))
-
-			Expect(fakeContainer.Linked).To(ContainElement(uint32(123)))
-
-			close(done)
-		}, 1.0)
-
-		itResetsGraceTimeWhenHandling(&protocol.LinkRequest{
-			Handle: proto.String("some-handle"),
-			JobId:  proto.Uint32(123),
-		})
-
-		Context("when the container is not found", func() {
-			BeforeEach(func() {
-				serverBackend.Destroy(fakeContainer.Handle())
-			})
-
-			It("sends a WardenError response", func(done Done) {
-				writeMessages(&protocol.LinkRequest{
-					Handle: proto.String(fakeContainer.Handle()),
-					JobId:  proto.Uint32(123),
-				})
-
-				var response protocol.LinkResponse
-
-				err := message_reader.ReadMessage(responses, &response)
-				Expect(err).To(Equal(&message_reader.WardenError{
-					Message: "unknown handle: some-handle",
-				}))
-
-				close(done)
-			}, 1.0)
-		})
-
-		Context("when linking fails", func() {
-			BeforeEach(func() {
-				fakeContainer.LinkError = errors.New("oh no!")
-			})
-
-			It("sends a WardenError response", func(done Done) {
-				writeMessages(&protocol.LinkRequest{
-					Handle: proto.String(fakeContainer.Handle()),
-					JobId:  proto.Uint32(123),
-				})
-
-				var response protocol.LinkResponse
-
-				err := message_reader.ReadMessage(responses, &response)
-				Expect(err).To(Equal(&message_reader.WardenError{Message: "oh no!"}))
-
-				close(done)
-			}, 1.0)
-		})
-	})
-
-	Context("and the client sends a StreamRequest", func() {
-		var fakeContainer *fake_backend.FakeContainer
-
-		BeforeEach(func() {
-			container, err := serverBackend.Create(backend.ContainerSpec{Handle: "some-handle"})
-			Expect(err).ToNot(HaveOccurred())
-
-			fakeContainer = container.(*fake_backend.FakeContainer)
-		})
-
-		It("responds with a StreamResponse for every chunk", func(done Done) {
+		It("responds with a ProcessPayload for every chunk", func(done Done) {
 			exitStatus := uint32(42)
 
-			fakeContainer.StreamedJobChunks = []backend.JobStream{
+			fakeContainer.StreamedProcessChunks = []backend.ProcessStream{
 				{
-					Name:       "stdout",
-					Data:       []byte("job out\n"),
+					Source:     backend.ProcessStreamSourceStdout,
+					Data:       []byte("process out\n"),
 					ExitStatus: nil,
 				},
 				{
-					Name:       "stderr",
-					Data:       []byte("job err\n"),
+					Source:     backend.ProcessStreamSourceStderr,
+					Data:       []byte("process err\n"),
 					ExitStatus: nil,
 				},
 				{
@@ -826,33 +625,32 @@ var _ = Describe("When a client connects", func() {
 				},
 			}
 
-			writeMessages(&protocol.StreamRequest{
-				Handle: proto.String(fakeContainer.Handle()),
-				JobId:  proto.Uint32(123),
+			writeMessages(&protocol.AttachRequest{
+				Handle:    proto.String(fakeContainer.Handle()),
+				ProcessId: proto.Uint32(123),
 			})
 
-			var response1 protocol.StreamResponse
-			readResponse(&response1)
+			var response protocol.ProcessPayload
+			readResponse(&response)
 
-			Expect(response1.GetName()).To(Equal("stdout"))
-			Expect(response1.GetData()).To(Equal("job out\n"))
-			Expect(response1.ExitStatus).To(BeNil())
+			Expect(response.GetProcessId()).To(Equal(uint32(123)))
+			Expect(response.GetSource()).To(Equal(protocol.ProcessPayload_stdout))
+			Expect(response.GetData()).To(Equal("process out\n"))
+			Expect(response.ExitStatus).To(BeNil())
 
-			var response2 protocol.StreamResponse
-			readResponse(&response2)
+			readResponse(&response)
 
-			Expect(response2.GetName()).To(Equal("stderr"))
-			Expect(response2.GetData()).To(Equal("job err\n"))
-			Expect(response2.ExitStatus).To(BeNil())
+			Expect(response.GetSource()).To(Equal(protocol.ProcessPayload_stderr))
+			Expect(response.GetData()).To(Equal("process err\n"))
+			Expect(response.ExitStatus).To(BeNil())
 
-			var response3 protocol.StreamResponse
-			readResponse(&response3)
+			readResponse(&response)
 
-			Expect(response3.GetName()).To(Equal(""))
-			Expect(response3.GetData()).To(Equal(""))
-			Expect(response3.GetExitStatus()).To(Equal(uint32(42)))
+			Expect(response.GetSource()).To(BeZero())
+			Expect(response.GetData()).To(BeZero())
+			Expect(response.GetExitStatus()).To(Equal(uint32(42)))
 
-			Expect(fakeContainer.Streamed).To(ContainElement(uint32(123)))
+			Expect(fakeContainer.Attached).To(ContainElement(uint32(123)))
 
 			close(done)
 		}, 1.0)
@@ -870,15 +668,15 @@ var _ = Describe("When a client connects", func() {
 
 			exitStatus := uint32(42)
 
-			fakeContainer.StreamedJobChunks = []backend.JobStream{
+			fakeContainer.StreamedProcessChunks = []backend.ProcessStream{
 				{
-					Name:       "stdout",
-					Data:       []byte("job out\n"),
+					Source:     backend.ProcessStreamSourceStdout,
+					Data:       []byte("process out\n"),
 					ExitStatus: nil,
 				},
 				{
-					Name:       "stderr",
-					Data:       []byte("job err\n"),
+					Source:     backend.ProcessStreamSourceStderr,
+					Data:       []byte("process err\n"),
 					ExitStatus: nil,
 				},
 				{
@@ -888,19 +686,15 @@ var _ = Describe("When a client connects", func() {
 
 			fakeContainer.StreamDelay = 1 * time.Second
 
-			writeMessages(&protocol.StreamRequest{
-				Handle: proto.String(fakeContainer.Handle()),
-				JobId:  proto.Uint32(123),
+			writeMessages(&protocol.AttachRequest{
+				Handle:    proto.String(fakeContainer.Handle()),
+				ProcessId: proto.Uint32(123),
 			})
 
-			var response1 protocol.StreamResponse
-			readResponse(&response1)
-
-			var response2 protocol.StreamResponse
-			readResponse(&response2)
-
-			var response3 protocol.StreamResponse
-			readResponse(&response3)
+			var payloadResponse protocol.ProcessPayload
+			readResponse(&payloadResponse)
+			readResponse(&payloadResponse)
+			readResponse(&payloadResponse)
 
 			before := time.Now()
 
@@ -920,12 +714,12 @@ var _ = Describe("When a client connects", func() {
 			})
 
 			It("sends a WardenError response", func(done Done) {
-				writeMessages(&protocol.StreamRequest{
-					Handle: proto.String(fakeContainer.Handle()),
-					JobId:  proto.Uint32(123),
+				writeMessages(&protocol.AttachRequest{
+					Handle:    proto.String(fakeContainer.Handle()),
+					ProcessId: proto.Uint32(123),
 				})
 
-				var response protocol.StreamResponse
+				var response protocol.ProcessPayload
 
 				err := message_reader.ReadMessage(responses, &response)
 				Expect(err).To(Equal(&message_reader.WardenError{
@@ -938,16 +732,16 @@ var _ = Describe("When a client connects", func() {
 
 		Context("when streaming fails", func() {
 			BeforeEach(func() {
-				fakeContainer.StreamError = errors.New("oh no!")
+				fakeContainer.AttachError = errors.New("oh no!")
 			})
 
 			It("sends a WardenError response", func(done Done) {
-				writeMessages(&protocol.StreamRequest{
-					Handle: proto.String(fakeContainer.Handle()),
-					JobId:  proto.Uint32(123),
+				writeMessages(&protocol.AttachRequest{
+					Handle:    proto.String(fakeContainer.Handle()),
+					ProcessId: proto.Uint32(123),
 				})
 
-				var response protocol.StreamResponse
+				var response protocol.ProcessPayload
 
 				err := message_reader.ReadMessage(responses, &response)
 				Expect(err).To(Equal(&message_reader.WardenError{Message: "oh no!"}))
@@ -967,20 +761,30 @@ var _ = Describe("When a client connects", func() {
 			fakeContainer = container.(*fake_backend.FakeContainer)
 		})
 
-		It("spawns a job without auto-link, links to it, and sends a RunResponse", func(done Done) {
-			fakeContainer.SpawnedJobID = 123
+		It("runs the process and streams the output", func(done Done) {
+			fakeContainer.RunningProcessID = 123
+			exitStatus := uint32(42)
 
-			fakeContainer.LinkedJobResult = backend.JobResult{
-				ExitStatus: 42,
-				Stdout:     []byte("job out\n"),
-				Stderr:     []byte("job err\n"),
+			fakeContainer.StreamedProcessChunks = []backend.ProcessStream{
+				{
+					Source:     backend.ProcessStreamSourceStdout,
+					Data:       []byte("process out\n"),
+					ExitStatus: nil,
+				},
+				{
+					Source:     backend.ProcessStreamSourceStderr,
+					Data:       []byte("process err\n"),
+					ExitStatus: nil,
+				},
+				{
+					ExitStatus: &exitStatus,
+				},
 			}
 
 			writeMessages(&protocol.RunRequest{
-				Handle:        proto.String(fakeContainer.Handle()),
-				Script:        proto.String("/some/script"),
-				Privileged:    proto.Bool(true),
-				DiscardOutput: proto.Bool(true),
+				Handle:     proto.String(fakeContainer.Handle()),
+				Script:     proto.String("/some/script"),
+				Privileged: proto.Bool(true),
 				Rlimits: &protocol.ResourceLimits{
 					As:         proto.Uint64(1),
 					Core:       proto.Uint64(2),
@@ -1000,15 +804,36 @@ var _ = Describe("When a client connects", func() {
 				},
 			})
 
-			var response protocol.RunResponse
-			readResponse(&response)
+			var response protocol.ProcessPayload
 
-			Expect(fakeContainer.Spawned).To(ContainElement(
-				backend.JobSpec{
-					Script:        "/some/script",
-					Privileged:    true,
-					DiscardOutput: true,
-					AutoLink:      false,
+			readResponse(&response)
+			Expect(response.GetProcessId()).To(Equal(uint32(123)))
+			Expect(response.GetSource()).To(BeZero())
+			Expect(response.GetData()).To(BeZero())
+			Expect(response.ExitStatus).To(BeNil())
+
+			readResponse(&response)
+			Expect(response.GetProcessId()).To(Equal(uint32(123)))
+			Expect(response.GetSource()).To(Equal(protocol.ProcessPayload_stdout))
+			Expect(response.GetData()).To(Equal("process out\n"))
+			Expect(response.ExitStatus).To(BeNil())
+
+			readResponse(&response)
+			Expect(response.GetProcessId()).To(Equal(uint32(123)))
+			Expect(response.GetSource()).To(Equal(protocol.ProcessPayload_stderr))
+			Expect(response.GetData()).To(Equal("process err\n"))
+			Expect(response.ExitStatus).To(BeNil())
+
+			readResponse(&response)
+			Expect(response.GetProcessId()).To(Equal(uint32(123)))
+			Expect(response.GetSource()).To(BeZero())
+			Expect(response.GetData()).To(BeZero())
+			Expect(response.GetExitStatus()).To(Equal(uint32(42)))
+
+			Expect(fakeContainer.RunningProcesses).To(ContainElement(
+				backend.ProcessSpec{
+					Script:     "/some/script",
+					Privileged: true,
 					Limits: backend.ResourceLimits{
 						As:         uint64ptr(1),
 						Core:       uint64ptr(2),
@@ -1029,19 +854,8 @@ var _ = Describe("When a client connects", func() {
 				},
 			))
 
-			Expect(fakeContainer.Linked).To(ContainElement(uint32(123)))
-
-			Expect(response.GetExitStatus()).To(Equal(uint32(42)))
-			Expect(response.GetStdout()).To(Equal("job out\n"))
-			Expect(response.GetStderr()).To(Equal("job err\n"))
-
 			close(done)
 		}, 1.0)
-
-		itResetsGraceTimeWhenHandling(&protocol.RunRequest{
-			Handle: proto.String("some-handle"),
-			Script: proto.String("/some/script"),
-		})
 
 		Context("when the container is not found", func() {
 			BeforeEach(func() {
@@ -1054,7 +868,7 @@ var _ = Describe("When a client connects", func() {
 					Script: proto.String("/some/script"),
 				})
 
-				var response protocol.RunResponse
+				var response protocol.ProcessPayload
 
 				err := message_reader.ReadMessage(responses, &response)
 				Expect(err).To(Equal(&message_reader.WardenError{
@@ -1065,9 +879,9 @@ var _ = Describe("When a client connects", func() {
 			}, 1.0)
 		})
 
-		Context("when spawning fails", func() {
+		Context("when running fails", func() {
 			BeforeEach(func() {
-				fakeContainer.SpawnError = errors.New("oh no!")
+				fakeContainer.RunError = errors.New("oh no!")
 			})
 
 			It("sends a WardenError response", func(done Done) {
@@ -1076,7 +890,7 @@ var _ = Describe("When a client connects", func() {
 					Script: proto.String("/some/script"),
 				})
 
-				var response protocol.RunResponse
+				var response protocol.ProcessPayload
 
 				err := message_reader.ReadMessage(responses, &response)
 				Expect(err).To(Equal(&message_reader.WardenError{Message: "oh no!"}))
@@ -1085,25 +899,59 @@ var _ = Describe("When a client connects", func() {
 			}, 1.0)
 		})
 
-		Context("when linking fails", func() {
-			BeforeEach(func() {
-				fakeContainer.LinkError = errors.New("oh no!")
+		It("resets the container's grace time as long as it's streaming", func(done Done) {
+			writeMessages(&protocol.CreateRequest{
+				Handle:    proto.String("some-handle"),
+				GraceTime: proto.Uint32(1),
 			})
 
-			It("sends a WardenError response", func(done Done) {
-				writeMessages(&protocol.RunRequest{
-					Handle: proto.String(fakeContainer.Handle()),
-					Script: proto.String("/some/script"),
-				})
+			var response protocol.CreateResponse
+			readResponse(&response)
 
-				var response protocol.RunResponse
+			fakeContainer := serverBackend.CreatedContainers["some-handle"]
 
-				err := message_reader.ReadMessage(responses, &response)
-				Expect(err).To(Equal(&message_reader.WardenError{Message: "oh no!"}))
+			exitStatus := uint32(42)
 
-				close(done)
-			}, 1.0)
-		})
+			fakeContainer.StreamedProcessChunks = []backend.ProcessStream{
+				{
+					Source:     backend.ProcessStreamSourceStdout,
+					Data:       []byte("process out\n"),
+					ExitStatus: nil,
+				},
+				{
+					Source:     backend.ProcessStreamSourceStderr,
+					Data:       []byte("process err\n"),
+					ExitStatus: nil,
+				},
+				{
+					ExitStatus: &exitStatus,
+				},
+			}
+
+			fakeContainer.StreamDelay = 1 * time.Second
+
+			writeMessages(&protocol.RunRequest{
+				Handle: proto.String("some-handle"),
+				Script: proto.String("/some/script"),
+			})
+
+			var payloadResponse protocol.ProcessPayload
+			readResponse(&payloadResponse) // read process id
+			readResponse(&payloadResponse) // read stdout
+			readResponse(&payloadResponse) // read stderr
+			readResponse(&payloadResponse) // read exit status
+
+			before := time.Now()
+
+			Eventually(func() error {
+				_, err := serverBackend.Lookup("some-handle")
+				return err
+			}, 2.0).Should(HaveOccurred())
+
+			Expect(time.Since(before)).To(BeNumerically(">", 1*time.Second))
+
+			close(done)
+		}, 5.0)
 	})
 
 	Context("and the client sends a LimitBandwidthRequest", func() {
@@ -1949,7 +1797,7 @@ var _ = Describe("When a client connects", func() {
 				HostIP:        "host-ip",
 				ContainerIP:   "container-ip",
 				ContainerPath: "/path/to/container",
-				JobIDs:        []uint32{1, 2},
+				ProcessIDs:    []uint32{1, 2},
 				MemoryStat: backend.ContainerMemoryStat{
 					Cache:                   1,
 					Rss:                     2,
@@ -2009,7 +1857,7 @@ var _ = Describe("When a client connects", func() {
 			Expect(response.GetHostIp()).To(Equal("host-ip"))
 			Expect(response.GetContainerIp()).To(Equal("container-ip"))
 			Expect(response.GetContainerPath()).To(Equal("/path/to/container"))
-			Expect(response.GetJobIds()).To(Equal([]uint64{1, 2}))
+			Expect(response.GetProcessIds()).To(Equal([]uint64{1, 2}))
 
 			Expect(response.GetMemoryStat().GetCache()).To(Equal(uint64(1)))
 			Expect(response.GetMemoryStat().GetRss()).To(Equal(uint64(2)))
