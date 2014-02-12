@@ -1,6 +1,6 @@
 all: protocol skeleton
 
-protocol:
+protocol: $(shell find protobuf/ -type f)
 	mkdir -p protocol/
 	protoc --gogo_out=protocol/ --proto_path=protobuf/ protobuf/*.proto
 
