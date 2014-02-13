@@ -70,25 +70,12 @@ func (r *GardenRunner) Prepare() error {
 		return err
 	}
 
-	if r.Remote == "" {
-		compiled, err := cmdtest.Build("github.com/pivotal-cf-experimental/garden")
-		if err != nil {
-			return err
-		}
-
-		r.gardenBin = compiled
-	} else {
-		buildCmd := r.cmd("/vagrant/bin/integration/build")
-		buildCmd.Stdout = os.Stdout
-		buildCmd.Stderr = os.Stderr
-
-		err = buildCmd.Run()
-		if err != nil {
-			return err
-		}
-
-		r.gardenBin = "/vagrant/bin/integration/out/garden"
+	compiled, err := cmdtest.Build("github.com/pivotal-cf-experimental/garden")
+	if err != nil {
+		return err
 	}
+
+	r.gardenBin = compiled
 
 	r.DepotPath = filepath.Join(r.tmpdir, "containers")
 	err = r.cmd("mkdir", "-m", "0755", r.DepotPath).Run()
