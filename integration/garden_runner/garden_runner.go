@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cloudfoundry/gunk/runner_support"
 	"github.com/onsi/ginkgo/config"
 	"github.com/vito/cmdtest"
 	"github.com/vito/gordon"
@@ -106,7 +107,7 @@ func (r *GardenRunner) Start(argv ...string) error {
 	garden.Stdout = os.Stdout
 	garden.Stderr = os.Stderr
 
-	err := garden.Start()
+	_, err := cmdtest.StartWrapped(garden, runner_support.TeeIfVerbose, runner_support.TeeIfVerbose)
 	if err != nil {
 		return err
 	}
