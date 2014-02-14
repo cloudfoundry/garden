@@ -23,6 +23,7 @@ type Client interface {
 	List() (*warden.ListResponse, error)
 	Info(handle string) (*warden.InfoResponse, error)
 	CopyIn(handle, src, dst string) (*warden.CopyInResponse, error)
+	CopyOut(handle, src, dst, owner string) (*warden.CopyOutResponse, error)
 }
 
 type client struct {
@@ -168,6 +169,13 @@ func (c *client) CopyIn(handle, src, dst string) (*warden.CopyInResponse, error)
 	defer c.release(conn)
 
 	return conn.CopyIn(handle, src, dst)
+}
+
+func (c *client) CopyOut(handle, src, dst, owner string) (*warden.CopyOutResponse, error) {
+	conn := c.acquireConnection()
+	defer c.release(conn)
+
+	return conn.CopyOut(handle, src, dst, owner)
 }
 
 func (c *client) serveConnection(conn *connection.Connection) {

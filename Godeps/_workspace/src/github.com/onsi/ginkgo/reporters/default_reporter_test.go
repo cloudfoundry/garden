@@ -27,7 +27,6 @@ var _ = Describe("DefaultReporter", func() {
 			NoColor:           false,
 			SlowSpecThreshold: 0.1,
 			NoisyPendings:     true,
-			Succinct:          true,
 			Verbose:           true,
 		}
 
@@ -61,8 +60,8 @@ var _ = Describe("DefaultReporter", func() {
 
 			It("should announce the suite, then announce the number of specs", func() {
 				Ω(stenographer.Calls).Should(HaveLen(2))
-				Ω(stenographer.Calls[0]).Should(Equal(call("AnnounceSuite", "A Sweet Suite", ginkgoConfig.RandomSeed, true)))
-				Ω(stenographer.Calls[1]).Should(Equal(call("AnnounceNumberOfSpecs", 8, 10)))
+				Ω(stenographer.Calls[0]).Should(Equal(call("AnnounceSuite", "A Sweet Suite", ginkgoConfig.RandomSeed, true, false)))
+				Ω(stenographer.Calls[1]).Should(Equal(call("AnnounceNumberOfSpecs", 8, 10, false)))
 			})
 		})
 
@@ -77,9 +76,9 @@ var _ = Describe("DefaultReporter", func() {
 
 			It("should announce the suite, announce that it's a parallel run, then announce the number of specs", func() {
 				Ω(stenographer.Calls).Should(HaveLen(3))
-				Ω(stenographer.Calls[0]).Should(Equal(call("AnnounceSuite", "A Sweet Suite", ginkgoConfig.RandomSeed, true)))
-				Ω(stenographer.Calls[1]).Should(Equal(call("AnnounceParallelRun", 1, 2, 10, 20)))
-				Ω(stenographer.Calls[2]).Should(Equal(call("AnnounceNumberOfSpecs", 8, 10)))
+				Ω(stenographer.Calls[0]).Should(Equal(call("AnnounceSuite", "A Sweet Suite", ginkgoConfig.RandomSeed, true, false)))
+				Ω(stenographer.Calls[1]).Should(Equal(call("AnnounceParallelRun", 1, 2, 10, 20, false)))
+				Ω(stenographer.Calls[2]).Should(Equal(call("AnnounceNumberOfSpecs", 8, 10, false)))
 			})
 		})
 	})
@@ -127,6 +126,19 @@ var _ = Describe("DefaultReporter", func() {
 			})
 		})
 
+		Context("When running in verbose & succinct mode", func() {
+			BeforeEach(func() {
+				reporterConfig.Succinct = true
+				reporter = reporters.NewDefaultReporter(reporterConfig, stenographer)
+				example = &types.ExampleSummary{}
+				reporter.ExampleWillRun(example)
+			})
+
+			It("should announce nothing", func() {
+				Ω(stenographer.Calls).Should(BeEmpty())
+			})
+		})
+
 		Context("When not running in verbose mode", func() {
 			BeforeEach(func() {
 				reporterConfig.Verbose = false
@@ -161,7 +173,7 @@ var _ = Describe("DefaultReporter", func() {
 				})
 
 				It("should announce the measurement", func() {
-					Ω(stenographer.Calls[0]).Should(Equal(call("AnnounceSuccesfulMeasurement", example, true)))
+					Ω(stenographer.Calls[0]).Should(Equal(call("AnnounceSuccesfulMeasurement", example, false)))
 				})
 			})
 
@@ -171,7 +183,7 @@ var _ = Describe("DefaultReporter", func() {
 				})
 
 				It("should announce that it was slow", func() {
-					Ω(stenographer.Calls[0]).Should(Equal(call("AnnounceSuccesfulSlowExample", example, true)))
+					Ω(stenographer.Calls[0]).Should(Equal(call("AnnounceSuccesfulSlowExample", example, false)))
 				})
 			})
 
@@ -188,7 +200,7 @@ var _ = Describe("DefaultReporter", func() {
 			})
 
 			It("should announce the pending example", func() {
-				Ω(stenographer.Calls[0]).Should(Equal(call("AnnouncePendingExample", example, true, true)))
+				Ω(stenographer.Calls[0]).Should(Equal(call("AnnouncePendingExample", example, true)))
 			})
 		})
 
@@ -208,7 +220,7 @@ var _ = Describe("DefaultReporter", func() {
 			})
 
 			It("should announce the timedout example", func() {
-				Ω(stenographer.Calls[0]).Should(Equal(call("AnnounceExampleTimedOut", example, true)))
+				Ω(stenographer.Calls[0]).Should(Equal(call("AnnounceExampleTimedOut", example, false)))
 			})
 		})
 
@@ -218,7 +230,7 @@ var _ = Describe("DefaultReporter", func() {
 			})
 
 			It("should announce the panicked example", func() {
-				Ω(stenographer.Calls[0]).Should(Equal(call("AnnounceExamplePanicked", example, true)))
+				Ω(stenographer.Calls[0]).Should(Equal(call("AnnounceExamplePanicked", example, false)))
 			})
 		})
 
@@ -228,7 +240,96 @@ var _ = Describe("DefaultReporter", func() {
 			})
 
 			It("should announce the failed example", func() {
-				Ω(stenographer.Calls[0]).Should(Equal(call("AnnounceExampleFailed", example, true)))
+				Ω(stenographer.Calls[0]).Should(Equal(call("AnnounceExampleFailed", example, false)))
+			})
+		})
+
+		Context("in succinct mode", func() {
+			BeforeEach(func() {
+				reporterConfig.Succinct = true
+				reporter = reporters.NewDefaultReporter(reporterConfig, stenographer)
+			})
+
+			Context("When the example passed", func() {
+				BeforeEach(func() {
+					example.State = types.ExampleStatePassed
+				})
+
+				Context("When the example was a measurement", func() {
+					BeforeEach(func() {
+						example.IsMeasurement = true
+					})
+
+					It("should announce, simply, a succesful measurement", func() {
+						Ω(stenographer.Calls[0]).Should(Equal(call("AnnounceSuccesfulExample", example)))
+					})
+				})
+
+				Context("When the example is slow", func() {
+					BeforeEach(func() {
+						example.RunTime = time.Second
+					})
+
+					It("should announce, simply, a succesful measurement", func() {
+						Ω(stenographer.Calls[0]).Should(Equal(call("AnnounceSuccesfulExample", example)))
+					})
+				})
+
+				Context("Otherwise", func() {
+					It("should announce the succesful example", func() {
+						Ω(stenographer.Calls[0]).Should(Equal(call("AnnounceSuccesfulExample", example)))
+					})
+				})
+			})
+
+			Context("When the example is pending", func() {
+				BeforeEach(func() {
+					example.State = types.ExampleStatePending
+				})
+
+				It("should announce the pending example, but never noisily", func() {
+					Ω(stenographer.Calls[0]).Should(Equal(call("AnnouncePendingExample", example, false)))
+				})
+			})
+
+			Context("When the example is skipped", func() {
+				BeforeEach(func() {
+					example.State = types.ExampleStateSkipped
+				})
+
+				It("should announce the skipped example", func() {
+					Ω(stenographer.Calls[0]).Should(Equal(call("AnnounceSkippedExample", example)))
+				})
+			})
+
+			Context("When the example timed out", func() {
+				BeforeEach(func() {
+					example.State = types.ExampleStateTimedOut
+				})
+
+				It("should announce the timedout example", func() {
+					Ω(stenographer.Calls[0]).Should(Equal(call("AnnounceExampleTimedOut", example, true)))
+				})
+			})
+
+			Context("When the example panicked", func() {
+				BeforeEach(func() {
+					example.State = types.ExampleStatePanicked
+				})
+
+				It("should announce the panicked example", func() {
+					Ω(stenographer.Calls[0]).Should(Equal(call("AnnounceExamplePanicked", example, true)))
+				})
+			})
+
+			Context("When the example failed", func() {
+				BeforeEach(func() {
+					example.State = types.ExampleStateFailed
+				})
+
+				It("should announce the failed example", func() {
+					Ω(stenographer.Calls[0]).Should(Equal(call("AnnounceExampleFailed", example, true)))
+				})
 			})
 		})
 	})
@@ -240,7 +341,7 @@ var _ = Describe("DefaultReporter", func() {
 		})
 
 		It("should announce the spec run's completion", func() {
-			Ω(stenographer.Calls[0]).Should(Equal(call("AnnounceSpecRunCompletion", suite)))
+			Ω(stenographer.Calls[0]).Should(Equal(call("AnnounceSpecRunCompletion", suite, false)))
 		})
 	})
 })

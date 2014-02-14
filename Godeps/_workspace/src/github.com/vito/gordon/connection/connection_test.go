@@ -273,6 +273,26 @@ var _ = Describe("Connection", func() {
 		})
 	})
 
+	Describe("Copying in", func() {
+		BeforeEach(func() {
+			wardenMessages = append(wardenMessages,
+				&warden.CopyOutResponse{},
+			)
+		})
+
+		It("should tell garden to copy", func() {
+			_, err := connection.CopyOut("foo-handle", "/foo", "/bar", "bartholofoo")
+			Ω(err).ShouldNot(HaveOccurred())
+
+			assertWriteBufferContains(&warden.CopyOutRequest{
+				Handle:  proto.String("foo-handle"),
+				SrcPath: proto.String("/foo"),
+				DstPath: proto.String("/bar"),
+				Owner:   proto.String("bartholofoo"),
+			})
+		})
+	})
+
 	Describe("When a connection error occurs", func() {
 		BeforeEach(func() {
 			wardenMessages = append(wardenMessages,
