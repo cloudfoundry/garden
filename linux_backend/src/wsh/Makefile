@@ -7,7 +7,7 @@ clean:
 	rm -f *.o clone wshd wsh
 
 install: all
-	cp wshd wsh ../../root/linux/skeleton/bin/
+	cp wshd wsh ../../skeleton/bin/
 
 .PHONY: all clean
 
