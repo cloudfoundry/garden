@@ -23,9 +23,9 @@ import (
 )
 
 type LinuxContainerPool struct {
-	rootPath   string
-	depotPath  string
-	rootFSPath string
+	libexecPath string
+	depotPath   string
+	rootFSPath  string
 
 	uidPool     uid_pool.UIDPool
 	networkPool network_pool.NetworkPool
@@ -39,7 +39,7 @@ type LinuxContainerPool struct {
 }
 
 func New(
-	rootPath, depotPath, rootFSPath string,
+	libexecPath, depotPath, rootFSPath string,
 	uidPool uid_pool.UIDPool,
 	networkPool network_pool.NetworkPool,
 	portPool linux_backend.PortPool,
@@ -47,9 +47,9 @@ func New(
 	quotaManager quota_manager.QuotaManager,
 ) *LinuxContainerPool {
 	pool := &LinuxContainerPool{
-		rootPath:   rootPath,
-		depotPath:  depotPath,
-		rootFSPath: rootFSPath,
+		libexecPath: libexecPath,
+		depotPath:   depotPath,
+		rootFSPath:  rootFSPath,
 
 		uidPool:     uidPool,
 		networkPool: networkPool,
@@ -69,7 +69,7 @@ func New(
 
 func (p *LinuxContainerPool) Setup() error {
 	setup := &exec.Cmd{
-		Path: path.Join(p.rootPath, "setup.sh"),
+		Path: path.Join(p.libexecPath, "setup.sh"),
 		Env: []string{
 			"POOL_NETWORK=" + p.networkPool.Network().String(),
 			"ALLOW_NETWORKS=",
@@ -175,7 +175,7 @@ func (p *LinuxContainerPool) Create(spec backend.ContainerSpec) (linux_backend.C
 	)
 
 	create := &exec.Cmd{
-		Path: path.Join(p.rootPath, "create.sh"),
+		Path: path.Join(p.libexecPath, "create.sh"),
 		Args: []string{containerPath},
 		Env: []string{
 			"id=" + container.ID(),
@@ -297,7 +297,7 @@ func (p *LinuxContainerPool) Destroy(container linux_backend.Container) error {
 
 func (p *LinuxContainerPool) destroy(id string) error {
 	destroy := &exec.Cmd{
-		Path: path.Join(p.rootPath, "destroy.sh"),
+		Path: path.Join(p.libexecPath, "destroy.sh"),
 		Args: []string{path.Join(p.depotPath, id)},
 	}
 

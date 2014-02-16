@@ -23,7 +23,7 @@ type GardenRunner struct {
 	Addr    string
 
 	DepotPath     string
-	RootPath      string
+	LibexecPath   string
 	RootFSPath    string
 	SnapshotsPath string
 
@@ -33,18 +33,18 @@ type GardenRunner struct {
 	tmpdir string
 }
 
-func New(rootPath, rootFSPath, remote string) (*GardenRunner, error) {
+func New(libexecPath, rootFSPath, remote string) (*GardenRunner, error) {
 	tmpdir, err := ioutil.TempDir(os.TempDir(), "garden-temp-socker")
 	if err != nil {
 		return nil, err
 	}
 
 	runner := &GardenRunner{
-		Remote:     remote,
-		Network:    "unix",
-		Addr:       filepath.Join(tmpdir, "warden.sock"),
-		RootPath:   rootPath,
-		RootFSPath: rootFSPath,
+		Remote:      remote,
+		Network:     "unix",
+		Addr:        filepath.Join(tmpdir, "warden.sock"),
+		LibexecPath: libexecPath,
+		RootFSPath:  rootFSPath,
 	}
 
 	return runner, runner.Prepare()
@@ -94,7 +94,7 @@ func (r *GardenRunner) Start(argv ...string) error {
 		gardenArgs,
 		"--listenNetwork", r.Network,
 		"--listenAddr", r.Addr,
-		"--root", r.RootPath,
+		"--libexec", r.LibexecPath,
 		"--depot", r.DepotPath,
 		"--rootfs", r.RootFSPath,
 		"--snapshots", r.SnapshotsPath,
@@ -171,7 +171,7 @@ func (r *GardenRunner) DestroyContainers() error {
 		}
 
 		err := r.cmd(
-			filepath.Join(r.RootPath, "linux", "destroy.sh"),
+			filepath.Join(r.LibexecPath, "destroy.sh"),
 			dir,
 		).Run()
 
