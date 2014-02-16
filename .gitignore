@@ -6,5 +6,5 @@ out/
 root/
 *.coverprofile
 .rootfs/
-linux_backend/libexec/repquota
+linux_backend/bin/repquota
 linux_backend/skeleton/bin/*

@@ -16,17 +16,8 @@ var runner *garden_runner.GardenRunner
 var client gordon.Client
 
 func TestLifecycle(t *testing.T) {
-	remote := os.Getenv("GARDEN_REMOTE_HOST")
-
-	var libexecPath, rootFSPath string
-
-	if remote != "" {
-		libexecPath = "/vagrant/root"
-		rootFSPath = "/opt/warden/rootfs"
-	} else {
-		libexecPath = "../../linux_backend/libexec"
-		rootFSPath = os.Getenv("GARDEN_TEST_ROOTFS")
-	}
+	binPath := "../../linux_backend/bin"
+	rootFSPath := os.Getenv("GARDEN_TEST_ROOTFS")
 
 	if rootFSPath == "" {
 		log.Println("GARDEN_TEST_ROOTFS undefined; skipping")
@@ -35,7 +26,7 @@ func TestLifecycle(t *testing.T) {
 
 	var err error
 
-	runner, err = garden_runner.New(libexecPath, rootFSPath, remote)
+	runner, err = garden_runner.New(binPath, rootFSPath)
 	if err != nil {
 		log.Fatalln("failed to create runner:", err)
 	}

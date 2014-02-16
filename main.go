@@ -46,8 +46,8 @@ var backendName = flag.String(
 	"which backend to use (linux or fake)",
 )
 
-var libexecPath = flag.String(
-	"libexec",
+var binPath = flag.String(
+	"bin",
 	"",
 	"directory containing backend-specific scripts (i.e. ./create.sh)",
 )
@@ -94,8 +94,8 @@ func main() {
 
 	switch *backendName {
 	case "linux":
-		if *libexecPath == "" {
-			log.Fatalln("must specify -root with linux backend")
+		if *binPath == "" {
+			log.Fatalln("must specify -bin with linux backend")
 		}
 
 		if *depotPath == "" {
@@ -122,7 +122,7 @@ func main() {
 
 		runner = command_runner.New(*debug)
 
-		quotaManager, err := quota_manager.New(*depotPath, *libexecPath, runner)
+		quotaManager, err := quota_manager.New(*depotPath, *binPath, runner)
 		if err != nil {
 			log.Fatalln("error creating quota manager:", err)
 		}
@@ -132,7 +132,7 @@ func main() {
 		}
 
 		pool := container_pool.New(
-			*libexecPath,
+			*binPath,
 			*depotPath,
 			*rootFSPath,
 			uidPool,
