@@ -329,7 +329,7 @@ func (p *LinuxContainerPool) writeBindMounts(
 
 	for _, bm := range bindMounts {
 		dstMount := path.Join(containerPath, "mnt", bm.DstPath)
-		srcPath := path.Join(p.runner.ServerRoot(), bm.SrcPath)
+		srcPath := bm.SrcPath
 
 		mode := "ro"
 		if bm.Mode == backend.BindMountModeRW {

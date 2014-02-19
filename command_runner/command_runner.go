@@ -15,7 +15,6 @@ type CommandRunner interface {
 	Wait(*exec.Cmd) error
 	Kill(*exec.Cmd) error
 	Signal(*exec.Cmd, os.Signal) error
-	ServerRoot() string
 }
 
 type RealCommandRunner struct {
@@ -106,10 +105,6 @@ func (r *RealCommandRunner) Signal(cmd *exec.Cmd, signal os.Signal) error {
 	}
 
 	return cmd.Process.Signal(signal)
-}
-
-func (r *RealCommandRunner) ServerRoot() string {
-	return "/"
 }
 
 func (r *RealCommandRunner) tee(cmd *exec.Cmd) {

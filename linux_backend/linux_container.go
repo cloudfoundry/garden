@@ -367,15 +367,13 @@ func (c *LinuxContainer) Info() (backend.ContainerInfo, error) {
 
 func (c *LinuxContainer) CopyIn(src, dst string) error {
 	log.Println(c.id, "copying in from", src, "to", dst)
-	return c.rsync(path.Join(c.runner.ServerRoot(), src), "vcap@container:"+dst)
+	return c.rsync(src, "vcap@container:"+dst)
 }
 
 func (c *LinuxContainer) CopyOut(src, dst, owner string) error {
 	log.Println(c.id, "copying out from", src, "to", dst)
 
-	dstDir := path.Join(c.runner.ServerRoot(), dst)
-
-	err := c.rsync("vcap@container:"+src, dstDir)
+	err := c.rsync("vcap@container:"+src, dst)
 	if err != nil {
 		return err
 	}
@@ -383,7 +381,7 @@ func (c *LinuxContainer) CopyOut(src, dst, owner string) error {
 	if owner != "" {
 		chown := &exec.Cmd{
 			Path: "chown",
-			Args: []string{"-R", owner, dstDir},
+			Args: []string{"-R", owner, dst},
 		}
 
 		err := c.runner.Run(chown)

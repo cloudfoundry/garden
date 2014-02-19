@@ -9,8 +9,6 @@ import (
 )
 
 type FakeCommandRunner struct {
-	ServerRootPath string
-
 	executedCommands  []*exec.Cmd
 	startedCommands   []*exec.Cmd
 	waitedCommands    []*exec.Cmd
@@ -141,10 +139,6 @@ func (r *FakeCommandRunner) Signal(cmd *exec.Cmd, signal os.Signal) error {
 	r.signalledCommands[cmd] = signal
 
 	return nil
-}
-
-func (r *FakeCommandRunner) ServerRoot() string {
-	return r.ServerRootPath
 }
 
 func (r *FakeCommandRunner) WhenRunning(spec CommandSpec, callback func(*exec.Cmd) error) {

@@ -144,8 +144,6 @@ var _ = Describe("Container pool", func() {
 
 		Context("when bind mounts are specified", func() {
 			It("appends mount commands to hook-child-before-pivot.sh", func() {
-				fakeRunner.ServerRootPath = "/host"
-
 				container, err := pool.Create(backend.ContainerSpec{
 					BindMounts: []backend.BindMount{
 						{
@@ -185,7 +183,7 @@ var _ = Describe("Container pool", func() {
 						Path: "bash",
 						Args: []string{
 							"-c",
-							"echo mount -n --bind /host/src/path-ro " + containerPath + "/mnt/dst/path-ro" +
+							"echo mount -n --bind /src/path-ro " + containerPath + "/mnt/dst/path-ro" +
 								" >> " + containerPath + "/lib/hook-child-before-pivot.sh",
 						},
 					},
@@ -193,7 +191,7 @@ var _ = Describe("Container pool", func() {
 						Path: "bash",
 						Args: []string{
 							"-c",
-							"echo mount -n --bind -o remount,ro /host/src/path-ro " + containerPath + "/mnt/dst/path-ro" +
+							"echo mount -n --bind -o remount,ro /src/path-ro " + containerPath + "/mnt/dst/path-ro" +
 								" >> " + containerPath + "/lib/hook-child-before-pivot.sh",
 						},
 					},
@@ -216,7 +214,7 @@ var _ = Describe("Container pool", func() {
 						Path: "bash",
 						Args: []string{
 							"-c",
-							"echo mount -n --bind /host/src/path-rw " + containerPath + "/mnt/dst/path-rw" +
+							"echo mount -n --bind /src/path-rw " + containerPath + "/mnt/dst/path-rw" +
 								" >> " + containerPath + "/lib/hook-child-before-pivot.sh",
 						},
 					},
@@ -224,7 +222,7 @@ var _ = Describe("Container pool", func() {
 						Path: "bash",
 						Args: []string{
 							"-c",
-							"echo mount -n --bind -o remount,rw /host/src/path-rw " + containerPath + "/mnt/dst/path-rw" +
+							"echo mount -n --bind -o remount,rw /src/path-rw " + containerPath + "/mnt/dst/path-rw" +
 								" >> " + containerPath + "/lib/hook-child-before-pivot.sh",
 						},
 					},

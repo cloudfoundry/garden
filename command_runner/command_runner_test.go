@@ -177,10 +177,3 @@ var _ = Describe("Signalling commands", func() {
 		})
 	})
 })
-
-var _ = Describe("Getting the root path of the host", func() {
-	It("returns '/'", func() {
-		runner := command_runner.New(false)
-		Expect(runner.ServerRoot()).To(Equal("/"))
-	})
-})

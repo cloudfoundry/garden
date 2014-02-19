@@ -724,8 +724,6 @@ var _ = Describe("Linux containers", func() {
 
 	Describe("Copying in", func() {
 		It("executes rsync from src into dst via wsh --rsh", func() {
-			fakeRunner.ServerRootPath = "/host"
-
 			err := container.CopyIn("/src", "/dst")
 			Expect(err).ToNot(HaveOccurred())
 
@@ -738,7 +736,7 @@ var _ = Describe("Linux containers", func() {
 						"-r",
 						"-p",
 						"--links",
-						"/host/src",
+						"/src",
 						"vcap@container:/dst",
 					},
 				},
@@ -767,8 +765,6 @@ var _ = Describe("Linux containers", func() {
 
 	Describe("Copying out", func() {
 		It("rsyncs from vcap@container:/src to /dst", func() {
-			fakeRunner.ServerRootPath = "/host"
-
 			err := container.CopyOut("/src", "/dst", "")
 			Expect(err).ToNot(HaveOccurred())
 
@@ -782,7 +778,7 @@ var _ = Describe("Linux containers", func() {
 						"-p",
 						"--links",
 						"vcap@container:/src",
-						"/host/dst",
+						"/dst",
 					},
 				},
 			))
@@ -790,8 +786,6 @@ var _ = Describe("Linux containers", func() {
 
 		Context("when an owner is given", func() {
 			It("chowns the files after rsyncing", func() {
-				fakeRunner.ServerRootPath = "/host"
-
 				err := container.CopyOut("/src", "/dst", "some-user")
 				Expect(err).ToNot(HaveOccurred())
 
@@ -801,7 +795,7 @@ var _ = Describe("Linux containers", func() {
 					},
 					fake_command_runner.CommandSpec{
 						Path: "chown",
-						Args: []string{"-R", "some-user", "/host/dst"},
+						Args: []string{"-R", "some-user", "/dst"},
 					},
 				))
 			})
