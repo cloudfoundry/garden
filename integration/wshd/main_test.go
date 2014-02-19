@@ -20,9 +20,9 @@ import (
 )
 
 var _ = Describe("Running wshd", func() {
-	wshd := "../../root/linux/skeleton/bin/wshd"
+	wshd := "../../linux_backend/skeleton/bin/wshd"
 
-	wsh := "../../root/linux/skeleton/bin/wsh"
+	wsh := "../../linux_backend/skeleton/bin/wsh"
 
 	shmTest, err := cmdtest.Build("github.com/pivotal-cf-experimental/garden/integration/wshd/shm_test")
 	if err != nil {

@@ -6,7 +6,6 @@ import (
 	"net"
 	"os"
 	"os/signal"
-	"path"
 	"runtime"
 	"syscall"
 	"time"
@@ -47,10 +46,10 @@ var backendName = flag.String(
 	"which backend to use (linux or fake)",
 )
 
-var rootPath = flag.String(
-	"root",
+var binPath = flag.String(
+	"bin",
 	"",
-	"directory containing backend-specific scripts (i.e. ./linux/create.sh)",
+	"directory containing backend-specific scripts (i.e. ./create.sh)",
 )
 
 var depotPath = flag.String(
@@ -95,8 +94,8 @@ func main() {
 
 	switch *backendName {
 	case "linux":
-		if *rootPath == "" {
-			log.Fatalln("must specify -root with linux backend")
+		if *binPath == "" {
+			log.Fatalln("must specify -bin with linux backend")
 		}
 
 		if *depotPath == "" {
@@ -123,7 +122,7 @@ func main() {
 
 		runner = command_runner.New(*debug)
 
-		quotaManager, err := quota_manager.New(*depotPath, *rootPath, runner)
+		quotaManager, err := quota_manager.New(*depotPath, *binPath, runner)
 		if err != nil {
 			log.Fatalln("error creating quota manager:", err)
 		}
@@ -133,7 +132,7 @@ func main() {
 		}
 
 		pool := container_pool.New(
-			path.Join(*rootPath, "linux"),
+			*binPath,
 			*depotPath,
 			*rootFSPath,
 			uidPool,

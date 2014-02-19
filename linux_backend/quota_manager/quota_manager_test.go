@@ -157,7 +157,7 @@ var _ = Describe("Linux Quota manager", func() {
 		It("executes repquota in the root path", func(done Done) {
 			fakeRunner.WhenWaitingFor(
 				fake_command_runner.CommandSpec{
-					Path: "/root/path/bin/repquota",
+					Path: "/root/path/repquota",
 				}, func(cmd *exec.Cmd) error {
 					close(done)
 					return nil
@@ -166,7 +166,7 @@ var _ = Describe("Linux Quota manager", func() {
 
 			fakeRunner.WhenRunning(
 				fake_command_runner.CommandSpec{
-					Path: "/root/path/bin/repquota",
+					Path: "/root/path/repquota",
 					Args: []string{"/some/mount/point", "1234"},
 				}, func(cmd *exec.Cmd) error {
 					cmd.Stdout.Write([]byte("1234 111 222 333 444 555 666 777 888\n"))
@@ -191,7 +191,7 @@ var _ = Describe("Linux Quota manager", func() {
 			BeforeEach(func() {
 				fakeRunner.WhenRunning(
 					fake_command_runner.CommandSpec{
-						Path: "/root/path/bin/repquota",
+						Path: "/root/path/repquota",
 						Args: []string{"/some/mount/point", "1234"},
 					}, func(cmd *exec.Cmd) error {
 						return disaster
@@ -209,7 +209,7 @@ var _ = Describe("Linux Quota manager", func() {
 			It("returns an error", func() {
 				fakeRunner.WhenRunning(
 					fake_command_runner.CommandSpec{
-						Path: "/root/path/bin/repquota",
+						Path: "/root/path/repquota",
 						Args: []string{"/some/mount/point", "1234"},
 					}, func(cmd *exec.Cmd) error {
 						cmd.Stdout.Write([]byte("abc\n"))
@@ -247,7 +247,7 @@ var _ = Describe("Linux Quota manager", func() {
 		It("executes repquota in the root path", func(done Done) {
 			fakeRunner.WhenWaitingFor(
 				fake_command_runner.CommandSpec{
-					Path: "/root/path/bin/repquota",
+					Path: "/root/path/repquota",
 				}, func(cmd *exec.Cmd) error {
 					close(done)
 					return nil
@@ -256,7 +256,7 @@ var _ = Describe("Linux Quota manager", func() {
 
 			fakeRunner.WhenRunning(
 				fake_command_runner.CommandSpec{
-					Path: "/root/path/bin/repquota",
+					Path: "/root/path/repquota",
 					Args: []string{"/some/mount/point", "1234"},
 				}, func(cmd *exec.Cmd) error {
 					cmd.Stdout.Write([]byte("1234 111 222 333 444 555 666 777 888\n"))
@@ -278,7 +278,7 @@ var _ = Describe("Linux Quota manager", func() {
 			BeforeEach(func() {
 				fakeRunner.WhenRunning(
 					fake_command_runner.CommandSpec{
-						Path: "/root/path/bin/repquota",
+						Path: "/root/path/repquota",
 						Args: []string{"/some/mount/point", "1234"},
 					}, func(cmd *exec.Cmd) error {
 						return disaster
@@ -296,7 +296,7 @@ var _ = Describe("Linux Quota manager", func() {
 			It("returns an error", func() {
 				fakeRunner.WhenRunning(
 					fake_command_runner.CommandSpec{
-						Path: "/root/path/bin/repquota",
+						Path: "/root/path/repquota",
 						Args: []string{"/some/mount/point", "1234"},
 					}, func(cmd *exec.Cmd) error {
 						cmd.Stdout.Write([]byte("abc\n"))
@@ -323,7 +323,7 @@ var _ = Describe("Linux Quota manager", func() {
 
 				Expect(fakeRunner).ToNot(HaveExecutedSerially(
 					fake_command_runner.CommandSpec{
-						Path: "/root/path/bin/repquota",
+						Path: "/root/path/repquota",
 					},
 				))
 			})

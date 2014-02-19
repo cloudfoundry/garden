@@ -284,6 +284,24 @@ func (c *Connection) CopyIn(handle, src, dst string) (*warden.CopyInResponse, er
 	return res.(*warden.CopyInResponse), nil
 }
 
+func (c *Connection) CopyOut(handle, src, dst, owner string) (*warden.CopyOutResponse, error) {
+	res, err := c.RoundTrip(
+		&warden.CopyOutRequest{
+			Handle:  proto.String(handle),
+			SrcPath: proto.String(src),
+			DstPath: proto.String(dst),
+			Owner:   proto.String(owner),
+		},
+		&warden.CopyOutResponse{},
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return res.(*warden.CopyOutResponse), nil
+}
+
 func (c *Connection) List() (*warden.ListResponse, error) {
 	res, err := c.RoundTrip(&warden.ListRequest{}, &warden.ListResponse{})
 	if err != nil {

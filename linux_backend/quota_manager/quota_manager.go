@@ -24,15 +24,15 @@ type QuotaManager interface {
 type LinuxQuotaManager struct {
 	enabled bool
 
-	rootPath string
-	runner   command_runner.CommandRunner
+	binPath string
+	runner  command_runner.CommandRunner
 
 	mountPoint string
 }
 
 const QUOTA_BLOCK_SIZE = 1024
 
-func New(containerDepotPath, rootPath string, runner command_runner.CommandRunner) (*LinuxQuotaManager, error) {
+func New(containerDepotPath, binPath string, runner command_runner.CommandRunner) (*LinuxQuotaManager, error) {
 	dfOut := new(bytes.Buffer)
 
 	df := &exec.Cmd{
@@ -52,8 +52,8 @@ func New(containerDepotPath, rootPath string, runner command_runner.CommandRunne
 	return &LinuxQuotaManager{
 		enabled: true,
 
-		rootPath: rootPath,
-		runner:   runner,
+		binPath: binPath,
+		runner:  runner,
 
 		mountPoint: mountPoint,
 	}, nil
@@ -98,7 +98,7 @@ func (m *LinuxQuotaManager) GetLimits(uid uint32) (backend.DiskLimits, error) {
 	}
 
 	repquota := &exec.Cmd{
-		Path: path.Join(m.rootPath, "bin", "repquota"),
+		Path: path.Join(m.binPath, "repquota"),
 		Args: []string{m.mountPoint, fmt.Sprintf("%d", uid)},
 	}
 
@@ -145,7 +145,7 @@ func (m *LinuxQuotaManager) GetUsage(uid uint32) (backend.ContainerDiskStat, err
 	}
 
 	repquota := &exec.Cmd{
-		Path: path.Join(m.rootPath, "bin", "repquota"),
+		Path: path.Join(m.binPath, "repquota"),
 		Args: []string{m.mountPoint, fmt.Sprintf("%d", uid)},
 	}
 

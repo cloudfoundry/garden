@@ -7,23 +7,19 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/cloudfoundry/gunk/runner_support"
-	"github.com/onsi/ginkgo/config"
 	"github.com/vito/cmdtest"
 	"github.com/vito/gordon"
 )
 
 type GardenRunner struct {
-	Remote string
-
 	Network string
 	Addr    string
 
 	DepotPath     string
-	RootPath      string
+	BinPath       string
 	RootFSPath    string
 	SnapshotsPath string
 
@@ -33,40 +29,26 @@ type GardenRunner struct {
 	tmpdir string
 }
 
-func New(rootPath, rootFSPath, remote string) (*GardenRunner, error) {
+func New(binPath string, rootFSPath string) (*GardenRunner, error) {
 	tmpdir, err := ioutil.TempDir(os.TempDir(), "garden-temp-socker")
 	if err != nil {
 		return nil, err
 	}
 
 	runner := &GardenRunner{
-		Remote:     remote,
 		Network:    "unix",
 		Addr:       filepath.Join(tmpdir, "warden.sock"),
-		RootPath:   rootPath,
+		BinPath:    binPath,
 		RootFSPath: rootFSPath,
 	}
 
 	return runner, runner.Prepare()
 }
 
-func (r *GardenRunner) cmd(command string, argv ...string) *exec.Cmd {
-	if r.Remote == "" {
-		return exec.Command(command, argv...)
-	} else {
-		args := []string{
-			"-tt", "-l", "root", r.Remote,
-			"shopt -s huponexit; " + command,
-		}
-		args = append(args, argv...)
-
-		return exec.Command("ssh", args...)
-	}
-}
-
 func (r *GardenRunner) Prepare() error {
-	r.tmpdir = fmt.Sprintf("/tmp/garden-%d-%d", time.Now().UnixNano(), config.GinkgoConfig.ParallelNode)
-	err := r.cmd("mkdir", r.tmpdir).Run()
+	var err error
+
+	r.tmpdir, err = ioutil.TempDir(os.TempDir(), "garden-server")
 	if err != nil {
 		return err
 	}
@@ -79,13 +61,17 @@ func (r *GardenRunner) Prepare() error {
 	r.gardenBin = compiled
 
 	r.DepotPath = filepath.Join(r.tmpdir, "containers")
-	err = r.cmd("mkdir", "-m", "0755", r.DepotPath).Run()
-	if err != nil {
+	r.SnapshotsPath = filepath.Join(r.tmpdir, "snapshots")
+
+	if err := os.Mkdir(r.DepotPath, 0755); err != nil {
 		return err
 	}
 
-	r.SnapshotsPath = filepath.Join(r.tmpdir, "snapshots")
-	return r.cmd("mkdir", r.SnapshotsPath).Run()
+	if err := os.Mkdir(r.SnapshotsPath, 0755); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (r *GardenRunner) Start(argv ...string) error {
@@ -94,7 +80,7 @@ func (r *GardenRunner) Start(argv ...string) error {
 		gardenArgs,
 		"--listenNetwork", r.Network,
 		"--listenAddr", r.Addr,
-		"--root", r.RootPath,
+		"--bin", r.BinPath,
 		"--depot", r.DepotPath,
 		"--rootfs", r.RootFSPath,
 		"--snapshots", r.SnapshotsPath,
@@ -102,12 +88,16 @@ func (r *GardenRunner) Start(argv ...string) error {
 		"--disableQuotas",
 	)
 
-	garden := r.cmd(r.gardenBin, gardenArgs...)
+	garden := exec.Command(r.gardenBin, gardenArgs...)
 
 	garden.Stdout = os.Stdout
 	garden.Stderr = os.Stderr
 
-	_, err := cmdtest.StartWrapped(garden, runner_support.TeeIfVerbose, runner_support.TeeIfVerbose)
+	_, err := cmdtest.StartWrapped(
+		garden,
+		runner_support.TeeIfVerbose,
+		runner_support.TeeIfVerbose,
+	)
 	if err != nil {
 		return err
 	}
@@ -158,29 +148,16 @@ func (r *GardenRunner) Stop() error {
 }
 
 func (r *GardenRunner) DestroyContainers() error {
-	lsOutput, err := r.cmd("find", r.DepotPath, "-maxdepth", "1", "-mindepth", "1", "-print0").Output() // ls does not use linebreaks
+	err := exec.Command(filepath.Join(r.BinPath, "clear.sh"), r.DepotPath).Run()
 	if err != nil {
 		return err
 	}
 
-	containerDirs := strings.Split(string(lsOutput), "\x00")
-
-	for _, dir := range containerDirs {
-		if dir == "" {
-			continue
-		}
-
-		err := r.cmd(
-			filepath.Join(r.RootPath, "linux", "destroy.sh"),
-			dir,
-		).Run()
-
-		if err != nil {
-			return err
-		}
+	if err := os.RemoveAll(r.SnapshotsPath); err != nil {
+		return err
 	}
 
-	return r.cmd("rm", "-rf", r.SnapshotsPath).Run()
+	return nil
 }
 
 func (r *GardenRunner) TearDown() error {
@@ -189,7 +166,7 @@ func (r *GardenRunner) TearDown() error {
 		return err
 	}
 
-	return r.cmd("rm", "-rf", r.tmpdir).Run()
+	return os.RemoveAll(r.tmpdir)
 }
 
 func (r *GardenRunner) NewClient() gordon.Client {

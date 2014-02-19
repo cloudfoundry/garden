@@ -5,16 +5,11 @@ protocol: $(shell find protobuf/ -type f)
 	rm protocol/*.pb.go
 	protoc --gogo_out=protocol/ --proto_path=protobuf/ protobuf/*.proto
 
-skeleton: warden/warden
-	rsync -a warden/warden/root/ root/
-	cd warden/warden/src && make clean all
-	cp warden/warden/src/wsh/wshd root/linux/skeleton/bin
-	cp warden/warden/src/wsh/wsh root/linux/skeleton/bin
-	cp warden/warden/src/oom/oom root/linux/skeleton/bin
-	cp warden/warden/src/iomux/iomux-spawn root/linux/skeleton/bin
-	cp warden/warden/src/iomux/iomux-link root/linux/skeleton/bin
-	mkdir -p root/bin
-	cp warden/warden/src/repquota/repquota root/bin
-
-warden/warden:
-	git submodule update --init --recursive
+skeleton:
+	cd linux_backend/src && make clean all
+	cp linux_backend/src/wsh/wshd linux_backend/skeleton/bin
+	cp linux_backend/src/wsh/wsh linux_backend/skeleton/bin
+	cp linux_backend/src/oom/oom linux_backend/skeleton/bin
+	cp linux_backend/src/iomux/iomux-spawn linux_backend/skeleton/bin
+	cp linux_backend/src/iomux/iomux-link linux_backend/skeleton/bin
+	cp linux_backend/src/repquota/repquota linux_backend/bin
