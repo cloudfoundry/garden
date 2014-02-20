@@ -144,8 +144,10 @@ var _ = Describe("When a client connects", func() {
 
 		It("creates the container with the spec from the request", func(done Done) {
 			var bindMountMode protocol.CreateRequest_BindMount_Mode
+			var bindMountOrigin protocol.CreateRequest_BindMount_Origin
 
 			bindMountMode = protocol.CreateRequest_BindMount_RW
+			bindMountOrigin = protocol.CreateRequest_BindMount_Container
 
 			writeMessages(&protocol.CreateRequest{
 				Handle:    proto.String("some-handle"),
@@ -157,6 +159,7 @@ var _ = Describe("When a client connects", func() {
 						SrcPath: proto.String("/bind/mount/src"),
 						DstPath: proto.String("/bind/mount/dst"),
 						Mode:    &bindMountMode,
+						Origin:  &bindMountOrigin,
 					},
 				},
 			})
@@ -177,6 +180,7 @@ var _ = Describe("When a client connects", func() {
 						SrcPath: "/bind/mount/src",
 						DstPath: "/bind/mount/dst",
 						Mode:    backend.BindMountModeRW,
+						Origin:  backend.BindMountOriginContainer,
 					},
 				},
 			}))

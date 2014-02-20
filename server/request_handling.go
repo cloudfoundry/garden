@@ -26,6 +26,7 @@ func (s *WardenServer) handleCreate(create *protocol.CreateRequest) (proto.Messa
 			SrcPath: bm.GetSrcPath(),
 			DstPath: bm.GetDstPath(),
 			Mode:    backend.BindMountMode(bm.GetMode()),
+			Origin:  backend.BindMountOrigin(bm.GetOrigin()),
 		}
 
 		bindMounts = append(bindMounts, bindMount)

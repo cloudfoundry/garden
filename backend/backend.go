@@ -27,9 +27,15 @@ type BindMount struct {
 	SrcPath string
 	DstPath string
 	Mode    BindMountMode
+	Origin  BindMountOrigin
 }
 
 type BindMountMode uint8
 
 const BindMountModeRO BindMountMode = 0
 const BindMountModeRW BindMountMode = 1
+
+type BindMountOrigin uint8
+
+const BindMountOriginHost BindMountOrigin = 0
+const BindMountOriginContainer BindMountOrigin = 1

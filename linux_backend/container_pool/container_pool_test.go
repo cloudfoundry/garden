@@ -156,6 +156,12 @@ var _ = Describe("Container pool", func() {
 							DstPath: "/dst/path-rw",
 							Mode:    backend.BindMountModeRW,
 						},
+						{
+							SrcPath: "/src/path-rw",
+							DstPath: "/dst/path-rw",
+							Mode:    backend.BindMountModeRW,
+							Origin:  backend.BindMountOriginContainer,
+						},
 					},
 				})
 
@@ -223,6 +229,30 @@ var _ = Describe("Container pool", func() {
 						Args: []string{
 							"-c",
 							"echo mount -n --bind -o remount,rw /src/path-rw " + containerPath + "/mnt/dst/path-rw" +
+								" >> " + containerPath + "/lib/hook-child-before-pivot.sh",
+						},
+					},
+					fake_command_runner.CommandSpec{
+						Path: "bash",
+						Args: []string{
+							"-c",
+							"echo mkdir -p " + containerPath + "/mnt/dst/path-rw" +
+								" >> " + containerPath + "/lib/hook-child-before-pivot.sh",
+						},
+					},
+					fake_command_runner.CommandSpec{
+						Path: "bash",
+						Args: []string{
+							"-c",
+							"echo mount -n --bind " + containerPath + "/tmp/rootfs/src/path-rw " + containerPath + "/mnt/dst/path-rw" +
+								" >> " + containerPath + "/lib/hook-child-before-pivot.sh",
+						},
+					},
+					fake_command_runner.CommandSpec{
+						Path: "bash",
+						Args: []string{
+							"-c",
+							"echo mount -n --bind -o remount,rw " + containerPath + "/tmp/rootfs/src/path-rw " + containerPath + "/mnt/dst/path-rw" +
 								" >> " + containerPath + "/lib/hook-child-before-pivot.sh",
 						},
 					},

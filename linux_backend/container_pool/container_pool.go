@@ -331,6 +331,10 @@ func (p *LinuxContainerPool) writeBindMounts(
 		dstMount := path.Join(containerPath, "mnt", bm.DstPath)
 		srcPath := bm.SrcPath
 
+		if bm.Origin == backend.BindMountOriginContainer {
+			srcPath = path.Join(containerPath, "tmp", "rootfs", srcPath)
+		}
+
 		mode := "ro"
 		if bm.Mode == backend.BindMountModeRW {
 			mode = "rw"

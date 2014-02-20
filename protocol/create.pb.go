@@ -46,6 +46,39 @@ func (x *CreateRequest_BindMount_Mode) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+type CreateRequest_BindMount_Origin int32
+
+const (
+	CreateRequest_BindMount_Host      CreateRequest_BindMount_Origin = 0
+	CreateRequest_BindMount_Container CreateRequest_BindMount_Origin = 1
+)
+
+var CreateRequest_BindMount_Origin_name = map[int32]string{
+	0: "Host",
+	1: "Container",
+}
+var CreateRequest_BindMount_Origin_value = map[string]int32{
+	"Host":      0,
+	"Container": 1,
+}
+
+func (x CreateRequest_BindMount_Origin) Enum() *CreateRequest_BindMount_Origin {
+	p := new(CreateRequest_BindMount_Origin)
+	*p = x
+	return p
+}
+func (x CreateRequest_BindMount_Origin) String() string {
+	return proto.EnumName(CreateRequest_BindMount_Origin_name, int32(x))
+}
+func (x *CreateRequest_BindMount_Origin) UnmarshalJSON(data []byte) error {
+	value, err := proto.UnmarshalJSONEnum(CreateRequest_BindMount_Origin_value, data, "CreateRequest_BindMount_Origin")
+	if err != nil {
+		return err
+	}
+	*x = CreateRequest_BindMount_Origin(value)
+	return nil
+}
+
 type CreateRequest struct {
 	BindMounts       []*CreateRequest_BindMount `protobuf:"bytes,1,rep,name=bind_mounts" json:"bind_mounts,omitempty"`
 	GraceTime        *uint32                    `protobuf:"varint,2,opt,name=grace_time" json:"grace_time,omitempty"`
@@ -95,10 +128,11 @@ func (m *CreateRequest) GetRootfs() string {
 }
 
 type CreateRequest_BindMount struct {
-	SrcPath          *string                       `protobuf:"bytes,1,req,name=src_path" json:"src_path,omitempty"`
-	DstPath          *string                       `protobuf:"bytes,2,req,name=dst_path" json:"dst_path,omitempty"`
-	Mode             *CreateRequest_BindMount_Mode `protobuf:"varint,3,req,name=mode,enum=warden.CreateRequest_BindMount_Mode" json:"mode,omitempty"`
-	XXX_unrecognized []byte                        `json:"-"`
+	SrcPath          *string                         `protobuf:"bytes,1,req,name=src_path" json:"src_path,omitempty"`
+	DstPath          *string                         `protobuf:"bytes,2,req,name=dst_path" json:"dst_path,omitempty"`
+	Mode             *CreateRequest_BindMount_Mode   `protobuf:"varint,3,req,name=mode,enum=warden.CreateRequest_BindMount_Mode" json:"mode,omitempty"`
+	Origin           *CreateRequest_BindMount_Origin `protobuf:"varint,4,opt,name=origin,enum=warden.CreateRequest_BindMount_Origin" json:"origin,omitempty"`
+	XXX_unrecognized []byte                          `json:"-"`
 }
 
 func (m *CreateRequest_BindMount) Reset()         { *m = CreateRequest_BindMount{} }
@@ -126,6 +160,13 @@ func (m *CreateRequest_BindMount) GetMode() CreateRequest_BindMount_Mode {
 	return CreateRequest_BindMount_RO
 }
 
+func (m *CreateRequest_BindMount) GetOrigin() CreateRequest_BindMount_Origin {
+	if m != nil && m.Origin != nil {
+		return *m.Origin
+	}
+	return CreateRequest_BindMount_Host
+}
+
 type CreateResponse struct {
 	Handle           *string `protobuf:"bytes,1,req,name=handle" json:"handle,omitempty"`
 	XXX_unrecognized []byte  `json:"-"`
@@ -144,4 +185,5 @@ func (m *CreateResponse) GetHandle() string {
 
 func init() {
 	proto.RegisterEnum("warden.CreateRequest_BindMount_Mode", CreateRequest_BindMount_Mode_name, CreateRequest_BindMount_Mode_value)
+	proto.RegisterEnum("warden.CreateRequest_BindMount_Origin", CreateRequest_BindMount_Origin_name, CreateRequest_BindMount_Origin_value)
 }
