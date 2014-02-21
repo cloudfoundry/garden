@@ -20,6 +20,20 @@ var _ = Describe("Creating a container", func() {
 		Expect(err).ToNot(HaveOccurred())
 	})
 
+	It("sources /etc/seed", func() {
+		_, stream, err := client.Run(
+			handle,
+			"test -e /tmp/ran-seed",
+		)
+		Expect(err).ToNot(HaveOccurred())
+
+		for chunk := range stream {
+			if chunk.ExitStatus != nil {
+				Expect(chunk.GetExitStatus()).To(Equal(uint32(0)))
+			}
+		}
+	})
+
 	Context("and sending a List request", func() {
 		It("includes the created container", func() {
 			res, err := client.List()

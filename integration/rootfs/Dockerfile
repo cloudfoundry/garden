@@ -5,3 +5,5 @@
 FROM cloudfoundry/lucid64:minbase
 
 RUN apt-get -y install ruby rsync
+
+ADD seed /etc/seed
