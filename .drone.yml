@@ -1,4 +1,4 @@
-image: vito/garden-lucid64
+image: cloudfoundry/garden-ci
 
 env:
   - GOROOT=/usr/local/go
