@@ -20,26 +20,65 @@ fi
 
 cgroup_path=/tmp/warden/cgroup
 
-if [ ! -d $cgroup_path ]
-then
-  mkdir -p $cgroup_path
+function mount_flat_cgroup() {
+  cgroup_parent_path=$(dirname $1)
 
-  # Mount tmpfs
-  if ! grep "${cgroup_path} " /proc/mounts | cut -d' ' -f3 | grep -q tmpfs
+  mkdir -p $cgroup_parent_path
+
+  if ! grep "${cgroup_parent_path} " /proc/mounts | cut -d' ' -f3 | grep -q tmpfs
   then
-    mount -t tmpfs none $cgroup_path
+    mount -t tmpfs none $cgroup_parent_path
   fi
 
-  # Mount cgroup subsystems individually
-  for subsystem in cpu cpuacct devices memory
-  do
-    mkdir -p $cgroup_path/$subsystem
+  mkdir -p $1
+  mount -t cgroup none $1
 
-    if ! grep -q "${cgroup_path}/$subsystem " /proc/mounts
+  # bind-mount cgroup subsystems to make file tree consistent
+  for subsystem in cpu cpuacct cpuset devices memory
+  do
+    mkdir -p ${1}/$subsystem
+
+    if ! grep -q "${1}/$subsystem " /proc/mounts
     then
-      mount -t cgroup -o $subsystem none $cgroup_path/$subsystem
+      mount --bind $1 ${1}/$subsystem
     fi
   done
+}
+
+function mount_nested_cgroup() {
+  mkdir -p $1
+
+  if ! grep "${cgroup_path} " /proc/mounts | cut -d' ' -f3 | grep -q tmpfs
+  then
+    mount -t tmpfs none $1
+  fi
+
+  for subsystem in cpu cpuacct cpuset devices memory
+  do
+    mkdir -p ${1}/$subsystem
+
+    if ! grep -q "${1}/$subsystem " /proc/mounts
+    then
+      mount -t cgroup -o $subsystem none ${1}/$subsystem
+    fi
+  done
+}
+
+if [ ! -d $cgroup_path ]
+then
+  # temporarily mount a flat cgroup just to see if we can
+  cgroup_check_path=/tmp/warden_cgroup_check
+
+  mkdir -p $cgroup_check_path
+
+  if mount -t cgroup none $cgroup_check_path; then
+    umount $cgroup_check_path
+    rmdir $cgroup_check_path
+    mount_flat_cgroup $cgroup_path
+  else
+    rmdir $cgroup_check_path
+    mount_nested_cgroup $cgroup_path
+  fi
 fi
 
 ./net.sh setup

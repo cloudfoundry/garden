@@ -289,13 +289,13 @@ setup_fs
 		Expect(entries).To(HaveLen(2))
 	})
 
-	It("unmounts /mnt* in the child", func() {
+	It("unmounts /tmp/warden-host* in the child", func() {
 		cat := exec.Command(wsh, "--socket", socketPath, "/bin/cat", "/proc/mounts")
 
 		catSession, err := cmdtest.StartWrapped(cat, outWrapper, outWrapper)
 		Expect(err).ToNot(HaveOccurred())
 
-		Expect(catSession).ToNot(Say(" /mnt"))
+		Expect(catSession).ToNot(Say(" /tmp/warden-host"))
 		Expect(catSession).To(ExitWith(0))
 	})
 
