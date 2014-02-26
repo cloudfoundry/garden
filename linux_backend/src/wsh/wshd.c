@@ -627,16 +627,17 @@ void child_save_to_shm(wshd_t *w) {
 
 wshd_t *child_load_from_shm(void) {
   int rv;
+  int shmid;
   wshd_t *w;
   void *w_;
 
-  rv = shmget(0xdeadbeef, sizeof(*w), 0600);
-  if (rv == -1) {
+  shmid = shmget(0xdeadbeef, sizeof(*w), 0600);
+  if (shmid == -1) {
     perror("shmget");
     abort();
   }
 
-  w_ = shmat(rv, NULL, 0);
+  w_ = shmat(shmid, NULL, 0);
   if (w_ == (void *)-1) {
     perror("shmat");
     abort();
@@ -651,13 +652,13 @@ wshd_t *child_load_from_shm(void) {
   memcpy(w, w_, sizeof(*w));
 
   rv = shmdt(w_);
-  if (w_ == (void *)-1) {
+  if (rv == -1) {
     perror("shmdt");
     abort();
   }
 
-  rv = shmctl(0xdeadbeef, IPC_RMID, NULL);
-  if (w_ == (void *)-1) {
+  rv = shmctl(shmid, IPC_RMID, NULL);
+  if (rv == -1) {
     perror("shmctl");
     abort();
   }

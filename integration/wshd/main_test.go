@@ -262,31 +262,14 @@ setup_fs
 		Expect(localHostnameSession).ToNot(Say("newhostname"))
 	})
 
-	PIt("makes the given rootfs the root of the daemon", func() {
-
-	})
-
-	PIt("executes the hooks in the proper sequence", func() {
-
-	})
-
-	PIt("does not leak file descriptors to the child", func() {
-		wshdPidfile, err := os.Open(path.Join(containerPath, "run", "wshd.pid"))
+	It("does not leak any shared memory to the child", func() {
+		createRemote, err := cmdtest.StartWrapped(
+			exec.Command(wsh, "--socket", socketPath, "ipcs"),
+			outWrapper,
+			outWrapper,
+		)
 		Expect(err).ToNot(HaveOccurred())
-
-		var wshdPid int
-
-		_, err = fmt.Fscanf(wshdPidfile, "%d", &wshdPid)
-		Expect(err).ToNot(HaveOccurred())
-
-		entries, err := ioutil.ReadDir(fmt.Sprintf("/proc/%d/fd", wshdPid))
-		Expect(err).ToNot(HaveOccurred())
-
-		// TODO: one fd is wshd.sock, unsure what the other is.
-		// shows up as type 0000 in lsof.
-		//
-		// compare with original wshd
-		Expect(entries).To(HaveLen(2))
+		Expect(createRemote).ToNot(Say("deadbeef"))
 	})
 
 	It("unmounts /tmp/warden-host* in the child", func() {
