@@ -3,7 +3,6 @@
 package wshd_test
 
 import (
-	"fmt"
 	"io"
 	"io/ioutil"
 	"net"
