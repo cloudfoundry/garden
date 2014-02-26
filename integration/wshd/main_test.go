@@ -212,6 +212,18 @@ setup_fs
 		Expect(catSession).To(ExitWith(0))
 	})
 
+	It("places the daemon in each cgroup subsystem", func() {
+		cat := exec.Command(wsh, "--socket", socketPath, "bash", "-c", "cat /proc/$$/cgroup")
+		catSession, err := cmdtest.StartWrapped(cat, outWrapper, outWrapper)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(catSession).To(ExitWith(0))
+		Expect(catSession.FullOutput()).To(MatchRegexp(`\bcpu\b`))
+		Expect(catSession.FullOutput()).To(MatchRegexp(`\bcpuacct\b`))
+		Expect(catSession.FullOutput()).To(MatchRegexp(`\bcpuset\b`))
+		Expect(catSession.FullOutput()).To(MatchRegexp(`\bdevices\b`))
+		Expect(catSession.FullOutput()).To(MatchRegexp(`\bmemory\b`))
+	})
+
 	It("starts the daemon with network namespace isolation", func() {
 		ifconfig := exec.Command(wsh, "--socket", socketPath, "/sbin/ifconfig", "lo:0", "1.2.3.4", "up")
 		ifconfigSession, err := cmdtest.StartWrapped(ifconfig, outWrapper, outWrapper)
