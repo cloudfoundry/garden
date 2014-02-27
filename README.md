@@ -40,7 +40,6 @@ ssh vagrant@192.168.50.5 sudo cp -r .ssh/ /root/.ssh/
 ./bin/add-route
 ./bin/run-garden-remote-linux
 
-
 # or run from inside the vm:
 vagrant ssh
 sudo su -
