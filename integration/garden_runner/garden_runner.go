@@ -95,8 +95,8 @@ func (r *GardenRunner) Start(argv ...string) error {
 
 	_, err := cmdtest.StartWrapped(
 		garden,
-		runner_support.TeeIfVerbose,
-		runner_support.TeeIfVerbose,
+		runner_support.TeeToGinkgoWriter,
+		runner_support.TeeToGinkgoWriter,
 	)
 	if err != nil {
 		return err
