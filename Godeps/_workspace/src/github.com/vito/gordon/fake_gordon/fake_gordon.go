@@ -4,6 +4,8 @@ import (
 	"code.google.com/p/gogoprotobuf/proto"
 	"github.com/nu7hatch/gouuid"
 	"github.com/vito/gordon/warden"
+	"io/ioutil"
+	"os"
 	"sync"
 )
 
@@ -48,8 +50,9 @@ type FakeGordon struct {
 	copiedIn    []*CopiedIn
 	copyInError error
 
-	copiedOut    []*CopiedOut
-	copyOutError error
+	copiedOut                     []*CopiedOut
+	fileContentToProvideOnCopyOut []byte
+	copyOutError                  error
 
 	lock *sync.Mutex
 }
@@ -113,6 +116,7 @@ func (f *FakeGordon) Reset() {
 	f.copyOutError = nil
 	f.copiedIn = []*CopiedIn{}
 	f.copiedOut = []*CopiedOut{}
+	f.fileContentToProvideOnCopyOut = []byte{}
 }
 
 func (f *FakeGordon) Connect() error {
@@ -251,6 +255,10 @@ func (f *FakeGordon) CopyOut(handle, src, dst, owner string) (*warden.CopyOutRes
 		Owner:  owner,
 	})
 
+	if len(f.fileContentToProvideOnCopyOut) > 0 {
+		ioutil.WriteFile(dst, f.fileContentToProvideOnCopyOut, os.ModePerm)
+	}
+
 	return &warden.CopyOutResponse{}, nil
 }
 
@@ -266,6 +274,13 @@ func (f *FakeGordon) SetCopyOutErr(err error) {
 	defer f.lock.Unlock()
 
 	f.copyOutError = err
+}
+
+func (f *FakeGordon) SetCopyOutFileContent(data []byte) {
+	f.lock.Lock()
+	defer f.lock.Unlock()
+
+	f.fileContentToProvideOnCopyOut = data
 }
 
 func (f *FakeGordon) Attach(handle string, jobID uint32) (<-chan *warden.ProcessPayload, error) {
