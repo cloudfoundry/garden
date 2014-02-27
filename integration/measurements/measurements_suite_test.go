@@ -31,13 +31,6 @@ func TestMeasurements(t *testing.T) {
 		log.Fatalln("failed to create runner:", err)
 	}
 
-	err = runner.Start()
-	if err != nil {
-		log.Fatalln("garden failed to start:", err)
-	}
-
-	client = runner.NewClient()
-
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Measurements Suite")
 
@@ -51,3 +44,18 @@ func TestMeasurements(t *testing.T) {
 		log.Fatalln("failed to tear down server:", err)
 	}
 }
+
+var didRunGarden bool
+
+var _ = BeforeEach(func() {
+	if didRunGarden {
+		return
+	}
+	didRunGarden = true
+	err := runner.Start()
+	if err != nil {
+		log.Fatalln("garden failed to start:", err)
+	}
+
+	client = runner.NewClient()
+})
