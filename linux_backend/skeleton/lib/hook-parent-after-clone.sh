@@ -10,7 +10,10 @@ cd $(dirname $0)/../
 source ./lib/common.sh
 
 # Add new group for every subsystem
-for system_path in /tmp/warden/cgroup/{cpu,cpuacct,cpuset,devices,memory}
+
+# cpuset must be set up first, so that cpuset.cpus and cpuset.mems is assigned
+# otherwise adding the process to the subsystem's tasks will fail with ENOSPC
+for system_path in /tmp/warden/cgroup/{cpuset,cpu,cpuacct,devices,memory}
 do
   instance_path=$system_path/instance-$id
 
