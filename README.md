@@ -49,3 +49,71 @@ goto garden
 
 This runs the server locally and configures the Linux backend to do everything
 over SSH to the Vagrant box.
+
+# Testing
+
+## Pre-requisites
+
+* [Docker](https://www.docker.io/) v0.9.0 or later (for creating a root filesystem)
+* [git](http://git-scm.com/) (for garden and its dependencies on github)
+* [mercurial](http://mercurial.selenic.com/) (for some dependencies not on github)
+
+Run **all** the following commands **as root**.
+
+Make a directory to contain go code:
+```
+# mkdir ~/go
+```
+
+From now on, we assume this directory is in `/root/go`.
+
+Install Go 1.2.1 or later. For example, install [gvm](https://github.com/moovweb/gvm) and issue:
+```
+# gvm install go1.2.1
+# gvm use go1.2.1
+```
+
+Extend `$GOPATH` and `$PATH`:
+```
+# export GOPATH=/root/go:$GOPATH
+# export PATH=$PATH:/root/go/bin
+```
+
+Install [godep](https://github.com/kr/godep) (used to manage garden's dependencies):
+```
+# go get github.com/kr/godep
+```
+
+Get garden and its dependencies:
+```
+# go get github.com/pivotal-cf-experimental/garden
+# cd /root/go/src/github.com/pivotal-cf-experimental/garden
+# godep restore
+```
+
+Make the C code:
+```
+# make
+```
+
+Create a root filesystem, extract it (still as root), and point to it:
+```
+# make garden-test-rootfs.tar
+# gzip garden-test-rootfs.tar
+# mkdir -p /var/warden/rootfs
+# tar xzf garden-test-rootfs.tar.gz -C /var/warden/rootfs
+# export GARDEN_TEST_ROOTFS=/var/warden/rootfs
+```
+(You may wish to save the root filesystem tar.gz file for future use.)
+
+Install ginkgo (used to test garden):
+```
+# cd /root/go/src/github.com/onsi/ginkgo/ginkgo
+# go install
+```
+
+Run the tests (skipping performance measurements):
+```
+# cd /root/go/src/github.com/pivotal-cf-experimental/garden
+# ginkgo -r -skipMeasurements
+```
