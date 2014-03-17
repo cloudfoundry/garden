@@ -79,10 +79,13 @@ import (
 	"flag"
 	"fmt"
 	"github.com/onsi/ginkgo/config"
+	"github.com/onsi/ginkgo/ginkgo/testrunner"
 	"github.com/onsi/ginkgo/ginkgo/testsuite"
 	"os"
 	"os/signal"
 	"runtime"
+	"sync"
+	"syscall"
 	"time"
 )
 
@@ -96,6 +99,9 @@ var watch bool
 var notify bool
 var keepGoing bool
 var untilItFails bool
+
+var activeRunners []*testrunner.TestRunner
+var runnerLock *sync.Mutex
 
 func init() {
 	onWindows := (runtime.GOOS == "windows")
@@ -131,6 +137,8 @@ func init() {
 	}
 
 	flag.Parse()
+
+	runnerLock = &sync.Mutex{}
 }
 
 func main() {
@@ -150,14 +158,12 @@ func main() {
 		verifyNotificationsAreAvailable()
 	}
 
-	runner := newTestRunner(numCPU, parallelStream, runMagicI, race, cover)
-
-	registerSignalHandler(runner)
+	registerSignalHandler()
 
 	if watch {
-		watchTests(runner)
+		watchTests()
 	} else {
-		runTests(runner)
+		runTests()
 	}
 }
 
@@ -205,14 +211,14 @@ func findSuites() []*testsuite.TestSuite {
 	return suites
 }
 
-func runTests(runner *testRunner) {
+func runTests() {
 	t := time.Now()
 
 	passed := true
 	if untilItFails {
 		iteration := 0
 		for {
-			passed = runTestSuites(runner)
+			passed = runTestSuites()
 			iteration++
 
 			if passed {
@@ -223,7 +229,7 @@ func runTests(runner *testRunner) {
 			}
 		}
 	} else {
-		passed = runTestSuites(runner)
+		passed = runTestSuites()
 	}
 
 	fmt.Printf("\nGinkgo ran in %s\n", time.Since(t))
@@ -237,14 +243,60 @@ func runTests(runner *testRunner) {
 	}
 }
 
-func runTestSuites(runner *testRunner) bool {
+type compiler struct {
+	runner           *testrunner.TestRunner
+	compilationError chan error
+}
+
+func (c *compiler) compile() {
+	retries := 0
+
+	err := c.runner.Compile()
+	for err != nil && retries < 5 { //We retry because Go sometimes steps on itself when multiple compiles happen in parallel.  This is ugly, but should help resolve flakiness...
+		err = c.runner.Compile()
+		retries++
+	}
+
+	c.compilationError <- err
+}
+
+func runTestSuites() bool {
 	passed := true
 
 	suites := findSuites()
-	suitesThatFailed := []*testsuite.TestSuite{}
 
+	suiteCompilers := make([]*compiler, len(suites))
 	for i, suite := range suites {
-		suitePassed := runner.runSuite(suite)
+		runner := makeAndRegisterTestRunner(suite)
+		suiteCompilers[i] = &compiler{
+			runner:           runner,
+			compilationError: make(chan error, 1),
+		}
+	}
+
+	compilerChannel := make(chan *compiler)
+	numCompilers := runtime.NumCPU()
+	for i := 0; i < numCompilers; i++ {
+		go func() {
+			for compiler := range compilerChannel {
+				compiler.compile()
+			}
+		}()
+	}
+	go func() {
+		for _, compiler := range suiteCompilers {
+			compilerChannel <- compiler
+		}
+		close(compilerChannel)
+	}()
+
+	suitesThatFailed := []*testsuite.TestSuite{}
+	for i, suite := range suites {
+		compilationError := <-suiteCompilers[i].compilationError
+		if compilationError != nil {
+			fmt.Print(compilationError.Error())
+		}
+		suitePassed := (compilationError == nil) && suiteCompilers[i].runner.Run()
 		sendSuiteCompletionNotification(suite, suitePassed)
 
 		if !suitePassed {
@@ -259,6 +311,11 @@ func runTestSuites(runner *testRunner) bool {
 		}
 	}
 
+	for i := range suites {
+		suiteCompilers[i].runner.CleanUp()
+		unregisterRunner(suiteCompilers[i].runner)
+	}
+
 	if keepGoing && !passed {
 		fmt.Println("There were failures detected in the following suites:")
 		for _, suite := range suitesThatFailed {
@@ -269,7 +326,7 @@ func runTestSuites(runner *testRunner) bool {
 	return passed
 }
 
-func watchTests(runner *testRunner) {
+func watchTests() {
 	suites := findSuites()
 
 	modifiedSuite := make(chan *testsuite.TestSuite)
@@ -278,8 +335,7 @@ func watchTests(runner *testRunner) {
 	}
 
 	if !recurse {
-		suitePassed := runner.runSuite(suites[0])
-		sendSuiteCompletionNotification(suites[0], suitePassed)
+		runTestForSuite(suites[0])
 	}
 
 	for {
@@ -287,20 +343,56 @@ func watchTests(runner *testRunner) {
 		sendNotification("Ginkgo", fmt.Sprintf(`Detected change in "%s"...`, suite.PackageName))
 
 		fmt.Printf("\n\nDetected change in %s\n\n", suite.PackageName)
-		suitePassed := runner.runSuite(suite)
-
-		sendSuiteCompletionNotification(suite, suitePassed)
+		runTestForSuite(suite)
 	}
 }
 
-func registerSignalHandler(runner *testRunner) {
+func runTestForSuite(suite *testsuite.TestSuite) {
+	runner := makeAndRegisterTestRunner(suite)
+	err := runner.Compile()
+	if err != nil {
+		fmt.Print(err.Error())
+	}
+	suitePassed := (err == nil) && runner.Run()
+	sendSuiteCompletionNotification(suite, suitePassed)
+	runner.CleanUp()
+	unregisterRunner(runner)
+}
+
+func makeAndRegisterTestRunner(suite *testsuite.TestSuite) *testrunner.TestRunner {
+	runnerLock.Lock()
+	defer runnerLock.Unlock()
+
+	runner := testrunner.New(suite, numCPU, parallelStream, race, cover)
+	activeRunners = append(activeRunners, runner)
+	return runner
+}
+
+func unregisterRunner(runner *testrunner.TestRunner) {
+	runnerLock.Lock()
+	defer runnerLock.Unlock()
+
+	for i, registeredRunner := range activeRunners {
+		if registeredRunner == runner {
+			activeRunners[i] = activeRunners[len(activeRunners)-1]
+			activeRunners = activeRunners[0 : len(activeRunners)-1]
+			break
+		}
+	}
+}
+
+func registerSignalHandler() {
 	go func() {
 		c := make(chan os.Signal, 1)
-		signal.Notify(c, os.Interrupt, os.Kill)
+		signal.Notify(c, syscall.SIGINT, syscall.SIGKILL, syscall.SIGTERM)
 
 		select {
 		case sig := <-c:
-			runner.abort(sig)
+			runnerLock.Lock()
+			for _, runner := range activeRunners {
+				runner.CleanUp(sig)
+			}
+			runnerLock.Unlock()
 			os.Exit(1)
 		}
 	}()
