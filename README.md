@@ -108,12 +108,10 @@ Create a root filesystem, extract it (still as root), and point to it:
 
 Install ginkgo (used to test garden):
 ```
-# cd /root/go/src/github.com/onsi/ginkgo/ginkgo
-# go install
+# go install github.com/onsi/ginkgo/ginkgo
 ```
 
 Run the tests (skipping performance measurements):
 ```
-# cd /root/go/src/github.com/pivotal-cf-experimental/garden
 # ginkgo -r -skipMeasurements
 ```
