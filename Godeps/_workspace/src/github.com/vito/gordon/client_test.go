@@ -119,14 +119,15 @@ var _ = Describe("Client", func() {
 		})
 
 		It("should spawn and stream succesfully", func(done Done) {
-			processID, responses, err := client.Run("foo", "echo some data for stdout")
+			processID, responses, err := client.Run("foo", "echo some data for stdout", ResourceLimits{FileDescriptors: 72})
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(processID).Should(BeNumerically("==", 1721))
 
 			expectedWriteBufferContents := string(warden.Messages(
 				&warden.RunRequest{
-					Handle: proto.String("foo"),
-					Script: proto.String("echo some data for stdout"),
+					Handle:  proto.String("foo"),
+					Script:  proto.String("echo some data for stdout"),
+					Rlimits: &warden.ResourceLimits{Nofile: proto.Uint64(72)},
 				},
 			).Bytes())
 
@@ -142,6 +143,24 @@ var _ = Describe("Client", func() {
 			Eventually(responses).Should(BeClosed())
 
 			close(done)
+		})
+
+		Context("When resource limits are set to 0", func() {
+			It("should not populate the ResourceLimits in the protocol buffer", func() {
+				processID, _, err := client.Run("foo", "echo some data for stdout", ResourceLimits{FileDescriptors: 0})
+				Ω(err).ShouldNot(HaveOccurred())
+				Ω(processID).Should(BeNumerically("==", 1721))
+
+				expectedWriteBufferContents := string(warden.Messages(
+					&warden.RunRequest{
+						Handle:  proto.String("foo"),
+						Script:  proto.String("echo some data for stdout"),
+						Rlimits: &warden.ResourceLimits{},
+					},
+				).Bytes())
+
+				Ω(string(writeBuffer.Bytes())).Should(Equal(expectedWriteBufferContents))
+			})
 		})
 	})
 
@@ -199,6 +218,77 @@ var _ = Describe("Client", func() {
 			Eventually(responses).Should(BeClosed())
 
 			close(done)
+		})
+	})
+
+	Describe("LimitingDisk", func() {
+		BeforeEach(func() {
+			provider = NewFakeConnectionProvider(
+				warden.Messages(
+					&warden.LimitDiskResponse{},
+				),
+				writeBuffer,
+			)
+
+			client = NewClient(provider)
+			err := client.Connect()
+			Ω(err).ShouldNot(HaveOccurred())
+		})
+
+		Context("when both byte limit and inode limit are specified", func() {
+			It("should limit them both", func() {
+				_, err := client.LimitDisk("foo", DiskLimits{
+					ByteLimit:  10,
+					InodeLimit: 3,
+				})
+				Ω(err).ShouldNot(HaveOccurred())
+
+				expectedWriteBufferContents := string(warden.Messages(
+					&warden.LimitDiskRequest{
+						Handle:     proto.String("foo"),
+						ByteLimit:  proto.Uint64(10),
+						InodeLimit: proto.Uint64(3),
+					},
+				).Bytes())
+
+				Ω(string(writeBuffer.Bytes())).Should(Equal(expectedWriteBufferContents))
+			})
+		})
+
+		Context("when only the byte limit is specified", func() {
+			It("should limit the bytes only", func() {
+				_, err := client.LimitDisk("foo", DiskLimits{
+					ByteLimit: 10,
+				})
+				Ω(err).ShouldNot(HaveOccurred())
+
+				expectedWriteBufferContents := string(warden.Messages(
+					&warden.LimitDiskRequest{
+						Handle:    proto.String("foo"),
+						ByteLimit: proto.Uint64(10),
+					},
+				).Bytes())
+
+				Ω(string(writeBuffer.Bytes())).Should(Equal(expectedWriteBufferContents))
+			})
+		})
+
+		Context("when only the inode limit is specified", func() {
+			It("should limit the inodes only", func() {
+				_, err := client.LimitDisk("foo", DiskLimits{
+					InodeLimit: 2,
+				})
+				Ω(err).ShouldNot(HaveOccurred())
+
+				expectedWriteBufferContents := string(warden.Messages(
+					&warden.LimitDiskRequest{
+						Handle:     proto.String("foo"),
+						InodeLimit: proto.Uint64(2),
+					},
+				).Bytes())
+
+				Ω(string(writeBuffer.Bytes())).Should(Equal(expectedWriteBufferContents))
+			})
 		})
 	})
 

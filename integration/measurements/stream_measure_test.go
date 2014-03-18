@@ -9,6 +9,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
+	"github.com/vito/gordon"
 	"github.com/vito/gordon/warden"
 )
 
@@ -39,7 +40,7 @@ var _ = Describe("The Warden server", func() {
 				numToSpawn := streams
 
 				BeforeEach(func() {
-					atomic.StoreUint64(&receivedBytes, 0) 
+					atomic.StoreUint64(&receivedBytes, 0)
 					started = time.Now()
 
 					spawned := make(chan bool)
@@ -50,6 +51,7 @@ var _ = Describe("The Warden server", func() {
 							_, results, err := client.Run(
 								handle,
 								"cat /dev/zero",
+								gordon.ResourceLimits{},
 							)
 							Expect(err).ToNot(HaveOccurred())
 
@@ -97,7 +99,7 @@ var _ = Describe("The Warden server", func() {
 
 					for i := 0; i < 10; i++ {
 						b.Time("running a job (10x)", func() {
-							_, stream, err := client.Run(newHandle, "ls")
+							_, stream, err := client.Run(newHandle, "ls", gordon.ResourceLimits{})
 							Expect(err).ToNot(HaveOccurred())
 
 							for _ = range stream {

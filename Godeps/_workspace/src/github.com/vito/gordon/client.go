@@ -3,9 +3,20 @@ package gordon
 import (
 	"time"
 
+	"code.google.com/p/gogoprotobuf/proto"
+
 	"github.com/vito/gordon/connection"
 	"github.com/vito/gordon/warden"
 )
+
+type ResourceLimits struct {
+	FileDescriptors uint64
+}
+
+type DiskLimits struct {
+	ByteLimit  uint64
+	InodeLimit uint64
+}
 
 type Client interface {
 	Connect() error
@@ -13,12 +24,12 @@ type Client interface {
 	Create() (*warden.CreateResponse, error)
 	Stop(handle string, background, kill bool) (*warden.StopResponse, error)
 	Destroy(handle string) (*warden.DestroyResponse, error)
-	Run(handle, script string) (uint32, <-chan *warden.ProcessPayload, error)
+	Run(handle, script string, resourceLimits ResourceLimits) (uint32, <-chan *warden.ProcessPayload, error)
 	Attach(handle string, processID uint32) (<-chan *warden.ProcessPayload, error)
 	NetIn(handle string) (*warden.NetInResponse, error)
 	LimitMemory(handle string, limit uint64) (*warden.LimitMemoryResponse, error)
 	GetMemoryLimit(handle string) (uint64, error)
-	LimitDisk(handle string, limit uint64) (*warden.LimitDiskResponse, error)
+	LimitDisk(handle string, limits DiskLimits) (*warden.LimitDiskResponse, error)
 	GetDiskLimit(handle string) (uint64, error)
 	List() (*warden.ListResponse, error)
 	Info(handle string) (*warden.InfoResponse, error)
@@ -70,10 +81,16 @@ func (c *client) Destroy(handle string) (*warden.DestroyResponse, error) {
 	return conn.Destroy(handle)
 }
 
-func (c *client) Run(handle, script string) (uint32, <-chan *warden.ProcessPayload, error) {
+func (c *client) Run(handle, script string, resourceLimits ResourceLimits) (uint32, <-chan *warden.ProcessPayload, error) {
 	conn := c.acquireConnection()
 
-	processID, stream, err := conn.Run(handle, script)
+	wardenResourceLimits := &warden.ResourceLimits{}
+
+	if resourceLimits.FileDescriptors > 0 {
+		wardenResourceLimits.Nofile = proto.Uint64(resourceLimits.FileDescriptors)
+	}
+
+	processID, stream, err := conn.Run(handle, script, wardenResourceLimits)
 
 	if err != nil {
 		c.release(conn)
@@ -136,11 +153,23 @@ func (c *client) GetMemoryLimit(handle string) (uint64, error) {
 	return conn.GetMemoryLimit(handle)
 }
 
-func (c *client) LimitDisk(handle string, limit uint64) (*warden.LimitDiskResponse, error) {
+func (c *client) LimitDisk(handle string, limits DiskLimits) (*warden.LimitDiskResponse, error) {
 	conn := c.acquireConnection()
 	defer c.release(conn)
 
-	return conn.LimitDisk(handle, limit)
+	limitRequest := &warden.LimitDiskRequest{
+		Handle: proto.String(handle),
+	}
+
+	if limits.ByteLimit > 0 {
+		limitRequest.ByteLimit = proto.Uint64(limits.ByteLimit)
+	}
+
+	if limits.InodeLimit > 0 {
+		limitRequest.InodeLimit = proto.Uint64(limits.InodeLimit)
+	}
+
+	return conn.LimitDisk(limitRequest)
 }
 
 func (c *client) GetDiskLimit(handle string) (uint64, error) {

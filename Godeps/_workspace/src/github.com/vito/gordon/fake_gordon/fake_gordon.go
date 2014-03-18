@@ -3,6 +3,7 @@ package fake_gordon
 import (
 	"code.google.com/p/gogoprotobuf/proto"
 	"github.com/nu7hatch/gouuid"
+	"github.com/vito/gordon"
 	"github.com/vito/gordon/warden"
 	"io/ioutil"
 	"os"
@@ -16,7 +17,8 @@ type FakeGordon struct {
 	createdHandles []string
 	CreateError    error
 
-	StopError error
+	stoppedHandles []string
+	StopError      error
 
 	destroyedHandles []string
 	DestroyError     error
@@ -27,17 +29,20 @@ type FakeGordon struct {
 
 	NetInError error
 
-	LimitMemoryError error
+	memoryLimits     []Limit
+	limitMemoryError error
 
 	GetMemoryLimitError error
 
-	LimitDiskError error
+	diskLimits     []DiskLimit
+	limitDiskError error
 
 	GetDiskLimitError error
 
 	ListError error
 
-	InfoError error
+	infoError    error
+	infoResponse *warden.InfoResponse
 
 	AttachError error
 
@@ -60,8 +65,9 @@ type FakeGordon struct {
 type RunCallback func() (uint32, <-chan *warden.ProcessPayload, error)
 
 type RunningScript struct {
-	Handle string
-	Script string
+	Handle         string
+	Script         string
+	ResourceLimits gordon.ResourceLimits
 }
 
 type CopiedIn struct {
@@ -75,6 +81,16 @@ type CopiedOut struct {
 	Src    string
 	Dst    string
 	Owner  string
+}
+
+type Limit struct {
+	Handle string
+	Limit  uint64
+}
+
+type DiskLimit struct {
+	Handle string
+	Limits gordon.DiskLimits
 }
 
 func New() *FakeGordon {
@@ -91,6 +107,7 @@ func (f *FakeGordon) Reset() {
 	f.createdHandles = []string{}
 	f.CreateError = nil
 
+	f.stoppedHandles = []string{}
 	f.StopError = nil
 
 	f.destroyedHandles = []string{}
@@ -99,13 +116,17 @@ func (f *FakeGordon) Reset() {
 	f.SpawnError = nil
 	f.LinkError = nil
 	f.NetInError = nil
-	f.LimitMemoryError = nil
 	f.GetMemoryLimitError = nil
-	f.LimitDiskError = nil
 	f.GetDiskLimitError = nil
 	f.ListError = nil
-	f.InfoError = nil
 	f.AttachError = nil
+
+	f.infoError = nil
+
+	f.limitMemoryError = nil
+	f.limitDiskError = nil
+	f.memoryLimits = []Limit{}
+	f.diskLimits = []DiskLimit{}
 
 	f.scriptsThatRan = make([]*RunningScript, 0)
 	f.runCallbacks = make(map[*RunningScript]RunCallback)
@@ -151,8 +172,22 @@ func (f *FakeGordon) CreatedHandles() []string {
 }
 
 func (f *FakeGordon) Stop(handle string, background, kill bool) (*warden.StopResponse, error) {
-	panic("NOOP!")
-	return nil, f.StopError
+	f.lock.Lock()
+	defer f.lock.Unlock()
+	if f.StopError != nil {
+		return nil, f.StopError
+	}
+
+	f.stoppedHandles = append(f.stoppedHandles, handle)
+
+	return &warden.StopResponse{}, nil
+}
+
+func (f *FakeGordon) StoppedHandles() []string {
+	f.lock.Lock()
+	defer f.lock.Unlock()
+
+	return f.stoppedHandles
 }
 
 func (f *FakeGordon) Destroy(handle string) (*warden.DestroyResponse, error) {
@@ -179,9 +214,30 @@ func (f *FakeGordon) NetIn(handle string) (*warden.NetInResponse, error) {
 	return nil, f.NetInError
 }
 
+func (f *FakeGordon) MemoryLimits() []Limit {
+	f.lock.Lock()
+	defer f.lock.Unlock()
+
+	return f.memoryLimits
+}
+
+func (f *FakeGordon) SetLimitMemoryError(err error) {
+	f.lock.Lock()
+	defer f.lock.Unlock()
+
+	f.limitMemoryError = err
+}
+
 func (f *FakeGordon) LimitMemory(handle string, limit uint64) (*warden.LimitMemoryResponse, error) {
-	panic("NOOP!")
-	return nil, f.LimitMemoryError
+	f.lock.Lock()
+	defer f.lock.Unlock()
+
+	f.memoryLimits = append(f.memoryLimits, Limit{
+		Handle: handle,
+		Limit:  limit,
+	})
+
+	return nil, f.limitMemoryError
 }
 
 func (f *FakeGordon) GetMemoryLimit(handle string) (uint64, error) {
@@ -189,9 +245,30 @@ func (f *FakeGordon) GetMemoryLimit(handle string) (uint64, error) {
 	return 0, f.GetMemoryLimitError
 }
 
-func (f *FakeGordon) LimitDisk(handle string, limit uint64) (*warden.LimitDiskResponse, error) {
-	panic("NOOP!")
-	return nil, f.LimitDiskError
+func (f *FakeGordon) DiskLimits() []DiskLimit {
+	f.lock.Lock()
+	defer f.lock.Unlock()
+
+	return f.diskLimits
+}
+
+func (f *FakeGordon) SetLimitDiskError(err error) {
+	f.lock.Lock()
+	defer f.lock.Unlock()
+
+	f.limitDiskError = err
+}
+
+func (f *FakeGordon) LimitDisk(handle string, limits gordon.DiskLimits) (*warden.LimitDiskResponse, error) {
+	f.lock.Lock()
+	defer f.lock.Unlock()
+
+	f.diskLimits = append(f.diskLimits, DiskLimit{
+		Handle: handle,
+		Limits: limits,
+	})
+
+	return nil, f.limitDiskError
 }
 
 func (f *FakeGordon) GetDiskLimit(handle string) (uint64, error) {
@@ -205,8 +282,22 @@ func (f *FakeGordon) List() (*warden.ListResponse, error) {
 }
 
 func (f *FakeGordon) Info(handle string) (*warden.InfoResponse, error) {
-	panic("NOOP!")
-	return nil, f.InfoError
+	f.lock.Lock()
+	defer f.lock.Unlock()
+
+	return f.infoResponse, f.infoError
+}
+
+func (f *FakeGordon) SetInfoError(err error) {
+	f.lock.Lock()
+	defer f.lock.Unlock()
+	f.infoError = err
+}
+
+func (f *FakeGordon) SetInfoResponse(response *warden.InfoResponse) {
+	f.lock.Lock()
+	defer f.lock.Unlock()
+	f.infoResponse = response
 }
 
 func (f *FakeGordon) CopyIn(handle, src, dst string) (*warden.CopyInResponse, error) {
@@ -302,24 +393,26 @@ func (f *FakeGordon) SetRunReturnValues(processID uint32, processPayloadChan <-c
 	f.runReturnError = err
 }
 
-func (f *FakeGordon) WhenRunning(handle string, script string, callback RunCallback) {
+func (f *FakeGordon) WhenRunning(handle string, script string, resourceLimits gordon.ResourceLimits, callback RunCallback) {
 	f.lock.Lock()
 	defer f.lock.Unlock()
 
-	f.runCallbacks[&RunningScript{handle, script}] = callback
+	f.runCallbacks[&RunningScript{handle, script, resourceLimits}] = callback
 }
 
-func (f *FakeGordon) Run(handle string, script string) (uint32, <-chan *warden.ProcessPayload, error) {
+func (f *FakeGordon) Run(handle string, script string, resourceLimits gordon.ResourceLimits) (uint32, <-chan *warden.ProcessPayload, error) {
 	f.lock.Lock()
-	defer f.lock.Unlock()
 
 	f.scriptsThatRan = append(f.scriptsThatRan, &RunningScript{
-		Handle: handle,
-		Script: script,
+		Handle:         handle,
+		Script:         script,
+		ResourceLimits: resourceLimits,
 	})
 
+	f.lock.Unlock()
+
 	for ro, cb := range f.runCallbacks {
-		if ro.Handle == handle && ro.Script == script {
+		if (ro.Handle == "" || ro.Handle == handle) && ro.Script == script {
 			return cb()
 		}
 	}

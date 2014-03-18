@@ -18,10 +18,11 @@ var _ = Describe("Connection", func() {
 		connection     *Connection
 		writeBuffer    *bytes.Buffer
 		wardenMessages []proto.Message
+		resourceLimits *warden.ResourceLimits
 	)
 
 	assertWriteBufferContains := func(messages ...proto.Message) {
-		Ω(string(writeBuffer.Bytes())).Should(Equal(string(warden.Messages(messages...).Bytes())))
+		ExpectWithOffset(1, string(writeBuffer.Bytes())).To(Equal(string(warden.Messages(messages...).Bytes())))
 	}
 
 	JustBeforeEach(func() {
@@ -37,6 +38,7 @@ var _ = Describe("Connection", func() {
 
 	BeforeEach(func() {
 		wardenMessages = []proto.Message{}
+		resourceLimits = &warden.ResourceLimits{Nofile: proto.Uint64(72)}
 	})
 
 	Describe("Creating", func() {
@@ -161,7 +163,11 @@ var _ = Describe("Connection", func() {
 			})
 
 			It("should limit disk", func() {
-				res, err := connection.LimitDisk("foo", 42)
+				res, err := connection.LimitDisk(&warden.LimitDiskRequest{
+					Handle:    proto.String("foo"),
+					ByteLimit: proto.Uint64(42),
+				})
+
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(res.GetByteLimit()).Should(BeNumerically("==", 40))
 
@@ -319,7 +325,7 @@ var _ = Describe("Connection", func() {
 		})
 
 		It("should error", func() {
-			processID, resp, err := connection.Run("foo-handle", "echo hi")
+			processID, resp, err := connection.Run("foo-handle", "echo hi", resourceLimits)
 			Ω(processID).Should(BeZero())
 			Ω(resp).Should(BeNil())
 			Ω(err.Error()).Should(Equal("boo"))
@@ -359,13 +365,14 @@ var _ = Describe("Connection", func() {
 			})
 
 			It("should start the process and stream output", func(done Done) {
-				processID, resp, err := connection.Run("foo-handle", "lol")
+				processID, resp, err := connection.Run("foo-handle", "lol", resourceLimits)
 				Ω(processID).Should(BeNumerically("==", 42))
 				Ω(err).ShouldNot(HaveOccurred())
 
 				assertWriteBufferContains(&warden.RunRequest{
-					Handle: proto.String("foo-handle"),
-					Script: proto.String("lol"),
+					Handle:  proto.String("foo-handle"),
+					Script:  proto.String("lol"),
+					Rlimits: resourceLimits,
 				})
 
 				response1 := <-resp
@@ -397,26 +404,28 @@ var _ = Describe("Connection", func() {
 			})
 
 			It("should be able to spawn multiple processes sequentially", func() {
-				processId, _, err := connection.Run("foo-handle", "echo hi")
+				processId, _, err := connection.Run("foo-handle", "echo hi", resourceLimits)
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(processId).Should(BeNumerically("==", 42))
 
 				assertWriteBufferContains(&warden.RunRequest{
-					Handle: proto.String("foo-handle"),
-					Script: proto.String("echo hi"),
+					Handle:  proto.String("foo-handle"),
+					Script:  proto.String("echo hi"),
+					Rlimits: resourceLimits,
 				})
 
 				writeBuffer.Reset()
 
 				time.Sleep(1 * time.Second)
 
-				processId, _, err = connection.Run("foo-handle", "echo bye")
+				processId, _, err = connection.Run("foo-handle", "echo bye", resourceLimits)
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(processId).Should(BeNumerically("==", 43))
 
 				assertWriteBufferContains(&warden.RunRequest{
-					Handle: proto.String("foo-handle"),
-					Script: proto.String("echo bye"),
+					Handle:  proto.String("foo-handle"),
+					Script:  proto.String("echo bye"),
+					Rlimits: resourceLimits,
 				})
 			})
 

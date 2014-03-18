@@ -5,6 +5,8 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+
+	"github.com/vito/gordon"
 )
 
 var _ = Describe("A container with a grace time", func() {
@@ -33,7 +35,7 @@ var _ = Describe("A container with a grace time", func() {
 
 	Context("when a request takes longer than the grace time", func() {
 		It("is not destroyed after the request is over", func() {
-			_, _, err := client.Run(handle, "sleep 6")
+			_, _, err := client.Run(handle, "sleep 6", gordon.ResourceLimits{})
 			Expect(err).ToNot(HaveOccurred())
 
 			_, err = client.Info(handle)

@@ -3,6 +3,8 @@ package lifecycle_test
 import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+
+	"github.com/vito/gordon"
 )
 
 var _ = Describe("Creating a container", func() {
@@ -24,6 +26,7 @@ var _ = Describe("Creating a container", func() {
 		_, stream, err := client.Run(
 			handle,
 			"test -e /tmp/ran-seed",
+			gordon.ResourceLimits{},
 		)
 		Expect(err).ToNot(HaveOccurred())
 
@@ -57,6 +60,7 @@ var _ = Describe("Creating a container", func() {
 			_, stream, err := client.Run(
 				handle,
 				"sleep 0.5; echo hello; sleep 0.5; echo goodbye; sleep 0.5; exit 42",
+				gordon.ResourceLimits{},
 			)
 			Expect(err).ToNot(HaveOccurred())
 
@@ -70,6 +74,7 @@ var _ = Describe("Creating a container", func() {
 				processID, _, err := client.Run(
 					handle,
 					"sleep 2; echo hello; sleep 0.5; echo goodbye; sleep 0.5; exit 42",
+					gordon.ResourceLimits{},
 				)
 				Expect(err).ToNot(HaveOccurred())
 
@@ -88,6 +93,7 @@ var _ = Describe("Creating a container", func() {
 				_, stream, err := client.Run(
 					handle,
 					`exec ruby -e 'trap("TERM") { exit 42 }; while true; sleep 1; end'`,
+					gordon.ResourceLimits{},
 				)
 
 				Expect(err).ToNot(HaveOccurred())

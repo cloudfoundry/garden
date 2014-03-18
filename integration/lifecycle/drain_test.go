@@ -9,6 +9,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
+	"github.com/vito/gordon"
 	"github.com/vito/gordon/warden"
 )
 
@@ -72,7 +73,12 @@ var _ = Describe("Through a restart", func() {
 
 	Describe("a started job", func() {
 		It("continues to stream", func(done Done) {
-			processID, runStream, err := client.Run(handle, "while true; do echo hi; sleep 0.5; done")
+			processID, runStream, err := client.Run(
+				handle,
+				"while true; do echo hi; sleep 0.5; done",
+				gordon.ResourceLimits{},
+			)
+
 			Expect(err).ToNot(HaveOccurred())
 
 			restartServer()
@@ -88,12 +94,12 @@ var _ = Describe("Through a restart", func() {
 		}, 10.0)
 
 		It("does not have its job ID repeated", func() {
-			processID1, _, err := client.Run(handle, "while true; do echo hi; sleep 0.5; done")
+			processID1, _, err := client.Run(handle, "while true; do echo hi; sleep 0.5; done", gordon.ResourceLimits{})
 			Expect(err).ToNot(HaveOccurred())
 
 			restartServer()
 
-			processID2, _, err := client.Run(handle, "while true; do echo hi; sleep 0.5; done")
+			processID2, _, err := client.Run(handle, "while true; do echo hi; sleep 0.5; done", gordon.ResourceLimits{})
 			Expect(err).ToNot(HaveOccurred())
 
 			Expect(processID1).ToNot(Equal(processID2))
@@ -106,6 +112,7 @@ var _ = Describe("Through a restart", func() {
 				processID, _, err := client.Run(
 					handle,
 					"for i in $(seq 10); do echo $i; sleep 0.5; done; echo goodbye; while true; do sleep 1; done",
+					gordon.ResourceLimits{},
 				)
 				Expect(err).ToNot(HaveOccurred())
 
@@ -141,7 +148,7 @@ var _ = Describe("Through a restart", func() {
 
 			restartServer()
 
-			_, stream, err := client.Run(handle, "exec ruby -e '$stdout.sync = true; puts :hello; puts (\"x\" * 64 * 1024 * 1024).size; puts :goodbye; exit 42'")
+			_, stream, err := client.Run(handle, "exec ruby -e '$stdout.sync = true; puts :hello; puts (\"x\" * 64 * 1024 * 1024).size; puts :goodbye; exit 42'", gordon.ResourceLimits{})
 			Expect(err).ToNot(HaveOccurred())
 
 			// cgroups OOM killer seems to leave no trace of the process;
@@ -156,7 +163,7 @@ var _ = Describe("Through a restart", func() {
 
 	Describe("a container's active job", func() {
 		It("is still tracked", func() {
-			processID, _, err := client.Run(handle, "while true; do echo hi; sleep 0.5; done")
+			processID, _, err := client.Run(handle, "while true; do echo hi; sleep 0.5; done", gordon.ResourceLimits{})
 			Expect(err).ToNot(HaveOccurred())
 
 			restartServer()
@@ -174,7 +181,7 @@ var _ = Describe("Through a restart", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			// trigger 'out of memory' event
-			_, _, err = client.Run(handle, "exec ruby -e '$stdout.sync = true; puts :hello; puts (\"x\" * 64 * 1024 * 1024).size; puts :goodbye; exit 42'")
+			_, _, err = client.Run(handle, "exec ruby -e '$stdout.sync = true; puts :hello; puts (\"x\" * 64 * 1024 * 1024).size; puts :goodbye; exit 42'", gordon.ResourceLimits{})
 			Expect(err).ToNot(HaveOccurred())
 
 			Eventually(func() []string {
@@ -260,7 +267,7 @@ var _ = Describe("Through a restart", func() {
 			idA := ""
 			idB := ""
 
-			_, streamA, err := client.Run(handle, "id -u")
+			_, streamA, err := client.Run(handle, "id -u", gordon.ResourceLimits{})
 			Expect(err).ToNot(HaveOccurred())
 
 			for chunk := range streamA {
@@ -272,7 +279,7 @@ var _ = Describe("Through a restart", func() {
 			createRes, err := client.Create()
 			Expect(err).ToNot(HaveOccurred())
 
-			_, streamB, err := client.Run(createRes.GetHandle(), "id -u")
+			_, streamB, err := client.Run(createRes.GetHandle(), "id -u", gordon.ResourceLimits{})
 			Expect(err).ToNot(HaveOccurred())
 
 			for chunk := range streamB {
