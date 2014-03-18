@@ -2,6 +2,7 @@ package matchers
 
 import (
 	"fmt"
+	"github.com/onsi/gomega/format"
 	"reflect"
 )
 
@@ -11,7 +12,7 @@ type ContainElementMatcher struct {
 
 func (matcher *ContainElementMatcher) Match(actual interface{}) (success bool, message string, err error) {
 	if !isArrayOrSlice(actual) && !isMap(actual) {
-		return false, "", fmt.Errorf("ContainElement matcher expects an array/slice/map.  Got:%s", formatObject(actual))
+		return false, "", fmt.Errorf("ContainElement matcher expects an array/slice/map.  Got:\n%s", format.Object(actual, 1))
 	}
 
 	elemMatcher, elementIsMatcher := matcher.Element.(omegaMatcher)
@@ -38,9 +39,9 @@ func (matcher *ContainElementMatcher) Match(actual interface{}) (success bool, m
 			return false, "", fmt.Errorf("ContainElement's element matcher failed with:\n\t%s", err.Error())
 		}
 		if success {
-			return true, formatMessage(actual, "not to contain element"+matchingString, matcher.Element), nil
+			return true, format.Message(actual, "not to contain element"+matchingString, matcher.Element), nil
 		}
 	}
 
-	return false, formatMessage(actual, "to contain element"+matchingString, matcher.Element), nil
+	return false, format.Message(actual, "to contain element"+matchingString, matcher.Element), nil
 }

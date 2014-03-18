@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"syscall"
 	"time"
+	"strings"
 )
 
 type Session struct {
@@ -101,7 +102,7 @@ func (s Session) Wait(timeout time.Duration) (int, error) {
 	case status := <-s.exited:
 		return status, nil
 	case <-time.After(timeout):
-		return -1, fmt.Errorf("command did not exit")
+		return -1, fmt.Errorf("command did not exit: %s", strings.Join(s.Cmd.Args, " "))
 	}
 }
 

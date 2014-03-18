@@ -1,33 +1,33 @@
 {
 	"ImportPath": "github.com/pivotal-cf-experimental/garden",
-	"GoVersion": "go1.2",
+	"GoVersion": "go1.2.1",
 	"Packages": [
 		"./..."
 	],
 	"Deps": [
 		{
 			"ImportPath": "code.google.com/p/gogoprotobuf/proto",
-			"Rev": "46df3e5f3adade891be131e6759b3a7bb889d42d"
+			"Rev": "2395ecf872ff63554aca750519f302cba92261d8"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gunk/runner_support",
-			"Rev": "53bcf9b1215796e9173ef67baf6e9e2f1850a644"
+			"Rev": "0ab08c4a0d1b32c0db1ecd53b55603662de9e767"
 		},
 		{
 			"ImportPath": "github.com/onsi/ginkgo",
-			"Rev": "736acf4afbc1fff096f59fb899163b602edec924"
+			"Rev": "85eb0318720ffdc1ca7023bfe4ad15a5d22a9612"
 		},
 		{
 			"ImportPath": "github.com/onsi/gomega",
-			"Rev": "930b4522e0d3027320b5d56f8a375796f2e376e5"
+			"Rev": "3da99a5a1412b006dac6662a2244f3da7ee3155b"
 		},
 		{
 			"ImportPath": "github.com/vito/cmdtest",
-			"Rev": "fbd89b77403b5ed2f394946ec8debcc251b96815"
+			"Rev": "ccd51cbbf3154a39d1ad8861e7711dfdf4ee5719"
 		},
 		{
 			"ImportPath": "github.com/vito/gordon",
-			"Rev": "7a09817eeb4006d9c8b07eb63ede3105b1997c77"
+			"Rev": "abe24aba708d3b78e5a85b7d6da037a53ecebdcc"
 		}
 	]
 }
