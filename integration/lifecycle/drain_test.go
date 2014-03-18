@@ -288,7 +288,7 @@ var _ = Describe("Through a restart", func() {
 			err := runner.Stop()
 			Expect(err).ToNot(HaveOccurred())
 
-			err = runner.Start("--containerGraceTime", "5")
+			err = runner.Start("--containerGraceTime", "5s")
 			Expect(err).ToNot(HaveOccurred())
 
 			res, err := client.Create()

@@ -8,7 +8,6 @@ import (
 	"os/signal"
 	"runtime"
 	"syscall"
-	"time"
 
 	"github.com/pivotal-cf-experimental/garden/backend"
 	"github.com/pivotal-cf-experimental/garden/backend/fake_backend"
@@ -70,10 +69,10 @@ var disableQuotas = flag.Bool(
 	"disable disk quotas",
 )
 
-var containerGraceTime = flag.Int(
+var containerGraceTime = flag.Duration(
 	"containerGraceTime",
 	0,
-	"time (in seconds) after which to destroy idle containers",
+	"time after which to destroy idle containers",
 )
 
 var debug = flag.Bool(
@@ -156,7 +155,7 @@ func main() {
 
 	log.Println("starting server; listening with", *listenNetwork, "on", *listenAddr)
 
-	graceTime := time.Duration(*containerGraceTime) * time.Second
+	graceTime := *containerGraceTime
 
 	wardenServer := server.New(*listenNetwork, *listenAddr, graceTime, backend)
 
