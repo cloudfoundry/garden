@@ -39,13 +39,14 @@ var _ = Describe("The Warden server", func() {
 				numToSpawn := streams
 
 				BeforeEach(func() {
-					receivedBytes = 0
+					atomic.StoreUint64(&receivedBytes, 0) 
 					started = time.Now()
 
 					spawned := make(chan bool)
 
 					for j := 0; j < numToSpawn; j++ {
 						go func() {
+							defer GinkgoRecover()
 							_, results, err := client.Run(
 								handle,
 								"cat /dev/zero",
@@ -112,7 +113,7 @@ var _ = Describe("The Warden server", func() {
 
 					b.RecordValue(
 						"received rate (bytes/second)",
-						float64(receivedBytes)/float64(time.Since(started)/time.Second),
+						float64(atomic.LoadUint64(&receivedBytes))/float64(time.Since(started)/time.Second),
 					)
 
 					fmt.Println("total time:", time.Since(started))
