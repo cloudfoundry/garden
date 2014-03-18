@@ -5,10 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"math"
 	"net"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"time"
 
 	. "github.com/onsi/ginkgo"
@@ -724,10 +726,18 @@ var _ = Describe("Linux containers", func() {
 
 	Describe("Copying in", func() {
 		It("executes rsync from src into dst via wsh --rsh", func() {
-			err := container.CopyIn("/src", "/dst")
+			err := container.CopyIn("/src", "/some/dst")
 			Expect(err).ToNot(HaveOccurred())
 
 			Expect(fakeRunner).To(HaveExecutedSerially(
+				fake_command_runner.CommandSpec{
+					Path: "/depot/some-id/bin/wsh",
+					Args: []string{
+						"--socket", "/depot/some-id/run/wshd.sock",
+						"--user", "vcap",
+						"mkdir", "-p", "/some",
+					},
+				},
 				fake_command_runner.CommandSpec{
 					Path: "rsync",
 					Args: []string{
@@ -737,10 +747,34 @@ var _ = Describe("Linux containers", func() {
 						"-p",
 						"--links",
 						"/src",
-						"vcap@container:/dst",
+						"vcap@container:/some/dst",
 					},
 				},
 			))
+		})
+
+		Context("when making the parent directory fails", func() {
+			disaster := errors.New("oh no!")
+
+			BeforeEach(func() {
+				fakeRunner.WhenRunning(
+					fake_command_runner.CommandSpec{
+						Path: "/depot/some-id/bin/wsh",
+						Args: []string{
+							"--socket", "/depot/some-id/run/wshd.sock",
+							"--user", "vcap",
+							"mkdir", "-p", "/some",
+						},
+					}, func(*exec.Cmd) error {
+						return disaster
+					},
+				)
+			})
+
+			It("returns the error", func() {
+				err := container.CopyIn("/src", "/some/dst")
+				Expect(err).To(Equal(disaster))
+			})
 		})
 
 		Context("when rsync fails", func() {
@@ -764,8 +798,32 @@ var _ = Describe("Linux containers", func() {
 	})
 
 	Describe("Copying out", func() {
-		It("rsyncs from vcap@container:/src to /dst", func() {
-			err := container.CopyOut("/src", "/dst", "")
+		var destination string
+
+		BeforeEach(func() {
+			var err error
+
+			destination, err = ioutil.TempDir("", "copy-out-destination")
+			Ω(err).ShouldNot(HaveOccurred())
+
+			err = os.RemoveAll(destination)
+			Ω(err).ShouldNot(HaveOccurred())
+
+			destination = filepath.Join(destination, "some-destination")
+		})
+
+		AfterEach(func() {
+			os.RemoveAll(destination)
+		})
+
+		It("creates the destination directory and rsyncs from vcap@container:/src to it", func() {
+			err := container.CopyOut("/src", destination, "")
+			Expect(err).ToNot(HaveOccurred())
+
+			_, err = os.Stat(destination)
+			Expect(err).To(HaveOccurred())
+
+			_, err = os.Stat(filepath.Dir(destination))
 			Expect(err).ToNot(HaveOccurred())
 
 			Expect(fakeRunner).To(HaveExecutedSerially(
@@ -778,7 +836,7 @@ var _ = Describe("Linux containers", func() {
 						"-p",
 						"--links",
 						"vcap@container:/src",
-						"/dst",
+						destination,
 					},
 				},
 			))
@@ -786,7 +844,7 @@ var _ = Describe("Linux containers", func() {
 
 		Context("when an owner is given", func() {
 			It("chowns the files after rsyncing", func() {
-				err := container.CopyOut("/src", "/dst", "some-user")
+				err := container.CopyOut("/src", destination, "some-user")
 				Expect(err).ToNot(HaveOccurred())
 
 				Expect(fakeRunner).To(HaveExecutedSerially(
@@ -795,7 +853,7 @@ var _ = Describe("Linux containers", func() {
 					},
 					fake_command_runner.CommandSpec{
 						Path: "chown",
-						Args: []string{"-R", "some-user", "/dst"},
+						Args: []string{"-R", "some-user", destination},
 					},
 				))
 			})
@@ -815,7 +873,7 @@ var _ = Describe("Linux containers", func() {
 			})
 
 			It("returns the error", func() {
-				err := container.CopyOut("/src", "/dst", "")
+				err := container.CopyOut("/src", destination, "")
 				Expect(err).To(Equal(nastyError))
 			})
 		})
@@ -834,7 +892,7 @@ var _ = Describe("Linux containers", func() {
 			})
 
 			It("returns the error", func() {
-				err := container.CopyOut("/src", "/dst", "some-user")
+				err := container.CopyOut("/src", destination, "some-user")
 				Expect(err).To(Equal(nastyError))
 			})
 		})

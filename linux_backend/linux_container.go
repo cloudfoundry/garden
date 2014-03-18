@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"os"
 	"os/exec"
 	"path"
 	"strconv"
@@ -367,13 +368,32 @@ func (c *LinuxContainer) Info() (backend.ContainerInfo, error) {
 
 func (c *LinuxContainer) CopyIn(src, dst string) error {
 	log.Println(c.id, "copying in from", src, "to", dst)
+
+	wshPath := path.Join(c.path, "bin", "wsh")
+	sockPath := path.Join(c.path, "run", "wshd.sock")
+
+	wsh := &exec.Cmd{
+		Path: wshPath,
+		Args: []string{"--socket", sockPath, "--user", "vcap", "mkdir", "-p", path.Dir(dst)},
+	}
+
+	err := c.runner.Run(wsh)
+	if err != nil {
+		return err
+	}
+
 	return c.rsync(src, "vcap@container:"+dst)
 }
 
 func (c *LinuxContainer) CopyOut(src, dst, owner string) error {
+	err := os.MkdirAll(path.Dir(dst), 0755)
+	if err != nil {
+		return err
+	}
+
 	log.Println(c.id, "copying out from", src, "to", dst)
 
-	err := c.rsync("vcap@container:"+src, dst)
+	err = c.rsync("vcap@container:"+src, dst)
 	if err != nil {
 		return err
 	}

@@ -1,6 +1,11 @@
 package lifecycle_test
 
 import (
+	"io/ioutil"
+	"os"
+	"os/user"
+	"path/filepath"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
@@ -105,6 +110,76 @@ var _ = Describe("Creating a container", func() {
 
 				close(done)
 			}, 10.0)
+		})
+	})
+
+	Context("and copying files in", func() {
+		var path string
+
+		BeforeEach(func() {
+			tmpdir, err := ioutil.TempDir("", "some-temp-dir-parent")
+			Ω(err).ShouldNot(HaveOccurred())
+
+			path = filepath.Join(tmpdir, "some-temp-dir")
+
+			err = os.MkdirAll(path, 0755)
+			Ω(err).ShouldNot(HaveOccurred())
+
+			err = ioutil.WriteFile(filepath.Join(path, "some-temp-file"), []byte("HGJMT<"), 0755)
+			Ω(err).ShouldNot(HaveOccurred())
+
+		})
+
+		It("creates the files in the container", func() {
+			_, err := client.CopyIn(handle, path, "/tmp/some-container-dir")
+			Ω(err).ShouldNot(HaveOccurred())
+
+			_, stream, err := client.Run(
+				handle,
+				`test -f /tmp/some-container-dir/some-temp-dir/some-temp-file && exit 42`,
+				gordon.ResourceLimits{},
+			)
+
+			Expect((<-stream).GetExitStatus()).To(Equal(uint32(42)))
+		})
+
+		Context("with a strailing slash on the destination", func() {
+			It("does what rsync does (syncs contents)", func() {
+				_, err := client.CopyIn(handle, path+"/", "/tmp/some-container-dir/")
+				Ω(err).ShouldNot(HaveOccurred())
+
+				_, stream, err := client.Run(
+					handle,
+					`test -f /tmp/some-container-dir/some-temp-file && exit 42`,
+					gordon.ResourceLimits{},
+				)
+
+				Expect((<-stream).GetExitStatus()).To(Equal(uint32(42)))
+			})
+		})
+
+		Context("and then copying them out", func() {
+			It("copies the files to the host", func() {
+				_, stream, err := client.Run(
+					handle,
+					`mkdir -p some-container-dir; touch some-container-dir/some-file;`,
+					gordon.ResourceLimits{},
+				)
+
+				Expect((<-stream).GetExitStatus()).To(Equal(uint32(0)))
+
+				tmpdir, err := ioutil.TempDir("", "copy-out-temp-dir-parent")
+				Ω(err).ShouldNot(HaveOccurred())
+
+				user, err := user.Current()
+				Ω(err).ShouldNot(HaveOccurred())
+
+				_, err = client.CopyOut(handle, "some-container-dir", tmpdir, user.Username)
+				Ω(err).ShouldNot(HaveOccurred())
+
+				_, err = os.Stat(filepath.Join(tmpdir, "some-container-dir", "some-file"))
+				Ω(err).ShouldNot(HaveOccurred())
+			})
 		})
 	})
 
