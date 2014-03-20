@@ -13,7 +13,7 @@ test:
 		cd test && $(MAKE) $@
 
 iomux-spawn: iomux-spawn.o ring_buffer.o muxer.o status_writer.o child.o util.o barrier.o dlog.o
-		$(CC) -o $@ $^ -lpthread
+		$(CC) -o $@ $^ -lpthread -lrt
 
 iomux-link: iomux-link.o pump.o status_reader.o util.o
 		$(CC) -o $@ $^ -lpthread
