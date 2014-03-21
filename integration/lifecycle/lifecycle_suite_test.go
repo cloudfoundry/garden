@@ -1,8 +1,10 @@
 package lifecycle_test
 
 import (
+	"io/ioutil"
 	"log"
 	"os"
+	"path/filepath"
 	"testing"
 
 	. "github.com/onsi/ginkgo"
@@ -26,7 +28,12 @@ func TestLifecycle(t *testing.T) {
 
 	var err error
 
-	runner, err = garden_runner.New(binPath, rootFSPath)
+	tmpdir, err := ioutil.TempDir("", "garden-socket")
+	if err != nil {
+		log.Fatalln("failed to make dir for socker:", err)
+	}
+
+	runner, err = garden_runner.New(binPath, rootFSPath, "unix", filepath.Join(tmpdir, "warden.sock"))
 	if err != nil {
 		log.Fatalln("failed to create runner:", err)
 	}
@@ -42,6 +49,11 @@ func TestLifecycle(t *testing.T) {
 	err = runner.TearDown()
 	if err != nil {
 		log.Fatalln("failed to tear down server:", err)
+	}
+
+	err = os.RemoveAll(tmpdir)
+	if err != nil {
+		log.Fatalln("failed to clean up socket dir:", err)
 	}
 }
 
