@@ -29,15 +29,10 @@ type GardenRunner struct {
 	tmpdir string
 }
 
-func New(binPath string, rootFSPath string) (*GardenRunner, error) {
-	tmpdir, err := ioutil.TempDir(os.TempDir(), "garden-temp-socker")
-	if err != nil {
-		return nil, err
-	}
-
+func New(binPath, rootFSPath, network, addr string) (*GardenRunner, error) {
 	runner := &GardenRunner{
-		Network:    "unix",
-		Addr:       filepath.Join(tmpdir, "warden.sock"),
+		Network:    network,
+		Addr:       addr,
 		BinPath:    binPath,
 		RootFSPath: rootFSPath,
 	}
@@ -102,22 +97,9 @@ func (r *GardenRunner) Start(argv ...string) error {
 		return err
 	}
 
-	started := make(chan bool, 1)
-	stop := make(chan bool, 1)
-
-	go r.waitForStart(started, stop)
-
-	timeout := 10 * time.Second
-
 	r.gardenCmd = garden
 
-	select {
-	case <-started:
-		return nil
-	case <-time.After(timeout):
-		stop <- true
-		return fmt.Errorf("garden did not come up within %s", timeout)
-	}
+	return r.WaitForStart()
 }
 
 func (r *GardenRunner) Stop() error {
@@ -133,7 +115,7 @@ func (r *GardenRunner) Stop() error {
 	stopped := make(chan bool, 1)
 	stop := make(chan bool, 1)
 
-	go r.waitForStop(stopped, stop)
+	go r.WaitForStop(stopped, stop)
 
 	timeout := 10 * time.Second
 
@@ -176,32 +158,27 @@ func (r *GardenRunner) NewClient() gordon.Client {
 	})
 }
 
-func (r *GardenRunner) waitForStart(started chan<- bool, stop <-chan bool) {
-	for {
-		var err error
+func (r *GardenRunner) WaitForStart() error {
+	timeout := 10 * time.Second
+	timeoutTimer := time.NewTimer(timeout)
 
+	for {
 		conn, dialErr := net.Dial(r.Network, r.Addr)
 
 		if dialErr == nil {
 			conn.Close()
-		}
-
-		err = dialErr
-
-		if err == nil {
-			started <- true
-			return
+			return nil
 		}
 
 		select {
-		case <-stop:
-			return
 		case <-time.After(100 * time.Millisecond):
+		case <-timeoutTimer.C:
+			return fmt.Errorf("garden did not come up within %s", timeout)
 		}
 	}
 }
 
-func (r *GardenRunner) waitForStop(stopped chan<- bool, stop <-chan bool) {
+func (r *GardenRunner) WaitForStop(stopped chan<- bool, stop <-chan bool) {
 	for {
 		var err error
 
