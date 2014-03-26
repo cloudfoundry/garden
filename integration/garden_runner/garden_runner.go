@@ -29,12 +29,14 @@ type GardenRunner struct {
 	tmpdir string
 }
 
-func New(binPath, rootFSPath, network, addr string) (*GardenRunner, error) {
+func New(gardenPath, binPath, rootFSPath, network, addr string) (*GardenRunner, error) {
 	runner := &GardenRunner{
 		Network:    network,
 		Addr:       addr,
 		BinPath:    binPath,
 		RootFSPath: rootFSPath,
+
+		gardenBin: gardenPath,
 	}
 
 	return runner, runner.Prepare()
@@ -47,13 +49,6 @@ func (r *GardenRunner) Prepare() error {
 	if err != nil {
 		return err
 	}
-
-	compiled, err := cmdtest.Build("github.com/pivotal-cf-experimental/garden")
-	if err != nil {
-		return err
-	}
-
-	r.gardenBin = compiled
 
 	r.DepotPath = filepath.Join(r.tmpdir, "containers")
 	r.SnapshotsPath = filepath.Join(r.tmpdir, "snapshots")
