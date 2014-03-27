@@ -11,19 +11,19 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gunk/runner_support",
-			"Rev": "0ab08c4a0d1b32c0db1ecd53b55603662de9e767"
+			"Rev": "0dfce73f2060a23c01134f5880295b70cc325e14"
 		},
 		{
 			"ImportPath": "github.com/onsi/ginkgo",
-			"Rev": "85eb0318720ffdc1ca7023bfe4ad15a5d22a9612"
+			"Rev": "3632cbe0b58a9005513942e9d4c4920e375d6778"
 		},
 		{
 			"ImportPath": "github.com/onsi/gomega",
-			"Rev": "3da99a5a1412b006dac6662a2244f3da7ee3155b"
+			"Rev": "bad854a45453ec22d99c8bd982e2302f64d3fc37"
 		},
 		{
 			"ImportPath": "github.com/vito/cmdtest",
-			"Rev": "ccd51cbbf3154a39d1ad8861e7711dfdf4ee5719"
+			"Rev": "c56fe40f700cbe87257137c14ae739c59897fc6b"
 		},
 		{
 			"ImportPath": "github.com/vito/gordon",

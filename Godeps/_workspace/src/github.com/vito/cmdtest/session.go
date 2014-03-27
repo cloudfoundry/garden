@@ -5,9 +5,9 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"strings"
 	"syscall"
 	"time"
-	"strings"
 )
 
 type Session struct {
@@ -59,7 +59,9 @@ func StartWrapped(cmd *exec.Cmd, outWrapper OutputWrapper, errWrapper OutputWrap
 
 	go func() {
 		cmd.Wait()
+
 		exited <- cmd.ProcessState.Sys().(syscall.WaitStatus).ExitStatus()
+		close(exited)
 
 		stdoutIn.Close()
 		stderrIn.Close()

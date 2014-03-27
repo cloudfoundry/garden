@@ -4,28 +4,29 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"path/filepath"
 )
 
-func Build(mainPath string) (string, error) {
-	return BuildIn(mainPath, os.Getenv("GOPATH"))
+func Build(mainPath string, args ...string) (string, error) {
+	return BuildIn(os.Getenv("GOPATH"), mainPath, args...)
 }
 
-func BuildIn(mainPath string, gopath string) (string, error) {
+func BuildIn(gopath string, mainPath string, args ...string) (string, error) {
 	if len(gopath) == 0 {
 		panic("$GOPATH not provided when building " + mainPath)
 	}
 
-	executable, err := ioutil.TempFile(os.TempDir(), "test_cmd_main")
+	tmpdir, err := ioutil.TempDir("", "test_cmd_main")
 	if err != nil {
 		return "", err
 	}
 
-	err = os.Remove(executable.Name())
-	if err != nil {
-		return "", err
-	}
+	executable := filepath.Join(tmpdir, filepath.Base(mainPath))
 
-	build := exec.Command("go", "build", "-o", executable.Name(), mainPath)
+	cmdArgs := append([]string{"build"}, args...)
+	cmdArgs = append(cmdArgs, "-o", executable, mainPath)
+
+	build := exec.Command("go", cmdArgs...)
 	build.Stdout = os.Stdout
 	build.Stderr = os.Stderr
 	build.Stdin = os.Stdin
@@ -36,5 +37,5 @@ func BuildIn(mainPath string, gopath string) (string, error) {
 		return "", err
 	}
 
-	return executable.Name(), nil
+	return executable, nil
 }
