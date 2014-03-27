@@ -11,6 +11,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/pivotal-cf-experimental/garden/integration/garden_runner"
+	"github.com/vito/cmdtest"
 	"github.com/vito/gordon"
 )
 
@@ -33,7 +34,12 @@ func TestMeasurements(t *testing.T) {
 		log.Fatalln("failed to make dir for socker:", err)
 	}
 
-	runner, err = garden_runner.New(binPath, rootFSPath, "unix", filepath.Join(tmpdir, "warden.sock"))
+	gardenPath, err := cmdtest.Build("github.com/pivotal-cf-experimental/garden", "-race")
+	if err != nil {
+		log.Fatalln("failed to compile garden:", err)
+	}
+
+	runner, err = garden_runner.New(gardenPath, binPath, rootFSPath, "unix", filepath.Join(tmpdir, "warden.sock"))
 	if err != nil {
 		log.Fatalln("failed to create runner:", err)
 	}
