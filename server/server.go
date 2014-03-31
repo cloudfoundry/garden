@@ -114,6 +114,11 @@ func (s *WardenServer) trackStopping() {
 		select {
 		case stopping = <-s.setStopping:
 		case s.stopping <- stopping:
+			// Avoid receive starvation.
+			select {
+			case stopping = <-s.setStopping:
+			default:
+			}
 		}
 	}
 }
