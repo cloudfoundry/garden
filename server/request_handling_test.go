@@ -15,11 +15,11 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	"github.com/pivotal-cf-experimental/garden/backend"
-	"github.com/pivotal-cf-experimental/garden/backend/fake_backend"
-	"github.com/pivotal-cf-experimental/garden/message_reader"
-	protocol "github.com/pivotal-cf-experimental/garden/protocol"
-	"github.com/pivotal-cf-experimental/garden/server"
+	"github.com/cloudfoundry-incubator/garden/backend"
+	"github.com/cloudfoundry-incubator/garden/backend/fake_backend"
+	"github.com/cloudfoundry-incubator/garden/message_reader"
+	protocol "github.com/cloudfoundry-incubator/garden/protocol"
+	"github.com/cloudfoundry-incubator/garden/server"
 )
 
 var _ = Describe("When a client connects", func() {

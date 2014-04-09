@@ -3,7 +3,7 @@ package fake_backend
 import (
 	"time"
 
-	"github.com/pivotal-cf-experimental/garden/backend"
+	"github.com/cloudfoundry-incubator/garden/backend"
 )
 
 type SlowFakeBackend struct {

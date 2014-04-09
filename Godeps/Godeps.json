@@ -1,5 +1,5 @@
 {
-	"ImportPath": "github.com/pivotal-cf-experimental/garden",
+	"ImportPath": "github.com/cloudfoundry-incubator/garden",
 	"GoVersion": "go1.2.1",
 	"Packages": [
 		"./..."
@@ -7,7 +7,7 @@
 	"Deps": [
 		{
 			"ImportPath": "code.google.com/p/gogoprotobuf/proto",
-			"Rev": "dc9b8350fb4568b6562900df872672f378242552"
+			"Rev": "0e301d071c68f427f50988c544009278edece86e"
 		},
 		{
 			"ImportPath": "github.com/onsi/ginkgo",

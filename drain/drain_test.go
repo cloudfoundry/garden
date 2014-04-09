@@ -5,7 +5,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 
-	"github.com/pivotal-cf-experimental/garden/drain"
+	"github.com/cloudfoundry-incubator/garden/drain"
 )
 
 var _ = Describe("Drain", func() {

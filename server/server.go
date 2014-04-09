@@ -11,11 +11,11 @@ import (
 
 	"code.google.com/p/gogoprotobuf/proto"
 
-	"github.com/pivotal-cf-experimental/garden/backend"
-	"github.com/pivotal-cf-experimental/garden/drain"
-	"github.com/pivotal-cf-experimental/garden/message_reader"
-	protocol "github.com/pivotal-cf-experimental/garden/protocol"
-	"github.com/pivotal-cf-experimental/garden/server/bomberman"
+	"github.com/cloudfoundry-incubator/garden/backend"
+	"github.com/cloudfoundry-incubator/garden/drain"
+	"github.com/cloudfoundry-incubator/garden/message_reader"
+	protocol "github.com/cloudfoundry-incubator/garden/protocol"
+	"github.com/cloudfoundry-incubator/garden/server/bomberman"
 )
 
 type WardenServer struct {

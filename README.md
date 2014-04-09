@@ -18,8 +18,8 @@
 
 Warden in Go, because why not.
 
-* [![Build Status](https://travis-ci.org/pivotal-cf-experimental/garden.png?branch=master)](https://travis-ci.org/pivotal-cf-experimental/garden)
-* [![Coverage Status](https://coveralls.io/repos/pivotal-cf-experimental/garden/badge.png?branch=HEAD)](https://coveralls.io/r/pivotal-cf-experimental/garden?branch=HEAD)
+* [![Build Status](https://travis-ci.org/cloudfoundry-incubator/garden.png?branch=master)](https://travis-ci.org/cloudfoundry-incubator/garden)
+* [![Coverage Status](https://coveralls.io/repos/cloudfoundry-incubator/garden/badge.png?branch=HEAD)](https://coveralls.io/r/cloudfoundry-incubator/garden?branch=HEAD)
 * [Tracker](https://www.pivotaltracker.com/s/projects/962374)
 * [Warden](https://github.com/cloudfoundry/warden)
 
@@ -86,8 +86,8 @@ Install [godep](https://github.com/kr/godep) (used to manage garden's dependenci
 
 Get garden and its dependencies:
 ```
-# go get github.com/pivotal-cf-experimental/garden
-# cd /root/go/src/github.com/pivotal-cf-experimental/garden
+# go get github.com/cloudfoundry-incubator/garden
+# cd /root/go/src/github.com/cloudfoundry-incubator/garden
 # godep restore
 ```
 

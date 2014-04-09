@@ -6,8 +6,8 @@ import (
 
 	"code.google.com/p/gogoprotobuf/proto"
 
-	"github.com/pivotal-cf-experimental/garden/backend"
-	protocol "github.com/pivotal-cf-experimental/garden/protocol"
+	"github.com/cloudfoundry-incubator/garden/backend"
+	protocol "github.com/cloudfoundry-incubator/garden/protocol"
 )
 
 func (s *WardenServer) handlePing(ping *protocol.PingRequest) (proto.Message, error) {

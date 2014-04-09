@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pivotal-cf-experimental/garden/backend"
+	"github.com/cloudfoundry-incubator/garden/backend"
 )
 
 type FakeContainer struct {
