@@ -1,9 +1,0 @@
-#!/bin/bash
-# vim: set ft=sh
-
-set -e
-
-ssh -t vagrant@192.168.50.5 /vagrant/bin/run-garden-linux \
-  -listenNetwork=tcp \
-  -listenAddr=:7031 \
-  "$@"
