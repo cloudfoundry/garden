@@ -10,6 +10,7 @@
 #include <string.h>
 #include <sys/ioctl.h>
 #include <sys/ipc.h>
+#include <sys/mount.h>
 #include <sys/param.h>
 #include <sys/shm.h>
 #include <sys/signalfd.h>
@@ -22,7 +23,6 @@
 
 #include "barrier.h"
 #include "msg.h"
-#include "mount.h"
 #include "pty.h"
 #include "pwd.h"
 #include "un.h"
@@ -732,7 +732,7 @@ int child_continue(int argc, char **argv) {
     setproctitle(argv, w->title);
   }
 
-  rv = mount_umount_pivoted_root("/tmp/warden-host");
+  rv = umount2("/tmp/warden-host", MNT_DETACH);
   if (rv == -1) {
     exit(1);
   }
