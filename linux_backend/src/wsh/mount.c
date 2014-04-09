@@ -138,7 +138,7 @@ int mount_umount_pivoted_root(const char *path) {
 
   /* Iterate over paths to umount */
   for (i = 0; i < dst.mount_len; i++) {
-    rv = umount2(dst.mount_lines[i], MNT_FORCE|MNT_DETACH);
+    rv = umount2(dst.mount_lines[i], MNT_DETACH);
 
     for (retry = 0; rv == -1 && retry < 4; retry++) {
       if (errno != EBUSY) {
