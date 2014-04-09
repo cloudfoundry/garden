@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"path/filepath"
 	"syscall"
 	"time"
 
@@ -30,7 +31,11 @@ var _ = Describe("Running wshd", func() {
 
 	var socketPath string
 	var containerPath string
-	var wshdCommand *exec.Cmd
+
+	var binDir string
+	var libDir string
+	var runDir string
+	var mntDir string
 
 	BeforeEach(func() {
 		containerDir, err := ioutil.TempDir(os.TempDir(), "wshd-test-container")
@@ -38,10 +43,10 @@ var _ = Describe("Running wshd", func() {
 
 		containerPath = containerDir
 
-		binDir := path.Join(containerDir, "bin")
-		libDir := path.Join(containerDir, "lib")
-		runDir := path.Join(containerDir, "run")
-		mntDir := path.Join(containerDir, "mnt")
+		binDir = path.Join(containerDir, "bin")
+		libDir = path.Join(containerDir, "lib")
+		runDir = path.Join(containerDir, "run")
+		mntDir = path.Join(containerDir, "mnt")
 
 		os.Mkdir(binDir, 0755)
 		os.Mkdir(libDir, 0755)
@@ -63,14 +68,6 @@ chmod 700 mnt/sbin/wshd
 `), 0755)
 
 		ioutil.WriteFile(path.Join(libDir, "hook-parent-after-clone.sh"), []byte(`#!/bin/bash
-
-set -o nounset
-set -o errexit
-shopt -s nullglob
-
-cd $(dirname $0)/../
-
-echo $PID > ./run/wshd.pid
 `), 0755)
 
 		ioutil.WriteFile(path.Join(libDir, "hook-child-before-pivot.sh"), []byte(`#!/bin/bash
@@ -83,10 +80,6 @@ set -o errexit
 shopt -s nullglob
 
 cd $(dirname $0)/../
-
-mkdir -p /dev/pts
-mount -t devpts -o newinstance,ptmxmode=0666 devpts /dev/pts
-ln -sf pts/ptmx /dev/ptmx
 
 mkdir -p /proc
 mount -t proc none /proc
@@ -141,24 +134,23 @@ setup_fs
 `), 0755)
 
 		setUpRoot := exec.Command(path.Join(libDir, "set-up-root.sh"), os.Getenv("GARDEN_TEST_ROOTFS"))
-		setUpRoot.Dir = containerDir
+		setUpRoot.Dir = containerPath
 
 		setUpRootSession, err := cmdtest.StartWrapped(setUpRoot, outWrapper, outWrapper)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(setUpRootSession).To(ExitWith(0))
+	})
 
-		err = copyFile(shmTest, path.Join(mntDir, "sbin", "shmtest"))
-		Expect(err).ToNot(HaveOccurred())
-
-		socketPath = path.Join(runDir, "wshd.sock")
-
-		wshdCommand = exec.Command(
+	startWSHD := func() {
+		wshdCommand := exec.Command(
 			wshd,
 			"--run", runDir,
 			"--lib", libDir,
 			"--root", mntDir,
 			"--title", "test wshd",
 		)
+
+		socketPath = path.Join(runDir, "wshd.sock")
 
 		wshdSession, err := cmdtest.StartWrapped(wshdCommand, outWrapper, outWrapper)
 		Expect(err).ToNot(HaveOccurred())
@@ -168,12 +160,14 @@ setup_fs
 
 		Expect(status).To(Equal(0))
 
-		createdContainers = append(createdContainers, containerDir)
+		createdContainers = append(createdContainers, containerPath)
 
 		Eventually(ErrorDialingUnix(socketPath)).ShouldNot(HaveOccurred())
-	})
+	}
 
 	It("starts the daemon as a session leader with process isolation and the given title", func() {
+		startWSHD()
+
 		ps := exec.Command(wsh, "--socket", socketPath, "/bin/ps", "-o", "pid,command")
 
 		psSession, err := cmdtest.StartWrapped(ps, outWrapper, outWrapper)
@@ -190,6 +184,8 @@ setup_fs
 	})
 
 	It("starts the daemon with mount space isolation", func() {
+		startWSHD()
+
 		mkdir := exec.Command(wsh, "--socket", socketPath, "/bin/mkdir", "/home/vcap/lawn")
 		mkdirSession, err := cmdtest.StartWrapped(mkdir, outWrapper, outWrapper)
 		Expect(err).ToNot(HaveOccurred())
@@ -213,6 +209,8 @@ setup_fs
 	})
 
 	It("places the daemon in each cgroup subsystem", func() {
+		startWSHD()
+
 		cat := exec.Command(wsh, "--socket", socketPath, "bash", "-c", "cat /proc/$$/cgroup")
 		catSession, err := cmdtest.StartWrapped(cat, outWrapper, outWrapper)
 		Expect(err).ToNot(HaveOccurred())
@@ -225,6 +223,8 @@ setup_fs
 	})
 
 	It("starts the daemon with network namespace isolation", func() {
+		startWSHD()
+
 		ifconfig := exec.Command(wsh, "--socket", socketPath, "/sbin/ifconfig", "lo:0", "1.2.3.4", "up")
 		ifconfigSession, err := cmdtest.StartWrapped(ifconfig, outWrapper, outWrapper)
 		Expect(err).ToNot(HaveOccurred())
@@ -238,6 +238,11 @@ setup_fs
 	})
 
 	It("starts the daemon with a new IPC namespace", func() {
+		err = copyFile(shmTest, path.Join(mntDir, "sbin", "shmtest"))
+		Expect(err).ToNot(HaveOccurred())
+
+		startWSHD()
+
 		localSHM := exec.Command(shmTest)
 		createLocal, err := cmdtest.StartWrapped(
 			localSHM,
@@ -262,6 +267,8 @@ setup_fs
 	})
 
 	It("starts the daemon with a new UTS namespace", func() {
+		startWSHD()
+
 		hostname := exec.Command(wsh, "--socket", socketPath, "/bin/hostname", "newhostname")
 		hostnameSession, err := cmdtest.StartWrapped(hostname, outWrapper, outWrapper)
 		Expect(err).ToNot(HaveOccurred())
@@ -274,6 +281,8 @@ setup_fs
 	})
 
 	It("does not leak any shared memory to the child", func() {
+		startWSHD()
+
 		createRemote, err := cmdtest.StartWrapped(
 			exec.Command(wsh, "--socket", socketPath, "ipcs"),
 			outWrapper,
@@ -284,6 +293,8 @@ setup_fs
 	})
 
 	It("unmounts /tmp/warden-host* in the child", func() {
+		startWSHD()
+
 		cat := exec.Command(wsh, "--socket", socketPath, "/bin/cat", "/proc/mounts")
 
 		catSession, err := cmdtest.StartWrapped(cat, outWrapper, outWrapper)
@@ -293,8 +304,52 @@ setup_fs
 		Expect(catSession).To(ExitWith(0))
 	})
 
+	Context("when mount points on the host are deleted", func() {
+		BeforeEach(func() {
+			tmpdir, err := ioutil.TempDir("", "wshd-bogus-mount")
+			Expect(err).ToNot(HaveOccurred())
+
+			fooDir := filepath.Join(tmpdir, "foo")
+			barDir := filepath.Join(tmpdir, "bar")
+
+			err = os.MkdirAll(fooDir, 0755)
+			Expect(err).ToNot(HaveOccurred())
+
+			err = os.MkdirAll(barDir, 0755)
+			Expect(err).ToNot(HaveOccurred())
+
+			mount := exec.Command("mount", "--bind", fooDir, barDir)
+			mountSession, err := cmdtest.StartWrapped(mount, outWrapper, outWrapper)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(mountSession).To(ExitWith(0))
+
+			err = os.RemoveAll(fooDir)
+			Expect(err).ToNot(HaveOccurred())
+
+			cat := exec.Command("/bin/cat", "/proc/mounts")
+			catSession, err := cmdtest.StartWrapped(cat, outWrapper, outWrapper)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(catSession).To(Say("(deleted)"))
+			Expect(catSession).To(ExitWith(0))
+		})
+
+		It("unmounts the un-mangled mount point name", func() {
+			startWSHD()
+
+			cat := exec.Command(wsh, "--socket", socketPath, "/bin/cat", "/proc/mounts")
+
+			catSession, err := cmdtest.StartWrapped(cat, outWrapper, outWrapper)
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(catSession).ToNot(Say("(deleted)"))
+			Expect(catSession).To(ExitWith(0))
+		})
+	})
+
 	Context("when running a command as a user", func() {
 		It("executes with setuid and setgid", func() {
+			startWSHD()
+
 			bash := exec.Command(wsh, "--socket", socketPath, "--user", "vcap", "/bin/bash", "-c", "id -u; id -g")
 
 			bashSession, err := cmdtest.StartWrapped(bash, outWrapper, outWrapper)
@@ -306,6 +361,8 @@ setup_fs
 		})
 
 		It("sets $HOME, $USER, and $PATH", func() {
+			startWSHD()
+
 			bash := exec.Command(wsh, "--socket", socketPath, "--user", "vcap", "/bin/bash", "-c", "env | sort")
 
 			bashSession, err := cmdtest.StartWrapped(bash, outWrapper, outWrapper)
@@ -318,6 +375,8 @@ setup_fs
 		})
 
 		It("executes in their home directory", func() {
+			startWSHD()
+
 			pwd := exec.Command(wsh, "--socket", socketPath, "--user", "vcap", "/bin/pwd")
 
 			pwdSession, err := cmdtest.StartWrapped(pwd, outWrapper, outWrapper)
@@ -330,6 +389,8 @@ setup_fs
 
 	Context("when running a command as root", func() {
 		It("executes with setuid and setgid", func() {
+			startWSHD()
+
 			bash := exec.Command(wsh, "--socket", socketPath, "--user", "root", "/bin/bash", "-c", "id -u; id -g")
 
 			bashSession, err := cmdtest.StartWrapped(bash, outWrapper, outWrapper)
@@ -341,6 +402,8 @@ setup_fs
 		})
 
 		It("sets $HOME, $USER, and a $PATH with sbin dirs", func() {
+			startWSHD()
+
 			bash := exec.Command(wsh, "--socket", socketPath, "--user", "root", "/bin/bash", "-c", "env | sort")
 
 			bashSession, err := cmdtest.StartWrapped(bash, outWrapper, outWrapper)
@@ -353,6 +416,8 @@ setup_fs
 		})
 
 		It("executes in their home directory", func() {
+			startWSHD()
+
 			pwd := exec.Command(wsh, "--socket", socketPath, "--user", "root", "/bin/pwd")
 
 			pwdSession, err := cmdtest.StartWrapped(pwd, outWrapper, outWrapper)
@@ -365,6 +430,8 @@ setup_fs
 
 	Context("when piping stdin", func() {
 		It("terminates when the input stream terminates", func() {
+			startWSHD()
+
 			bash := exec.Command(wsh, "--socket", socketPath, "/bin/bash")
 
 			bashSession, err := cmdtest.StartWrapped(bash, outWrapper, outWrapper)
@@ -380,6 +447,8 @@ setup_fs
 
 	Context("when in rsh compatibility mode", func() {
 		It("respects -l, discards -t [X], -46dn, skips the host, and runs the command", func() {
+			startWSHD()
+
 			pwd := exec.Command(
 				wsh,
 				"--socket", socketPath,
@@ -403,6 +472,8 @@ setup_fs
 		})
 
 		It("doesn't cause rsh-like flags to be consumed", func() {
+			startWSHD()
+
 			cmd := exec.Command(
 				wsh,
 				"--socket", socketPath,
@@ -425,6 +496,8 @@ setup_fs
 		})
 
 		It("can be used to rsync files", func() {
+			startWSHD()
+
 			cmd := exec.Command(
 				"rsync",
 				"-e",

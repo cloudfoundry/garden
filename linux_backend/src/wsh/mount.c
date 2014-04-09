@@ -78,6 +78,7 @@ static void mount__remove_line(mount_lines_t *dst, int i) {
 
 static void mount__filter_proc_mounts(mount_lines_t *dst, const char *prefix) {
   size_t i;
+  char *deleted;
 
   for (i = 0; i < dst->mount_len; i++) {
     /* Remove entry if equal to the current entry. This should never happen
@@ -87,6 +88,15 @@ static void mount__filter_proc_mounts(mount_lines_t *dst, const char *prefix) {
     if (i > 0 && strcmp(dst->mount_lines[i], dst->mount_lines[i - 1]) == 0) {
       mount__remove_line(dst, i);
       i--; /* Retry this index */
+      continue;
+    }
+
+    /* Bind mounts whose source has been removed get mangled. */
+    deleted = strstr(dst->mount_lines[i], "\\040(deleted)");
+    if (deleted != NULL) {
+      /* Strip out the mangling so we unmount the correct path. */
+      /* See http://lxr.free-electrons.com/source/fs/dcache.c#L3004 */
+      *deleted = 0;
       continue;
     }
 
