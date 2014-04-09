@@ -1,4 +1,4 @@
-package connection_test
+package ghttp_test
 
 import (
 	. "github.com/onsi/ginkgo"
@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestConnection(t *testing.T) {
+func TestGHTTP(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Connection Suite")
+	RunSpecs(t, "GHTTP Suite")
 }

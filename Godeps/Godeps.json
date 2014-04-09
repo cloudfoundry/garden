@@ -7,11 +7,7 @@
 	"Deps": [
 		{
 			"ImportPath": "code.google.com/p/gogoprotobuf/proto",
-			"Rev": "2395ecf872ff63554aca750519f302cba92261d8"
-		},
-		{
-			"ImportPath": "github.com/cloudfoundry/gunk/runner_support",
-			"Rev": "0dfce73f2060a23c01134f5880295b70cc325e14"
+			"Rev": "dc9b8350fb4568b6562900df872672f378242552"
 		},
 		{
 			"ImportPath": "github.com/onsi/ginkgo",
@@ -19,15 +15,7 @@
 		},
 		{
 			"ImportPath": "github.com/onsi/gomega",
-			"Rev": "bad854a45453ec22d99c8bd982e2302f64d3fc37"
-		},
-		{
-			"ImportPath": "github.com/vito/cmdtest",
-			"Rev": "c56fe40f700cbe87257137c14ae739c59897fc6b"
-		},
-		{
-			"ImportPath": "github.com/vito/gordon",
-			"Rev": "abe24aba708d3b78e5a85b7d6da037a53ecebdcc"
+			"Rev": "b017f5b84e91054313ed33ba2422e992c3b08626"
 		}
 	]
 }
