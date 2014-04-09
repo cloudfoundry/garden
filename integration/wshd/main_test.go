@@ -305,16 +305,12 @@ setup_fs
 	})
 
 	Context("when mount points on the host are deleted", func() {
-		var bogusMount string
-
 		BeforeEach(func() {
-			var err error
-
-			bogusMount, err = ioutil.TempDir("", "wshd-bogus-mount")
+			tmpdir, err := ioutil.TempDir("", "wshd-bogus-mount")
 			Expect(err).ToNot(HaveOccurred())
 
-			fooDir := filepath.Join(bogusMount, "foo")
-			barDir := filepath.Join(bogusMount, "bar")
+			fooDir := filepath.Join(tmpdir, "foo")
+			barDir := filepath.Join(tmpdir, "bar")
 
 			err = os.MkdirAll(fooDir, 0755)
 			Expect(err).ToNot(HaveOccurred())
@@ -335,10 +331,6 @@ setup_fs
 			Expect(err).ToNot(HaveOccurred())
 			Expect(catSession).To(Say("(deleted)"))
 			Expect(catSession).To(ExitWith(0))
-		})
-
-		AfterEach(func() {
-			os.RemoveAll(bogusMount)
 		})
 
 		It("unmounts the un-mangled mount point name", func() {
