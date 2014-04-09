@@ -5,7 +5,6 @@ import (
 )
 
 type Backend interface {
-	Setup() error
 	Start() error
 	Stop()
 

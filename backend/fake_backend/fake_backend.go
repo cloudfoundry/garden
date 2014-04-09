@@ -40,10 +40,6 @@ func New() *FakeBackend {
 	}
 }
 
-func (b *FakeBackend) Setup() error {
-	return nil
-}
-
 func (b *FakeBackend) Start() error {
 	if b.StartError != nil {
 		return b.StartError
