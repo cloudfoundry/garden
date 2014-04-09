@@ -307,27 +307,30 @@ setup_fs
 	Context("when mount points on the host are deleted", func() {
 		var bogusMount string
 
+		var mountSrcDir string
+		var mountDstDir string
+
 		BeforeEach(func() {
 			var err error
 
 			bogusMount, err = ioutil.TempDir("", "wshd-bogus-mount")
 			Expect(err).ToNot(HaveOccurred())
 
-			fooDir := filepath.Join(bogusMount, "foo")
-			barDir := filepath.Join(bogusMount, "bar")
+			mountSrcDir = filepath.Join(bogusMount, "foo")
+			mountDstDir = filepath.Join(bogusMount, "bar")
 
-			err = os.MkdirAll(fooDir, 0755)
+			err = os.MkdirAll(mountSrcDir, 0755)
 			Expect(err).ToNot(HaveOccurred())
 
-			err = os.MkdirAll(barDir, 0755)
+			err = os.MkdirAll(mountDstDir, 0755)
 			Expect(err).ToNot(HaveOccurred())
 
-			mount := exec.Command("mount", "--bind", fooDir, barDir)
+			mount := exec.Command("mount", "--bind", mountSrcDir, mountDstDir)
 			mountSession, err := cmdtest.StartWrapped(mount, outWrapper, outWrapper)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(mountSession).To(ExitWith(0))
 
-			err = os.RemoveAll(fooDir)
+			err = os.RemoveAll(mountSrcDir)
 			Expect(err).ToNot(HaveOccurred())
 
 			cat := exec.Command("/bin/cat", "/proc/mounts")
@@ -338,6 +341,11 @@ setup_fs
 		})
 
 		AfterEach(func() {
+			umount := exec.Command("umount", mountDstDir)
+			umountSession, err := cmdtest.StartWrapped(umount, outWrapper, outWrapper)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(umountSession).To(ExitWith(0))
+
 			os.RemoveAll(bogusMount)
 		})
 
