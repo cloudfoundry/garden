@@ -9,7 +9,6 @@ type Container interface {
 	Handle() string
 	GraceTime() time.Duration
 
-	Start() error
 	Stop(kill bool) error
 
 	Info() (ContainerInfo, error)
