@@ -1,14 +1,16 @@
 #!/bin/bash
+# vim: set ft=sh
 
 set -e -x
 
-export GARDEN_TEST_ROOTFS=/opt/warden/rootfs
-export GODEPS_WORKSPACE=$PWD/Godeps/_workspace
+FIRST_GOPATH=`echo $GOPATH | cut -d':' -f1`
 
-export GOPATH=$GODEPS_WORKSPACE:$GOPATH
-export PATH=$GODEPS_WORKSPACE/bin:$PATH
+mkdir -p $FIRST_GOPATH/bin
+export PATH=$FIRST_GOPATH/bin:$PATH
+
+go get -t ./...
 
 make
 
 go install github.com/onsi/ginkgo/ginkgo
-ginkgo -r -v -skipMeasurements -keepGoing
+ginkgo -r -skipMeasurements -randomizeAllSpecs -race "$@"

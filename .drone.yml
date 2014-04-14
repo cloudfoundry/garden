@@ -1,4 +1,4 @@
-image: cloudfoundry/garden-ci
+image: mischief/docker-golang
 
 env:
   - GOROOT=/usr/local/go
