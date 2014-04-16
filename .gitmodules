@@ -1,3 +1,3 @@
 [submodule "protobuf"]
 	path = protobuf
-	url = https://github.com/vito/warden-protocol.git
+	url = https://github.com/cloudfoundry-incubator/warden-protocol.git
