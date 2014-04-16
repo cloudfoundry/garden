@@ -8,6 +8,7 @@ type Container interface {
 	ID() string
 	Handle() string
 	GraceTime() time.Duration
+	Properties() Properties
 
 	Stop(kill bool) error
 

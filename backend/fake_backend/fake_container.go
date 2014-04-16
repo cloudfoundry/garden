@@ -122,6 +122,10 @@ func (c *FakeContainer) Handle() string {
 	return c.Spec.Handle
 }
 
+func (c *FakeContainer) Properties() backend.Properties {
+	return c.Spec.Properties
+}
+
 func (c *FakeContainer) GraceTime() time.Duration {
 	return c.Spec.GraceTime
 }

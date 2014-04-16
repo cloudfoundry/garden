@@ -32,6 +32,12 @@ func (s *WardenServer) handleCreate(create *protocol.CreateRequest) (proto.Messa
 		bindMounts = append(bindMounts, bindMount)
 	}
 
+	properties := map[string]string{}
+
+	for _, prop := range create.GetProperties() {
+		properties[prop.GetKey()] = prop.GetValue()
+	}
+
 	graceTime := s.containerGraceTime
 
 	if create.GraceTime != nil {
@@ -44,6 +50,7 @@ func (s *WardenServer) handleCreate(create *protocol.CreateRequest) (proto.Messa
 		RootFSPath: create.GetRootfs(),
 		Network:    create.GetNetwork(),
 		BindMounts: bindMounts,
+		Properties: properties,
 	})
 
 	if err != nil {
@@ -79,10 +86,29 @@ func (s *WardenServer) handleList(list *protocol.ListRequest) (proto.Message, er
 	handles := []string{}
 
 	for _, container := range containers {
-		handles = append(handles, container.Handle())
+		if containerHasProperties(container, list.GetProperties()) {
+			handles = append(handles, container.Handle())
+		}
 	}
 
 	return &protocol.ListResponse{Handles: handles}, nil
+}
+
+func containerHasProperties(container backend.Container, properties []*protocol.Property) bool {
+	containerProps := container.Properties()
+
+	for _, prop := range properties {
+		val, ok := containerProps[prop.GetKey()]
+		if !ok {
+			return false
+		}
+
+		if val != prop.GetValue() {
+			return false
+		}
+	}
+
+	return true
 }
 
 func (s *WardenServer) handleCopyOut(copyOut *protocol.CopyOutRequest) (proto.Message, error) {
@@ -477,6 +503,13 @@ func (s *WardenServer) handleInfo(request *protocol.InfoRequest) (proto.Message,
 		return nil, err
 	}
 
+	properties := []*protocol.Property{}
+	for key, val := range container.Properties() {
+		properties = append(properties, &protocol.Property{
+			Key:   proto.String(key),
+			Value: proto.String(val),
+		})
+	}
 	processIDs := make([]uint64, len(info.ProcessIDs))
 	for i, processID := range info.ProcessIDs {
 		processIDs[i] = uint64(processID)
@@ -489,6 +522,8 @@ func (s *WardenServer) handleInfo(request *protocol.InfoRequest) (proto.Message,
 		ContainerIp:   proto.String(info.ContainerIP),
 		ContainerPath: proto.String(info.ContainerPath),
 		ProcessIds:    processIDs,
+
+		Properties: properties,
 
 		MemoryStat: &protocol.InfoResponse_MemoryStat{
 			Cache:                   proto.Uint64(info.MemoryStat.Cache),

@@ -40,6 +40,7 @@ type InfoResponse struct {
 	DiskStat         *InfoResponse_DiskStat      `protobuf:"bytes,42,opt,name=disk_stat" json:"disk_stat,omitempty"`
 	BandwidthStat    *InfoResponse_BandwidthStat `protobuf:"bytes,43,opt,name=bandwidth_stat" json:"bandwidth_stat,omitempty"`
 	ProcessIds       []uint64                    `protobuf:"varint,44,rep,name=process_ids" json:"process_ids,omitempty"`
+	Properties       []*Property                 `protobuf:"bytes,45,rep,name=properties" json:"properties,omitempty"`
 	XXX_unrecognized []byte                      `json:"-"`
 }
 
@@ -113,6 +114,13 @@ func (m *InfoResponse) GetBandwidthStat() *InfoResponse_BandwidthStat {
 func (m *InfoResponse) GetProcessIds() []uint64 {
 	if m != nil {
 		return m.ProcessIds
+	}
+	return nil
+}
+
+func (m *InfoResponse) GetProperties() []*Property {
+	if m != nil {
+		return m.Properties
 	}
 	return nil
 }

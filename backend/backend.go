@@ -20,6 +20,7 @@ type ContainerSpec struct {
 	RootFSPath string
 	BindMounts []BindMount
 	Network    string
+	Properties Properties
 }
 
 type BindMount struct {
@@ -28,6 +29,8 @@ type BindMount struct {
 	Mode    BindMountMode
 	Origin  BindMountOrigin
 }
+
+type Properties map[string]string
 
 type BindMountMode uint8
 

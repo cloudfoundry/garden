@@ -14,12 +14,20 @@ var _ = &json.SyntaxError{}
 var _ = math.Inf
 
 type ListRequest struct {
-	XXX_unrecognized []byte `json:"-"`
+	Properties       []*Property `protobuf:"bytes,1,rep,name=properties" json:"properties,omitempty"`
+	XXX_unrecognized []byte      `json:"-"`
 }
 
 func (m *ListRequest) Reset()         { *m = ListRequest{} }
 func (m *ListRequest) String() string { return proto.CompactTextString(m) }
 func (*ListRequest) ProtoMessage()    {}
+
+func (m *ListRequest) GetProperties() []*Property {
+	if m != nil {
+		return m.Properties
+	}
+	return nil
+}
 
 type ListResponse struct {
 	Handles          []string `protobuf:"bytes,1,rep,name=handles" json:"handles,omitempty"`

@@ -162,6 +162,20 @@ var _ = Describe("When a client connects", func() {
 						Origin:  &bindMountOrigin,
 					},
 				},
+				Properties: []*protocol.Property{
+					{
+						Key:   proto.String("cf-owner"),
+						Value: proto.String("executor"),
+					},
+					{
+						Key:   proto.String("duped"),
+						Value: proto.String("a"),
+					},
+					{
+						Key:   proto.String("duped"),
+						Value: proto.String("b"),
+					},
+				},
 			})
 
 			var response protocol.CreateResponse
@@ -182,6 +196,10 @@ var _ = Describe("When a client connects", func() {
 						Mode:    backend.BindMountModeRW,
 						Origin:  backend.BindMountOriginContainer,
 					},
+				},
+				Properties: map[string]string{
+					"cf-owner": "executor",
+					"duped":    "b",
 				},
 			}))
 
@@ -314,10 +332,28 @@ var _ = Describe("When a client connects", func() {
 
 	Context("and the client sends a ListRequest", func() {
 		BeforeEach(func() {
-			_, err := serverBackend.Create(backend.ContainerSpec{Handle: "some-handle"})
+			_, err := serverBackend.Create(backend.ContainerSpec{
+				Handle: "some-handle",
+				Properties: map[string]string{
+					"cf-owner": "executor",
+				},
+			})
 			Expect(err).ToNot(HaveOccurred())
 
-			_, err = serverBackend.Create(backend.ContainerSpec{Handle: "another-handle"})
+			_, err = serverBackend.Create(backend.ContainerSpec{
+				Handle: "another-handle",
+				Properties: map[string]string{
+					"cf-owner": "executor",
+				},
+			})
+			Expect(err).ToNot(HaveOccurred())
+
+			_, err = serverBackend.Create(backend.ContainerSpec{
+				Handle: "super-handle",
+				Properties: map[string]string{
+					"cf-owner": "pants",
+				},
+			})
 			Expect(err).ToNot(HaveOccurred())
 		})
 
@@ -329,6 +365,7 @@ var _ = Describe("When a client connects", func() {
 
 			Expect(response.GetHandles()).To(ContainElement("some-handle"))
 			Expect(response.GetHandles()).To(ContainElement("another-handle"))
+			Expect(response.GetHandles()).To(ContainElement("super-handle"))
 
 			close(done)
 		}, 1.0)
@@ -344,6 +381,29 @@ var _ = Describe("When a client connects", func() {
 				var response protocol.ListResponse
 				err := message_reader.ReadMessage(responses, &response)
 				Expect(err).To(Equal(&message_reader.WardenError{Message: "oh no!"}))
+
+				close(done)
+			}, 1.0)
+		})
+
+		Context("and the client sends a ListRequest with a property filter", func() {
+			It("sends a ListResponse containing only the handles with the specified properties", func(done Done) {
+				writeMessages(&protocol.ListRequest{
+					Properties: []*protocol.Property{
+						{
+							Key:   proto.String("cf-owner"),
+							Value: proto.String("executor"),
+						},
+					},
+				})
+
+				var response protocol.ListResponse
+				readResponse(&response)
+
+				Expect(response.GetHandles()).To(ContainElement("some-handle"))
+				Expect(response.GetHandles()).To(ContainElement("another-handle"))
+				Expect(response.GetHandles()).ToNot(ContainElement("super-handle"))
+				Expect(response.GetHandles()).To(HaveLen(2))
 
 				close(done)
 			}, 1.0)
@@ -1788,7 +1848,13 @@ var _ = Describe("When a client connects", func() {
 		var fakeContainer *fake_backend.FakeContainer
 
 		BeforeEach(func() {
-			container, err := serverBackend.Create(backend.ContainerSpec{Handle: "some-handle"})
+			container, err := serverBackend.Create(backend.ContainerSpec{
+				Handle: "some-handle",
+				Properties: map[string]string{
+					"foo": "bar",
+					"a":   "b",
+				},
+			})
 			Expect(err).ToNot(HaveOccurred())
 
 			fakeContainer = container.(*fake_backend.FakeContainer)
@@ -1906,6 +1972,27 @@ var _ = Describe("When a client connects", func() {
 
 			close(done)
 		}, 1.0)
+
+		It("includes the container's properties", func() {
+			writeMessages(&protocol.InfoRequest{
+				Handle: proto.String(fakeContainer.Handle()),
+			})
+
+			var response protocol.InfoResponse
+			readResponse(&response)
+
+			Expect(response.GetProperties()).To(ContainElement(&protocol.Property{
+				Key:   proto.String("foo"),
+				Value: proto.String("bar"),
+			}))
+
+			Expect(response.GetProperties()).To(ContainElement(&protocol.Property{
+				Key:   proto.String("a"),
+				Value: proto.String("b"),
+			}))
+
+			Expect(response.GetProperties()).To(HaveLen(2))
+		})
 
 		itResetsGraceTimeWhenHandling(&protocol.InfoRequest{
 			Handle: proto.String("some-handle"),

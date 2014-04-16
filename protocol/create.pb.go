@@ -85,6 +85,7 @@ type CreateRequest struct {
 	Handle           *string                    `protobuf:"bytes,3,opt,name=handle" json:"handle,omitempty"`
 	Network          *string                    `protobuf:"bytes,4,opt,name=network" json:"network,omitempty"`
 	Rootfs           *string                    `protobuf:"bytes,5,opt,name=rootfs" json:"rootfs,omitempty"`
+	Properties       []*Property                `protobuf:"bytes,6,rep,name=properties" json:"properties,omitempty"`
 	XXX_unrecognized []byte                     `json:"-"`
 }
 
@@ -125,6 +126,13 @@ func (m *CreateRequest) GetRootfs() string {
 		return *m.Rootfs
 	}
 	return ""
+}
+
+func (m *CreateRequest) GetProperties() []*Property {
+	if m != nil {
+		return m.Properties
+	}
+	return nil
 }
 
 type CreateRequest_BindMount struct {
