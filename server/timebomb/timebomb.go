@@ -28,16 +28,14 @@ func New(countdown time.Duration, detonate func()) *TimeBomb {
 
 func (b *TimeBomb) Strap() {
 	go func() {
-		timer := time.NewTimer(1 * time.Second)
-		defer timer.Stop()
 		for {
 			cool := b.waitForCooldown()
 			if !cool {
 				continue
 			}
-			timer.Reset(b.countdown)
+
 			select {
-			case <-timer.C:
+			case <-time.After(b.countdown):
 				b.detonate()
 				return
 			case <-b.reset:
