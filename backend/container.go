@@ -37,9 +37,10 @@ type Container interface {
 }
 
 type ProcessSpec struct {
-	Script     string
-	Privileged bool
-	Limits     ResourceLimits
+	Script               string
+	Privileged           bool
+	Limits               ResourceLimits
+	EnvironmentVariables []EnvironmentVariable
 }
 
 type ProcessStream struct {
@@ -147,6 +148,11 @@ type MemoryLimits struct {
 
 type CPULimits struct {
 	LimitInShares uint64
+}
+
+type EnvironmentVariable struct {
+	Key   string
+	Value string
 }
 
 type ResourceLimits struct {

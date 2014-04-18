@@ -14,11 +14,12 @@ var _ = &json.SyntaxError{}
 var _ = math.Inf
 
 type RunRequest struct {
-	Handle           *string         `protobuf:"bytes,1,req,name=handle" json:"handle,omitempty"`
-	Script           *string         `protobuf:"bytes,2,req,name=script" json:"script,omitempty"`
-	Privileged       *bool           `protobuf:"varint,3,opt,name=privileged,def=0" json:"privileged,omitempty"`
-	Rlimits          *ResourceLimits `protobuf:"bytes,4,opt,name=rlimits" json:"rlimits,omitempty"`
-	XXX_unrecognized []byte          `json:"-"`
+	Handle           *string                `protobuf:"bytes,1,req,name=handle" json:"handle,omitempty"`
+	Script           *string                `protobuf:"bytes,2,req,name=script" json:"script,omitempty"`
+	Privileged       *bool                  `protobuf:"varint,3,opt,name=privileged,def=0" json:"privileged,omitempty"`
+	Rlimits          *ResourceLimits        `protobuf:"bytes,4,opt,name=rlimits" json:"rlimits,omitempty"`
+	Env              []*EnvironmentVariable `protobuf:"bytes,5,rep,name=env" json:"env,omitempty"`
+	XXX_unrecognized []byte                 `json:"-"`
 }
 
 func (m *RunRequest) Reset()         { *m = RunRequest{} }
@@ -51,6 +52,13 @@ func (m *RunRequest) GetPrivileged() bool {
 func (m *RunRequest) GetRlimits() *ResourceLimits {
 	if m != nil {
 		return m.Rlimits
+	}
+	return nil
+}
+
+func (m *RunRequest) GetEnv() []*EnvironmentVariable {
+	if m != nil {
+		return m.Env
 	}
 	return nil
 }

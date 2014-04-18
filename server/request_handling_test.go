@@ -866,6 +866,16 @@ var _ = Describe("When a client connects", func() {
 					Sigpending: proto.Uint64(14),
 					Stack:      proto.Uint64(15),
 				},
+				Env: []*protocol.EnvironmentVariable{
+					&protocol.EnvironmentVariable{
+						Key:   proto.String("FLAVOR"),
+						Value: proto.String("chocolate"),
+					},
+					&protocol.EnvironmentVariable{
+						Key:   proto.String("TOPPINGS"),
+						Value: proto.String("sprinkles"),
+					},
+				},
 			})
 
 			var response protocol.ProcessPayload
@@ -914,6 +924,16 @@ var _ = Describe("When a client connects", func() {
 						Rtprio:     uint64ptr(13),
 						Sigpending: uint64ptr(14),
 						Stack:      uint64ptr(15),
+					},
+					EnvironmentVariables: []backend.EnvironmentVariable{
+						backend.EnvironmentVariable{
+							Key:   "FLAVOR",
+							Value: "chocolate",
+						},
+						backend.EnvironmentVariable{
+							Key:   "TOPPINGS",
+							Value: "sprinkles",
+						},
 					},
 				},
 			))

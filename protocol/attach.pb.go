@@ -12,6 +12,7 @@ It is generated from these files:
 	create.proto
 	destroy.proto
 	echo.proto
+	environment_variable.proto
 	error.proto
 	info.proto
 	limit_bandwidth.proto

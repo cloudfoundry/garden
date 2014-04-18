@@ -433,10 +433,25 @@ func (s *WardenServer) streamProcessToConnection(processID uint32, stream <-chan
 	return nil
 }
 
+func convertEnvironmentVariables(environmentVariables []*protocol.EnvironmentVariable) []backend.EnvironmentVariable {
+	convertedEnvironmentVariables := []backend.EnvironmentVariable{}
+
+	for _, env := range environmentVariables {
+		convertedEnvironmentVariable := backend.EnvironmentVariable{
+			Key:   env.GetKey(),
+			Value: env.GetValue(),
+		}
+		convertedEnvironmentVariables = append(convertedEnvironmentVariables, convertedEnvironmentVariable)
+	}
+
+	return convertedEnvironmentVariables
+}
+
 func (s *WardenServer) handleRun(conn net.Conn, request *protocol.RunRequest) (proto.Message, error) {
 	handle := request.GetHandle()
 	script := request.GetScript()
 	privileged := request.GetPrivileged()
+	env := request.GetEnv()
 
 	container, err := s.backend.Lookup(handle)
 	if err != nil {
@@ -447,8 +462,9 @@ func (s *WardenServer) handleRun(conn net.Conn, request *protocol.RunRequest) (p
 	defer s.bomberman.Unpause(container.Handle())
 
 	ProcessSpec := backend.ProcessSpec{
-		Script:     script,
-		Privileged: privileged,
+		Script:               script,
+		Privileged:           privileged,
+		EnvironmentVariables: convertEnvironmentVariables(env),
 	}
 
 	if request.Rlimits != nil {
