@@ -14,7 +14,6 @@ import (
 	"github.com/cloudfoundry-incubator/garden/message_reader"
 	protocol "github.com/cloudfoundry-incubator/garden/protocol"
 	"github.com/cloudfoundry-incubator/garden/warden"
-	. "github.com/cloudfoundry-incubator/gordon/test_helpers" // TODO
 )
 
 var _ = Describe("Info", func() {
@@ -119,13 +118,13 @@ var _ = Describe("Connection", func() {
 		})
 
 		It("should create a container", func() {
-			resp, err := connection.Create(warden.ContainerSpec{
+			handle, err := connection.Create(warden.ContainerSpec{
 				Properties: map[string]string{
 					"foo": "bar",
 				},
 			})
 			Ω(err).ShouldNot(HaveOccurred())
-			Ω(resp.GetHandle()).Should(Equal("foohandle"))
+			Ω(handle).Should(Equal("foohandle"))
 
 			assertWriteBufferContains(&protocol.CreateRequest{
 				Properties: []*protocol.Property{
@@ -146,7 +145,7 @@ var _ = Describe("Connection", func() {
 		})
 
 		It("should stop the container", func() {
-			_, err := connection.Stop("foo", true, true)
+			err := connection.Stop("foo", true, true)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			assertWriteBufferContains(&protocol.StopRequest{
@@ -165,7 +164,7 @@ var _ = Describe("Connection", func() {
 		})
 
 		It("should stop the container", func() {
-			_, err := connection.Destroy("foo")
+			err := connection.Destroy("foo")
 			Ω(err).ShouldNot(HaveOccurred())
 
 			assertWriteBufferContains(&protocol.DestroyRequest{
@@ -183,11 +182,11 @@ var _ = Describe("Connection", func() {
 			})
 
 			It("should limit memory", func() {
-				res, err := connection.LimitMemory("foo", warden.MemoryLimits{
+				newLimits, err := connection.LimitMemory("foo", warden.MemoryLimits{
 					LimitInBytes: 42,
 				})
 				Ω(err).ShouldNot(HaveOccurred())
-				Ω(res.GetLimitInBytes()).Should(BeNumerically("==", 40))
+				Ω(newLimits.LimitInBytes).Should(BeNumerically("==", 40))
 
 				assertWriteBufferContains(&protocol.LimitMemoryRequest{
 					Handle:       proto.String("foo"),
@@ -205,11 +204,11 @@ var _ = Describe("Connection", func() {
 		})
 
 		It("should limit CPU", func() {
-			res, err := connection.LimitCPU("foo", warden.CPULimits{
+			newLimits, err := connection.LimitCPU("foo", warden.CPULimits{
 				LimitInShares: 42,
 			})
 			Ω(err).ShouldNot(HaveOccurred())
-			Ω(res.GetLimitInShares()).Should(BeNumerically("==", 40))
+			Ω(newLimits.LimitInShares).Should(BeNumerically("==", 40))
 
 			assertWriteBufferContains(&protocol.LimitCpuRequest{
 				Handle:        proto.String("foo"),
@@ -229,13 +228,13 @@ var _ = Describe("Connection", func() {
 		})
 
 		It("should limit Bandwidth", func() {
-			res, err := connection.LimitBandwidth("foo", warden.BandwidthLimits{
+			newLimits, err := connection.LimitBandwidth("foo", warden.BandwidthLimits{
 				RateInBytesPerSecond:      42,
 				BurstRateInBytesPerSecond: 43,
 			})
 			Ω(err).ShouldNot(HaveOccurred())
-			Ω(res.GetRate()).Should(BeNumerically("==", 1))
-			Ω(res.GetBurst()).Should(BeNumerically("==", 2))
+			Ω(newLimits.RateInBytesPerSecond).Should(BeNumerically("==", 1))
+			Ω(newLimits.BurstRateInBytesPerSecond).Should(BeNumerically("==", 2))
 
 			assertWriteBufferContains(&protocol.LimitBandwidthRequest{
 				Handle: proto.String("foo"),
@@ -249,7 +248,20 @@ var _ = Describe("Connection", func() {
 		Describe("Setting the disk limit", func() {
 			BeforeEach(func() {
 				wardenMessages = append(wardenMessages,
-					&protocol.LimitDiskResponse{ByteLimit: proto.Uint64(40)},
+					&protocol.LimitDiskResponse{
+						BlockLimit: proto.Uint64(1),
+						Block:      proto.Uint64(2),
+						BlockSoft:  proto.Uint64(3),
+						BlockHard:  proto.Uint64(4),
+						InodeLimit: proto.Uint64(5),
+						Inode:      proto.Uint64(6),
+						InodeSoft:  proto.Uint64(7),
+						InodeHard:  proto.Uint64(8),
+						ByteLimit:  proto.Uint64(9),
+						Byte:       proto.Uint64(10),
+						ByteSoft:   proto.Uint64(11),
+						ByteHard:   proto.Uint64(12),
+					},
 				)
 			})
 
@@ -271,10 +283,23 @@ var _ = Describe("Connection", func() {
 					ByteHard:  42,
 				}
 
-				res, err := connection.LimitDisk("foo", limits)
-
+				newLimits, err := connection.LimitDisk("foo", limits)
 				Ω(err).ShouldNot(HaveOccurred())
-				Ω(res.GetByteLimit()).Should(BeNumerically("==", 40))
+
+				Ω(newLimits).Should(Equal(warden.DiskLimits{
+					BlockLimit: 1,
+					Block:      2,
+					BlockSoft:  3,
+					BlockHard:  4,
+					InodeLimit: 5,
+					Inode:      6,
+					InodeSoft:  7,
+					InodeHard:  8,
+					ByteLimit:  9,
+					Byte:       10,
+					ByteSoft:   11,
+					ByteHard:   12,
+				}))
 
 				assertWriteBufferContains(&protocol.LimitDiskRequest{
 					Handle: proto.String("foo"),
@@ -306,7 +331,7 @@ var _ = Describe("Connection", func() {
 		})
 
 		It("should return the allocated ports", func() {
-			_, err := connection.NetOut("foo-handle", "foo-network", 42)
+			err := connection.NetOut("foo-handle", "foo-network", 42)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			assertWriteBufferContains(&protocol.NetOutRequest{
@@ -327,10 +352,10 @@ var _ = Describe("Connection", func() {
 		})
 
 		It("should return the list of containers", func() {
-			resp, err := connection.List(map[string]string{"foo": "bar"})
+			handles, err := connection.List(map[string]string{"foo": "bar"})
 			Ω(err).ShouldNot(HaveOccurred())
 
-			Ω(resp.GetHandles()).Should(Equal([]string{"container1", "container2", "container3"}))
+			Ω(handles).Should(Equal([]string{"container1", "container2", "container3"}))
 
 			assertWriteBufferContains(&protocol.ListRequest{
 				Properties: []*protocol.Property{
@@ -347,16 +372,131 @@ var _ = Describe("Connection", func() {
 		BeforeEach(func() {
 			wardenMessages = append(wardenMessages,
 				&protocol.InfoResponse{
-					State: proto.String("active"),
+					State:         proto.String("chilling out"),
+					Events:        []string{"maxing", "relaxing all cool"},
+					HostIp:        proto.String("host-ip"),
+					ContainerIp:   proto.String("container-ip"),
+					ContainerPath: proto.String("container-path"),
+					ProcessIds:    []uint64{1, 2},
+
+					Properties: []*protocol.Property{
+						{
+							Key:   proto.String("proto-key"),
+							Value: proto.String("proto-value"),
+						},
+					},
+
+					MemoryStat: &protocol.InfoResponse_MemoryStat{
+						Cache:                   proto.Uint64(1),
+						Rss:                     proto.Uint64(2),
+						MappedFile:              proto.Uint64(3),
+						Pgpgin:                  proto.Uint64(4),
+						Pgpgout:                 proto.Uint64(5),
+						Swap:                    proto.Uint64(6),
+						Pgfault:                 proto.Uint64(7),
+						Pgmajfault:              proto.Uint64(8),
+						InactiveAnon:            proto.Uint64(9),
+						ActiveAnon:              proto.Uint64(10),
+						InactiveFile:            proto.Uint64(11),
+						ActiveFile:              proto.Uint64(12),
+						Unevictable:             proto.Uint64(13),
+						HierarchicalMemoryLimit: proto.Uint64(14),
+						HierarchicalMemswLimit:  proto.Uint64(15),
+						TotalCache:              proto.Uint64(16),
+						TotalRss:                proto.Uint64(17),
+						TotalMappedFile:         proto.Uint64(18),
+						TotalPgpgin:             proto.Uint64(19),
+						TotalPgpgout:            proto.Uint64(20),
+						TotalSwap:               proto.Uint64(21),
+						TotalPgfault:            proto.Uint64(22),
+						TotalPgmajfault:         proto.Uint64(23),
+						TotalInactiveAnon:       proto.Uint64(24),
+						TotalActiveAnon:         proto.Uint64(25),
+						TotalInactiveFile:       proto.Uint64(26),
+						TotalActiveFile:         proto.Uint64(27),
+						TotalUnevictable:        proto.Uint64(28),
+					},
+
+					CpuStat: &protocol.InfoResponse_CpuStat{
+						Usage:  proto.Uint64(1),
+						User:   proto.Uint64(2),
+						System: proto.Uint64(3),
+					},
+
+					DiskStat: &protocol.InfoResponse_DiskStat{
+						BytesUsed:  proto.Uint64(1),
+						InodesUsed: proto.Uint64(2),
+					},
+
+					BandwidthStat: &protocol.InfoResponse_BandwidthStat{
+						InRate:   proto.Uint64(1),
+						InBurst:  proto.Uint64(2),
+						OutRate:  proto.Uint64(3),
+						OutBurst: proto.Uint64(4),
+					},
 				},
 			)
 		})
 
 		It("should return the container's info", func() {
-			resp, err := connection.Info("handle")
+			info, err := connection.Info("handle")
 			Ω(err).ShouldNot(HaveOccurred())
 
-			Ω(resp.GetState()).Should(Equal("active"))
+			Ω(info.State).Should(Equal("chilling out"))
+			Ω(info.Events).Should(Equal([]string{"maxing", "relaxing all cool"}))
+			Ω(info.HostIP).Should(Equal("host-ip"))
+			Ω(info.ContainerIP).Should(Equal("container-ip"))
+			Ω(info.ContainerPath).Should(Equal("container-path"))
+			Ω(info.ProcessIDs).Should(Equal([]uint32{1, 2}))
+
+			Ω(info.MemoryStat).Should(Equal(warden.ContainerMemoryStat{
+				Cache:                   1,
+				Rss:                     2,
+				MappedFile:              3,
+				Pgpgin:                  4,
+				Pgpgout:                 5,
+				Swap:                    6,
+				Pgfault:                 7,
+				Pgmajfault:              8,
+				InactiveAnon:            9,
+				ActiveAnon:              10,
+				InactiveFile:            11,
+				ActiveFile:              12,
+				Unevictable:             13,
+				HierarchicalMemoryLimit: 14,
+				HierarchicalMemswLimit:  15,
+				TotalCache:              16,
+				TotalRss:                17,
+				TotalMappedFile:         18,
+				TotalPgpgin:             19,
+				TotalPgpgout:            20,
+				TotalSwap:               21,
+				TotalPgfault:            22,
+				TotalPgmajfault:         23,
+				TotalInactiveAnon:       24,
+				TotalActiveAnon:         25,
+				TotalInactiveFile:       26,
+				TotalActiveFile:         27,
+				TotalUnevictable:        28,
+			}))
+
+			Ω(info.CPUStat).Should(Equal(warden.ContainerCPUStat{
+				Usage:  1,
+				User:   2,
+				System: 3,
+			}))
+
+			Ω(info.DiskStat).Should(Equal(warden.ContainerDiskStat{
+				BytesUsed:  1,
+				InodesUsed: 2,
+			}))
+
+			Ω(info.BandwidthStat).Should(Equal(warden.ContainerBandwidthStat{
+				InRate:   1,
+				InBurst:  2,
+				OutRate:  3,
+				OutBurst: 4,
+			}))
 
 			assertWriteBufferContains(&protocol.InfoRequest{
 				Handle: proto.String("handle"),
@@ -372,7 +512,7 @@ var _ = Describe("Connection", func() {
 		})
 
 		It("should tell warden to copy in", func() {
-			_, err := connection.CopyIn("foo-handle", "/foo", "/bar")
+			err := connection.CopyIn("foo-handle", "/foo", "/bar")
 			Ω(err).ShouldNot(HaveOccurred())
 
 			assertWriteBufferContains(&protocol.CopyInRequest{
@@ -391,7 +531,7 @@ var _ = Describe("Connection", func() {
 		})
 
 		It("should tell warden to copy out", func() {
-			_, err := connection.CopyOut("foo-handle", "/foo", "/bar", "bartholofoo")
+			err := connection.CopyOut("foo-handle", "/foo", "/bar", "bartholofoo")
 			Ω(err).ShouldNot(HaveOccurred())
 
 			assertWriteBufferContains(&protocol.CopyOutRequest{
@@ -414,9 +554,8 @@ var _ = Describe("Connection", func() {
 		It("should disconnect", func() {
 			Ω(connection.Disconnected()).ShouldNot(BeClosed())
 
-			resp, err := connection.Destroy("foo-handle")
+			err := connection.Destroy("foo-handle")
 			Ω(err).ShouldNot(HaveOccurred())
-			Ω(resp).ShouldNot(BeNil())
 
 			Ω(connection.Disconnected()).Should(BeClosed())
 		})
@@ -440,24 +579,6 @@ var _ = Describe("Connection", func() {
 		})
 	})
 
-	Describe("Round tripping", func() {
-		BeforeEach(func() {
-			wardenMessages = append(wardenMessages,
-				&protocol.EchoResponse{Message: proto.String("pong")},
-			)
-		})
-
-		It("should do the round trip", func() {
-			resp, err := connection.RoundTrip(
-				&protocol.EchoRequest{Message: proto.String("ping")},
-				&protocol.EchoResponse{},
-			)
-
-			Ω(err).ShouldNot(HaveOccurred())
-			Ω(resp.(*protocol.EchoResponse).GetMessage()).Should(Equal("pong"))
-		})
-	})
-
 	Describe("Running", func() {
 		stdout := protocol.ProcessPayload_stdout
 		stderr := protocol.ProcessPayload_stderr
@@ -473,13 +594,13 @@ var _ = Describe("Connection", func() {
 			})
 
 			It("should start the process and stream output", func(done Done) {
-				resp, stream, err := connection.Run("foo-handle", warden.ProcessSpec{
+				pid, stream, err := connection.Run("foo-handle", warden.ProcessSpec{
 					Script: "lol",
 					Limits: resourceLimits,
 				})
 
 				Ω(err).ShouldNot(HaveOccurred())
-				Ω(resp.GetProcessId()).Should(BeNumerically("==", 42))
+				Ω(pid).Should(BeNumerically("==", 42))
 
 				assertWriteBufferContains(&protocol.RunRequest{
 					Handle: proto.String("foo-handle"),
@@ -504,16 +625,16 @@ var _ = Describe("Connection", func() {
 				})
 
 				response1 := <-stream
-				Ω(response1.GetSource()).Should(Equal(stdout))
-				Ω(response1.GetData()).Should(Equal("1"))
+				Ω(response1.Source).Should(Equal(warden.ProcessStreamSourceStdout))
+				Ω(string(response1.Data)).Should(Equal("1"))
 
 				response2 := <-stream
-				Ω(response2.GetSource()).Should(Equal(stderr))
-				Ω(response2.GetData()).Should(Equal("2"))
+				Ω(response2.Source).Should(Equal(warden.ProcessStreamSourceStderr))
+				Ω(string(response2.Data)).Should(Equal("2"))
 
-				response3, ok := <-stream
-				Ω(response3.GetExitStatus()).Should(BeNumerically("==", 3))
-				Ω(ok).Should(BeTrue())
+				response3 := <-stream
+				Ω(response3.ExitStatus).ShouldNot(BeNil())
+				Ω(*response3.ExitStatus).Should(BeNumerically("==", 3))
 
 				Eventually(stream).Should(BeClosed())
 
@@ -532,11 +653,11 @@ var _ = Describe("Connection", func() {
 			})
 
 			It("should be able to spawn multiple processes sequentially", func() {
-				resp, _, err := connection.Run("foo-handle", warden.ProcessSpec{
+				pid, _, err := connection.Run("foo-handle", warden.ProcessSpec{
 					Script: "echo hi",
 				})
 				Ω(err).ShouldNot(HaveOccurred())
-				Ω(resp.GetProcessId()).Should(BeNumerically("==", 42))
+				Ω(pid).Should(BeNumerically("==", 42))
 
 				assertWriteBufferContains(&protocol.RunRequest{
 					Handle:  proto.String("foo-handle"),
@@ -548,11 +669,11 @@ var _ = Describe("Connection", func() {
 
 				time.Sleep(1 * time.Second)
 
-				resp, _, err = connection.Run("foo-handle", warden.ProcessSpec{
+				pid, _, err = connection.Run("foo-handle", warden.ProcessSpec{
 					Script: "echo bye",
 				})
 				Ω(err).ShouldNot(HaveOccurred())
-				Ω(resp.GetProcessId()).Should(BeNumerically("==", 43))
+				Ω(pid).Should(BeNumerically("==", 43))
 
 				assertWriteBufferContains(&protocol.RunRequest{
 					Handle:  proto.String("foo-handle"),
@@ -564,10 +685,10 @@ var _ = Describe("Connection", func() {
 	})
 
 	Describe("Attaching", func() {
-		stdout := protocol.ProcessPayload_stdout
-		stderr := protocol.ProcessPayload_stderr
-
 		BeforeEach(func() {
+			stdout := protocol.ProcessPayload_stdout
+			stderr := protocol.ProcessPayload_stderr
+
 			wardenMessages = append(wardenMessages,
 				&protocol.ProcessPayload{ProcessId: proto.Uint32(42), Source: &stdout, Data: proto.String("1")},
 				&protocol.ProcessPayload{ProcessId: proto.Uint32(42), Source: &stderr, Data: proto.String("2")},
@@ -576,7 +697,7 @@ var _ = Describe("Connection", func() {
 		})
 
 		It("should stream", func(done Done) {
-			resp, err := connection.Attach("foo-handle", 42)
+			stream, err := connection.Attach("foo-handle", 42)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			assertWriteBufferContains(&protocol.AttachRequest{
@@ -584,18 +705,19 @@ var _ = Describe("Connection", func() {
 				ProcessId: proto.Uint32(42),
 			})
 
-			response1 := <-resp
-			Ω(response1.GetSource()).Should(Equal(protocol.ProcessPayload_stdout))
-			Ω(response1.GetData()).Should(Equal("1"))
+			response1 := <-stream
+			Ω(response1.Source).Should(Equal(warden.ProcessStreamSourceStdout))
+			Ω(string(response1.Data)).Should(Equal("1"))
 
-			response2 := <-resp
-			Ω(response2.GetSource()).Should(Equal(protocol.ProcessPayload_stderr))
-			Ω(response2.GetData()).Should(Equal("2"))
+			response2 := <-stream
+			Ω(response2.Source).Should(Equal(warden.ProcessStreamSourceStderr))
+			Ω(string(response2.Data)).Should(Equal("2"))
 
-			response3 := <-resp
-			Ω(response3.GetExitStatus()).Should(BeNumerically("==", 3))
+			response3 := <-stream
+			Ω(response3.ExitStatus).ShouldNot(BeNil())
+			Ω(*response3.ExitStatus).Should(BeNumerically("==", 3))
 
-			Eventually(resp).Should(BeClosed())
+			Eventually(stream).Should(BeClosed())
 
 			close(done)
 		})

@@ -2,15 +2,12 @@ package client_test
 
 import (
 	"errors"
-
-	"code.google.com/p/goprotobuf/proto"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
 	. "github.com/cloudfoundry-incubator/garden/client"
 	"github.com/cloudfoundry-incubator/garden/client/connection"
 	"github.com/cloudfoundry-incubator/garden/client/connection/fake_connection"
-	protocol "github.com/cloudfoundry-incubator/garden/protocol"
 	"github.com/cloudfoundry-incubator/garden/warden"
 )
 
@@ -33,10 +30,8 @@ var _ = Describe("Container", func() {
 
 		client := New(connectionProvider)
 
-		fakeConnection.WhenCreating = func(warden.ContainerSpec) (*protocol.CreateResponse, error) {
-			return &protocol.CreateResponse{
-				Handle: proto.String("some-handle"),
-			}, nil
+		fakeConnection.WhenCreating = func(warden.ContainerSpec) (string, error) {
+			return "some-handle", nil
 		}
 
 		container, err = client.Create(warden.ContainerSpec{})
@@ -66,8 +61,8 @@ var _ = Describe("Container", func() {
 			disaster := errors.New("oh no!")
 
 			BeforeEach(func() {
-				fakeConnection.WhenStopping = func(handle string, background, kill bool) (*protocol.StopResponse, error) {
-					return nil, disaster
+				fakeConnection.WhenStopping = func(handle string, background, kill bool) error {
+					return disaster
 				}
 			})
 
@@ -80,141 +75,27 @@ var _ = Describe("Container", func() {
 
 	Describe("Info", func() {
 		It("sends an info request", func() {
-			fakeConnection.WhenGettingInfo = func(handle string) (*protocol.InfoResponse, error) {
+			infoToReturn := warden.ContainerInfo{
+				State: "chillin",
+			}
+
+			fakeConnection.WhenGettingInfo = func(handle string) (warden.ContainerInfo, error) {
 				Ω(handle).Should(Equal("some-handle"))
-
-				return &protocol.InfoResponse{
-					State:         proto.String("chilling out"),
-					Events:        []string{"maxing", "relaxing all cool"},
-					HostIp:        proto.String("host-ip"),
-					ContainerIp:   proto.String("container-ip"),
-					ContainerPath: proto.String("container-path"),
-					ProcessIds:    []uint64{1, 2},
-
-					Properties: []*protocol.Property{
-						{
-							Key:   proto.String("proto-key"),
-							Value: proto.String("proto-value"),
-						},
-					},
-
-					MemoryStat: &protocol.InfoResponse_MemoryStat{
-						Cache:                   proto.Uint64(1),
-						Rss:                     proto.Uint64(2),
-						MappedFile:              proto.Uint64(3),
-						Pgpgin:                  proto.Uint64(4),
-						Pgpgout:                 proto.Uint64(5),
-						Swap:                    proto.Uint64(6),
-						Pgfault:                 proto.Uint64(7),
-						Pgmajfault:              proto.Uint64(8),
-						InactiveAnon:            proto.Uint64(9),
-						ActiveAnon:              proto.Uint64(10),
-						InactiveFile:            proto.Uint64(11),
-						ActiveFile:              proto.Uint64(12),
-						Unevictable:             proto.Uint64(13),
-						HierarchicalMemoryLimit: proto.Uint64(14),
-						HierarchicalMemswLimit:  proto.Uint64(15),
-						TotalCache:              proto.Uint64(16),
-						TotalRss:                proto.Uint64(17),
-						TotalMappedFile:         proto.Uint64(18),
-						TotalPgpgin:             proto.Uint64(19),
-						TotalPgpgout:            proto.Uint64(20),
-						TotalSwap:               proto.Uint64(21),
-						TotalPgfault:            proto.Uint64(22),
-						TotalPgmajfault:         proto.Uint64(23),
-						TotalInactiveAnon:       proto.Uint64(24),
-						TotalActiveAnon:         proto.Uint64(25),
-						TotalInactiveFile:       proto.Uint64(26),
-						TotalActiveFile:         proto.Uint64(27),
-						TotalUnevictable:        proto.Uint64(28),
-					},
-
-					CpuStat: &protocol.InfoResponse_CpuStat{
-						Usage:  proto.Uint64(1),
-						User:   proto.Uint64(2),
-						System: proto.Uint64(3),
-					},
-
-					DiskStat: &protocol.InfoResponse_DiskStat{
-						BytesUsed:  proto.Uint64(1),
-						InodesUsed: proto.Uint64(2),
-					},
-
-					BandwidthStat: &protocol.InfoResponse_BandwidthStat{
-						InRate:   proto.Uint64(1),
-						InBurst:  proto.Uint64(2),
-						OutRate:  proto.Uint64(3),
-						OutBurst: proto.Uint64(4),
-					},
-				}, nil
+				return infoToReturn, nil
 			}
 
 			info, err := container.Info()
 			Ω(err).ShouldNot(HaveOccurred())
 
-			Ω(info.State).Should(Equal("chilling out"))
-			Ω(info.Events).Should(Equal([]string{"maxing", "relaxing all cool"}))
-			Ω(info.HostIP).Should(Equal("host-ip"))
-			Ω(info.ContainerIP).Should(Equal("container-ip"))
-			Ω(info.ContainerPath).Should(Equal("container-path"))
-			Ω(info.ProcessIDs).Should(Equal([]uint32{1, 2}))
-
-			Ω(info.MemoryStat).Should(Equal(warden.ContainerMemoryStat{
-				Cache:                   1,
-				Rss:                     2,
-				MappedFile:              3,
-				Pgpgin:                  4,
-				Pgpgout:                 5,
-				Swap:                    6,
-				Pgfault:                 7,
-				Pgmajfault:              8,
-				InactiveAnon:            9,
-				ActiveAnon:              10,
-				InactiveFile:            11,
-				ActiveFile:              12,
-				Unevictable:             13,
-				HierarchicalMemoryLimit: 14,
-				HierarchicalMemswLimit:  15,
-				TotalCache:              16,
-				TotalRss:                17,
-				TotalMappedFile:         18,
-				TotalPgpgin:             19,
-				TotalPgpgout:            20,
-				TotalSwap:               21,
-				TotalPgfault:            22,
-				TotalPgmajfault:         23,
-				TotalInactiveAnon:       24,
-				TotalActiveAnon:         25,
-				TotalInactiveFile:       26,
-				TotalActiveFile:         27,
-				TotalUnevictable:        28,
-			}))
-
-			Ω(info.CPUStat).Should(Equal(warden.ContainerCPUStat{
-				Usage:  1,
-				User:   2,
-				System: 3,
-			}))
-
-			Ω(info.DiskStat).Should(Equal(warden.ContainerDiskStat{
-				BytesUsed:  1,
-				InodesUsed: 2,
-			}))
-
-			Ω(info.BandwidthStat).Should(Equal(warden.ContainerBandwidthStat{
-				InRate:   1,
-				InBurst:  2,
-				OutRate:  3,
-				OutBurst: 4,
-			}))
+			Ω(info).Should(Equal(infoToReturn))
 		})
 
 		Context("when getting info fails", func() {
 			disaster := errors.New("oh no!")
 
 			BeforeEach(func() {
-				fakeConnection.WhenGettingInfo = func(handle string) (*protocol.InfoResponse, error) {
-					return nil, disaster
+				fakeConnection.WhenGettingInfo = func(handle string) (warden.ContainerInfo, error) {
+					return warden.ContainerInfo{}, disaster
 				}
 			})
 
@@ -242,8 +123,8 @@ var _ = Describe("Container", func() {
 			disaster := errors.New("oh no!")
 
 			BeforeEach(func() {
-				fakeConnection.WhenCopyingIn = func(handle string, src, dst string) (*protocol.CopyInResponse, error) {
-					return nil, disaster
+				fakeConnection.WhenCopyingIn = func(handle string, src, dst string) error {
+					return disaster
 				}
 			})
 
@@ -272,8 +153,8 @@ var _ = Describe("Container", func() {
 			disaster := errors.New("oh no!")
 
 			BeforeEach(func() {
-				fakeConnection.WhenCopyingOut = func(handle string, src, dst, owner string) (*protocol.CopyOutResponse, error) {
-					return nil, disaster
+				fakeConnection.WhenCopyingOut = func(handle string, src, dst, owner string) error {
+					return disaster
 				}
 			})
 
@@ -302,8 +183,8 @@ var _ = Describe("Container", func() {
 			disaster := errors.New("oh no!")
 
 			BeforeEach(func() {
-				fakeConnection.WhenLimitingBandwidth = func(handle string, limits warden.BandwidthLimits) (*protocol.LimitBandwidthResponse, error) {
-					return nil, disaster
+				fakeConnection.WhenLimitingBandwidth = func(handle string, limits warden.BandwidthLimits) (warden.BandwidthLimits, error) {
+					return warden.BandwidthLimits{}, disaster
 				}
 			})
 
@@ -332,8 +213,8 @@ var _ = Describe("Container", func() {
 			disaster := errors.New("oh no!")
 
 			BeforeEach(func() {
-				fakeConnection.WhenLimitingCPU = func(handle string, limits warden.CPULimits) (*protocol.LimitCpuResponse, error) {
-					return nil, disaster
+				fakeConnection.WhenLimitingCPU = func(handle string, limits warden.CPULimits) (warden.CPULimits, error) {
+					return warden.CPULimits{}, disaster
 				}
 			})
 
@@ -362,8 +243,8 @@ var _ = Describe("Container", func() {
 			disaster := errors.New("oh no!")
 
 			BeforeEach(func() {
-				fakeConnection.WhenLimitingDisk = func(handle string, limits warden.DiskLimits) (*protocol.LimitDiskResponse, error) {
-					return nil, disaster
+				fakeConnection.WhenLimitingDisk = func(handle string, limits warden.DiskLimits) (warden.DiskLimits, error) {
+					return warden.DiskLimits{}, disaster
 				}
 			})
 
@@ -392,8 +273,8 @@ var _ = Describe("Container", func() {
 			disaster := errors.New("oh no!")
 
 			BeforeEach(func() {
-				fakeConnection.WhenLimitingMemory = func(handle string, limits warden.MemoryLimits) (*protocol.LimitMemoryResponse, error) {
-					return nil, disaster
+				fakeConnection.WhenLimitingMemory = func(handle string, limits warden.MemoryLimits) (warden.MemoryLimits, error) {
+					return warden.MemoryLimits{}, disaster
 				}
 			})
 
@@ -406,28 +287,27 @@ var _ = Describe("Container", func() {
 
 	Describe("CurrentBandwidthLimits", func() {
 		It("sends an empty limit request and returns its response", func() {
-			fakeConnection.WhenLimitingBandwidth = func(handle string, limits warden.BandwidthLimits) (*protocol.LimitBandwidthResponse, error) {
-				return &protocol.LimitBandwidthResponse{
-					Rate:  proto.Uint64(1),
-					Burst: proto.Uint64(2),
-				}, nil
+			limitsToReturn := warden.BandwidthLimits{
+				RateInBytesPerSecond:      1,
+				BurstRateInBytesPerSecond: 2,
+			}
+
+			fakeConnection.WhenLimitingBandwidth = func(handle string, limits warden.BandwidthLimits) (warden.BandwidthLimits, error) {
+				return limitsToReturn, nil
 			}
 
 			limits, err := container.CurrentBandwidthLimits()
 			Ω(err).ShouldNot(HaveOccurred())
 
-			Ω(limits).Should(Equal(warden.BandwidthLimits{
-				RateInBytesPerSecond:      1,
-				BurstRateInBytesPerSecond: 2,
-			}))
+			Ω(limits).Should(Equal(limitsToReturn))
 		})
 
 		Context("when the request fails", func() {
 			disaster := errors.New("oh no!")
 
 			BeforeEach(func() {
-				fakeConnection.WhenLimitingBandwidth = func(handle string, limits warden.BandwidthLimits) (*protocol.LimitBandwidthResponse, error) {
-					return nil, disaster
+				fakeConnection.WhenLimitingBandwidth = func(handle string, limits warden.BandwidthLimits) (warden.BandwidthLimits, error) {
+					return warden.BandwidthLimits{}, disaster
 				}
 			})
 
@@ -440,26 +320,26 @@ var _ = Describe("Container", func() {
 
 	Describe("CurrentCPULimits", func() {
 		It("sends an empty limit request and returns its response", func() {
-			fakeConnection.WhenLimitingCPU = func(handle string, limits warden.CPULimits) (*protocol.LimitCpuResponse, error) {
-				return &protocol.LimitCpuResponse{
-					LimitInShares: proto.Uint64(1),
-				}, nil
+			limitsToReturn := warden.CPULimits{
+				LimitInShares: 1,
+			}
+
+			fakeConnection.WhenLimitingCPU = func(handle string, limits warden.CPULimits) (warden.CPULimits, error) {
+				return limitsToReturn, nil
 			}
 
 			limits, err := container.CurrentCPULimits()
 			Ω(err).ShouldNot(HaveOccurred())
 
-			Ω(limits).Should(Equal(warden.CPULimits{
-				LimitInShares: 1,
-			}))
+			Ω(limits).Should(Equal(limitsToReturn))
 		})
 
 		Context("when the request fails", func() {
 			disaster := errors.New("oh no!")
 
 			BeforeEach(func() {
-				fakeConnection.WhenLimitingCPU = func(handle string, limits warden.CPULimits) (*protocol.LimitCpuResponse, error) {
-					return nil, disaster
+				fakeConnection.WhenLimitingCPU = func(handle string, limits warden.CPULimits) (warden.CPULimits, error) {
+					return warden.CPULimits{}, disaster
 				}
 			})
 
@@ -472,27 +352,7 @@ var _ = Describe("Container", func() {
 
 	Describe("CurrentDiskLimits", func() {
 		It("sends an empty limit request and returns its response", func() {
-			fakeConnection.WhenLimitingDisk = func(handle string, limits warden.DiskLimits) (*protocol.LimitDiskResponse, error) {
-				return &protocol.LimitDiskResponse{
-					BlockLimit: proto.Uint64(1),
-					Block:      proto.Uint64(2),
-					BlockSoft:  proto.Uint64(3),
-					BlockHard:  proto.Uint64(4),
-					InodeLimit: proto.Uint64(5),
-					Inode:      proto.Uint64(6),
-					InodeSoft:  proto.Uint64(7),
-					InodeHard:  proto.Uint64(8),
-					ByteLimit:  proto.Uint64(9),
-					Byte:       proto.Uint64(10),
-					ByteSoft:   proto.Uint64(11),
-					ByteHard:   proto.Uint64(12),
-				}, nil
-			}
-
-			limits, err := container.CurrentDiskLimits()
-			Ω(err).ShouldNot(HaveOccurred())
-
-			Ω(limits).Should(Equal(warden.DiskLimits{
+			limitsToReturn := warden.DiskLimits{
 				BlockLimit: 1,
 				Block:      2,
 				BlockSoft:  3,
@@ -505,15 +365,24 @@ var _ = Describe("Container", func() {
 				Byte:       10,
 				ByteSoft:   11,
 				ByteHard:   12,
-			}))
+			}
+
+			fakeConnection.WhenLimitingDisk = func(handle string, limits warden.DiskLimits) (warden.DiskLimits, error) {
+				return limitsToReturn, nil
+			}
+
+			limits, err := container.CurrentDiskLimits()
+			Ω(err).ShouldNot(HaveOccurred())
+
+			Ω(limits).Should(Equal(limitsToReturn))
 		})
 
 		Context("when the request fails", func() {
 			disaster := errors.New("oh no!")
 
 			BeforeEach(func() {
-				fakeConnection.WhenLimitingDisk = func(handle string, limits warden.DiskLimits) (*protocol.LimitDiskResponse, error) {
-					return nil, disaster
+				fakeConnection.WhenLimitingDisk = func(handle string, limits warden.DiskLimits) (warden.DiskLimits, error) {
+					return warden.DiskLimits{}, disaster
 				}
 			})
 
@@ -526,26 +395,26 @@ var _ = Describe("Container", func() {
 
 	Describe("CurrentMemoryLimits", func() {
 		It("sends an empty limit request and returns its response", func() {
-			fakeConnection.WhenLimitingMemory = func(handle string, limits warden.MemoryLimits) (*protocol.LimitMemoryResponse, error) {
-				return &protocol.LimitMemoryResponse{
-					LimitInBytes: proto.Uint64(1),
-				}, nil
+			limitsToReturn := warden.MemoryLimits{
+				LimitInBytes: 1,
+			}
+
+			fakeConnection.WhenLimitingMemory = func(handle string, limits warden.MemoryLimits) (warden.MemoryLimits, error) {
+				return limitsToReturn, nil
 			}
 
 			limits, err := container.CurrentMemoryLimits()
 			Ω(err).ShouldNot(HaveOccurred())
 
-			Ω(limits).Should(Equal(warden.MemoryLimits{
-				LimitInBytes: 1,
-			}))
+			Ω(limits).Should(Equal(limitsToReturn))
 		})
 
 		Context("when the request fails", func() {
 			disaster := errors.New("oh no!")
 
 			BeforeEach(func() {
-				fakeConnection.WhenLimitingMemory = func(handle string, limits warden.MemoryLimits) (*protocol.LimitMemoryResponse, error) {
-					return nil, disaster
+				fakeConnection.WhenLimitingMemory = func(handle string, limits warden.MemoryLimits) (warden.MemoryLimits, error) {
+					return warden.MemoryLimits{}, disaster
 				}
 			})
 
@@ -571,29 +440,27 @@ var _ = Describe("Container", func() {
 		})
 
 		It("sends a run request and returns the process id and a stream", func() {
-			fakeConnection.WhenRunning = func(handle string, spec warden.ProcessSpec) (*protocol.ProcessPayload, <-chan *protocol.ProcessPayload, error) {
-				payloads := make(chan *protocol.ProcessPayload, 3)
+			fakeConnection.WhenRunning = func(handle string, spec warden.ProcessSpec) (uint32, <-chan warden.ProcessStream, error) {
+				stream := make(chan warden.ProcessStream, 3)
 
-				stdout := protocol.ProcessPayload_stdout
-				stderr := protocol.ProcessPayload_stderr
-
-				payloads <- &protocol.ProcessPayload{
-					Source: &stdout,
-					Data:   proto.String("stdout data"),
+				stream <- warden.ProcessStream{
+					Source: warden.ProcessStreamSourceStdout,
+					Data:   []byte("stdout data"),
 				}
 
-				payloads <- &protocol.ProcessPayload{
-					Source: &stderr,
-					Data:   proto.String("stderr data"),
+				stream <- warden.ProcessStream{
+					Source: warden.ProcessStreamSourceStderr,
+					Data:   []byte("stderr data"),
 				}
 
-				payloads <- &protocol.ProcessPayload{
-					ExitStatus: proto.Uint32(123),
+				exitStatus := uint32(123)
+				stream <- warden.ProcessStream{
+					ExitStatus: &exitStatus,
 				}
 
-				return &protocol.ProcessPayload{
-					ProcessId: proto.Uint32(42),
-				}, payloads, nil
+				close(stream)
+
+				return 42, stream, nil
 			}
 
 			spec := warden.ProcessSpec{
@@ -628,8 +495,8 @@ var _ = Describe("Container", func() {
 			disaster := errors.New("oh no!")
 
 			BeforeEach(func() {
-				fakeConnection.WhenRunning = func(handle string, spec warden.ProcessSpec) (*protocol.ProcessPayload, <-chan *protocol.ProcessPayload, error) {
-					return nil, nil, disaster
+				fakeConnection.WhenRunning = func(handle string, spec warden.ProcessSpec) (uint32, <-chan warden.ProcessStream, error) {
+					return 0, nil, disaster
 				}
 			})
 
@@ -646,10 +513,8 @@ var _ = Describe("Container", func() {
 
 		Context("while streaming", func() {
 			It("does not permit reuse of the connection", func() {
-				fakeConnection.WhenRunning = func(handle string, spec warden.ProcessSpec) (*protocol.ProcessPayload, <-chan *protocol.ProcessPayload, error) {
-					payloads := make(chan *protocol.ProcessPayload)
-
-					return &protocol.ProcessPayload{}, payloads, nil
+				fakeConnection.WhenRunning = func(handle string, spec warden.ProcessSpec) (uint32, <-chan warden.ProcessStream, error) {
+					return 1, make(chan warden.ProcessStream), nil
 				}
 
 				_, _, err := container.Run(warden.ProcessSpec{})
@@ -679,27 +544,27 @@ var _ = Describe("Container", func() {
 		})
 
 		It("sends an attach request and returns a stream", func() {
-			fakeConnection.WhenAttaching = func(handle string, processID uint32) (<-chan *protocol.ProcessPayload, error) {
-				payloads := make(chan *protocol.ProcessPayload, 3)
+			fakeConnection.WhenAttaching = func(handle string, processID uint32) (<-chan warden.ProcessStream, error) {
+				stream := make(chan warden.ProcessStream, 3)
 
-				stdout := protocol.ProcessPayload_stdout
-				stderr := protocol.ProcessPayload_stderr
-
-				payloads <- &protocol.ProcessPayload{
-					Source: &stdout,
-					Data:   proto.String("stdout data"),
+				stream <- warden.ProcessStream{
+					Source: warden.ProcessStreamSourceStdout,
+					Data:   []byte("stdout data"),
 				}
 
-				payloads <- &protocol.ProcessPayload{
-					Source: &stderr,
-					Data:   proto.String("stderr data"),
+				stream <- warden.ProcessStream{
+					Source: warden.ProcessStreamSourceStderr,
+					Data:   []byte("stderr data"),
 				}
 
-				payloads <- &protocol.ProcessPayload{
-					ExitStatus: proto.Uint32(123),
+				exitStatus := uint32(123)
+				stream <- warden.ProcessStream{
+					ExitStatus: &exitStatus,
 				}
 
-				return payloads, nil
+				close(stream)
+
+				return stream, nil
 			}
 
 			stream, err := container.Attach(42)
@@ -729,7 +594,7 @@ var _ = Describe("Container", func() {
 			disaster := errors.New("oh no!")
 
 			BeforeEach(func() {
-				fakeConnection.WhenAttaching = func(handle string, processID uint32) (<-chan *protocol.ProcessPayload, error) {
+				fakeConnection.WhenAttaching = func(handle string, processID uint32) (<-chan warden.ProcessStream, error) {
 					return nil, disaster
 				}
 			})
@@ -747,10 +612,8 @@ var _ = Describe("Container", func() {
 
 		Context("while streaming", func() {
 			It("does not permit reuse of the connection", func() {
-				fakeConnection.WhenAttaching = func(handle string, processID uint32) (<-chan *protocol.ProcessPayload, error) {
-					payloads := make(chan *protocol.ProcessPayload)
-
-					return payloads, nil
+				fakeConnection.WhenAttaching = func(handle string, processID uint32) (<-chan warden.ProcessStream, error) {
+					return make(chan warden.ProcessStream), nil
 				}
 
 				_, err := container.Attach(42)
@@ -767,11 +630,8 @@ var _ = Describe("Container", func() {
 
 	Describe("NetIn", func() {
 		It("sends a net in request", func() {
-			fakeConnection.WhenNetInning = func(handle string, hostPort, containerPort uint32) (*protocol.NetInResponse, error) {
-				return &protocol.NetInResponse{
-					HostPort:      proto.Uint32(111),
-					ContainerPort: proto.Uint32(222),
-				}, nil
+			fakeConnection.WhenNetInning = func(handle string, hostPort, containerPort uint32) (uint32, uint32, error) {
+				return 111, 222, nil
 			}
 
 			hostPort, containerPort, err := container.NetIn(123, 456)
@@ -791,8 +651,8 @@ var _ = Describe("Container", func() {
 			disaster := errors.New("oh no!")
 
 			BeforeEach(func() {
-				fakeConnection.WhenNetInning = func(handle string, hostPort, containerPort uint32) (*protocol.NetInResponse, error) {
-					return nil, disaster
+				fakeConnection.WhenNetInning = func(handle string, hostPort, containerPort uint32) (uint32, uint32, error) {
+					return 0, 0, disaster
 				}
 			})
 
@@ -820,8 +680,8 @@ var _ = Describe("Container", func() {
 			disaster := errors.New("oh no!")
 
 			BeforeEach(func() {
-				fakeConnection.WhenNetOuting = func(handle string, network string, port uint32) (*protocol.NetOutResponse, error) {
-					return nil, disaster
+				fakeConnection.WhenNetOuting = func(handle string, network string, port uint32) error {
+					return disaster
 				}
 			})
 

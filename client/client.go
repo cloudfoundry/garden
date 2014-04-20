@@ -37,25 +37,25 @@ func (client *client) Create(spec warden.ContainerSpec) (warden.Container, error
 	conn := client.pool.Acquire()
 	defer client.pool.Release(conn)
 
-	res, err := conn.Create(spec)
+	handle, err := conn.Create(spec)
 	if err != nil {
 		return nil, err
 	}
 
-	return newContainer(res.GetHandle(), client.pool), nil
+	return newContainer(handle, client.pool), nil
 }
 
 func (client *client) Containers() ([]warden.Container, error) {
 	conn := client.pool.Acquire()
 	defer client.pool.Release(conn)
 
-	res, err := conn.List(nil)
+	handles, err := conn.List(nil)
 	if err != nil {
 		return nil, err
 	}
 
 	containers := []warden.Container{}
-	for _, handle := range res.GetHandles() {
+	for _, handle := range handles {
 		containers = append(containers, newContainer(handle, client.pool))
 	}
 
@@ -66,24 +66,19 @@ func (client *client) Destroy(handle string) error {
 	conn := client.pool.Acquire()
 	defer client.pool.Release(conn)
 
-	_, err := conn.Destroy(handle)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return conn.Destroy(handle)
 }
 
 func (client *client) Lookup(handle string) (warden.Container, error) {
 	conn := client.pool.Acquire()
 	defer client.pool.Release(conn)
 
-	res, err := conn.List(nil)
+	handles, err := conn.List(nil)
 	if err != nil {
 		return nil, err
 	}
 
-	for _, h := range res.GetHandles() {
+	for _, h := range handles {
 		if h == handle {
 			return newContainer(handle, client.pool), nil
 		}

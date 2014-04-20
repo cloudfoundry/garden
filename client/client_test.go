@@ -2,15 +2,12 @@ package client_test
 
 import (
 	"errors"
-
-	"code.google.com/p/goprotobuf/proto"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
 	. "github.com/cloudfoundry-incubator/garden/client"
 	"github.com/cloudfoundry-incubator/garden/client/connection"
 	"github.com/cloudfoundry-incubator/garden/client/connection/fake_connection"
-	protocol "github.com/cloudfoundry-incubator/garden/protocol"
 	"github.com/cloudfoundry-incubator/garden/warden"
 )
 
@@ -72,10 +69,8 @@ var _ = Describe("Client", func() {
 				RootFSPath: "/some/roofs",
 			}
 
-			fakeConnection.WhenCreating = func(spec warden.ContainerSpec) (*protocol.CreateResponse, error) {
-				return &protocol.CreateResponse{
-					Handle: proto.String("some-handle"),
-				}, nil
+			fakeConnection.WhenCreating = func(spec warden.ContainerSpec) (string, error) {
+				return "some-handle", nil
 			}
 
 			container, err := client.Create(spec)
@@ -90,8 +85,8 @@ var _ = Describe("Client", func() {
 			disaster := errors.New("oh no!")
 
 			BeforeEach(func() {
-				fakeConnection.WhenCreating = func(spec warden.ContainerSpec) (*protocol.CreateResponse, error) {
-					return nil, disaster
+				fakeConnection.WhenCreating = func(spec warden.ContainerSpec) (string, error) {
+					return "", disaster
 				}
 			})
 
@@ -104,10 +99,8 @@ var _ = Describe("Client", func() {
 
 	Describe("Containers", func() {
 		It("sends a list request and returns all containers", func() {
-			fakeConnection.WhenListing = func(warden.Properties) (*protocol.ListResponse, error) {
-				return &protocol.ListResponse{
-					Handles: []string{"handle-a", "handle-b"},
-				}, nil
+			fakeConnection.WhenListing = func(warden.Properties) ([]string, error) {
+				return []string{"handle-a", "handle-b"}, nil
 			}
 
 			containers, err := client.Containers()
@@ -122,7 +115,7 @@ var _ = Describe("Client", func() {
 			disaster := errors.New("oh no!")
 
 			BeforeEach(func() {
-				fakeConnection.WhenListing = func(warden.Properties) (*protocol.ListResponse, error) {
+				fakeConnection.WhenListing = func(warden.Properties) ([]string, error) {
 					return nil, disaster
 				}
 			})
@@ -146,8 +139,8 @@ var _ = Describe("Client", func() {
 			disaster := errors.New("oh no!")
 
 			BeforeEach(func() {
-				fakeConnection.WhenDestroying = func(string) (*protocol.DestroyResponse, error) {
-					return nil, disaster
+				fakeConnection.WhenDestroying = func(string) error {
+					return disaster
 				}
 			})
 
@@ -160,10 +153,8 @@ var _ = Describe("Client", func() {
 
 	Describe("Lookup", func() {
 		It("sends a list request", func() {
-			fakeConnection.WhenListing = func(warden.Properties) (*protocol.ListResponse, error) {
-				return &protocol.ListResponse{
-					Handles: []string{"some-handle", "some-other-handle"},
-				}, nil
+			fakeConnection.WhenListing = func(warden.Properties) ([]string, error) {
+				return []string{"some-handle", "some-other-handle"}, nil
 			}
 
 			container, err := client.Lookup("some-handle")
@@ -174,10 +165,8 @@ var _ = Describe("Client", func() {
 
 		Context("when the container is not found", func() {
 			BeforeEach(func() {
-				fakeConnection.WhenListing = func(warden.Properties) (*protocol.ListResponse, error) {
-					return &protocol.ListResponse{
-						Handles: []string{"some-other-handle"},
-					}, nil
+				fakeConnection.WhenListing = func(warden.Properties) ([]string, error) {
+					return []string{"some-other-handle"}, nil
 				}
 			})
 
@@ -192,7 +181,7 @@ var _ = Describe("Client", func() {
 			disaster := errors.New("oh no!")
 
 			BeforeEach(func() {
-				fakeConnection.WhenListing = func(warden.Properties) (*protocol.ListResponse, error) {
+				fakeConnection.WhenListing = func(warden.Properties) ([]string, error) {
 					return nil, disaster
 				}
 			})

@@ -4,9 +4,6 @@ import (
 	"fmt"
 	"sync"
 
-	"code.google.com/p/goprotobuf/proto"
-
-	protocol "github.com/cloudfoundry-incubator/garden/protocol"
 	"github.com/cloudfoundry-incubator/garden/warden"
 )
 
@@ -18,48 +15,48 @@ type FakeConnection struct {
 	disconnected chan struct{}
 
 	created      []warden.ContainerSpec
-	WhenCreating func(spec warden.ContainerSpec) (*protocol.CreateResponse, error)
+	WhenCreating func(spec warden.ContainerSpec) (string, error)
 
 	listedProperties []warden.Properties
-	WhenListing      func(props warden.Properties) (*protocol.ListResponse, error)
+	WhenListing      func(props warden.Properties) ([]string, error)
 
 	destroyed      []string
-	WhenDestroying func(handle string) (*protocol.DestroyResponse, error)
+	WhenDestroying func(handle string) error
 
 	stopped      map[string][]StopSpec
-	WhenStopping func(handle string, background, kill bool) (*protocol.StopResponse, error)
+	WhenStopping func(handle string, background, kill bool) error
 
-	WhenGettingInfo func(handle string) (*protocol.InfoResponse, error)
+	WhenGettingInfo func(handle string) (warden.ContainerInfo, error)
 
 	copiedIn      map[string][]CopyInSpec
-	WhenCopyingIn func(handle string, src, dst string) (*protocol.CopyInResponse, error)
+	WhenCopyingIn func(handle string, src, dst string) error
 
 	copiedOut      map[string][]CopyOutSpec
-	WhenCopyingOut func(handle string, src, dst, owner string) (*protocol.CopyOutResponse, error)
+	WhenCopyingOut func(handle string, src, dst, owner string) error
 
 	limitedBandwidth      map[string][]warden.BandwidthLimits
-	WhenLimitingBandwidth func(handle string, limits warden.BandwidthLimits) (*protocol.LimitBandwidthResponse, error)
+	WhenLimitingBandwidth func(handle string, limits warden.BandwidthLimits) (warden.BandwidthLimits, error)
 
 	limitedCPU      map[string][]warden.CPULimits
-	WhenLimitingCPU func(handle string, limits warden.CPULimits) (*protocol.LimitCpuResponse, error)
+	WhenLimitingCPU func(handle string, limits warden.CPULimits) (warden.CPULimits, error)
 
 	limitedDisk      map[string][]warden.DiskLimits
-	WhenLimitingDisk func(handle string, limits warden.DiskLimits) (*protocol.LimitDiskResponse, error)
+	WhenLimitingDisk func(handle string, limits warden.DiskLimits) (warden.DiskLimits, error)
 
 	limitedMemory      map[string][]warden.MemoryLimits
-	WhenLimitingMemory func(handle string, limit warden.MemoryLimits) (*protocol.LimitMemoryResponse, error)
+	WhenLimitingMemory func(handle string, limit warden.MemoryLimits) (warden.MemoryLimits, error)
 
 	spawnedProcesses map[string][]warden.ProcessSpec
-	WhenRunning      func(handle string, spec warden.ProcessSpec) (*protocol.ProcessPayload, <-chan *protocol.ProcessPayload, error)
+	WhenRunning      func(handle string, spec warden.ProcessSpec) (uint32, <-chan warden.ProcessStream, error)
 
 	attachedProcesses map[string][]uint32
-	WhenAttaching     func(handle string, processID uint32) (<-chan *protocol.ProcessPayload, error)
+	WhenAttaching     func(handle string, processID uint32) (<-chan warden.ProcessStream, error)
 
 	netInned      map[string][]NetInSpec
-	WhenNetInning func(handle string, hostPort, containerPort uint32) (*protocol.NetInResponse, error)
+	WhenNetInning func(handle string, hostPort, containerPort uint32) (uint32, uint32, error)
 
 	netOuted      map[string][]NetOutSpec
-	WhenNetOuting func(handle string, network string, port uint32) (*protocol.NetOutResponse, error)
+	WhenNetOuting func(handle string, network string, port uint32) error
 }
 
 type StopSpec struct {
@@ -133,22 +130,24 @@ func (connection *FakeConnection) NotifyDisconnected() {
 	close(connection.disconnected)
 }
 
-func (connection *FakeConnection) RoundTrip(request proto.Message, response proto.Message) (proto.Message, error) {
-	panic("implement me!")
-	return nil, nil
-}
+func (connection *FakeConnection) Create(spec warden.ContainerSpec) (string, error) {
+	handle := spec.Handle
 
-func (connection *FakeConnection) Create(spec warden.ContainerSpec) (*protocol.CreateResponse, error) {
 	connection.lock.Lock()
+
 	connection.created = append(connection.created, spec)
-	handle := fmt.Sprintf("handle-%d", len(connection.created))
+
+	if spec.Handle == "" {
+		handle = fmt.Sprintf("handle-%d", len(connection.created))
+	}
+
 	connection.lock.Unlock()
 
 	if connection.WhenCreating != nil {
 		return connection.WhenCreating(spec)
 	}
 
-	return &protocol.CreateResponse{Handle: proto.String(handle)}, nil
+	return handle, nil
 }
 
 func (connection *FakeConnection) Created() []warden.ContainerSpec {
@@ -158,7 +157,7 @@ func (connection *FakeConnection) Created() []warden.ContainerSpec {
 	return connection.created
 }
 
-func (connection *FakeConnection) List(properties warden.Properties) (*protocol.ListResponse, error) {
+func (connection *FakeConnection) List(properties warden.Properties) ([]string, error) {
 	connection.lock.Lock()
 	connection.listedProperties = append(connection.listedProperties, properties)
 	connection.lock.Unlock()
@@ -167,10 +166,10 @@ func (connection *FakeConnection) List(properties warden.Properties) (*protocol.
 		return connection.WhenListing(properties)
 	}
 
-	return &protocol.ListResponse{}, nil
+	return nil, nil
 }
 
-func (connection *FakeConnection) Destroy(handle string) (*protocol.DestroyResponse, error) {
+func (connection *FakeConnection) Destroy(handle string) error {
 	connection.lock.Lock()
 	connection.destroyed = append(connection.destroyed, handle)
 	connection.lock.Unlock()
@@ -179,7 +178,7 @@ func (connection *FakeConnection) Destroy(handle string) (*protocol.DestroyRespo
 		return connection.WhenDestroying(handle)
 	}
 
-	return &protocol.DestroyResponse{}, nil
+	return nil
 }
 
 func (connection *FakeConnection) Destroyed() []string {
@@ -189,7 +188,7 @@ func (connection *FakeConnection) Destroyed() []string {
 	return connection.destroyed
 }
 
-func (connection *FakeConnection) Stop(handle string, background, kill bool) (*protocol.StopResponse, error) {
+func (connection *FakeConnection) Stop(handle string, background, kill bool) error {
 	connection.lock.Lock()
 	connection.stopped[handle] = append(connection.stopped[handle], StopSpec{
 		Background: background,
@@ -201,7 +200,7 @@ func (connection *FakeConnection) Stop(handle string, background, kill bool) (*p
 		return connection.WhenStopping(handle, background, kill)
 	}
 
-	return &protocol.StopResponse{}, nil
+	return nil
 }
 
 func (connection *FakeConnection) Stopped(handle string) []StopSpec {
@@ -211,15 +210,15 @@ func (connection *FakeConnection) Stopped(handle string) []StopSpec {
 	return connection.stopped[handle]
 }
 
-func (connection *FakeConnection) Info(handle string) (*protocol.InfoResponse, error) {
+func (connection *FakeConnection) Info(handle string) (warden.ContainerInfo, error) {
 	if connection.WhenGettingInfo != nil {
 		return connection.WhenGettingInfo(handle)
 	}
 
-	return &protocol.InfoResponse{}, nil
+	return warden.ContainerInfo{}, nil
 }
 
-func (connection *FakeConnection) CopyIn(handle string, src, dst string) (*protocol.CopyInResponse, error) {
+func (connection *FakeConnection) CopyIn(handle string, src, dst string) error {
 	connection.lock.Lock()
 	connection.copiedIn[handle] = append(connection.copiedIn[handle], CopyInSpec{
 		Source:      src,
@@ -231,7 +230,7 @@ func (connection *FakeConnection) CopyIn(handle string, src, dst string) (*proto
 		return connection.WhenCopyingIn(handle, src, dst)
 	}
 
-	return &protocol.CopyInResponse{}, nil
+	return nil
 }
 
 func (connection *FakeConnection) CopiedIn(handle string) []CopyInSpec {
@@ -241,7 +240,7 @@ func (connection *FakeConnection) CopiedIn(handle string) []CopyInSpec {
 	return connection.copiedIn[handle]
 }
 
-func (connection *FakeConnection) CopyOut(handle string, src, dst, owner string) (*protocol.CopyOutResponse, error) {
+func (connection *FakeConnection) CopyOut(handle string, src, dst, owner string) error {
 	connection.lock.Lock()
 	connection.copiedOut[handle] = append(connection.copiedOut[handle], CopyOutSpec{
 		Source:      src,
@@ -254,7 +253,7 @@ func (connection *FakeConnection) CopyOut(handle string, src, dst, owner string)
 		return connection.WhenCopyingOut(handle, src, dst, owner)
 	}
 
-	return &protocol.CopyOutResponse{}, nil
+	return nil
 }
 
 func (connection *FakeConnection) CopiedOut(handle string) []CopyOutSpec {
@@ -264,7 +263,7 @@ func (connection *FakeConnection) CopiedOut(handle string) []CopyOutSpec {
 	return connection.copiedOut[handle]
 }
 
-func (connection *FakeConnection) LimitBandwidth(handle string, limits warden.BandwidthLimits) (*protocol.LimitBandwidthResponse, error) {
+func (connection *FakeConnection) LimitBandwidth(handle string, limits warden.BandwidthLimits) (warden.BandwidthLimits, error) {
 	connection.lock.Lock()
 	connection.limitedBandwidth[handle] = append(connection.limitedBandwidth[handle], limits)
 	connection.lock.Unlock()
@@ -273,7 +272,7 @@ func (connection *FakeConnection) LimitBandwidth(handle string, limits warden.Ba
 		return connection.WhenLimitingBandwidth(handle, limits)
 	}
 
-	return &protocol.LimitBandwidthResponse{}, nil
+	return limits, nil
 }
 
 func (connection *FakeConnection) LimitedBandwidth(handle string) []warden.BandwidthLimits {
@@ -283,7 +282,7 @@ func (connection *FakeConnection) LimitedBandwidth(handle string) []warden.Bandw
 	return connection.limitedBandwidth[handle]
 }
 
-func (connection *FakeConnection) LimitCPU(handle string, limits warden.CPULimits) (*protocol.LimitCpuResponse, error) {
+func (connection *FakeConnection) LimitCPU(handle string, limits warden.CPULimits) (warden.CPULimits, error) {
 	connection.lock.Lock()
 	connection.limitedCPU[handle] = append(connection.limitedCPU[handle], limits)
 	connection.lock.Unlock()
@@ -292,7 +291,7 @@ func (connection *FakeConnection) LimitCPU(handle string, limits warden.CPULimit
 		return connection.WhenLimitingCPU(handle, limits)
 	}
 
-	return &protocol.LimitCpuResponse{}, nil
+	return limits, nil
 }
 
 func (connection *FakeConnection) LimitedCPU(handle string) []warden.CPULimits {
@@ -302,7 +301,7 @@ func (connection *FakeConnection) LimitedCPU(handle string) []warden.CPULimits {
 	return connection.limitedCPU[handle]
 }
 
-func (connection *FakeConnection) LimitDisk(handle string, limits warden.DiskLimits) (*protocol.LimitDiskResponse, error) {
+func (connection *FakeConnection) LimitDisk(handle string, limits warden.DiskLimits) (warden.DiskLimits, error) {
 	connection.lock.Lock()
 	connection.limitedDisk[handle] = append(connection.limitedDisk[handle], limits)
 	connection.lock.Unlock()
@@ -311,7 +310,7 @@ func (connection *FakeConnection) LimitDisk(handle string, limits warden.DiskLim
 		return connection.WhenLimitingDisk(handle, limits)
 	}
 
-	return &protocol.LimitDiskResponse{}, nil
+	return limits, nil
 }
 
 func (connection *FakeConnection) LimitedDisk(handle string) []warden.DiskLimits {
@@ -321,7 +320,7 @@ func (connection *FakeConnection) LimitedDisk(handle string) []warden.DiskLimits
 	return connection.limitedDisk[handle]
 }
 
-func (connection *FakeConnection) LimitMemory(handle string, limits warden.MemoryLimits) (*protocol.LimitMemoryResponse, error) {
+func (connection *FakeConnection) LimitMemory(handle string, limits warden.MemoryLimits) (warden.MemoryLimits, error) {
 	connection.lock.Lock()
 	connection.limitedMemory[handle] = append(connection.limitedMemory[handle], limits)
 	connection.lock.Unlock()
@@ -330,7 +329,7 @@ func (connection *FakeConnection) LimitMemory(handle string, limits warden.Memor
 		return connection.WhenLimitingMemory(handle, limits)
 	}
 
-	return &protocol.LimitMemoryResponse{}, nil
+	return limits, nil
 }
 
 func (connection *FakeConnection) LimitedMemory(handle string) []warden.MemoryLimits {
@@ -340,7 +339,7 @@ func (connection *FakeConnection) LimitedMemory(handle string) []warden.MemoryLi
 	return connection.limitedMemory[handle]
 }
 
-func (connection *FakeConnection) Run(handle string, spec warden.ProcessSpec) (*protocol.ProcessPayload, <-chan *protocol.ProcessPayload, error) {
+func (connection *FakeConnection) Run(handle string, spec warden.ProcessSpec) (uint32, <-chan warden.ProcessStream, error) {
 	connection.lock.Lock()
 	connection.spawnedProcesses[handle] = append(connection.spawnedProcesses[handle], spec)
 	connection.lock.Unlock()
@@ -349,7 +348,7 @@ func (connection *FakeConnection) Run(handle string, spec warden.ProcessSpec) (*
 		return connection.WhenRunning(handle, spec)
 	}
 
-	return &protocol.ProcessPayload{}, make(chan *protocol.ProcessPayload), nil
+	return 0, make(chan warden.ProcessStream), nil
 }
 
 func (connection *FakeConnection) SpawnedProcesses(handle string) []warden.ProcessSpec {
@@ -359,7 +358,7 @@ func (connection *FakeConnection) SpawnedProcesses(handle string) []warden.Proce
 	return connection.spawnedProcesses[handle]
 }
 
-func (connection *FakeConnection) Attach(handle string, processID uint32) (<-chan *protocol.ProcessPayload, error) {
+func (connection *FakeConnection) Attach(handle string, processID uint32) (<-chan warden.ProcessStream, error) {
 	connection.lock.Lock()
 	connection.attachedProcesses[handle] = append(connection.attachedProcesses[handle], processID)
 	connection.lock.Unlock()
@@ -368,7 +367,7 @@ func (connection *FakeConnection) Attach(handle string, processID uint32) (<-cha
 		return connection.WhenAttaching(handle, processID)
 	}
 
-	return make(chan *protocol.ProcessPayload), nil
+	return make(chan warden.ProcessStream), nil
 }
 
 func (connection *FakeConnection) AttachedProcesses(handle string) []uint32 {
@@ -378,7 +377,7 @@ func (connection *FakeConnection) AttachedProcesses(handle string) []uint32 {
 	return connection.attachedProcesses[handle]
 }
 
-func (connection *FakeConnection) NetIn(handle string, hostPort, containerPort uint32) (*protocol.NetInResponse, error) {
+func (connection *FakeConnection) NetIn(handle string, hostPort, containerPort uint32) (uint32, uint32, error) {
 	connection.lock.Lock()
 	connection.netInned[handle] = append(connection.netInned[handle], NetInSpec{
 		HostPort:      hostPort,
@@ -390,7 +389,7 @@ func (connection *FakeConnection) NetIn(handle string, hostPort, containerPort u
 		return connection.WhenNetInning(handle, hostPort, containerPort)
 	}
 
-	return &protocol.NetInResponse{}, nil
+	return 0, 0, nil
 }
 
 func (connection *FakeConnection) NetInned(handle string) []NetInSpec {
@@ -400,7 +399,7 @@ func (connection *FakeConnection) NetInned(handle string) []NetInSpec {
 	return connection.netInned[handle]
 }
 
-func (connection *FakeConnection) NetOut(handle string, network string, port uint32) (*protocol.NetOutResponse, error) {
+func (connection *FakeConnection) NetOut(handle string, network string, port uint32) error {
 	connection.lock.Lock()
 	connection.netOuted[handle] = append(connection.netOuted[handle], NetOutSpec{
 		Network: network,
@@ -412,7 +411,7 @@ func (connection *FakeConnection) NetOut(handle string, network string, port uin
 		return connection.WhenNetOuting(handle, network, port)
 	}
 
-	return &protocol.NetOutResponse{}, nil
+	return nil
 }
 
 func (connection *FakeConnection) NetOuted(handle string) []NetOutSpec {
