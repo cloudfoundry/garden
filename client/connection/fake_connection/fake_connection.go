@@ -1,7 +1,6 @@
 package fake_connection
 
 import (
-	"fmt"
 	"sync"
 
 	"github.com/cloudfoundry-incubator/garden/warden"
@@ -131,23 +130,15 @@ func (connection *FakeConnection) NotifyDisconnected() {
 }
 
 func (connection *FakeConnection) Create(spec warden.ContainerSpec) (string, error) {
-	handle := spec.Handle
-
 	connection.lock.Lock()
-
 	connection.created = append(connection.created, spec)
-
-	if spec.Handle == "" {
-		handle = fmt.Sprintf("handle-%d", len(connection.created))
-	}
-
 	connection.lock.Unlock()
 
 	if connection.WhenCreating != nil {
 		return connection.WhenCreating(spec)
 	}
 
-	return handle, nil
+	return "", nil
 }
 
 func (connection *FakeConnection) Created() []warden.ContainerSpec {
