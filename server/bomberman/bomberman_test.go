@@ -13,9 +13,9 @@ import (
 
 var _ = Describe("Bomberman", func() {
 	It("straps a bomb to the given container with the container's grace time as the countdown", func() {
-		detonated := make(chan warden.Container)
+		detonated := make(chan warden.BackendContainer)
 
-		bomberman := bomberman.New(func(container warden.Container) {
+		bomberman := bomberman.New(func(container warden.BackendContainer) {
 			detonated <- container
 		})
 
@@ -37,9 +37,9 @@ var _ = Describe("Bomberman", func() {
 
 	Context("when the container has a grace time of 0", func() {
 		It("never detonates", func() {
-			detonated := make(chan warden.Container)
+			detonated := make(chan warden.BackendContainer)
 
-			bomberman := bomberman.New(func(container warden.Container) {
+			bomberman := bomberman.New(func(container warden.BackendContainer) {
 				detonated <- container
 			})
 
@@ -62,9 +62,9 @@ var _ = Describe("Bomberman", func() {
 
 	Describe("pausing a container's timebomb", func() {
 		It("prevents it from detonating", func() {
-			detonated := make(chan warden.Container)
+			detonated := make(chan warden.BackendContainer)
 
-			bomberman := bomberman.New(func(container warden.Container) {
+			bomberman := bomberman.New(func(container warden.BackendContainer) {
 				detonated <- container
 			})
 
@@ -87,7 +87,7 @@ var _ = Describe("Bomberman", func() {
 
 		Context("when the handle is invalid", func() {
 			It("doesn't launch any missiles or anything like that", func() {
-				bomberman := bomberman.New(func(container warden.Container) {
+				bomberman := bomberman.New(func(container warden.BackendContainer) {
 					panic("dont call me")
 				})
 
@@ -97,9 +97,9 @@ var _ = Describe("Bomberman", func() {
 
 		Describe("and then unpausing it", func() {
 			It("causes it to detonate after the countdown", func() {
-				detonated := make(chan warden.Container)
+				detonated := make(chan warden.BackendContainer)
 
-				bomberman := bomberman.New(func(container warden.Container) {
+				bomberman := bomberman.New(func(container warden.BackendContainer) {
 					detonated <- container
 				})
 
@@ -126,7 +126,7 @@ var _ = Describe("Bomberman", func() {
 
 			Context("when the handle is invalid", func() {
 				It("doesn't launch any missiles or anything like that", func() {
-					bomberman := bomberman.New(func(container warden.Container) {
+					bomberman := bomberman.New(func(container warden.BackendContainer) {
 						panic("dont call me")
 					})
 
@@ -138,9 +138,9 @@ var _ = Describe("Bomberman", func() {
 
 	Describe("defusing a container's timebomb", func() {
 		It("prevents it from detonating", func() {
-			detonated := make(chan warden.Container)
+			detonated := make(chan warden.BackendContainer)
 
-			bomberman := bomberman.New(func(container warden.Container) {
+			bomberman := bomberman.New(func(container warden.BackendContainer) {
 				detonated <- container
 			})
 
@@ -163,7 +163,7 @@ var _ = Describe("Bomberman", func() {
 
 		Context("when the handle is invalid", func() {
 			It("doesn't launch any missiles or anything like that", func() {
-				bomberman := bomberman.New(func(container warden.Container) {
+				bomberman := bomberman.New(func(container warden.BackendContainer) {
 					panic("dont call me")
 				})
 

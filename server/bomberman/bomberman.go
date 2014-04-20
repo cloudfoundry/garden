@@ -6,19 +6,19 @@ import (
 )
 
 type Bomberman struct {
-	detonate func(warden.Container)
+	detonate func(warden.BackendContainer)
 
-	strap   chan warden.Container
+	strap   chan warden.BackendContainer
 	pause   chan string
 	unpause chan string
 	defuse  chan string
 }
 
-func New(detonate func(warden.Container)) *Bomberman {
+func New(detonate func(warden.BackendContainer)) *Bomberman {
 	b := &Bomberman{
 		detonate: detonate,
 
-		strap:   make(chan warden.Container),
+		strap:   make(chan warden.BackendContainer),
 		pause:   make(chan string),
 		unpause: make(chan string),
 		defuse:  make(chan string),
@@ -29,7 +29,7 @@ func New(detonate func(warden.Container)) *Bomberman {
 	return b
 }
 
-func (b *Bomberman) Strap(container warden.Container) {
+func (b *Bomberman) Strap(container warden.BackendContainer) {
 	b.strap <- container
 }
 

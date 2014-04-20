@@ -232,7 +232,7 @@ func (s *WardenServer) removeExistingSocket() error {
 	return nil
 }
 
-func (s *WardenServer) reapContainer(container warden.Container) {
+func (s *WardenServer) reapContainer(container warden.BackendContainer) {
 	log.Printf("reaping %s (idle for %s)\n", container.Handle(), container.GraceTime())
 	s.backend.Destroy(container.Handle())
 }

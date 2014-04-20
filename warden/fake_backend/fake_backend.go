@@ -1,7 +1,6 @@
 package fake_backend
 
 import (
-	"io"
 	"sync"
 
 	"github.com/cloudfoundry-incubator/garden/warden"
@@ -15,13 +14,11 @@ type FakeBackend struct {
 
 	CreateResult    *FakeContainer
 	CreateError     error
-	RestoreError    error
 	DestroyError    error
 	ContainersError error
 
 	CreatedContainers   map[string]*FakeContainer
 	DestroyedContainers []string
-	RestoredContainers  []io.Reader
 
 	sync.RWMutex
 }
@@ -54,7 +51,7 @@ func (b *FakeBackend) Stop() {
 	b.Stopped = true
 }
 
-func (b *FakeBackend) Create(spec warden.ContainerSpec) (warden.Container, error) {
+func (b *FakeBackend) Create(spec warden.ContainerSpec) (warden.BackendContainer, error) {
 	if b.CreateError != nil {
 		return nil, b.CreateError
 	}
@@ -75,19 +72,6 @@ func (b *FakeBackend) Create(spec warden.ContainerSpec) (warden.Container, error
 	return container, nil
 }
 
-func (b *FakeBackend) Restore(snapshot io.Reader) (warden.Container, error) {
-	if b.RestoreError != nil {
-		return nil, b.RestoreError
-	}
-
-	b.Lock()
-	defer b.Unlock()
-
-	b.RestoredContainers = append(b.RestoredContainers, snapshot)
-
-	return NewFakeContainer(warden.ContainerSpec{}), nil
-}
-
 func (b *FakeBackend) Destroy(handle string) error {
 	if b.DestroyError != nil {
 		return b.DestroyError
@@ -103,7 +87,7 @@ func (b *FakeBackend) Destroy(handle string) error {
 	return nil
 }
 
-func (b *FakeBackend) Containers() (containers []warden.Container, err error) {
+func (b *FakeBackend) Containers() (containers []warden.BackendContainer, err error) {
 	if b.ContainersError != nil {
 		err = b.ContainersError
 		return
@@ -119,7 +103,7 @@ func (b *FakeBackend) Containers() (containers []warden.Container, err error) {
 	return
 }
 
-func (b *FakeBackend) Lookup(handle string) (warden.Container, error) {
+func (b *FakeBackend) Lookup(handle string) (warden.BackendContainer, error) {
 	b.RLock()
 	defer b.RUnlock()
 

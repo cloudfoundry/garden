@@ -94,7 +94,7 @@ func (s *WardenServer) handleList(list *protocol.ListRequest) (proto.Message, er
 	return &protocol.ListResponse{Handles: handles}, nil
 }
 
-func containerHasProperties(container warden.Container, properties []*protocol.Property) bool {
+func containerHasProperties(container warden.BackendContainer, properties []*protocol.Property) bool {
 	containerProps := container.Properties()
 
 	for _, prop := range properties {
