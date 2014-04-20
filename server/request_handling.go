@@ -6,8 +6,8 @@ import (
 
 	"code.google.com/p/gogoprotobuf/proto"
 
-	"github.com/cloudfoundry-incubator/garden/backend"
 	protocol "github.com/cloudfoundry-incubator/garden/protocol"
+	"github.com/cloudfoundry-incubator/garden/warden"
 )
 
 func (s *WardenServer) handlePing(ping *protocol.PingRequest) (proto.Message, error) {
@@ -19,14 +19,14 @@ func (s *WardenServer) handleEcho(echo *protocol.EchoRequest) (proto.Message, er
 }
 
 func (s *WardenServer) handleCreate(create *protocol.CreateRequest) (proto.Message, error) {
-	bindMounts := []backend.BindMount{}
+	bindMounts := []warden.BindMount{}
 
 	for _, bm := range create.GetBindMounts() {
-		bindMount := backend.BindMount{
+		bindMount := warden.BindMount{
 			SrcPath: bm.GetSrcPath(),
 			DstPath: bm.GetDstPath(),
-			Mode:    backend.BindMountMode(bm.GetMode()),
-			Origin:  backend.BindMountOrigin(bm.GetOrigin()),
+			Mode:    warden.BindMountMode(bm.GetMode()),
+			Origin:  warden.BindMountOrigin(bm.GetOrigin()),
 		}
 
 		bindMounts = append(bindMounts, bindMount)
@@ -44,7 +44,7 @@ func (s *WardenServer) handleCreate(create *protocol.CreateRequest) (proto.Messa
 		graceTime = time.Duration(create.GetGraceTime()) * time.Second
 	}
 
-	container, err := s.backend.Create(backend.ContainerSpec{
+	container, err := s.backend.Create(warden.ContainerSpec{
 		Handle:     create.GetHandle(),
 		GraceTime:  graceTime,
 		RootFSPath: create.GetRootfs(),
@@ -94,7 +94,7 @@ func (s *WardenServer) handleList(list *protocol.ListRequest) (proto.Message, er
 	return &protocol.ListResponse{Handles: handles}, nil
 }
 
-func containerHasProperties(container backend.Container, properties []*protocol.Property) bool {
+func containerHasProperties(container warden.Container, properties []*protocol.Property) bool {
 	containerProps := container.Properties()
 
 	for _, prop := range properties {
@@ -192,7 +192,7 @@ func (s *WardenServer) handleLimitBandwidth(request *protocol.LimitBandwidthRequ
 	s.bomberman.Pause(container.Handle())
 	defer s.bomberman.Unpause(container.Handle())
 
-	err = container.LimitBandwidth(backend.BandwidthLimits{
+	err = container.LimitBandwidth(warden.BandwidthLimits{
 		RateInBytesPerSecond:      rate,
 		BurstRateInBytesPerSecond: burst,
 	})
@@ -224,7 +224,7 @@ func (s *WardenServer) handleLimitMemory(request *protocol.LimitMemoryRequest) (
 	defer s.bomberman.Unpause(container.Handle())
 
 	if request.LimitInBytes != nil {
-		err = container.LimitMemory(backend.MemoryLimits{
+		err = container.LimitMemory(warden.MemoryLimits{
 			LimitInBytes: limitInBytes,
 		})
 
@@ -299,7 +299,7 @@ func (s *WardenServer) handleLimitDisk(request *protocol.LimitDiskRequest) (prot
 	defer s.bomberman.Unpause(container.Handle())
 
 	if settingLimit {
-		err = container.LimitDisk(backend.DiskLimits{
+		err = container.LimitDisk(warden.DiskLimits{
 			BlockSoft: blockSoft,
 			BlockHard: blockHard,
 			InodeSoft: inodeSoft,
@@ -340,7 +340,7 @@ func (s *WardenServer) handleLimitCpu(request *protocol.LimitCpuRequest) (proto.
 	defer s.bomberman.Unpause(container.Handle())
 
 	if request.LimitInShares != nil {
-		err = container.LimitCPU(backend.CPULimits{
+		err = container.LimitCPU(warden.CPULimits{
 			LimitInShares: limitInShares,
 		})
 		if err != nil {
@@ -403,7 +403,7 @@ func (s *WardenServer) handleNetOut(request *protocol.NetOutRequest) (proto.Mess
 	return &protocol.NetOutResponse{}, nil
 }
 
-func (s *WardenServer) streamProcessToConnection(processID uint32, stream <-chan backend.ProcessStream, conn net.Conn) proto.Message {
+func (s *WardenServer) streamProcessToConnection(processID uint32, stream <-chan warden.ProcessStream, conn net.Conn) proto.Message {
 	for payload := range stream {
 		if payload.ExitStatus != nil {
 			return &protocol.ProcessPayload{
@@ -415,11 +415,11 @@ func (s *WardenServer) streamProcessToConnection(processID uint32, stream <-chan
 		var payloadSource protocol.ProcessPayload_Source
 
 		switch payload.Source {
-		case backend.ProcessStreamSourceStdout:
+		case warden.ProcessStreamSourceStdout:
 			payloadSource = protocol.ProcessPayload_stdout
-		case backend.ProcessStreamSourceStderr:
+		case warden.ProcessStreamSourceStderr:
 			payloadSource = protocol.ProcessPayload_stderr
-		case backend.ProcessStreamSourceStdin:
+		case warden.ProcessStreamSourceStdin:
 			payloadSource = protocol.ProcessPayload_stdin
 		}
 
@@ -433,11 +433,11 @@ func (s *WardenServer) streamProcessToConnection(processID uint32, stream <-chan
 	return nil
 }
 
-func convertEnvironmentVariables(environmentVariables []*protocol.EnvironmentVariable) []backend.EnvironmentVariable {
-	convertedEnvironmentVariables := []backend.EnvironmentVariable{}
+func convertEnvironmentVariables(environmentVariables []*protocol.EnvironmentVariable) []warden.EnvironmentVariable {
+	convertedEnvironmentVariables := []warden.EnvironmentVariable{}
 
 	for _, env := range environmentVariables {
-		convertedEnvironmentVariable := backend.EnvironmentVariable{
+		convertedEnvironmentVariable := warden.EnvironmentVariable{
 			Key:   env.GetKey(),
 			Value: env.GetValue(),
 		}
@@ -461,7 +461,7 @@ func (s *WardenServer) handleRun(conn net.Conn, request *protocol.RunRequest) (p
 	s.bomberman.Pause(container.Handle())
 	defer s.bomberman.Unpause(container.Handle())
 
-	ProcessSpec := backend.ProcessSpec{
+	ProcessSpec := warden.ProcessSpec{
 		Script:               script,
 		Privileged:           privileged,
 		EnvironmentVariables: convertEnvironmentVariables(env),
@@ -592,8 +592,8 @@ func (s *WardenServer) handleInfo(request *protocol.InfoRequest) (proto.Message,
 	}, nil
 }
 
-func resourceLimits(limits *protocol.ResourceLimits) backend.ResourceLimits {
-	return backend.ResourceLimits{
+func resourceLimits(limits *protocol.ResourceLimits) warden.ResourceLimits {
+	return warden.ResourceLimits{
 		As:         limits.As,
 		Core:       limits.Core,
 		Cpu:        limits.Cpu,

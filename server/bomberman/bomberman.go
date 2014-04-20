@@ -1,24 +1,24 @@
 package bomberman
 
 import (
-	"github.com/cloudfoundry-incubator/garden/backend"
 	"github.com/cloudfoundry-incubator/garden/server/timebomb"
+	"github.com/cloudfoundry-incubator/garden/warden"
 )
 
 type Bomberman struct {
-	detonate func(backend.Container)
+	detonate func(warden.Container)
 
-	strap   chan backend.Container
+	strap   chan warden.Container
 	pause   chan string
 	unpause chan string
 	defuse  chan string
 }
 
-func New(detonate func(backend.Container)) *Bomberman {
+func New(detonate func(warden.Container)) *Bomberman {
 	b := &Bomberman{
 		detonate: detonate,
 
-		strap:   make(chan backend.Container),
+		strap:   make(chan warden.Container),
 		pause:   make(chan string),
 		unpause: make(chan string),
 		defuse:  make(chan string),
@@ -29,7 +29,7 @@ func New(detonate func(backend.Container)) *Bomberman {
 	return b
 }
 
-func (b *Bomberman) Strap(container backend.Container) {
+func (b *Bomberman) Strap(container warden.Container) {
 	b.strap <- container
 }
 

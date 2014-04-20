@@ -3,14 +3,14 @@ package fake_backend
 import (
 	"testing"
 
-	"github.com/cloudfoundry-incubator/garden/backend"
+	"github.com/cloudfoundry-incubator/garden/warden"
 )
 
-func FunctionTakingBackend(backend.Backend) {
+func FunctionTakingBackend(warden.Backend) {
 
 }
 
-func FunctionTakingContainer(backend.Container) {
+func FunctionTakingContainer(warden.Container) {
 
 }
 

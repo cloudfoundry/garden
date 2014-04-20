@@ -4,7 +4,7 @@ import (
 	"io"
 	"sync"
 
-	"github.com/cloudfoundry-incubator/garden/backend"
+	"github.com/cloudfoundry-incubator/garden/warden"
 )
 
 type FakeBackend struct {
@@ -54,7 +54,7 @@ func (b *FakeBackend) Stop() {
 	b.Stopped = true
 }
 
-func (b *FakeBackend) Create(spec backend.ContainerSpec) (backend.Container, error) {
+func (b *FakeBackend) Create(spec warden.ContainerSpec) (warden.Container, error) {
 	if b.CreateError != nil {
 		return nil, b.CreateError
 	}
@@ -75,7 +75,7 @@ func (b *FakeBackend) Create(spec backend.ContainerSpec) (backend.Container, err
 	return container, nil
 }
 
-func (b *FakeBackend) Restore(snapshot io.Reader) (backend.Container, error) {
+func (b *FakeBackend) Restore(snapshot io.Reader) (warden.Container, error) {
 	if b.RestoreError != nil {
 		return nil, b.RestoreError
 	}
@@ -85,7 +85,7 @@ func (b *FakeBackend) Restore(snapshot io.Reader) (backend.Container, error) {
 
 	b.RestoredContainers = append(b.RestoredContainers, snapshot)
 
-	return NewFakeContainer(backend.ContainerSpec{}), nil
+	return NewFakeContainer(warden.ContainerSpec{}), nil
 }
 
 func (b *FakeBackend) Destroy(handle string) error {
@@ -103,7 +103,7 @@ func (b *FakeBackend) Destroy(handle string) error {
 	return nil
 }
 
-func (b *FakeBackend) Containers() (containers []backend.Container, err error) {
+func (b *FakeBackend) Containers() (containers []warden.Container, err error) {
 	if b.ContainersError != nil {
 		err = b.ContainersError
 		return
@@ -119,7 +119,7 @@ func (b *FakeBackend) Containers() (containers []backend.Container, err error) {
 	return
 }
 
-func (b *FakeBackend) Lookup(handle string) (backend.Container, error) {
+func (b *FakeBackend) Lookup(handle string) (warden.Container, error) {
 	b.RLock()
 	defer b.RUnlock()
 

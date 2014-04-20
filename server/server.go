@@ -11,11 +11,11 @@ import (
 
 	"code.google.com/p/gogoprotobuf/proto"
 
-	"github.com/cloudfoundry-incubator/garden/backend"
 	"github.com/cloudfoundry-incubator/garden/drain"
 	"github.com/cloudfoundry-incubator/garden/message_reader"
 	protocol "github.com/cloudfoundry-incubator/garden/protocol"
 	"github.com/cloudfoundry-incubator/garden/server/bomberman"
+	"github.com/cloudfoundry-incubator/garden/warden"
 )
 
 type WardenServer struct {
@@ -23,7 +23,7 @@ type WardenServer struct {
 	listenAddr    string
 
 	containerGraceTime time.Duration
-	backend            backend.Backend
+	backend            warden.Backend
 
 	listener     net.Listener
 	openRequests *drain.Drain
@@ -45,7 +45,7 @@ func (e UnhandledRequestError) Error() string {
 func New(
 	listenNetwork, listenAddr string,
 	containerGraceTime time.Duration,
-	backend backend.Backend,
+	backend warden.Backend,
 ) *WardenServer {
 	return &WardenServer{
 		listenNetwork: listenNetwork,
@@ -232,7 +232,7 @@ func (s *WardenServer) removeExistingSocket() error {
 	return nil
 }
 
-func (s *WardenServer) reapContainer(container backend.Container) {
+func (s *WardenServer) reapContainer(container warden.Container) {
 	log.Printf("reaping %s (idle for %s)\n", container.Handle(), container.GraceTime())
 	s.backend.Destroy(container.Handle())
 }

@@ -1,13 +1,10 @@
-package backend
+package warden
 
 import (
 	"time"
 )
 
-type Backend interface {
-	Start() error
-	Stop()
-
+type Client interface {
 	Create(ContainerSpec) (Container, error)
 	Destroy(handle string) error
 	Containers() ([]Container, error)

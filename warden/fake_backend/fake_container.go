@@ -7,13 +7,13 @@ import (
 
 	"github.com/nu7hatch/gouuid"
 
-	"github.com/cloudfoundry-incubator/garden/backend"
+	"github.com/cloudfoundry-incubator/garden/warden"
 )
 
 type FakeContainer struct {
 	id string
 
-	Spec backend.ContainerSpec
+	Spec warden.ContainerSpec
 
 	StartError error
 	Started    bool
@@ -33,40 +33,40 @@ type FakeContainer struct {
 
 	RunError         error
 	RunningProcessID uint32
-	RunningProcesses []backend.ProcessSpec
+	RunningProcesses []warden.ProcessSpec
 
 	AttachError error
 	Attached    []uint32
 
-	StreamedProcessChunks []backend.ProcessStream
+	StreamedProcessChunks []warden.ProcessStream
 	StreamDelay           time.Duration
 
 	DidLimitBandwidth   bool
 	LimitBandwidthError error
-	LimitedBandwidth    backend.BandwidthLimits
+	LimitedBandwidth    warden.BandwidthLimits
 
-	CurrentBandwidthLimitsResult backend.BandwidthLimits
+	CurrentBandwidthLimitsResult warden.BandwidthLimits
 	CurrentBandwidthLimitsError  error
 
 	DidLimitMemory   bool
 	LimitMemoryError error
-	LimitedMemory    backend.MemoryLimits
+	LimitedMemory    warden.MemoryLimits
 
-	CurrentMemoryLimitsResult backend.MemoryLimits
+	CurrentMemoryLimitsResult warden.MemoryLimits
 	CurrentMemoryLimitsError  error
 
 	DidLimitDisk   bool
 	LimitDiskError error
-	LimitedDisk    backend.DiskLimits
+	LimitedDisk    warden.DiskLimits
 
-	CurrentDiskLimitsResult backend.DiskLimits
+	CurrentDiskLimitsResult warden.DiskLimits
 	CurrentDiskLimitsError  error
 
 	DidLimitCPU   bool
 	LimitCPUError error
-	LimitedCPU    backend.CPULimits
+	LimitedCPU    warden.CPULimits
 
-	CurrentCPULimitsResult backend.CPULimits
+	CurrentCPULimitsResult warden.CPULimits
 	CurrentCPULimitsError  error
 
 	NetInError error
@@ -76,7 +76,7 @@ type FakeContainer struct {
 	PermittedOut []NetOutSpec
 
 	InfoError    error
-	ReportedInfo backend.ContainerInfo
+	ReportedInfo warden.ContainerInfo
 
 	SnapshotError  error
 	SavedSnapshots []io.Writer
@@ -92,7 +92,7 @@ type StopSpec struct {
 	Killed bool
 }
 
-func NewFakeContainer(spec backend.ContainerSpec) *FakeContainer {
+func NewFakeContainer(spec warden.ContainerSpec) *FakeContainer {
 	idUUID, err := uuid.NewV4()
 	if err != nil {
 		panic("could not create uuid: " + err.Error())
@@ -122,7 +122,7 @@ func (c *FakeContainer) Handle() string {
 	return c.Spec.Handle
 }
 
-func (c *FakeContainer) Properties() backend.Properties {
+func (c *FakeContainer) Properties() warden.Properties {
 	return c.Spec.Properties
 }
 
@@ -181,9 +181,9 @@ func (c *FakeContainer) Stopped() []StopSpec {
 	return stopped
 }
 
-func (c *FakeContainer) Info() (backend.ContainerInfo, error) {
+func (c *FakeContainer) Info() (warden.ContainerInfo, error) {
 	if c.InfoError != nil {
-		return backend.ContainerInfo{}, c.InfoError
+		return warden.ContainerInfo{}, c.InfoError
 	}
 
 	return c.ReportedInfo, nil
@@ -209,7 +209,7 @@ func (c *FakeContainer) CopyOut(src, dst, owner string) error {
 	return nil
 }
 
-func (c *FakeContainer) LimitBandwidth(limits backend.BandwidthLimits) error {
+func (c *FakeContainer) LimitBandwidth(limits warden.BandwidthLimits) error {
 	c.DidLimitBandwidth = true
 
 	if c.LimitBandwidthError != nil {
@@ -221,15 +221,15 @@ func (c *FakeContainer) LimitBandwidth(limits backend.BandwidthLimits) error {
 	return nil
 }
 
-func (c *FakeContainer) CurrentBandwidthLimits() (backend.BandwidthLimits, error) {
+func (c *FakeContainer) CurrentBandwidthLimits() (warden.BandwidthLimits, error) {
 	if c.CurrentBandwidthLimitsError != nil {
-		return backend.BandwidthLimits{}, c.CurrentBandwidthLimitsError
+		return warden.BandwidthLimits{}, c.CurrentBandwidthLimitsError
 	}
 
 	return c.CurrentBandwidthLimitsResult, nil
 }
 
-func (c *FakeContainer) LimitDisk(limits backend.DiskLimits) error {
+func (c *FakeContainer) LimitDisk(limits warden.DiskLimits) error {
 	c.DidLimitDisk = true
 
 	if c.LimitDiskError != nil {
@@ -241,15 +241,15 @@ func (c *FakeContainer) LimitDisk(limits backend.DiskLimits) error {
 	return nil
 }
 
-func (c *FakeContainer) CurrentDiskLimits() (backend.DiskLimits, error) {
+func (c *FakeContainer) CurrentDiskLimits() (warden.DiskLimits, error) {
 	if c.CurrentDiskLimitsError != nil {
-		return backend.DiskLimits{}, c.CurrentDiskLimitsError
+		return warden.DiskLimits{}, c.CurrentDiskLimitsError
 	}
 
 	return c.CurrentDiskLimitsResult, nil
 }
 
-func (c *FakeContainer) LimitMemory(limits backend.MemoryLimits) error {
+func (c *FakeContainer) LimitMemory(limits warden.MemoryLimits) error {
 	c.DidLimitMemory = true
 
 	if c.LimitMemoryError != nil {
@@ -261,15 +261,15 @@ func (c *FakeContainer) LimitMemory(limits backend.MemoryLimits) error {
 	return nil
 }
 
-func (c *FakeContainer) CurrentMemoryLimits() (backend.MemoryLimits, error) {
+func (c *FakeContainer) CurrentMemoryLimits() (warden.MemoryLimits, error) {
 	if c.CurrentMemoryLimitsError != nil {
-		return backend.MemoryLimits{}, c.CurrentMemoryLimitsError
+		return warden.MemoryLimits{}, c.CurrentMemoryLimitsError
 	}
 
 	return c.CurrentMemoryLimitsResult, nil
 }
 
-func (c *FakeContainer) LimitCPU(limits backend.CPULimits) error {
+func (c *FakeContainer) LimitCPU(limits warden.CPULimits) error {
 	c.DidLimitCPU = true
 
 	if c.LimitCPUError != nil {
@@ -281,15 +281,15 @@ func (c *FakeContainer) LimitCPU(limits backend.CPULimits) error {
 	return nil
 }
 
-func (c *FakeContainer) CurrentCPULimits() (backend.CPULimits, error) {
+func (c *FakeContainer) CurrentCPULimits() (warden.CPULimits, error) {
 	if c.CurrentCPULimitsError != nil {
-		return backend.CPULimits{}, c.CurrentCPULimitsError
+		return warden.CPULimits{}, c.CurrentCPULimitsError
 	}
 
 	return c.CurrentCPULimitsResult, nil
 }
 
-func (c *FakeContainer) Run(spec backend.ProcessSpec) (uint32, <-chan backend.ProcessStream, error) {
+func (c *FakeContainer) Run(spec warden.ProcessSpec) (uint32, <-chan warden.ProcessStream, error) {
 	if c.RunError != nil {
 		return 0, nil, c.RunError
 	}
@@ -299,7 +299,7 @@ func (c *FakeContainer) Run(spec backend.ProcessSpec) (uint32, <-chan backend.Pr
 	return c.RunningProcessID, c.fakeAttach(), nil
 }
 
-func (c *FakeContainer) Attach(processID uint32) (<-chan backend.ProcessStream, error) {
+func (c *FakeContainer) Attach(processID uint32) (<-chan warden.ProcessStream, error) {
 	if c.AttachError != nil {
 		return nil, c.AttachError
 	}
@@ -333,8 +333,8 @@ func (c *FakeContainer) Cleanup() {
 	c.CleanedUp = true
 }
 
-func (c *FakeContainer) fakeAttach() chan backend.ProcessStream {
-	stream := make(chan backend.ProcessStream, len(c.StreamedProcessChunks))
+func (c *FakeContainer) fakeAttach() chan warden.ProcessStream {
+	stream := make(chan warden.ProcessStream, len(c.StreamedProcessChunks))
 
 	go func() {
 		for _, chunk := range c.StreamedProcessChunks {

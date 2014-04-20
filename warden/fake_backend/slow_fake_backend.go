@@ -3,7 +3,7 @@ package fake_backend
 import (
 	"time"
 
-	"github.com/cloudfoundry-incubator/garden/backend"
+	"github.com/cloudfoundry-incubator/garden/warden"
 )
 
 type SlowFakeBackend struct {
@@ -20,13 +20,13 @@ func NewSlow(delay time.Duration) *SlowFakeBackend {
 	}
 }
 
-func (b *SlowFakeBackend) Create(spec backend.ContainerSpec) (backend.Container, error) {
+func (b *SlowFakeBackend) Create(spec warden.ContainerSpec) (warden.Container, error) {
 	time.Sleep(b.delay)
 
 	return b.FakeBackend.Create(spec)
 }
 
-func (b *SlowFakeBackend) Lookup(handle string) (backend.Container, error) {
+func (b *SlowFakeBackend) Lookup(handle string) (warden.Container, error) {
 	time.Sleep(b.delay)
 
 	return b.FakeBackend.Lookup(handle)
