@@ -103,8 +103,12 @@ var _ = Describe("Client", func() {
 				return []string{"handle-a", "handle-b"}, nil
 			}
 
-			containers, err := client.Containers()
+			props := warden.Properties{"foo": "bar"}
+
+			containers, err := client.Containers(props)
 			Ω(err).ShouldNot(HaveOccurred())
+
+			Ω(fakeConnection.ListedProperties()).Should(ContainElement(props))
 
 			Ω(containers).Should(HaveLen(2))
 			Ω(containers[0].Handle()).Should(Equal("handle-a"))
@@ -121,7 +125,7 @@ var _ = Describe("Client", func() {
 			})
 
 			It("returns it", func() {
-				_, err := client.Containers()
+				_, err := client.Containers(nil)
 				Ω(err).Should(Equal(disaster))
 			})
 		})

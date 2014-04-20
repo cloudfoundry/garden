@@ -62,6 +62,7 @@ type ContainerInfo struct {
 	CPUStat       ContainerCPUStat
 	DiskStat      ContainerDiskStat
 	BandwidthStat ContainerBandwidthStat
+	Properties    Properties
 }
 
 type ContainerMemoryStat struct {

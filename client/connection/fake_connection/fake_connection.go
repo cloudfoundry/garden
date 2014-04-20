@@ -160,6 +160,13 @@ func (connection *FakeConnection) List(properties warden.Properties) ([]string, 
 	return nil, nil
 }
 
+func (connection *FakeConnection) ListedProperties() []warden.Properties {
+	connection.lock.RLock()
+	defer connection.lock.RUnlock()
+
+	return connection.listedProperties
+}
+
 func (connection *FakeConnection) Destroy(handle string) error {
 	connection.lock.Lock()
 	connection.destroyed = append(connection.destroyed, handle)

@@ -45,11 +45,11 @@ func (client *client) Create(spec warden.ContainerSpec) (warden.Container, error
 	return newContainer(handle, client.pool), nil
 }
 
-func (client *client) Containers() ([]warden.Container, error) {
+func (client *client) Containers(properties warden.Properties) ([]warden.Container, error) {
 	conn := client.pool.Acquire()
 	defer client.pool.Release(conn)
 
-	handles, err := conn.List(nil)
+	handles, err := conn.List(properties)
 	if err != nil {
 		return nil, err
 	}

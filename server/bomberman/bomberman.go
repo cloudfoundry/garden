@@ -6,19 +6,22 @@ import (
 )
 
 type Bomberman struct {
-	detonate func(warden.BackendContainer)
+	backend warden.Backend
 
-	strap   chan warden.BackendContainer
+	detonate func(warden.Container)
+
+	strap   chan warden.Container
 	pause   chan string
 	unpause chan string
 	defuse  chan string
 }
 
-func New(detonate func(warden.BackendContainer)) *Bomberman {
+func New(backend warden.Backend, detonate func(warden.Container)) *Bomberman {
 	b := &Bomberman{
+		backend:  backend,
 		detonate: detonate,
 
-		strap:   make(chan warden.BackendContainer),
+		strap:   make(chan warden.Container),
 		pause:   make(chan string),
 		unpause: make(chan string),
 		defuse:  make(chan string),
@@ -29,7 +32,7 @@ func New(detonate func(warden.BackendContainer)) *Bomberman {
 	return b
 }
 
-func (b *Bomberman) Strap(container warden.BackendContainer) {
+func (b *Bomberman) Strap(container warden.Container) {
 	b.strap <- container
 }
 
@@ -51,12 +54,12 @@ func (b *Bomberman) manageBombs() {
 	for {
 		select {
 		case container := <-b.strap:
-			if container.GraceTime() == 0 {
+			if b.backend.GraceTime(container) == 0 {
 				continue
 			}
 
 			bomb := timebomb.New(
-				container.GraceTime(),
+				b.backend.GraceTime(container),
 				func() {
 					b.detonate(container)
 					b.defuse <- container.Handle()

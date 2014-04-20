@@ -20,13 +20,13 @@ func NewSlow(delay time.Duration) *SlowFakeBackend {
 	}
 }
 
-func (b *SlowFakeBackend) Create(spec warden.ContainerSpec) (warden.BackendContainer, error) {
+func (b *SlowFakeBackend) Create(spec warden.ContainerSpec) (warden.Container, error) {
 	time.Sleep(b.delay)
 
 	return b.FakeBackend.Create(spec)
 }
 
-func (b *SlowFakeBackend) Lookup(handle string) (warden.BackendContainer, error) {
+func (b *SlowFakeBackend) Lookup(handle string) (warden.Container, error) {
 	time.Sleep(b.delay)
 
 	return b.FakeBackend.Lookup(handle)

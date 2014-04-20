@@ -244,7 +244,7 @@ var _ = Describe("When a client connects", func() {
 				container, err := serverBackend.Lookup("some-handle")
 				Expect(err).ToNot(HaveOccurred())
 
-				Expect(container.GraceTime()).To(Equal(serverContainerGraceTime))
+				Expect(serverBackend.GraceTime(container)).To(Equal(serverContainerGraceTime))
 
 				close(done)
 			}, 1.0)
@@ -387,12 +387,12 @@ var _ = Describe("When a client connects", func() {
 		})
 
 		Context("and the client sends a ListRequest with a property filter", func() {
-			It("sends a ListResponse containing only the handles with the specified properties", func(done Done) {
+			It("forwards the filter to the backend", func(done Done) {
 				writeMessages(&protocol.ListRequest{
 					Properties: []*protocol.Property{
 						{
-							Key:   proto.String("cf-owner"),
-							Value: proto.String("executor"),
+							Key:   proto.String("foo"),
+							Value: proto.String("bar"),
 						},
 					},
 				})
@@ -400,10 +400,11 @@ var _ = Describe("When a client connects", func() {
 				var response protocol.ListResponse
 				readResponse(&response)
 
-				Expect(response.GetHandles()).To(ContainElement("some-handle"))
-				Expect(response.GetHandles()).To(ContainElement("another-handle"))
-				Expect(response.GetHandles()).ToNot(ContainElement("super-handle"))
-				Expect(response.GetHandles()).To(HaveLen(2))
+				Expect(serverBackend.ContainersFilters).To(ContainElement(
+					warden.Properties{
+						"foo": "bar",
+					},
+				))
 
 				close(done)
 			}, 1.0)
@@ -1994,6 +1995,13 @@ var _ = Describe("When a client connects", func() {
 		}, 1.0)
 
 		It("includes the container's properties", func() {
+			fakeContainer.ReportedInfo = warden.ContainerInfo{
+				Properties: warden.Properties{
+					"foo": "bar",
+					"a":   "b",
+				},
+			}
+
 			writeMessages(&protocol.InfoRequest{
 				Handle: proto.String(fakeContainer.Handle()),
 			})
