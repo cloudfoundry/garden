@@ -111,6 +111,50 @@ func (c *connection) Disconnected() <-chan struct{} {
 }
 
 func (c *connection) Create(spec warden.ContainerSpec) (string, error) {
+	req := &protocol.CreateRequest{}
+
+	if spec.Handle != "" {
+		req.Handle = proto.String(spec.Handle)
+	}
+
+	if spec.RootFSPath != "" {
+		req.Rootfs = proto.String(spec.RootFSPath)
+	}
+
+	if spec.GraceTime != 0 {
+		req.GraceTime = proto.Uint32(uint32(spec.GraceTime.Seconds()))
+	}
+
+	if spec.Network != "" {
+		req.Network = proto.String(spec.Network)
+	}
+
+	for _, bm := range spec.BindMounts {
+		var mode protocol.CreateRequest_BindMount_Mode
+		var origin protocol.CreateRequest_BindMount_Origin
+
+		switch bm.Mode {
+		case warden.BindMountModeRO:
+			mode = protocol.CreateRequest_BindMount_RO
+		case warden.BindMountModeRW:
+			mode = protocol.CreateRequest_BindMount_RW
+		}
+
+		switch bm.Origin {
+		case warden.BindMountOriginHost:
+			origin = protocol.CreateRequest_BindMount_Host
+		case warden.BindMountOriginContainer:
+			origin = protocol.CreateRequest_BindMount_Container
+		}
+
+		req.BindMounts = append(req.BindMounts, &protocol.CreateRequest_BindMount{
+			SrcPath: proto.String(bm.SrcPath),
+			DstPath: proto.String(bm.DstPath),
+			Mode:    &mode,
+			Origin:  &origin,
+		})
+	}
+
 	props := []*protocol.Property{}
 	for key, val := range spec.Properties {
 		props = append(props, &protocol.Property{
@@ -119,7 +163,8 @@ func (c *connection) Create(spec warden.ContainerSpec) (string, error) {
 		})
 	}
 
-	req := &protocol.CreateRequest{Properties: props}
+	req.Properties = props
+
 	res := &protocol.CreateResponse{}
 
 	err := c.roundTrip(req, res)

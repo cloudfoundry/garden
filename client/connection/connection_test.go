@@ -119,6 +119,24 @@ var _ = Describe("Connection", func() {
 
 		It("should create a container", func() {
 			handle, err := connection.Create(warden.ContainerSpec{
+				Handle:     "some-handle",
+				GraceTime:  10 * time.Second,
+				RootFSPath: "some-rootfs-path",
+				Network:    "some-network",
+				BindMounts: []warden.BindMount{
+					{
+						SrcPath: "/src-a",
+						DstPath: "/dst-a",
+						Mode:    warden.BindMountModeRO,
+						Origin:  warden.BindMountOriginHost,
+					},
+					{
+						SrcPath: "/src-b",
+						DstPath: "/dst-b",
+						Mode:    warden.BindMountModeRW,
+						Origin:  warden.BindMountOriginContainer,
+					},
+				},
 				Properties: map[string]string{
 					"foo": "bar",
 				},
@@ -126,7 +144,31 @@ var _ = Describe("Connection", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(handle).Should(Equal("foohandle"))
 
+			ro := protocol.CreateRequest_BindMount_RO
+			rw := protocol.CreateRequest_BindMount_RW
+
+			hostOrigin := protocol.CreateRequest_BindMount_Host
+			containerOrigin := protocol.CreateRequest_BindMount_Container
+
 			assertWriteBufferContains(&protocol.CreateRequest{
+				Handle:    proto.String("some-handle"),
+				GraceTime: proto.Uint32(10),
+				Rootfs:    proto.String("some-rootfs-path"),
+				Network:   proto.String("some-network"),
+				BindMounts: []*protocol.CreateRequest_BindMount{
+					{
+						SrcPath: proto.String("/src-a"),
+						DstPath: proto.String("/dst-a"),
+						Mode:    &ro,
+						Origin:  &hostOrigin,
+					},
+					{
+						SrcPath: proto.String("/src-b"),
+						DstPath: proto.String("/dst-b"),
+						Mode:    &rw,
+						Origin:  &containerOrigin,
+					},
+				},
 				Properties: []*protocol.Property{
 					{
 						Key:   proto.String("foo"),
