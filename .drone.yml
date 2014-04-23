@@ -1,6 +1,7 @@
 image: cloudfoundry/garden-ci
 
 env:
+  - COVERALLS_TOKEN={{coveralls_token}}
   - GOROOT=/usr/local/go
   - GOPATH=/var/cache/drone
   - PATH=$GOPATH/bin:$PATH
