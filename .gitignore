@@ -9,3 +9,4 @@ root/
 linux_backend/bin/repquota
 linux_backend/skeleton/bin/*
 garden-test-rootfs.tar
+*.test
