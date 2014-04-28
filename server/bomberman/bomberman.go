@@ -14,6 +14,7 @@ type Bomberman struct {
 	pause   chan string
 	unpause chan string
 	defuse  chan string
+	cleanup chan string
 }
 
 func New(backend warden.Backend, detonate func(warden.Container)) *Bomberman {
@@ -25,6 +26,7 @@ func New(backend warden.Backend, detonate func(warden.Container)) *Bomberman {
 		pause:   make(chan string),
 		unpause: make(chan string),
 		defuse:  make(chan string),
+		cleanup: make(chan string),
 	}
 
 	go b.manageBombs()
@@ -62,7 +64,7 @@ func (b *Bomberman) manageBombs() {
 				b.backend.GraceTime(container),
 				func() {
 					b.detonate(container)
-					b.defuse <- container.Handle()
+					b.cleanup <- container.Handle()
 				},
 			)
 
@@ -94,6 +96,9 @@ func (b *Bomberman) manageBombs() {
 
 			bomb.Defuse()
 
+			delete(timeBombs, handle)
+
+		case handle := <-b.cleanup:
 			delete(timeBombs, handle)
 		}
 	}
