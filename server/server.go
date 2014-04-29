@@ -11,11 +11,11 @@ import (
 
 	"code.google.com/p/gogoprotobuf/proto"
 
-	"github.com/cloudfoundry-incubator/garden/backend"
 	"github.com/cloudfoundry-incubator/garden/drain"
 	"github.com/cloudfoundry-incubator/garden/message_reader"
 	protocol "github.com/cloudfoundry-incubator/garden/protocol"
 	"github.com/cloudfoundry-incubator/garden/server/bomberman"
+	"github.com/cloudfoundry-incubator/garden/warden"
 )
 
 type WardenServer struct {
@@ -23,7 +23,7 @@ type WardenServer struct {
 	listenAddr    string
 
 	containerGraceTime time.Duration
-	backend            backend.Backend
+	backend            warden.Backend
 
 	listener     net.Listener
 	openRequests *drain.Drain
@@ -45,7 +45,7 @@ func (e UnhandledRequestError) Error() string {
 func New(
 	listenNetwork, listenAddr string,
 	containerGraceTime time.Duration,
-	backend backend.Backend,
+	backend warden.Backend,
 ) *WardenServer {
 	return &WardenServer{
 		listenNetwork: listenNetwork,
@@ -83,12 +83,12 @@ func (s *WardenServer) Start() error {
 		os.Chmod(s.listenAddr, 0777)
 	}
 
-	containers, err := s.backend.Containers()
+	containers, err := s.backend.Containers(nil)
 	if err != nil {
 		return err
 	}
 
-	s.bomberman = bomberman.New(s.reapContainer)
+	s.bomberman = bomberman.New(s.backend, s.reapContainer)
 
 	for _, container := range containers {
 		s.bomberman.Strap(container)
@@ -232,7 +232,7 @@ func (s *WardenServer) removeExistingSocket() error {
 	return nil
 }
 
-func (s *WardenServer) reapContainer(container backend.Container) {
-	log.Printf("reaping %s (idle for %s)\n", container.Handle(), container.GraceTime())
+func (s *WardenServer) reapContainer(container warden.Container) {
+	log.Printf("reaping %s (idle for %s)\n", container.Handle(), s.backend.GraceTime(container))
 	s.backend.Destroy(container.Handle())
 }

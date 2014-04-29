@@ -1,27 +1,32 @@
 package bomberman
 
 import (
-	"github.com/cloudfoundry-incubator/garden/backend"
 	"github.com/cloudfoundry-incubator/garden/server/timebomb"
+	"github.com/cloudfoundry-incubator/garden/warden"
 )
 
 type Bomberman struct {
-	detonate func(backend.Container)
+	backend warden.Backend
 
-	strap   chan backend.Container
+	detonate func(warden.Container)
+
+	strap   chan warden.Container
 	pause   chan string
 	unpause chan string
 	defuse  chan string
+	cleanup chan string
 }
 
-func New(detonate func(backend.Container)) *Bomberman {
+func New(backend warden.Backend, detonate func(warden.Container)) *Bomberman {
 	b := &Bomberman{
+		backend:  backend,
 		detonate: detonate,
 
-		strap:   make(chan backend.Container),
+		strap:   make(chan warden.Container),
 		pause:   make(chan string),
 		unpause: make(chan string),
 		defuse:  make(chan string),
+		cleanup: make(chan string),
 	}
 
 	go b.manageBombs()
@@ -29,7 +34,7 @@ func New(detonate func(backend.Container)) *Bomberman {
 	return b
 }
 
-func (b *Bomberman) Strap(container backend.Container) {
+func (b *Bomberman) Strap(container warden.Container) {
 	b.strap <- container
 }
 
@@ -51,15 +56,15 @@ func (b *Bomberman) manageBombs() {
 	for {
 		select {
 		case container := <-b.strap:
-			if container.GraceTime() == 0 {
+			if b.backend.GraceTime(container) == 0 {
 				continue
 			}
 
 			bomb := timebomb.New(
-				container.GraceTime(),
+				b.backend.GraceTime(container),
 				func() {
 					b.detonate(container)
-					b.defuse <- container.Handle()
+					b.cleanup <- container.Handle()
 				},
 			)
 
@@ -91,6 +96,9 @@ func (b *Bomberman) manageBombs() {
 
 			bomb.Defuse()
 
+			delete(timeBombs, handle)
+
+		case handle := <-b.cleanup:
 			delete(timeBombs, handle)
 		}
 	}

@@ -1,14 +1,7 @@
-package backend
-
-import (
-	"time"
-)
+package warden
 
 type Container interface {
-	ID() string
 	Handle() string
-	GraceTime() time.Duration
-	Properties() Properties
 
 	Stop(kill bool) error
 
@@ -69,6 +62,7 @@ type ContainerInfo struct {
 	CPUStat       ContainerCPUStat
 	DiskStat      ContainerDiskStat
 	BandwidthStat ContainerBandwidthStat
+	Properties    Properties
 }
 
 type ContainerMemoryStat struct {

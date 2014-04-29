@@ -15,11 +15,11 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	"github.com/cloudfoundry-incubator/garden/backend"
-	"github.com/cloudfoundry-incubator/garden/backend/fake_backend"
 	"github.com/cloudfoundry-incubator/garden/message_reader"
 	protocol "github.com/cloudfoundry-incubator/garden/protocol"
 	"github.com/cloudfoundry-incubator/garden/server"
+	"github.com/cloudfoundry-incubator/garden/warden"
+	"github.com/cloudfoundry-incubator/garden/warden/fake_backend"
 )
 
 var _ = Describe("The Warden server", func() {
@@ -96,7 +96,7 @@ var _ = Describe("The Warden server", func() {
 
 		fakeBackend := fake_backend.New()
 
-		_, err = fakeBackend.Create(backend.ContainerSpec{
+		_, err = fakeBackend.Create(warden.ContainerSpec{
 			Handle:    "doomed",
 			GraceTime: 100 * time.Millisecond,
 		})
@@ -160,7 +160,7 @@ var _ = Describe("The Warden server", func() {
 	Describe("shutting down", func() {
 		var socketPath string
 
-		var serverBackend backend.Backend
+		var serverBackend warden.Backend
 		var fakeBackend *fake_backend.FakeBackend
 
 		var wardenServer *server.WardenServer
@@ -270,14 +270,14 @@ var _ = Describe("The Warden server", func() {
 				BeforeEach(func() {
 					serverBackend = fake_backend.NewSlow(100 * time.Millisecond)
 
-					container, err := serverBackend.Create(backend.ContainerSpec{Handle: "some-handle"})
+					container, err := serverBackend.Create(warden.ContainerSpec{Handle: "some-handle"})
 					Expect(err).ToNot(HaveOccurred())
 
 					exitStatus := uint32(42)
 
 					fakeContainer := container.(*fake_backend.FakeContainer)
 
-					fakeContainer.StreamedProcessChunks = []backend.ProcessStream{
+					fakeContainer.StreamedProcessChunks = []warden.ProcessStream{
 						{
 							ExitStatus: &exitStatus,
 						},
