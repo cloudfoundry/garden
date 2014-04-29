@@ -482,6 +482,11 @@ func (c *connection) Info(handle string) (warden.ContainerInfo, error) {
 		processIDs = append(processIDs, uint32(pid))
 	}
 
+	properties := warden.Properties{}
+	for _, prop := range res.GetProperties() {
+		properties[prop.GetKey()] = prop.GetValue()
+	}
+
 	bandwidthStat := res.GetBandwidthStat()
 	cpuStat := res.GetCpuStat()
 	diskStat := res.GetDiskStat()
@@ -497,6 +502,8 @@ func (c *connection) Info(handle string) (warden.ContainerInfo, error) {
 		ContainerPath: res.GetContainerPath(),
 
 		ProcessIDs: processIDs,
+
+		Properties: properties,
 
 		BandwidthStat: warden.ContainerBandwidthStat{
 			InRate:   bandwidthStat.GetInRate(),

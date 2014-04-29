@@ -423,8 +423,8 @@ var _ = Describe("Connection", func() {
 
 					Properties: []*protocol.Property{
 						{
-							Key:   proto.String("proto-key"),
-							Value: proto.String("proto-value"),
+							Key:   proto.String("prop-key"),
+							Value: proto.String("prop-value"),
 						},
 					},
 
@@ -490,6 +490,10 @@ var _ = Describe("Connection", func() {
 			Ω(info.ContainerIP).Should(Equal("container-ip"))
 			Ω(info.ContainerPath).Should(Equal("container-path"))
 			Ω(info.ProcessIDs).Should(Equal([]uint32{1, 2}))
+
+			Ω(info.Properties).Should(Equal(warden.Properties{
+				"prop-key": "prop-value",
+			}))
 
 			Ω(info.MemoryStat).Should(Equal(warden.ContainerMemoryStat{
 				Cache:                   1,
