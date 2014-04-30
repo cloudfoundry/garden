@@ -138,7 +138,7 @@ func (connection *FakeConnection) Create(spec warden.ContainerSpec) (string, err
 		return connection.WhenCreating(spec)
 	}
 
-	return "", nil
+	return spec.Handle, nil
 }
 
 func (connection *FakeConnection) Created() []warden.ContainerSpec {
