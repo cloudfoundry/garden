@@ -13,6 +13,8 @@ type FakeConnection struct {
 
 	disconnected chan struct{}
 
+	WhenGettingCapacity func() (warden.Capacity, error)
+
 	created      []warden.ContainerSpec
 	WhenCreating func(spec warden.ContainerSpec) (string, error)
 
@@ -127,6 +129,14 @@ func (connection *FakeConnection) Disconnected() <-chan struct{} {
 
 func (connection *FakeConnection) NotifyDisconnected() {
 	close(connection.disconnected)
+}
+
+func (connection *FakeConnection) Capacity() (warden.Capacity, error) {
+	if connection.WhenGettingCapacity != nil {
+		return connection.WhenGettingCapacity()
+	}
+
+	return warden.Capacity{}, nil
 }
 
 func (connection *FakeConnection) Create(spec warden.ContainerSpec) (string, error) {

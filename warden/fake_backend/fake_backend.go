@@ -23,6 +23,9 @@ type FakeBackend struct {
 
 	ContainersFilters []warden.Properties
 
+	CapacityError  error
+	CapacityResult warden.Capacity
+
 	sync.RWMutex
 }
 
@@ -52,6 +55,14 @@ func (b *FakeBackend) Start() error {
 
 func (b *FakeBackend) Stop() {
 	b.Stopped = true
+}
+
+func (b *FakeBackend) Capacity() (warden.Capacity, error) {
+	if b.CapacityError != nil {
+		return warden.Capacity{}, b.CapacityError
+	}
+
+	return b.CapacityResult, nil
 }
 
 func (b *FakeBackend) Create(spec warden.ContainerSpec) (warden.Container, error) {

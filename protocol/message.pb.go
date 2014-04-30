@@ -35,6 +35,7 @@ const (
 	Message_Ping           Message_Type = 91
 	Message_List           Message_Type = 92
 	Message_Echo           Message_Type = 93
+	Message_Capacity       Message_Type = 94
 )
 
 var Message_Type_name = map[int32]string{
@@ -57,6 +58,7 @@ var Message_Type_name = map[int32]string{
 	91: "Ping",
 	92: "List",
 	93: "Echo",
+	94: "Capacity",
 }
 var Message_Type_value = map[string]int32{
 	"Error":          1,
@@ -78,6 +80,7 @@ var Message_Type_value = map[string]int32{
 	"Ping":           91,
 	"List":           92,
 	"Echo":           93,
+	"Capacity":       94,
 }
 
 func (x Message_Type) Enum() *Message_Type {

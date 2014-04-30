@@ -128,6 +128,43 @@ var _ = Describe("When a client connects", func() {
 		}, 1.0)
 	})
 
+	Context("and the client sends a CapacityRequest", func() {
+		BeforeEach(func() {
+			serverBackend.CapacityResult = warden.Capacity{
+				MemoryInBytes: 1111,
+				DiskInBytes:   2222,
+			}
+		})
+
+		It("sends an CapacityResponse with the backend's reported capacity", func(done Done) {
+			writeMessages(&protocol.CapacityRequest{})
+
+			var response protocol.CapacityResponse
+			readResponse(&response)
+
+			Expect(response.GetMemoryInBytes()).To(Equal(uint64(1111)))
+			Expect(response.GetDiskInBytes()).To(Equal(uint64(2222)))
+
+			close(done)
+		}, 1.0)
+
+		Context("when getting the capacity fails", func() {
+			BeforeEach(func() {
+				serverBackend.CapacityError = errors.New("oh no!")
+			})
+
+			It("sends a WardenError response", func(done Done) {
+				writeMessages(&protocol.CapacityRequest{})
+
+				var response protocol.CapacityResponse
+				err := message_reader.ReadMessage(responses, &response)
+				Expect(err).To(Equal(&message_reader.WardenError{Message: "oh no!"}))
+
+				close(done)
+			}, 1.0)
+		})
+	})
+
 	Context("and the client sends a CreateRequest", func() {
 		It("sends a CreateResponse with the created handle", func(done Done) {
 			writeMessages(&protocol.CreateRequest{

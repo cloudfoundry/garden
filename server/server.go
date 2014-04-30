@@ -164,6 +164,8 @@ func (s *WardenServer) serveConnection(conn net.Conn) {
 			response, err = s.handlePing(req)
 		case *protocol.EchoRequest:
 			response, err = s.handleEcho(req)
+		case *protocol.CapacityRequest:
+			response, err = s.handleCapacity(req)
 		case *protocol.CreateRequest:
 			response, err = s.handleCreate(req)
 		case *protocol.DestroyRequest:

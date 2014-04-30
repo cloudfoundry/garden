@@ -18,6 +18,18 @@ func (s *WardenServer) handleEcho(echo *protocol.EchoRequest) (proto.Message, er
 	return &protocol.EchoResponse{Message: echo.Message}, nil
 }
 
+func (s *WardenServer) handleCapacity(echo *protocol.CapacityRequest) (proto.Message, error) {
+	capacity, err := s.backend.Capacity()
+	if err != nil {
+		return nil, err
+	}
+
+	return &protocol.CapacityResponse{
+		MemoryInBytes: proto.Uint64(capacity.MemoryInBytes),
+		DiskInBytes:   proto.Uint64(capacity.DiskInBytes),
+	}, nil
+}
+
 func (s *WardenServer) handleCreate(create *protocol.CreateRequest) (proto.Message, error) {
 	bindMounts := []warden.BindMount{}
 

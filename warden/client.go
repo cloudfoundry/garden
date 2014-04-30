@@ -5,6 +5,8 @@ import (
 )
 
 type Client interface {
+	Capacity() (Capacity, error)
+
 	Create(ContainerSpec) (Container, error)
 	Destroy(handle string) error
 	Containers(Properties) ([]Container, error)
@@ -25,6 +27,11 @@ type BindMount struct {
 	DstPath string
 	Mode    BindMountMode
 	Origin  BindMountOrigin
+}
+
+type Capacity struct {
+	MemoryInBytes uint64
+	DiskInBytes   uint64
 }
 
 type Properties map[string]string

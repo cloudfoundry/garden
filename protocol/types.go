@@ -78,6 +78,8 @@ func TypeForMessage(msg proto.Message) Message_Type {
 		return Message_List
 	case *EchoRequest, *EchoResponse:
 		return Message_Echo
+	case *CapacityRequest, *CapacityResponse:
+		return Message_Capacity
 	}
 
 	panic("unknown message type")
@@ -124,6 +126,8 @@ func RequestMessageForType(t Message_Type) proto.Message {
 		return &ListRequest{}
 	case Message_Echo:
 		return &EchoRequest{}
+	case Message_Capacity:
+		return &CapacityRequest{}
 	}
 
 	panic("unknown message type")
@@ -167,6 +171,8 @@ func ResponseMessageForType(t Message_Type) proto.Message {
 		return &ListResponse{}
 	case Message_Echo:
 		return &EchoResponse{}
+	case Message_Capacity:
+		return &CapacityResponse{}
 	}
 
 	panic("unknown message type")

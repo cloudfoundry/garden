@@ -33,6 +33,13 @@ func New(connectionProvider ConnectionProvider) Client {
 	}
 }
 
+func (client *client) Capacity() (warden.Capacity, error) {
+	conn := client.pool.Acquire()
+	defer client.pool.Release(conn)
+
+	return conn.Capacity()
+}
+
 func (client *client) Create(spec warden.ContainerSpec) (warden.Container, error) {
 	conn := client.pool.Acquire()
 	defer client.pool.Release(conn)

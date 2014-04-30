@@ -21,6 +21,8 @@ type Connection interface {
 
 	Disconnected() <-chan struct{}
 
+	Capacity() (warden.Capacity, error)
+
 	Create(spec warden.ContainerSpec) (string, error)
 	List(properties warden.Properties) ([]string, error)
 	Destroy(handle string) error
@@ -108,6 +110,21 @@ func (c *connection) Close() {
 
 func (c *connection) Disconnected() <-chan struct{} {
 	return c.disconnected
+}
+
+func (c *connection) Capacity() (warden.Capacity, error) {
+	req := &protocol.CapacityRequest{}
+	res := &protocol.CapacityResponse{}
+
+	err := c.roundTrip(req, res)
+	if err != nil {
+		return warden.Capacity{}, err
+	}
+
+	return warden.Capacity{
+		MemoryInBytes: res.GetMemoryInBytes(),
+		DiskInBytes:   res.GetDiskInBytes(),
+	}, nil
 }
 
 func (c *connection) Create(spec warden.ContainerSpec) (string, error) {

@@ -108,6 +108,36 @@ var _ = Describe("Connection", func() {
 		}
 	})
 
+	Describe("Getting capacity", func() {
+		Context("when the response is successful", func() {
+			BeforeEach(func() {
+				wardenMessages = append(wardenMessages,
+					&protocol.CapacityResponse{
+						MemoryInBytes: proto.Uint64(1111),
+						DiskInBytes:   proto.Uint64(2222),
+					},
+				)
+			})
+
+			It("should return the server's capacity", func() {
+				capacity, err := connection.Capacity()
+				Ω(err).ShouldNot(HaveOccurred())
+
+				Ω(capacity.MemoryInBytes).Should(BeNumerically("==", 1111))
+				Ω(capacity.DiskInBytes).Should(BeNumerically("==", 2222))
+
+				assertWriteBufferContains(&protocol.CapacityRequest{})
+			})
+		})
+
+		Context("when a connection error occurs", func() {
+			It("should return an error", func() {
+				_, err := connection.Capacity()
+				Ω(err).Should(HaveOccurred())
+			})
+		})
+	})
+
 	Describe("Creating", func() {
 		BeforeEach(func() {
 			wardenMessages = append(wardenMessages,

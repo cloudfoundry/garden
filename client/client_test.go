@@ -63,6 +63,39 @@ var _ = Describe("Client", func() {
 		})
 	})
 
+	Describe("Capacity", func() {
+		BeforeEach(func() {
+			fakeConnection.WhenGettingCapacity = func() (warden.Capacity, error) {
+				return warden.Capacity{
+					MemoryInBytes: 1111,
+					DiskInBytes:   2222,
+				}, nil
+			}
+		})
+
+		It("sends a capacity request and returns the capacity", func() {
+			capacity, err := client.Capacity()
+			Ω(err).ShouldNot(HaveOccurred())
+			Ω(capacity.MemoryInBytes).Should(Equal(uint64(1111)))
+			Ω(capacity.DiskInBytes).Should(Equal(uint64(2222)))
+		})
+
+		Context("when getting capacity fails", func() {
+			disaster := errors.New("oh no!")
+
+			BeforeEach(func() {
+				fakeConnection.WhenGettingCapacity = func() (warden.Capacity, error) {
+					return warden.Capacity{}, disaster
+				}
+			})
+
+			It("returns the error", func() {
+				_, err := client.Capacity()
+				Ω(err).Should(Equal(disaster))
+			})
+		})
+	})
+
 	Describe("Create", func() {
 		It("sends a create request and returns a container", func() {
 			spec := warden.ContainerSpec{
