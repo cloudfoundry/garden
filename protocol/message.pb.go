@@ -36,6 +36,9 @@ const (
 	Message_List           Message_Type = 92
 	Message_Echo           Message_Type = 93
 	Message_Capacity       Message_Type = 94
+	Message_StreamIn       Message_Type = 95
+	Message_StreamOut      Message_Type = 96
+	Message_StreamChunk    Message_Type = 97
 )
 
 var Message_Type_name = map[int32]string{
@@ -59,6 +62,9 @@ var Message_Type_name = map[int32]string{
 	92: "List",
 	93: "Echo",
 	94: "Capacity",
+	95: "StreamIn",
+	96: "StreamOut",
+	97: "StreamChunk",
 }
 var Message_Type_value = map[string]int32{
 	"Error":          1,
@@ -81,6 +87,9 @@ var Message_Type_value = map[string]int32{
 	"List":           92,
 	"Echo":           93,
 	"Capacity":       94,
+	"StreamIn":       95,
+	"StreamOut":      96,
+	"StreamChunk":    97,
 }
 
 func (x Message_Type) Enum() *Message_Type {

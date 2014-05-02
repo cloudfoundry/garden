@@ -30,6 +30,9 @@ It is generated from these files:
 	resource_limits.proto
 	run.proto
 	stop.proto
+	stream_chunk.proto
+	stream_in.proto
+	stream_out.proto
 
 It has these top-level messages:
 	AttachRequest

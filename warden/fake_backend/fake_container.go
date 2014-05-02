@@ -209,6 +209,14 @@ func (c *FakeContainer) CopyOut(src, dst, owner string) error {
 	return nil
 }
 
+func (c *FakeContainer) StreamIn(src io.Reader, srcSize uint64, dst string) error {
+	return nil
+}
+
+func (c *FakeContainer) StreamOut(srcPath string, dst io.Writer) error {
+	return nil
+}
+
 func (c *FakeContainer) LimitBandwidth(limits warden.BandwidthLimits) error {
 	c.DidLimitBandwidth = true
 

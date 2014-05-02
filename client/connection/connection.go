@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"strconv"
 	"sync"
@@ -33,6 +34,9 @@ type Connection interface {
 
 	CopyIn(handle string, src, dst string) error
 	CopyOut(handle string, src, dst, owner string) error
+
+	StreamIn(handle string, src io.Reader, srcSize uint64, dstPath string) error
+	StreamOut(handle string, srcPath string, dest io.Writer) error
 
 	LimitBandwidth(handle string, limits warden.BandwidthLimits) (warden.BandwidthLimits, error)
 	LimitCPU(handle string, limits warden.CPULimits) (warden.CPULimits, error)
@@ -458,6 +462,50 @@ func (c *connection) CopyOut(handle, src, dst, owner string) error {
 		&protocol.CopyOutResponse{},
 	)
 
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c *connection) StreamIn(handle string, src io.Reader, srcSize uint64, dstPath string) error {
+	err := c.sendMessage(&protocol.StreamInRequest{
+		Handle:  proto.String(handle),
+		DstPath: proto.String(dstPath),
+	})
+	if err != nil {
+		return err
+	}
+
+	messageWriter := NewProtobufStreamWriter(c)
+	_, err = io.Copy(messageWriter, src)
+	if err != nil {
+		return err
+	}
+	err = messageWriter.Close()
+	if err != nil {
+		return err
+	}
+
+	return c.readResponse(&protocol.StreamInResponse{})
+}
+
+func (c *connection) StreamOut(handle string, srcPath string, dest io.Writer) error {
+	err := c.roundTrip(
+		&protocol.StreamOutRequest{
+			Handle:  proto.String(handle),
+			SrcPath: proto.String(srcPath),
+		},
+		&protocol.StreamOutResponse{},
+	)
+
+	if err != nil {
+		return err
+	}
+
+	messageReader := NewProtobufStreamReader(c)
+	_, err = io.Copy(dest, messageReader)
 	if err != nil {
 		return err
 	}
