@@ -52,11 +52,11 @@ func (container *container) CopyOut(srcPath, dstPath, owner string) error {
 	return conn.CopyOut(container.handle, srcPath, dstPath, owner)
 }
 
-func (container *container) StreamIn(src io.Reader, srcSize uint64, dstPath string) error {
+func (container *container) StreamIn(src io.Reader, dstPath string) error {
 	conn := container.pool.Acquire()
 	defer container.pool.Release(conn)
 
-	return conn.StreamIn(container.handle, src, srcSize, dstPath)
+	return conn.StreamIn(container.handle, src, dstPath)
 }
 
 func (container *container) StreamOut(srcPath string, dst io.Writer) error {

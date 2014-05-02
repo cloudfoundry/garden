@@ -14,7 +14,7 @@ type Container interface {
 	CopyIn(srcPath, dstPath string) error
 	CopyOut(srcPath, dstPath, owner string) error
 
-	StreamIn(src io.Reader, srcSize uint64, dstPath string) error
+	StreamIn(src io.Reader, dstPath string) error
 	StreamOut(srcPath string, dest io.Writer) error
 
 	LimitBandwidth(limits BandwidthLimits) error

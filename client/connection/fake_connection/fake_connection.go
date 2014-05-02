@@ -37,7 +37,7 @@ type FakeConnection struct {
 	WhenCopyingOut func(handle string, src, dst, owner string) error
 
 	streamedIn      map[string][]StreamInSpec
-	WhenStreamingIn func(handle string, src io.Reader, srcSize uint64, dst string) error
+	WhenStreamingIn func(handle string, src io.Reader, dst string) error
 
 	streamedOut      map[string][]StreamOutSpec
 	WhenStreamingOut func(handle string, src string, dst io.Writer) error
@@ -85,7 +85,6 @@ type CopyOutSpec struct {
 
 type StreamInSpec struct {
 	Source      io.Reader
-	SourceSize  uint64
 	Destination string
 }
 
@@ -292,17 +291,16 @@ func (connection *FakeConnection) CopiedOut(handle string) []CopyOutSpec {
 	return connection.copiedOut[handle]
 }
 
-func (connection *FakeConnection) StreamIn(handle string, src io.Reader, srcSize uint64, dstPath string) error {
+func (connection *FakeConnection) StreamIn(handle string, src io.Reader, dstPath string) error {
 	connection.lock.Lock()
 	connection.streamedIn[handle] = append(connection.streamedIn[handle], StreamInSpec{
 		Source:      src,
-		SourceSize:  srcSize,
 		Destination: dstPath,
 	})
 	connection.lock.Unlock()
 
 	if connection.WhenStreamingIn != nil {
-		return connection.WhenStreamingIn(handle, src, srcSize, dstPath)
+		return connection.WhenStreamingIn(handle, src, dstPath)
 	}
 
 	return nil

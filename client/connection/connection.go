@@ -35,7 +35,7 @@ type Connection interface {
 	CopyIn(handle string, src, dst string) error
 	CopyOut(handle string, src, dst, owner string) error
 
-	StreamIn(handle string, src io.Reader, srcSize uint64, dstPath string) error
+	StreamIn(handle string, src io.Reader, dstPath string) error
 	StreamOut(handle string, srcPath string, dest io.Writer) error
 
 	LimitBandwidth(handle string, limits warden.BandwidthLimits) (warden.BandwidthLimits, error)
@@ -469,7 +469,7 @@ func (c *connection) CopyOut(handle, src, dst, owner string) error {
 	return nil
 }
 
-func (c *connection) StreamIn(handle string, src io.Reader, srcSize uint64, dstPath string) error {
+func (c *connection) StreamIn(handle string, src io.Reader, dstPath string) error {
 	err := c.sendMessage(&protocol.StreamInRequest{
 		Handle:  proto.String(handle),
 		DstPath: proto.String(dstPath),

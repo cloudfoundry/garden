@@ -171,13 +171,12 @@ var _ = Describe("Container", func() {
 	Describe("StreamIn", func() {
 		It("sends a stream in request", func() {
 			content := strings.NewReader("content")
-			err := container.StreamIn(content, 7, "to")
+			err := container.StreamIn(content, "to")
 			Ω(err).ShouldNot(HaveOccurred())
 
 			Ω(fakeConnection.StreamedIn("some-handle")).Should(ContainElement(
 				fake_connection.StreamInSpec{
 					Source:      content,
-					SourceSize:  7,
 					Destination: "to",
 				},
 			))
@@ -187,13 +186,13 @@ var _ = Describe("Container", func() {
 			disaster := errors.New("oh no!")
 
 			BeforeEach(func() {
-				fakeConnection.WhenStreamingIn = func(handle string, src io.Reader, srcSize uint64, dst string) error {
+				fakeConnection.WhenStreamingIn = func(handle string, src io.Reader, dst string) error {
 					return disaster
 				}
 			})
 
 			It("returns the error", func() {
-				err := container.StreamIn(strings.NewReader("content"), 7, "to")
+				err := container.StreamIn(strings.NewReader("content"), "to")
 				Ω(err).Should(Equal(disaster))
 			})
 		})

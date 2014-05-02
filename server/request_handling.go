@@ -251,7 +251,7 @@ func (s *WardenServer) handleStreamIn(reader *bufio.Reader, request *protocol.St
 
 	streamReader := NewProtobufStreamReader(reader)
 
-	err = container.StreamIn(streamReader, 0, dstPath)
+	err = container.StreamIn(streamReader, dstPath)
 	if err != nil {
 		return nil, err
 	}

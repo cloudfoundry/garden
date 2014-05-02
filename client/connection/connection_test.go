@@ -630,7 +630,7 @@ var _ = Describe("Connection", func() {
 
 		It("tells warden to stream, and then streams the content as a series of chunks", func() {
 			content := strings.NewReader("this is a stream of data to send")
-			err := connection.StreamIn("foo-handle", content, 5, "/bar")
+			err := connection.StreamIn("foo-handle", content, "/bar")
 			Ω(err).ShouldNot(HaveOccurred())
 
 			reader := bufio.NewReader(bytes.NewBuffer(writeBuffer.Bytes()))

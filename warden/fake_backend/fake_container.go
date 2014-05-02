@@ -222,7 +222,7 @@ func (c *FakeContainer) CopyOut(src, dst, owner string) error {
 	return nil
 }
 
-func (c *FakeContainer) StreamIn(src io.Reader, srcSize uint64, dst string) error {
+func (c *FakeContainer) StreamIn(src io.Reader, dst string) error {
 	bytes, err := ioutil.ReadAll(src)
 	if err != nil {
 		panic(err)
