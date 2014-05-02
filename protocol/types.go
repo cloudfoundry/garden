@@ -171,6 +171,8 @@ func ResponseMessageForType(t Message_Type) proto.Message {
 		return &StreamInResponse{}
 	case Message_StreamOut:
 		return &StreamOutResponse{}
+	case Message_StreamChunk:
+		return &StreamChunk{}
 
 	case Message_LimitMemory:
 		return &LimitMemoryResponse{}
