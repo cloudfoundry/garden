@@ -225,8 +225,9 @@ func (c *connection) Destroy(handle string) error {
 func (c *connection) Run(handle string, spec warden.ProcessSpec) (uint32, <-chan warden.ProcessStream, error) {
 	err := c.sendMessage(
 		&protocol.RunRequest{
-			Handle: proto.String(handle),
-			Script: proto.String(spec.Script),
+			Handle:     proto.String(handle),
+			Script:     proto.String(spec.Script),
+			Privileged: proto.Bool(spec.Privileged),
 			Rlimits: &protocol.ResourceLimits{
 				As:         spec.Limits.As,
 				Core:       spec.Limits.Core,

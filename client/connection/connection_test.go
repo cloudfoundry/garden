@@ -671,16 +671,18 @@ var _ = Describe("Connection", func() {
 
 			It("should start the process and stream output", func(done Done) {
 				pid, stream, err := connection.Run("foo-handle", warden.ProcessSpec{
-					Script: "lol",
-					Limits: resourceLimits,
+					Script:     "lol",
+					Privileged: true,
+					Limits:     resourceLimits,
 				})
 
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(pid).Should(BeNumerically("==", 42))
 
 				assertWriteBufferContains(&protocol.RunRequest{
-					Handle: proto.String("foo-handle"),
-					Script: proto.String("lol"),
+					Handle:     proto.String("foo-handle"),
+					Script:     proto.String("lol"),
+					Privileged: proto.Bool(true),
 					Rlimits: &protocol.ResourceLimits{
 						As:         proto.Uint64(1),
 						Core:       proto.Uint64(2),
@@ -736,9 +738,10 @@ var _ = Describe("Connection", func() {
 				Ω(pid).Should(BeNumerically("==", 42))
 
 				assertWriteBufferContains(&protocol.RunRequest{
-					Handle:  proto.String("foo-handle"),
-					Script:  proto.String("echo hi"),
-					Rlimits: &protocol.ResourceLimits{},
+					Handle:     proto.String("foo-handle"),
+					Script:     proto.String("echo hi"),
+					Privileged: proto.Bool(false),
+					Rlimits:    &protocol.ResourceLimits{},
 				})
 
 				writeBuffer.Reset()
@@ -752,9 +755,10 @@ var _ = Describe("Connection", func() {
 				Ω(pid).Should(BeNumerically("==", 43))
 
 				assertWriteBufferContains(&protocol.RunRequest{
-					Handle:  proto.String("foo-handle"),
-					Script:  proto.String("echo bye"),
-					Rlimits: &protocol.ResourceLimits{},
+					Handle:     proto.String("foo-handle"),
+					Script:     proto.String("echo bye"),
+					Privileged: proto.Bool(false),
+					Rlimits:    &protocol.ResourceLimits{},
 				})
 			})
 		})
