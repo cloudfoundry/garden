@@ -2,10 +2,11 @@ package server
 
 import (
 	"bufio"
-	"github.com/cloudfoundry-incubator/garden/message_reader"
 	"io"
 	"net"
 	"time"
+
+	"github.com/cloudfoundry-incubator/garden/message_reader"
 
 	"code.google.com/p/gogoprotobuf/proto"
 
@@ -203,10 +204,14 @@ func NewProtobufStreamWriter(conn net.Conn) protobufStreamWriter {
 }
 
 func (w protobufStreamWriter) Write(buff []byte) (int, error) {
-	n, err := protocol.Messages(&protocol.StreamChunk{
+	_, err := protocol.Messages(&protocol.StreamChunk{
 		Content: buff,
 	}).WriteTo(w.conn)
-	return int(n), err
+	if err != nil {
+		return 0, err
+	}
+
+	return len(buff), nil
 }
 
 func (w protobufStreamWriter) Close() error {
