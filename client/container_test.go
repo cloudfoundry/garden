@@ -1,9 +1,12 @@
 package client_test
 
 import (
+	"bytes"
 	"errors"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"io"
+	"strings"
 
 	. "github.com/cloudfoundry-incubator/garden/client"
 	"github.com/cloudfoundry-incubator/garden/client/connection"
@@ -160,6 +163,66 @@ var _ = Describe("Container", func() {
 
 			It("returns the error", func() {
 				err := container.CopyOut("from", "to", "bob")
+				Ω(err).Should(Equal(disaster))
+			})
+		})
+	})
+
+	Describe("StreamIn", func() {
+		It("sends a stream in request", func() {
+			content := strings.NewReader("content")
+			err := container.StreamIn(content, "to")
+			Ω(err).ShouldNot(HaveOccurred())
+
+			Ω(fakeConnection.StreamedIn("some-handle")).Should(ContainElement(
+				fake_connection.StreamInSpec{
+					Source:      content,
+					Destination: "to",
+				},
+			))
+		})
+
+		Context("when streaming in fails", func() {
+			disaster := errors.New("oh no!")
+
+			BeforeEach(func() {
+				fakeConnection.WhenStreamingIn = func(handle string, src io.Reader, dst string) error {
+					return disaster
+				}
+			})
+
+			It("returns the error", func() {
+				err := container.StreamIn(strings.NewReader("content"), "to")
+				Ω(err).Should(Equal(disaster))
+			})
+		})
+	})
+
+	Describe("StreamOut", func() {
+		It("sends a stream out request", func() {
+			dest := bytes.NewBuffer([]byte{})
+			err := container.StreamOut("from", dest)
+			Ω(err).ShouldNot(HaveOccurred())
+
+			Ω(fakeConnection.StreamedOut("some-handle")).Should(ContainElement(
+				fake_connection.StreamOutSpec{
+					Source:      "from",
+					Destination: dest,
+				},
+			))
+		})
+
+		Context("when streaming out fails", func() {
+			disaster := errors.New("oh no!")
+
+			BeforeEach(func() {
+				fakeConnection.WhenStreamingOut = func(handle string, src string, dst io.Writer) error {
+					return disaster
+				}
+			})
+
+			It("returns the error", func() {
+				err := container.StreamOut("from", nil)
 				Ω(err).Should(Equal(disaster))
 			})
 		})

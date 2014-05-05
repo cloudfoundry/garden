@@ -2,6 +2,7 @@ package fake_backend
 
 import (
 	"io"
+	"io/ioutil"
 	"sync"
 	"time"
 
@@ -30,6 +31,13 @@ type FakeContainer struct {
 
 	CopyOutError error
 	CopiedOut    [][]string
+
+	StreamInError error
+	StreamedIn    []StreamInSpec
+
+	StreamOutError  error
+	StreamOutChunks [][]byte
+	StreamedOut     []string
 
 	RunError         error
 	RunningProcessID uint32
@@ -90,6 +98,11 @@ type NetOutSpec struct {
 
 type StopSpec struct {
 	Killed bool
+}
+
+type StreamInSpec struct {
+	SrcContent string
+	DestPath   string
 }
 
 func NewFakeContainer(spec warden.ContainerSpec) *FakeContainer {
@@ -206,6 +219,30 @@ func (c *FakeContainer) CopyOut(src, dst, owner string) error {
 
 	c.CopiedOut = append(c.CopiedOut, []string{src, dst, owner})
 
+	return nil
+}
+
+func (c *FakeContainer) StreamIn(src io.Reader, dst string) error {
+	bytes, err := ioutil.ReadAll(src)
+	if err != nil {
+		panic(err)
+	}
+	c.StreamedIn = append(c.StreamedIn, StreamInSpec{SrcContent: string(bytes), DestPath: dst})
+	return c.StreamInError
+}
+
+func (c *FakeContainer) StreamOut(srcPath string, dst io.Writer) error {
+	c.StreamedOut = append(c.StreamedOut, srcPath)
+	if c.StreamOutError != nil {
+		return c.StreamOutError
+	}
+
+	for _, chunk := range c.StreamOutChunks {
+		_, err := dst.Write(chunk)
+		if err != nil {
+			panic(err)
+		}
+	}
 	return nil
 }
 

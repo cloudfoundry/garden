@@ -3,6 +3,7 @@ package client
 import (
 	"github.com/cloudfoundry-incubator/garden/client/connection"
 	"github.com/cloudfoundry-incubator/garden/warden"
+	"io"
 )
 
 type container struct {
@@ -49,6 +50,20 @@ func (container *container) CopyOut(srcPath, dstPath, owner string) error {
 	defer container.pool.Release(conn)
 
 	return conn.CopyOut(container.handle, srcPath, dstPath, owner)
+}
+
+func (container *container) StreamIn(src io.Reader, dstPath string) error {
+	conn := container.pool.Acquire()
+	defer container.pool.Release(conn)
+
+	return conn.StreamIn(container.handle, src, dstPath)
+}
+
+func (container *container) StreamOut(srcPath string, dst io.Writer) error {
+	conn := container.pool.Acquire()
+	defer container.pool.Release(conn)
+
+	return conn.StreamOut(container.handle, srcPath, dst)
 }
 
 func (container *container) LimitBandwidth(limits warden.BandwidthLimits) error {

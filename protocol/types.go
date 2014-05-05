@@ -56,6 +56,13 @@ func TypeForMessage(msg proto.Message) Message_Type {
 	case *CopyOutRequest, *CopyOutResponse:
 		return Message_CopyOut
 
+	case *StreamInRequest, *StreamInResponse:
+		return Message_StreamIn
+	case *StreamOutRequest, *StreamOutResponse:
+		return Message_StreamOut
+	case *StreamChunk:
+		return Message_StreamChunk
+
 	case *LimitMemoryRequest, *LimitMemoryResponse:
 		return Message_LimitMemory
 	case *LimitDiskRequest, *LimitDiskResponse:
@@ -106,6 +113,13 @@ func RequestMessageForType(t Message_Type) proto.Message {
 	case Message_CopyOut:
 		return &CopyOutRequest{}
 
+	case Message_StreamIn:
+		return &StreamInRequest{}
+	case Message_StreamOut:
+		return &StreamOutRequest{}
+	case Message_StreamChunk:
+		return &StreamChunk{}
+
 	case Message_LimitMemory:
 		return &LimitMemoryRequest{}
 	case Message_LimitDisk:
@@ -152,6 +166,13 @@ func ResponseMessageForType(t Message_Type) proto.Message {
 		return &CopyInResponse{}
 	case Message_CopyOut:
 		return &CopyOutResponse{}
+
+	case Message_StreamIn:
+		return &StreamInResponse{}
+	case Message_StreamOut:
+		return &StreamOutResponse{}
+	case Message_StreamChunk:
+		return &StreamChunk{}
 
 	case Message_LimitMemory:
 		return &LimitMemoryResponse{}

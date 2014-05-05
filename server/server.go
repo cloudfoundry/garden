@@ -178,6 +178,10 @@ func (s *WardenServer) serveConnection(conn net.Conn) {
 			response, err = s.handleCopyIn(req)
 		case *protocol.CopyOutRequest:
 			response, err = s.handleCopyOut(req)
+		case *protocol.StreamInRequest:
+			response, err = s.handleStreamIn(read, req)
+		case *protocol.StreamOutRequest:
+			response, err = s.handleStreamOut(conn, req)
 		case *protocol.RunRequest:
 			s.openRequests.Decr()
 			response, err = s.handleRun(conn, req)

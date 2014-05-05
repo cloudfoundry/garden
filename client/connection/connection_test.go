@@ -3,7 +3,9 @@ package connection_test
 import (
 	"bufio"
 	"bytes"
+	"io/ioutil"
 	"net"
+	"strings"
 	"time"
 
 	"code.google.com/p/gogoprotobuf/proto"
@@ -616,6 +618,78 @@ var _ = Describe("Connection", func() {
 				DstPath: proto.String("/bar"),
 				Owner:   proto.String("bartholofoo"),
 			})
+		})
+	})
+
+	Describe("Streaming in", func() {
+		BeforeEach(func() {
+			wardenMessages = append(wardenMessages,
+				&protocol.StreamInResponse{},
+			)
+		})
+
+		It("tells warden to stream, and then streams the content as a series of chunks", func() {
+			content := strings.NewReader("this is a stream of data to send")
+			err := connection.StreamIn("foo-handle", content, "/bar")
+			Ω(err).ShouldNot(HaveOccurred())
+
+			reader := bufio.NewReader(bytes.NewBuffer(writeBuffer.Bytes()))
+
+			req, err := message_reader.ReadRequest(reader)
+			Ω(err).ShouldNot(HaveOccurred())
+			Ω(req).Should(Equal(&protocol.StreamInRequest{
+				Handle:  proto.String("foo-handle"),
+				DstPath: proto.String("/bar"),
+			}))
+
+			bytesWritten := []byte{}
+			for {
+				req, err := message_reader.ReadRequest(reader)
+				Ω(err).ShouldNot(HaveOccurred())
+				streamChunk, ok := req.(*protocol.StreamChunk)
+				Ω(ok).Should(BeTrue())
+				if streamChunk.GetEOF() {
+					break
+				}
+				bytesWritten = append(bytesWritten, streamChunk.Content...)
+			}
+
+			Ω(bytesWritten).Should(Equal([]byte("this is a stream of data to send")))
+		})
+	})
+
+	Describe("Streaming Out", func() {
+		BeforeEach(func() {
+			wardenMessages = append(wardenMessages,
+				&protocol.StreamOutResponse{},
+				&protocol.StreamChunk{
+					Content: []byte("hell"),
+				},
+				&protocol.StreamChunk{
+					Content: []byte("o-"),
+				},
+				&protocol.StreamChunk{
+					Content: []byte("world!"),
+				},
+				&protocol.StreamChunk{
+					EOF: proto.Bool(true),
+				},
+			)
+		})
+
+		It("asks warden for the given file, then reads its content as a series of chunks", func() {
+			dest := bytes.NewBuffer([]byte{})
+			err := connection.StreamOut("foo-handle", "/bar", dest)
+			Ω(err).ShouldNot(HaveOccurred())
+
+			assertWriteBufferContains(&protocol.StreamOutRequest{
+				Handle:  proto.String("foo-handle"),
+				SrcPath: proto.String("/bar"),
+			})
+
+			readBytes, err := ioutil.ReadAll(dest)
+			Ω(err).ShouldNot(HaveOccurred())
+			Ω(readBytes).Should(Equal([]byte("hello-world!")))
 		})
 	})
 

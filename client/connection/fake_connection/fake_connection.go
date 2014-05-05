@@ -1,6 +1,7 @@
 package fake_connection
 
 import (
+	"io"
 	"sync"
 
 	"github.com/cloudfoundry-incubator/garden/warden"
@@ -34,6 +35,12 @@ type FakeConnection struct {
 
 	copiedOut      map[string][]CopyOutSpec
 	WhenCopyingOut func(handle string, src, dst, owner string) error
+
+	streamedIn      map[string][]StreamInSpec
+	WhenStreamingIn func(handle string, src io.Reader, dst string) error
+
+	streamedOut      map[string][]StreamOutSpec
+	WhenStreamingOut func(handle string, src string, dst io.Writer) error
 
 	limitedBandwidth      map[string][]warden.BandwidthLimits
 	WhenLimitingBandwidth func(handle string, limits warden.BandwidthLimits) (warden.BandwidthLimits, error)
@@ -76,6 +83,16 @@ type CopyOutSpec struct {
 	Owner       string
 }
 
+type StreamInSpec struct {
+	Source      io.Reader
+	Destination string
+}
+
+type StreamOutSpec struct {
+	Source      string
+	Destination io.Writer
+}
+
 type NetInSpec struct {
 	HostPort      uint32
 	ContainerPort uint32
@@ -96,6 +113,9 @@ func New() *FakeConnection {
 
 		copiedIn:  make(map[string][]CopyInSpec),
 		copiedOut: make(map[string][]CopyOutSpec),
+
+		streamedIn:  make(map[string][]StreamInSpec),
+		streamedOut: make(map[string][]StreamOutSpec),
 
 		limitedBandwidth: make(map[string][]warden.BandwidthLimits),
 		limitedCPU:       make(map[string][]warden.CPULimits),
@@ -269,6 +289,50 @@ func (connection *FakeConnection) CopiedOut(handle string) []CopyOutSpec {
 	defer connection.lock.RUnlock()
 
 	return connection.copiedOut[handle]
+}
+
+func (connection *FakeConnection) StreamIn(handle string, src io.Reader, dstPath string) error {
+	connection.lock.Lock()
+	connection.streamedIn[handle] = append(connection.streamedIn[handle], StreamInSpec{
+		Source:      src,
+		Destination: dstPath,
+	})
+	connection.lock.Unlock()
+
+	if connection.WhenStreamingIn != nil {
+		return connection.WhenStreamingIn(handle, src, dstPath)
+	}
+
+	return nil
+}
+
+func (connection *FakeConnection) StreamedIn(handle string) []StreamInSpec {
+	connection.lock.RLock()
+	defer connection.lock.RUnlock()
+
+	return connection.streamedIn[handle]
+}
+
+func (connection *FakeConnection) StreamOut(handle string, srcPath string, dest io.Writer) error {
+	connection.lock.Lock()
+	connection.streamedOut[handle] = append(connection.streamedOut[handle], StreamOutSpec{
+		Source:      srcPath,
+		Destination: dest,
+	})
+	connection.lock.Unlock()
+
+	if connection.WhenStreamingOut != nil {
+		return connection.WhenStreamingOut(handle, srcPath, dest)
+	}
+
+	return nil
+}
+
+func (connection *FakeConnection) StreamedOut(handle string) []StreamOutSpec {
+	connection.lock.RLock()
+	defer connection.lock.RUnlock()
+
+	return connection.streamedOut[handle]
 }
 
 func (connection *FakeConnection) LimitBandwidth(handle string, limits warden.BandwidthLimits) (warden.BandwidthLimits, error) {
