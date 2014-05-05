@@ -485,11 +485,16 @@ func (c *connection) StreamIn(handle string, src io.Reader, dstPath string) erro
 		return err
 	}
 
+	c.writeLock.Lock()
+	defer c.writeLock.Unlock()
+
 	messageWriter := transport.NewProtobufStreamWriter(c.conn)
+
 	_, err = io.Copy(messageWriter, src)
 	if err != nil {
 		return err
 	}
+
 	err = messageWriter.Close()
 	if err != nil {
 		return err
@@ -513,6 +518,7 @@ func (c *connection) StreamOut(handle string, srcPath string, dest io.Writer) er
 
 	c.readLock.Lock()
 	defer c.readLock.Unlock()
+
 	messageReader := transport.NewProtobufStreamReader(c.read)
 	_, err = io.Copy(dest, messageReader)
 	if err != nil {
