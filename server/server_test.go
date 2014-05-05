@@ -15,7 +15,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	"github.com/cloudfoundry-incubator/garden/message_reader"
+	"github.com/cloudfoundry-incubator/garden/transport"
 	protocol "github.com/cloudfoundry-incubator/garden/protocol"
 	"github.com/cloudfoundry-incubator/garden/server"
 	"github.com/cloudfoundry-incubator/garden/warden"
@@ -199,7 +199,7 @@ var _ = Describe("The Warden server", func() {
 		}
 
 		readResponse := func(response proto.Message) {
-			err := message_reader.ReadMessage(responses, response)
+			err := transport.ReadMessage(responses, response)
 			Expect(err).ToNot(HaveOccurred())
 		}
 
@@ -219,7 +219,7 @@ var _ = Describe("The Warden server", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			// server will not actually handle it
-			err = message_reader.ReadMessage(responses, &protocol.PingResponse{})
+			err = transport.ReadMessage(responses, &protocol.PingResponse{})
 			Expect(err).To(HaveOccurred())
 		})
 

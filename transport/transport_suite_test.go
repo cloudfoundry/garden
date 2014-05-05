@@ -1,4 +1,4 @@
-package message_reader_test
+package transport_test
 
 import (
 	. "github.com/onsi/ginkgo"
@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestMessagereader(t *testing.T) {
+func TestTransport(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Messagereader Suite")
+	RunSpecs(t, "Transport Suite")
 }

@@ -1,4 +1,4 @@
-package message_reader_test
+package transport_test
 
 import (
 	"bufio"
@@ -9,7 +9,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	"github.com/cloudfoundry-incubator/garden/message_reader"
+	"github.com/cloudfoundry-incubator/garden/transport"
 	protocol "github.com/cloudfoundry-incubator/garden/protocol"
 )
 
@@ -22,7 +22,7 @@ var _ = Describe("Reading request messages over the wire", func() {
 				}),
 			)
 
-			request, err := message_reader.ReadRequest(payload)
+			request, err := transport.ReadRequest(payload)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(request).To(Equal(
 				&protocol.EchoRequest{
@@ -40,7 +40,7 @@ var _ = Describe("Reading request messages over the wire", func() {
 				bytes.NewBuffer(payload.Bytes()[0 : payload.Len()-1]),
 			)
 
-			_, err := message_reader.ReadRequest(bogusPayload)
+			_, err := transport.ReadRequest(bogusPayload)
 			Expect(err).To(HaveOccurred())
 		})
 	})

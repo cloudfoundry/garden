@@ -13,7 +13,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	. "github.com/cloudfoundry-incubator/garden/client/connection"
-	"github.com/cloudfoundry-incubator/garden/message_reader"
+	"github.com/cloudfoundry-incubator/garden/transport"
 	protocol "github.com/cloudfoundry-incubator/garden/protocol"
 	"github.com/cloudfoundry-incubator/garden/warden"
 )
@@ -52,7 +52,7 @@ var _ = Describe("Connection", func() {
 		reader := bufio.NewReader(bytes.NewBuffer(writeBuffer.Bytes()))
 
 		for _, msg := range messages {
-			req, err := message_reader.ReadRequest(reader)
+			req, err := transport.ReadRequest(reader)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			Ω(req).Should(Equal(msg))
@@ -635,7 +635,7 @@ var _ = Describe("Connection", func() {
 
 			reader := bufio.NewReader(bytes.NewBuffer(writeBuffer.Bytes()))
 
-			req, err := message_reader.ReadRequest(reader)
+			req, err := transport.ReadRequest(reader)
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(req).Should(Equal(&protocol.StreamInRequest{
 				Handle:  proto.String("foo-handle"),
@@ -644,7 +644,7 @@ var _ = Describe("Connection", func() {
 
 			bytesWritten := []byte{}
 			for {
-				req, err := message_reader.ReadRequest(reader)
+				req, err := transport.ReadRequest(reader)
 				Ω(err).ShouldNot(HaveOccurred())
 				streamChunk, ok := req.(*protocol.StreamChunk)
 				Ω(ok).Should(BeTrue())
@@ -707,7 +707,7 @@ var _ = Describe("Connection", func() {
 			err := connection.Destroy("foo-handle")
 			Ω(err).ShouldNot(HaveOccurred())
 
-			Ω(connection.Disconnected()).Should(BeClosed())
+			Eventually(connection.Disconnected()).Should(BeClosed())
 		})
 	})
 

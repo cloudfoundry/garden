@@ -1,4 +1,4 @@
-package message_reader_test
+package transport_test
 
 import (
 	"bufio"
@@ -9,8 +9,8 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	"github.com/cloudfoundry-incubator/garden/message_reader"
 	protocol "github.com/cloudfoundry-incubator/garden/protocol"
+	"github.com/cloudfoundry-incubator/garden/transport"
 )
 
 var _ = Describe("Reading response messages over the wire", func() {
@@ -18,7 +18,7 @@ var _ = Describe("Reading response messages over the wire", func() {
 		It("populates the response object and returns no error", func() {
 			var echoResponse protocol.EchoResponse
 
-			err := message_reader.ReadMessage(
+			err := transport.ReadMessage(
 				bufio.NewReader(protocol.Messages(&protocol.EchoRequest{
 					Message: proto.String("some message"),
 				})),
@@ -41,7 +41,7 @@ var _ = Describe("Reading response messages over the wire", func() {
 				bytes.NewBuffer(payload.Bytes()[0 : payload.Len()-1]),
 			)
 
-			err := message_reader.ReadMessage(bogusPayload, &dummyResponse)
+			err := transport.ReadMessage(bogusPayload, &dummyResponse)
 			Expect(err).To(HaveOccurred())
 		})
 	})
@@ -50,7 +50,7 @@ var _ = Describe("Reading response messages over the wire", func() {
 		It("returns a WardenError", func() {
 			var dummyResponse protocol.PingResponse
 
-			err := message_reader.ReadMessage(
+			err := transport.ReadMessage(
 				bufio.NewReader(protocol.Messages(&protocol.ErrorResponse{
 					Message: proto.String("some message"),
 					Data:    proto.String("some data"),
@@ -63,7 +63,7 @@ var _ = Describe("Reading response messages over the wire", func() {
 			)
 
 			Expect(err).To(Equal(
-				&message_reader.WardenError{
+				&transport.WardenError{
 					Message: "some message",
 					Data:    "some data",
 					Backtrace: []string{
@@ -83,13 +83,13 @@ var _ = Describe("Reading response messages over the wire", func() {
 				Message: proto.String("some message"),
 			}
 
-			err := message_reader.ReadMessage(
+			err := transport.ReadMessage(
 				bufio.NewReader(protocol.Messages(actualResponse)),
 				&dummyResponse,
 			)
 
 			Expect(err).To(Equal(
-				&message_reader.TypeMismatchError{
+				&transport.TypeMismatchError{
 					Expected: protocol.TypeForMessage(&dummyResponse),
 					Received: protocol.TypeForMessage(actualResponse),
 				},

@@ -1,18 +1,20 @@
-package connection
+package transport
 
 import (
-	protocol "github.com/cloudfoundry-incubator/garden/protocol"
+	"bufio"
 	"io"
+
+	protocol "github.com/cloudfoundry-incubator/garden/protocol"
 )
 
 type protobufStreamReader struct {
-	conn   *connection
+	reader *bufio.Reader
 	buffer []byte
 }
 
-func NewProtobufStreamReader(conn *connection) *protobufStreamReader {
+func NewProtobufStreamReader(reader *bufio.Reader) *protobufStreamReader {
 	return &protobufStreamReader{
-		conn: conn,
+		reader: reader,
 	}
 }
 
@@ -24,7 +26,7 @@ func (r *protobufStreamReader) Read(buff []byte) (int, error) {
 	}
 
 	response := &protocol.StreamChunk{}
-	err := r.conn.readResponse(response)
+	err := ReadMessage(r.reader, response)
 	if err != nil {
 		return 0, err
 	}

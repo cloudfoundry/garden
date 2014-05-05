@@ -12,7 +12,7 @@ import (
 	"code.google.com/p/gogoprotobuf/proto"
 
 	"github.com/cloudfoundry-incubator/garden/drain"
-	"github.com/cloudfoundry-incubator/garden/message_reader"
+	"github.com/cloudfoundry-incubator/garden/transport"
 	protocol "github.com/cloudfoundry-incubator/garden/protocol"
 	"github.com/cloudfoundry-incubator/garden/server/bomberman"
 	"github.com/cloudfoundry-incubator/garden/warden"
@@ -142,7 +142,7 @@ func (s *WardenServer) serveConnection(conn net.Conn) {
 			break
 		}
 
-		request, err := message_reader.ReadRequest(read)
+		request, err := transport.ReadRequest(read)
 		if err == io.EOF {
 			break
 		}
