@@ -174,10 +174,6 @@ func (s *WardenServer) serveConnection(conn net.Conn) {
 			response, err = s.handleList(req)
 		case *protocol.StopRequest:
 			response, err = s.handleStop(req)
-		case *protocol.CopyInRequest:
-			response, err = s.handleCopyIn(req)
-		case *protocol.CopyOutRequest:
-			response, err = s.handleCopyOut(req)
 		case *protocol.StreamInRequest:
 			response, err = s.handleStreamIn(conn, read, req)
 		case *protocol.StreamOutRequest:

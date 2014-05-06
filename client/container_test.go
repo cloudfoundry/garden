@@ -109,65 +109,6 @@ var _ = Describe("Container", func() {
 		})
 	})
 
-	Describe("CopyIn", func() {
-		It("sends a copy in request", func() {
-			err := container.CopyIn("from", "to")
-			Ω(err).ShouldNot(HaveOccurred())
-
-			Ω(fakeConnection.CopiedIn("some-handle")).Should(ContainElement(
-				fake_connection.CopyInSpec{
-					Source:      "from",
-					Destination: "to",
-				},
-			))
-		})
-
-		Context("when copying in fails", func() {
-			disaster := errors.New("oh no!")
-
-			BeforeEach(func() {
-				fakeConnection.WhenCopyingIn = func(handle string, src, dst string) error {
-					return disaster
-				}
-			})
-
-			It("returns the error", func() {
-				err := container.CopyIn("from", "to")
-				Ω(err).Should(Equal(disaster))
-			})
-		})
-	})
-
-	Describe("CopyOut", func() {
-		It("sends a copy in request", func() {
-			err := container.CopyOut("from", "to", "bob")
-			Ω(err).ShouldNot(HaveOccurred())
-
-			Ω(fakeConnection.CopiedOut("some-handle")).Should(ContainElement(
-				fake_connection.CopyOutSpec{
-					Source:      "from",
-					Destination: "to",
-					Owner:       "bob",
-				},
-			))
-		})
-
-		Context("when copying in fails", func() {
-			disaster := errors.New("oh no!")
-
-			BeforeEach(func() {
-				fakeConnection.WhenCopyingOut = func(handle string, src, dst, owner string) error {
-					return disaster
-				}
-			})
-
-			It("returns the error", func() {
-				err := container.CopyOut("from", "to", "bob")
-				Ω(err).Should(Equal(disaster))
-			})
-		})
-	})
-
 	Describe("StreamIn", func() {
 		It("sends a stream in request", func() {
 			reader, w := io.Pipe()

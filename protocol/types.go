@@ -51,11 +51,6 @@ func TypeForMessage(msg proto.Message) Message_Type {
 	case *NetOutRequest, *NetOutResponse:
 		return Message_NetOut
 
-	case *CopyInRequest, *CopyInResponse:
-		return Message_CopyIn
-	case *CopyOutRequest, *CopyOutResponse:
-		return Message_CopyOut
-
 	case *StreamInRequest, *StreamInResponse:
 		return Message_StreamIn
 	case *StreamOutRequest, *StreamOutResponse:
@@ -108,11 +103,6 @@ func RequestMessageForType(t Message_Type) proto.Message {
 	case Message_NetOut:
 		return &NetOutRequest{}
 
-	case Message_CopyIn:
-		return &CopyInRequest{}
-	case Message_CopyOut:
-		return &CopyOutRequest{}
-
 	case Message_StreamIn:
 		return &StreamInRequest{}
 	case Message_StreamOut:
@@ -161,11 +151,6 @@ func ResponseMessageForType(t Message_Type) proto.Message {
 		return &NetInResponse{}
 	case Message_NetOut:
 		return &NetOutResponse{}
-
-	case Message_CopyIn:
-		return &CopyInResponse{}
-	case Message_CopyOut:
-		return &CopyOutResponse{}
 
 	case Message_StreamIn:
 		return &StreamInResponse{}

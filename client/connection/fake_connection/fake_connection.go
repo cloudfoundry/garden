@@ -32,12 +32,6 @@ type FakeConnection struct {
 
 	WhenGettingInfo func(handle string) (warden.ContainerInfo, error)
 
-	copiedIn      map[string][]CopyInSpec
-	WhenCopyingIn func(handle string, src, dst string) error
-
-	copiedOut      map[string][]CopyOutSpec
-	WhenCopyingOut func(handle string, src, dst, owner string) error
-
 	streamedIn      map[string][]StreamInSpec
 	WhenStreamingIn func(handle string, dst string) (io.WriteCloser, error)
 
@@ -74,17 +68,6 @@ type StopSpec struct {
 	Kill       bool
 }
 
-type CopyInSpec struct {
-	Source      string
-	Destination string
-}
-
-type CopyOutSpec struct {
-	Source      string
-	Destination string
-	Owner       string
-}
-
 type StreamInSpec struct {
 	Destination string
 	WriteBuffer *gbytes.Buffer
@@ -112,9 +95,6 @@ func New() *FakeConnection {
 		disconnected: make(chan struct{}),
 
 		stopped: make(map[string][]StopSpec),
-
-		copiedIn:  make(map[string][]CopyInSpec),
-		copiedOut: make(map[string][]CopyOutSpec),
 
 		streamedIn:  make(map[string][]StreamInSpec),
 		streamedOut: make(map[string][]StreamOutSpec),
@@ -246,51 +226,6 @@ func (connection *FakeConnection) Info(handle string) (warden.ContainerInfo, err
 	}
 
 	return warden.ContainerInfo{}, nil
-}
-
-func (connection *FakeConnection) CopyIn(handle string, src, dst string) error {
-	connection.lock.Lock()
-	connection.copiedIn[handle] = append(connection.copiedIn[handle], CopyInSpec{
-		Source:      src,
-		Destination: dst,
-	})
-	connection.lock.Unlock()
-
-	if connection.WhenCopyingIn != nil {
-		return connection.WhenCopyingIn(handle, src, dst)
-	}
-
-	return nil
-}
-
-func (connection *FakeConnection) CopiedIn(handle string) []CopyInSpec {
-	connection.lock.RLock()
-	defer connection.lock.RUnlock()
-
-	return connection.copiedIn[handle]
-}
-
-func (connection *FakeConnection) CopyOut(handle string, src, dst, owner string) error {
-	connection.lock.Lock()
-	connection.copiedOut[handle] = append(connection.copiedOut[handle], CopyOutSpec{
-		Source:      src,
-		Destination: dst,
-		Owner:       owner,
-	})
-	connection.lock.Unlock()
-
-	if connection.WhenCopyingOut != nil {
-		return connection.WhenCopyingOut(handle, src, dst, owner)
-	}
-
-	return nil
-}
-
-func (connection *FakeConnection) CopiedOut(handle string) []CopyOutSpec {
-	connection.lock.RLock()
-	defer connection.lock.RUnlock()
-
-	return connection.copiedOut[handle]
 }
 
 func (connection *FakeConnection) StreamIn(handle string, dstPath string) (io.WriteCloser, error) {

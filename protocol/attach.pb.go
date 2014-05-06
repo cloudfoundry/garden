@@ -8,8 +8,6 @@ Package warden is a generated protocol buffer package.
 It is generated from these files:
 	attach.proto
 	capacity.proto
-	copy_in.proto
-	copy_out.proto
 	create.proto
 	destroy.proto
 	echo.proto

@@ -34,9 +34,6 @@ type Connection interface {
 
 	Info(handle string) (warden.ContainerInfo, error)
 
-	CopyIn(handle string, src, dst string) error
-	CopyOut(handle string, src, dst, owner string) error
-
 	StreamIn(handle string, dstPath string) (io.WriteCloser, error)
 	StreamOut(handle string, srcPath string) (io.Reader, error)
 
@@ -440,41 +437,6 @@ func (c *connection) LimitMemory(handle string, limits warden.MemoryLimits) (war
 	return warden.MemoryLimits{
 		LimitInBytes: res.GetLimitInBytes(),
 	}, nil
-}
-
-func (c *connection) CopyIn(handle, src, dst string) error {
-	err := c.roundTrip(
-		&protocol.CopyInRequest{
-			Handle:  proto.String(handle),
-			SrcPath: proto.String(src),
-			DstPath: proto.String(dst),
-		},
-		&protocol.CopyInResponse{},
-	)
-
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (c *connection) CopyOut(handle, src, dst, owner string) error {
-	err := c.roundTrip(
-		&protocol.CopyOutRequest{
-			Handle:  proto.String(handle),
-			SrcPath: proto.String(src),
-			DstPath: proto.String(dst),
-			Owner:   proto.String(owner),
-		},
-		&protocol.CopyOutResponse{},
-	)
-
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func (c *connection) StreamIn(handle string, dstPath string) (io.WriteCloser, error) {

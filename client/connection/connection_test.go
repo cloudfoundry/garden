@@ -581,45 +581,6 @@ var _ = Describe("Connection", func() {
 		})
 	})
 
-	Describe("Copying in", func() {
-		BeforeEach(func() {
-			wardenMessages = append(wardenMessages,
-				&protocol.CopyInResponse{},
-			)
-		})
-
-		It("should tell warden to copy in", func() {
-			err := connection.CopyIn("foo-handle", "/foo", "/bar")
-			Ω(err).ShouldNot(HaveOccurred())
-
-			assertWriteBufferContains(&protocol.CopyInRequest{
-				Handle:  proto.String("foo-handle"),
-				SrcPath: proto.String("/foo"),
-				DstPath: proto.String("/bar"),
-			})
-		})
-	})
-
-	Describe("Copying out", func() {
-		BeforeEach(func() {
-			wardenMessages = append(wardenMessages,
-				&protocol.CopyOutResponse{},
-			)
-		})
-
-		It("should tell warden to copy out", func() {
-			err := connection.CopyOut("foo-handle", "/foo", "/bar", "bartholofoo")
-			Ω(err).ShouldNot(HaveOccurred())
-
-			assertWriteBufferContains(&protocol.CopyOutRequest{
-				Handle:  proto.String("foo-handle"),
-				SrcPath: proto.String("/foo"),
-				DstPath: proto.String("/bar"),
-				Owner:   proto.String("bartholofoo"),
-			})
-		})
-	})
-
 	Describe("Streaming in", func() {
 		BeforeEach(func() {
 			wardenMessages = append(wardenMessages,

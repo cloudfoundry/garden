@@ -40,20 +40,6 @@ func (container *container) Info() (warden.ContainerInfo, error) {
 	return conn.Info(container.handle)
 }
 
-func (container *container) CopyIn(srcPath, dstPath string) error {
-	conn := container.pool.Acquire()
-	defer container.pool.Release(conn)
-
-	return conn.CopyIn(container.handle, srcPath, dstPath)
-}
-
-func (container *container) CopyOut(srcPath, dstPath, owner string) error {
-	conn := container.pool.Acquire()
-	defer container.pool.Release(conn)
-
-	return conn.CopyOut(container.handle, srcPath, dstPath, owner)
-}
-
 func (container *container) StreamIn(dstPath string) (io.WriteCloser, error) {
 	conn := container.pool.Acquire()
 

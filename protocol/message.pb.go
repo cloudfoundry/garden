@@ -23,8 +23,6 @@ const (
 	Message_Info           Message_Type = 14
 	Message_NetIn          Message_Type = 31
 	Message_NetOut         Message_Type = 32
-	Message_CopyIn         Message_Type = 41
-	Message_CopyOut        Message_Type = 42
 	Message_LimitMemory    Message_Type = 51
 	Message_LimitDisk      Message_Type = 52
 	Message_LimitBandwidth Message_Type = 53
@@ -49,8 +47,6 @@ var Message_Type_name = map[int32]string{
 	14: "Info",
 	31: "NetIn",
 	32: "NetOut",
-	41: "CopyIn",
-	42: "CopyOut",
 	51: "LimitMemory",
 	52: "LimitDisk",
 	53: "LimitBandwidth",
@@ -74,8 +70,6 @@ var Message_Type_value = map[string]int32{
 	"Info":           14,
 	"NetIn":          31,
 	"NetOut":         32,
-	"CopyIn":         41,
-	"CopyOut":        42,
 	"LimitMemory":    51,
 	"LimitDisk":      52,
 	"LimitBandwidth": 53,

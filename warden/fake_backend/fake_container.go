@@ -27,12 +27,6 @@ type FakeContainer struct {
 
 	CleanedUp bool
 
-	CopyInError error
-	CopiedIn    [][]string
-
-	CopyOutError error
-	CopiedOut    [][]string
-
 	StreamInError error
 	StreamedIn    []StreamInSpec
 
@@ -204,26 +198,6 @@ func (c *FakeContainer) Info() (warden.ContainerInfo, error) {
 	}
 
 	return c.ReportedInfo, nil
-}
-
-func (c *FakeContainer) CopyIn(src, dst string) error {
-	if c.CopyInError != nil {
-		return c.CopyInError
-	}
-
-	c.CopiedIn = append(c.CopiedIn, []string{src, dst})
-
-	return nil
-}
-
-func (c *FakeContainer) CopyOut(src, dst, owner string) error {
-	if c.CopyOutError != nil {
-		return c.CopyOutError
-	}
-
-	c.CopiedOut = append(c.CopiedOut, []string{src, dst, owner})
-
-	return nil
 }
 
 func (c *FakeContainer) StreamIn(dst string) (io.WriteCloser, error) {

@@ -113,28 +113,6 @@ func (s *WardenServer) handleList(list *protocol.ListRequest) (proto.Message, er
 	return &protocol.ListResponse{Handles: handles}, nil
 }
 
-func (s *WardenServer) handleCopyOut(copyOut *protocol.CopyOutRequest) (proto.Message, error) {
-	handle := copyOut.GetHandle()
-	srcPath := copyOut.GetSrcPath()
-	dstPath := copyOut.GetDstPath()
-	owner := copyOut.GetOwner()
-
-	container, err := s.backend.Lookup(handle)
-	if err != nil {
-		return nil, err
-	}
-
-	s.bomberman.Pause(container.Handle())
-	defer s.bomberman.Unpause(container.Handle())
-
-	err = container.CopyOut(srcPath, dstPath, owner)
-	if err != nil {
-		return nil, err
-	}
-
-	return &protocol.CopyOutResponse{}, nil
-}
-
 func (s *WardenServer) handleStop(request *protocol.StopRequest) (proto.Message, error) {
 	handle := request.GetHandle()
 	kill := request.GetKill()
@@ -158,27 +136,6 @@ func (s *WardenServer) handleStop(request *protocol.StopRequest) (proto.Message,
 	}
 
 	return &protocol.StopResponse{}, nil
-}
-
-func (s *WardenServer) handleCopyIn(copyIn *protocol.CopyInRequest) (proto.Message, error) {
-	handle := copyIn.GetHandle()
-	srcPath := copyIn.GetSrcPath()
-	dstPath := copyIn.GetDstPath()
-
-	container, err := s.backend.Lookup(handle)
-	if err != nil {
-		return nil, err
-	}
-
-	s.bomberman.Pause(container.Handle())
-	defer s.bomberman.Unpause(container.Handle())
-
-	err = container.CopyIn(srcPath, dstPath)
-	if err != nil {
-		return nil, err
-	}
-
-	return &protocol.CopyInResponse{}, nil
 }
 
 func (s *WardenServer) handleStreamIn(conn net.Conn, reader *bufio.Reader, request *protocol.StreamInRequest) (proto.Message, error) {
