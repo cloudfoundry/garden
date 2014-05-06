@@ -1,10 +1,12 @@
 package fake_connection
 
 import (
+	"bytes"
 	"io"
 	"sync"
 
 	"github.com/cloudfoundry-incubator/garden/warden"
+	"github.com/onsi/gomega/gbytes"
 )
 
 type FakeConnection struct {
@@ -85,11 +87,12 @@ type CopyOutSpec struct {
 
 type StreamInSpec struct {
 	Destination string
+	WriteBuffer *gbytes.Buffer
 }
 
 type StreamOutSpec struct {
-	Source      string
-	Destination io.Writer
+	Source     string
+	ReadBuffer *bytes.Buffer
 }
 
 type NetInSpec struct {
@@ -291,9 +294,12 @@ func (connection *FakeConnection) CopiedOut(handle string) []CopyOutSpec {
 }
 
 func (connection *FakeConnection) StreamIn(handle string, dstPath string) (io.WriteCloser, error) {
+	buffer := gbytes.NewBuffer()
+
 	connection.lock.Lock()
 	connection.streamedIn[handle] = append(connection.streamedIn[handle], StreamInSpec{
 		Destination: dstPath,
+		WriteBuffer: buffer,
 	})
 	connection.lock.Unlock()
 
@@ -301,7 +307,7 @@ func (connection *FakeConnection) StreamIn(handle string, dstPath string) (io.Wr
 		return connection.WhenStreamingIn(handle, dstPath)
 	}
 
-	return nil, nil
+	return buffer, nil
 }
 
 func (connection *FakeConnection) StreamedIn(handle string) []StreamInSpec {
@@ -312,9 +318,11 @@ func (connection *FakeConnection) StreamedIn(handle string) []StreamInSpec {
 }
 
 func (connection *FakeConnection) StreamOut(handle string, srcPath string) (io.Reader, error) {
+	buffer := new(bytes.Buffer)
 	connection.lock.Lock()
 	connection.streamedOut[handle] = append(connection.streamedOut[handle], StreamOutSpec{
-		Source: srcPath,
+		Source:     srcPath,
+		ReadBuffer: buffer,
 	})
 	connection.lock.Unlock()
 
@@ -322,7 +330,7 @@ func (connection *FakeConnection) StreamOut(handle string, srcPath string) (io.R
 		return connection.WhenStreamingOut(handle, srcPath)
 	}
 
-	return nil, nil
+	return buffer, nil
 }
 
 func (connection *FakeConnection) StreamedOut(handle string) []StreamOutSpec {
