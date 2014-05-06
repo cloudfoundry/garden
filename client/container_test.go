@@ -1,12 +1,12 @@
 package client_test
 
 import (
-	"bytes"
 	"errors"
+	"io"
+	"io/ioutil"
+	"strings"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"io"
-	"strings"
 
 	. "github.com/cloudfoundry-incubator/garden/client"
 	"github.com/cloudfoundry-incubator/garden/client/connection"
@@ -170,13 +170,25 @@ var _ = Describe("Container", func() {
 
 	Describe("StreamIn", func() {
 		It("sends a stream in request", func() {
-			content := strings.NewReader("content")
-			err := container.StreamIn(content, "to")
+			reader, w := io.Pipe()
+			fakeConnection.WhenStreamingIn = func(handle string, dst string) (io.WriteCloser, error) {
+				return w, nil
+			}
+
+			writer, err := container.StreamIn("to")
 			Ω(err).ShouldNot(HaveOccurred())
+
+			go func() {
+				writer.Write([]byte("stuff"))
+				writer.Close()
+			}()
+
+			content, err := ioutil.ReadAll(reader)
+			Ω(err).ShouldNot(HaveOccurred())
+			Ω(string(content)).Should(Equal("stuff"))
 
 			Ω(fakeConnection.StreamedIn("some-handle")).Should(ContainElement(
 				fake_connection.StreamInSpec{
-					Source:      content,
 					Destination: "to",
 				},
 			))
@@ -186,13 +198,13 @@ var _ = Describe("Container", func() {
 			disaster := errors.New("oh no!")
 
 			BeforeEach(func() {
-				fakeConnection.WhenStreamingIn = func(handle string, src io.Reader, dst string) error {
-					return disaster
+				fakeConnection.WhenStreamingIn = func(handle string, dst string) (io.WriteCloser, error) {
+					return nil, disaster
 				}
 			})
 
 			It("returns the error", func() {
-				err := container.StreamIn(strings.NewReader("content"), "to")
+				_, err := container.StreamIn("to")
 				Ω(err).Should(Equal(disaster))
 			})
 		})
@@ -200,14 +212,18 @@ var _ = Describe("Container", func() {
 
 	Describe("StreamOut", func() {
 		It("sends a stream out request", func() {
-			dest := bytes.NewBuffer([]byte{})
-			err := container.StreamOut("from", dest)
+			fakeConnection.WhenStreamingOut = func(handle string, src string) (io.Reader, error) {
+				return strings.NewReader("kewl"), nil
+			}
+
+			reader, err := container.StreamOut("from")
+			bytes, err := ioutil.ReadAll(reader)
 			Ω(err).ShouldNot(HaveOccurred())
+			Ω(string(bytes)).Should(Equal("kewl"))
 
 			Ω(fakeConnection.StreamedOut("some-handle")).Should(ContainElement(
 				fake_connection.StreamOutSpec{
-					Source:      "from",
-					Destination: dest,
+					Source: "from",
 				},
 			))
 		})
@@ -216,13 +232,13 @@ var _ = Describe("Container", func() {
 			disaster := errors.New("oh no!")
 
 			BeforeEach(func() {
-				fakeConnection.WhenStreamingOut = func(handle string, src string, dst io.Writer) error {
-					return disaster
+				fakeConnection.WhenStreamingOut = func(handle string, src string) (io.Reader, error) {
+					return nil, disaster
 				}
 			})
 
 			It("returns the error", func() {
-				err := container.StreamOut("from", nil)
+				_, err := container.StreamOut("from")
 				Ω(err).Should(Equal(disaster))
 			})
 		})

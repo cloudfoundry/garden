@@ -32,5 +32,6 @@ func (w protobufStreamWriter) Close() error {
 	_, err := protocol.Messages(&protocol.StreamChunk{
 		EOF: proto.Bool(true),
 	}).WriteTo(w.conn)
+
 	return err
 }

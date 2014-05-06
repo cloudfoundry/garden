@@ -10,6 +10,7 @@ import (
 
 	"code.google.com/p/goprotobuf/proto"
 
+	"github.com/cloudfoundry-incubator/garden/client/releasenotifier"
 	protocol "github.com/cloudfoundry-incubator/garden/protocol"
 	"github.com/cloudfoundry-incubator/garden/transport"
 	"github.com/cloudfoundry-incubator/garden/warden"
@@ -36,8 +37,8 @@ type Connection interface {
 	CopyIn(handle string, src, dst string) error
 	CopyOut(handle string, src, dst, owner string) error
 
-	StreamIn(handle string, src io.Reader, dstPath string) error
-	StreamOut(handle string, srcPath string, dest io.Writer) error
+	StreamIn(handle string, dstPath string) (io.WriteCloser, error)
+	StreamOut(handle string, srcPath string) (io.Reader, error)
 
 	LimitBandwidth(handle string, limits warden.BandwidthLimits) (warden.BandwidthLimits, error)
 	LimitCPU(handle string, limits warden.CPULimits) (warden.CPULimits, error)
@@ -476,34 +477,28 @@ func (c *connection) CopyOut(handle, src, dst, owner string) error {
 	return nil
 }
 
-func (c *connection) StreamIn(handle string, src io.Reader, dstPath string) error {
-	err := c.sendMessage(&protocol.StreamInRequest{
-		Handle:  proto.String(handle),
-		DstPath: proto.String(dstPath),
-	})
+func (c *connection) StreamIn(handle string, dstPath string) (io.WriteCloser, error) {
+	err := c.roundTrip(
+		&protocol.StreamInRequest{
+			Handle:  proto.String(handle),
+			DstPath: proto.String(dstPath),
+		},
+		&protocol.StreamInResponse{},
+	)
+
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	c.writeLock.Lock()
-	defer c.writeLock.Unlock()
 
-	messageWriter := transport.NewProtobufStreamWriter(c.conn)
-
-	_, err = io.Copy(messageWriter, src)
-	if err != nil {
-		return err
-	}
-
-	err = messageWriter.Close()
-	if err != nil {
-		return err
-	}
-
-	return c.readResponse(&protocol.StreamInResponse{})
+	return releasenotifier.ReleaseNotifier{
+		WriteCloser: transport.NewProtobufStreamWriter(c.conn),
+		Callback:    c.writeLock.Unlock,
+	}, nil
 }
 
-func (c *connection) StreamOut(handle string, srcPath string, dest io.Writer) error {
+func (c *connection) StreamOut(handle string, srcPath string) (io.Reader, error) {
 	err := c.roundTrip(
 		&protocol.StreamOutRequest{
 			Handle:  proto.String(handle),
@@ -513,19 +508,15 @@ func (c *connection) StreamOut(handle string, srcPath string, dest io.Writer) er
 	)
 
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	c.readLock.Lock()
-	defer c.readLock.Unlock()
 
-	messageReader := transport.NewProtobufStreamReader(c.read)
-	_, err = io.Copy(dest, messageReader)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return releasenotifier.ReleaseNotifier{
+		Reader:   transport.NewProtobufStreamReader(c.read),
+		Callback: c.readLock.Unlock,
+	}, nil
 }
 
 func (c *connection) List(filterProperties warden.Properties) ([]string, error) {

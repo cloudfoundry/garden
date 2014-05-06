@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"io/ioutil"
 	"net"
-	"strings"
 	"time"
 
 	"code.google.com/p/gogoprotobuf/proto"
@@ -13,8 +12,8 @@ import (
 	. "github.com/onsi/gomega"
 
 	. "github.com/cloudfoundry-incubator/garden/client/connection"
-	"github.com/cloudfoundry-incubator/garden/transport"
 	protocol "github.com/cloudfoundry-incubator/garden/protocol"
+	"github.com/cloudfoundry-incubator/garden/transport"
 	"github.com/cloudfoundry-incubator/garden/warden"
 )
 
@@ -629,32 +628,32 @@ var _ = Describe("Connection", func() {
 		})
 
 		It("tells warden to stream, and then streams the content as a series of chunks", func() {
-			content := strings.NewReader("this is a stream of data to send")
-			err := connection.StreamIn("foo-handle", content, "/bar")
+			writer, err := connection.StreamIn("foo-handle", "/bar")
 			Ω(err).ShouldNot(HaveOccurred())
 
-			reader := bufio.NewReader(bytes.NewBuffer(writeBuffer.Bytes()))
-
-			req, err := transport.ReadRequest(reader)
+			_, err = writer.Write([]byte("chunk-1"))
 			Ω(err).ShouldNot(HaveOccurred())
-			Ω(req).Should(Equal(&protocol.StreamInRequest{
-				Handle:  proto.String("foo-handle"),
-				DstPath: proto.String("/bar"),
-			}))
 
-			bytesWritten := []byte{}
-			for {
-				req, err := transport.ReadRequest(reader)
-				Ω(err).ShouldNot(HaveOccurred())
-				streamChunk, ok := req.(*protocol.StreamChunk)
-				Ω(ok).Should(BeTrue())
-				if streamChunk.GetEOF() {
-					break
-				}
-				bytesWritten = append(bytesWritten, streamChunk.Content...)
-			}
+			_, err = writer.Write([]byte("chunk-2"))
+			Ω(err).ShouldNot(HaveOccurred())
 
-			Ω(bytesWritten).Should(Equal([]byte("this is a stream of data to send")))
+			writer.Close()
+
+			assertWriteBufferContains(
+				&protocol.StreamInRequest{
+					Handle:  proto.String("foo-handle"),
+					DstPath: proto.String("/bar"),
+				},
+				&protocol.StreamChunk{
+					Content: []byte("chunk-1"),
+				},
+				&protocol.StreamChunk{
+					Content: []byte("chunk-2"),
+				},
+				&protocol.StreamChunk{
+					EOF: proto.Bool(true),
+				},
+			)
 		})
 	})
 
@@ -678,8 +677,7 @@ var _ = Describe("Connection", func() {
 		})
 
 		It("asks warden for the given file, then reads its content as a series of chunks", func() {
-			dest := bytes.NewBuffer([]byte{})
-			err := connection.StreamOut("foo-handle", "/bar", dest)
+			reader, err := connection.StreamOut("foo-handle", "/bar")
 			Ω(err).ShouldNot(HaveOccurred())
 
 			assertWriteBufferContains(&protocol.StreamOutRequest{
@@ -687,7 +685,7 @@ var _ = Describe("Connection", func() {
 				SrcPath: proto.String("/bar"),
 			})
 
-			readBytes, err := ioutil.ReadAll(dest)
+			readBytes, err := ioutil.ReadAll(reader)
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(readBytes).Should(Equal([]byte("hello-world!")))
 		})

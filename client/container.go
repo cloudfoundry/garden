@@ -1,9 +1,11 @@
 package client
 
 import (
-	"github.com/cloudfoundry-incubator/garden/client/connection"
-	"github.com/cloudfoundry-incubator/garden/warden"
 	"io"
+
+	"github.com/cloudfoundry-incubator/garden/client/connection"
+	"github.com/cloudfoundry-incubator/garden/client/releasenotifier"
+	"github.com/cloudfoundry-incubator/garden/warden"
 )
 
 type container struct {
@@ -52,18 +54,38 @@ func (container *container) CopyOut(srcPath, dstPath, owner string) error {
 	return conn.CopyOut(container.handle, srcPath, dstPath, owner)
 }
 
-func (container *container) StreamIn(src io.Reader, dstPath string) error {
+func (container *container) StreamIn(dstPath string) (io.WriteCloser, error) {
 	conn := container.pool.Acquire()
-	defer container.pool.Release(conn)
 
-	return conn.StreamIn(container.handle, src, dstPath)
+	writeCloser, err := conn.StreamIn(container.handle, dstPath)
+	if err != nil {
+		container.pool.Release(conn)
+		return nil, err
+	}
+
+	return releasenotifier.ReleaseNotifier{
+		WriteCloser: writeCloser,
+		Callback: func() {
+			container.pool.Release(conn)
+		},
+	}, nil
 }
 
-func (container *container) StreamOut(srcPath string, dst io.Writer) error {
+func (container *container) StreamOut(srcPath string) (io.Reader, error) {
 	conn := container.pool.Acquire()
-	defer container.pool.Release(conn)
 
-	return conn.StreamOut(container.handle, srcPath, dst)
+	reader, err := conn.StreamOut(container.handle, srcPath)
+	if err != nil {
+		container.pool.Release(conn)
+		return nil, err
+	}
+
+	return releasenotifier.ReleaseNotifier{
+		Reader: reader,
+		Callback: func() {
+			container.pool.Release(conn)
+		},
+	}, nil
 }
 
 func (container *container) LimitBandwidth(limits warden.BandwidthLimits) error {

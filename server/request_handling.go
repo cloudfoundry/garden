@@ -2,6 +2,7 @@ package server
 
 import (
 	"bufio"
+	"io"
 	"net"
 	"time"
 
@@ -194,7 +195,12 @@ func (s *WardenServer) handleStreamIn(reader *bufio.Reader, request *protocol.St
 
 	streamReader := transport.NewProtobufStreamReader(reader)
 
-	err = container.StreamIn(streamReader, dstPath)
+	streamWriter, err := container.StreamIn(dstPath)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = io.Copy(streamWriter, streamReader)
 	if err != nil {
 		return nil, err
 	}
@@ -220,7 +226,13 @@ func (s *WardenServer) handleStreamOut(conn net.Conn, request *protocol.StreamOu
 	}
 
 	writer := transport.NewProtobufStreamWriter(conn)
-	err = container.StreamOut(srcPath, writer)
+
+	reader, err := container.StreamOut(srcPath)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = io.Copy(writer, reader)
 	if err != nil {
 		return nil, err
 	}

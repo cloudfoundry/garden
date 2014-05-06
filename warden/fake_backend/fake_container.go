@@ -1,8 +1,8 @@
 package fake_backend
 
 import (
+	"bytes"
 	"io"
-	"io/ioutil"
 	"sync"
 	"time"
 
@@ -36,7 +36,7 @@ type FakeContainer struct {
 	StreamedIn    []StreamInSpec
 
 	StreamOutError  error
-	StreamOutChunks [][]byte
+	StreamOutBuffer *bytes.Buffer
 	StreamedOut     []string
 
 	RunError         error
@@ -101,7 +101,7 @@ type StopSpec struct {
 }
 
 type StreamInSpec struct {
-	SrcContent string
+	SrcContent *bytes.Buffer
 	DestPath   string
 }
 
@@ -121,6 +121,8 @@ func NewFakeContainer(spec warden.ContainerSpec) *FakeContainer {
 		id: id,
 
 		Spec: spec,
+
+		StreamOutBuffer: new(bytes.Buffer),
 
 		stopMutex:     new(sync.RWMutex),
 		snapshotMutex: new(sync.RWMutex),
@@ -222,28 +224,15 @@ func (c *FakeContainer) CopyOut(src, dst, owner string) error {
 	return nil
 }
 
-func (c *FakeContainer) StreamIn(src io.Reader, dst string) error {
-	bytes, err := ioutil.ReadAll(src)
-	if err != nil {
-		panic(err)
-	}
-	c.StreamedIn = append(c.StreamedIn, StreamInSpec{SrcContent: string(bytes), DestPath: dst})
-	return c.StreamInError
+func (c *FakeContainer) StreamIn(dst string) (io.WriteCloser, error) {
+	buffer := new(bytes.Buffer)
+	c.StreamedIn = append(c.StreamedIn, StreamInSpec{SrcContent: buffer, DestPath: dst})
+	return &CloseTracker{Writer: buffer}, c.StreamInError
 }
 
-func (c *FakeContainer) StreamOut(srcPath string, dst io.Writer) error {
+func (c *FakeContainer) StreamOut(srcPath string) (io.Reader, error) {
 	c.StreamedOut = append(c.StreamedOut, srcPath)
-	if c.StreamOutError != nil {
-		return c.StreamOutError
-	}
-
-	for _, chunk := range c.StreamOutChunks {
-		_, err := dst.Write(chunk)
-		if err != nil {
-			panic(err)
-		}
-	}
-	return nil
+	return c.StreamOutBuffer, c.StreamOutError
 }
 
 func (c *FakeContainer) LimitBandwidth(limits warden.BandwidthLimits) error {
