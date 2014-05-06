@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/nu7hatch/gouuid"
+	"github.com/onsi/gomega/gbytes"
 
 	"github.com/cloudfoundry-incubator/garden/warden"
 )
@@ -101,8 +102,9 @@ type StopSpec struct {
 }
 
 type StreamInSpec struct {
-	SrcContent *bytes.Buffer
-	DestPath   string
+	InStream     *gbytes.Buffer
+	DestPath     string
+	CloseTracker *CloseTracker
 }
 
 func NewFakeContainer(spec warden.ContainerSpec) *FakeContainer {
@@ -225,9 +227,17 @@ func (c *FakeContainer) CopyOut(src, dst, owner string) error {
 }
 
 func (c *FakeContainer) StreamIn(dst string) (io.WriteCloser, error) {
-	buffer := new(bytes.Buffer)
-	c.StreamedIn = append(c.StreamedIn, StreamInSpec{SrcContent: buffer, DestPath: dst})
-	return &CloseTracker{Writer: buffer}, c.StreamInError
+	buffer := gbytes.NewBuffer()
+
+	closeTracker := NewCloseTracker(nil, buffer)
+
+	c.StreamedIn = append(c.StreamedIn, StreamInSpec{
+		InStream:     buffer,
+		DestPath:     dst,
+		CloseTracker: closeTracker,
+	})
+
+	return closeTracker, c.StreamInError
 }
 
 func (c *FakeContainer) StreamOut(srcPath string) (io.Reader, error) {

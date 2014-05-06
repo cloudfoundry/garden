@@ -12,9 +12,9 @@ import (
 	"code.google.com/p/gogoprotobuf/proto"
 
 	"github.com/cloudfoundry-incubator/garden/drain"
-	"github.com/cloudfoundry-incubator/garden/transport"
 	protocol "github.com/cloudfoundry-incubator/garden/protocol"
 	"github.com/cloudfoundry-incubator/garden/server/bomberman"
+	"github.com/cloudfoundry-incubator/garden/transport"
 	"github.com/cloudfoundry-incubator/garden/warden"
 )
 
@@ -179,7 +179,7 @@ func (s *WardenServer) serveConnection(conn net.Conn) {
 		case *protocol.CopyOutRequest:
 			response, err = s.handleCopyOut(req)
 		case *protocol.StreamInRequest:
-			response, err = s.handleStreamIn(read, req)
+			response, err = s.handleStreamIn(conn, read, req)
 		case *protocol.StreamOutRequest:
 			response, err = s.handleStreamOut(conn, req)
 		case *protocol.RunRequest:
@@ -214,7 +214,9 @@ func (s *WardenServer) serveConnection(conn net.Conn) {
 			}
 		}
 
-		protocol.Messages(response).WriteTo(conn)
+		if response != nil {
+			protocol.Messages(response).WriteTo(conn)
+		}
 
 		s.openRequests.Decr()
 	}

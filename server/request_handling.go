@@ -181,7 +181,7 @@ func (s *WardenServer) handleCopyIn(copyIn *protocol.CopyInRequest) (proto.Messa
 	return &protocol.CopyInResponse{}, nil
 }
 
-func (s *WardenServer) handleStreamIn(reader *bufio.Reader, request *protocol.StreamInRequest) (proto.Message, error) {
+func (s *WardenServer) handleStreamIn(conn net.Conn, reader *bufio.Reader, request *protocol.StreamInRequest) (proto.Message, error) {
 	handle := request.GetHandle()
 	dstPath := request.GetDstPath()
 
@@ -193,19 +193,24 @@ func (s *WardenServer) handleStreamIn(reader *bufio.Reader, request *protocol.St
 	s.bomberman.Pause(container.Handle())
 	defer s.bomberman.Unpause(container.Handle())
 
-	streamReader := transport.NewProtobufStreamReader(reader)
-
 	streamWriter, err := container.StreamIn(dstPath)
 	if err != nil {
 		return nil, err
 	}
+
+	_, err = protocol.Messages(&protocol.StreamInResponse{}).WriteTo(conn)
+	if err != nil {
+		return nil, err
+	}
+
+	streamReader := transport.NewProtobufStreamReader(reader)
 
 	_, err = io.Copy(streamWriter, streamReader)
 	if err != nil {
 		return nil, err
 	}
 
-	return &protocol.StreamInResponse{}, nil
+	return nil, streamWriter.Close()
 }
 
 func (s *WardenServer) handleStreamOut(conn net.Conn, request *protocol.StreamOutRequest) (proto.Message, error) {
@@ -237,9 +242,7 @@ func (s *WardenServer) handleStreamOut(conn net.Conn, request *protocol.StreamOu
 		return nil, err
 	}
 
-	return &protocol.StreamChunk{
-		EOF: proto.Bool(true),
-	}, nil
+	return nil, writer.Close()
 }
 
 func (s *WardenServer) handleLimitBandwidth(request *protocol.LimitBandwidthRequest) (proto.Message, error) {

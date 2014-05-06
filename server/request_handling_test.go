@@ -15,6 +15,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gbytes"
 
 	protocol "github.com/cloudfoundry-incubator/garden/protocol"
 	"github.com/cloudfoundry-incubator/garden/server"
@@ -635,12 +636,17 @@ var _ = Describe("When a client connects", func() {
 			fakeContainer = container.(*fake_backend.FakeContainer)
 		})
 
-		makeRequest := func() {
+		startStream := func() {
 			writeMessages(
 				&protocol.StreamInRequest{
 					Handle:  proto.String(fakeContainer.Handle()),
 					DstPath: proto.String("/dst/path"),
 				},
+			)
+		}
+
+		sendChunks := func() {
+			writeMessages(
 				&protocol.StreamChunk{
 					Content: []byte("chunk-1;"),
 				},
@@ -656,15 +662,22 @@ var _ = Describe("When a client connects", func() {
 			)
 		}
 
-		It("streams the file in and sends a StreamInResponse", func(done Done) {
-			makeRequest()
+		It("streams the file in and sends two StreamInResponses", func(done Done) {
+			startStream()
 
 			var response protocol.StreamInResponse
 			readResponse(&response)
 
 			Expect(fakeContainer.StreamedIn).To(HaveLen(1))
-			Expect(fakeContainer.StreamedIn[0].SrcContent.String()).To(Equal("chunk-1;chunk-2;chunk-3;"))
-			Expect(fakeContainer.StreamedIn[0].DestPath).To(Equal("/dst/path"))
+
+			streamedIn := fakeContainer.StreamedIn[0]
+			Expect(streamedIn.DestPath).To(Equal("/dst/path"))
+
+			sendChunks()
+
+			Eventually(streamedIn.InStream).Should(gbytes.Say("chunk-1;chunk-2;chunk-3;"))
+
+			Expect(streamedIn.CloseTracker.IsClosed()).Should(BeTrue())
 
 			close(done)
 		}, 1.0)
@@ -675,7 +688,7 @@ var _ = Describe("When a client connects", func() {
 			})
 
 			It("sends a WardenError response", func(done Done) {
-				makeRequest()
+				startStream()
 
 				err := transport.ReadMessage(responses, &protocol.StreamInResponse{})
 				Expect(err).To(Equal(&transport.WardenError{
@@ -692,7 +705,7 @@ var _ = Describe("When a client connects", func() {
 			})
 
 			It("sends a WardenError response", func(done Done) {
-				makeRequest()
+				startStream()
 
 				err := transport.ReadMessage(responses, &protocol.StreamInResponse{})
 				Expect(err).To(Equal(&transport.WardenError{Message: "oh no!"}))
