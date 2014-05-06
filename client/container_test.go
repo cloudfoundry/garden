@@ -113,6 +113,7 @@ var _ = Describe("Container", func() {
 		It("sends a stream in request", func() {
 			reader, w := io.Pipe()
 			fakeConnection.WhenStreamingIn = func(handle string, dst string) (io.WriteCloser, error) {
+				Ω(dst).Should(Equal("to"))
 				return w, nil
 			}
 
@@ -127,12 +128,6 @@ var _ = Describe("Container", func() {
 			content, err := ioutil.ReadAll(reader)
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(string(content)).Should(Equal("stuff"))
-
-			Ω(fakeConnection.StreamedIn("some-handle")).Should(ContainElement(
-				fake_connection.StreamInSpec{
-					Destination: "to",
-				},
-			))
 		})
 
 		Context("when streaming in fails", func() {
@@ -154,6 +149,7 @@ var _ = Describe("Container", func() {
 	Describe("StreamOut", func() {
 		It("sends a stream out request", func() {
 			fakeConnection.WhenStreamingOut = func(handle string, src string) (io.Reader, error) {
+				Ω(src).Should(Equal("from"))
 				return strings.NewReader("kewl"), nil
 			}
 
@@ -161,12 +157,6 @@ var _ = Describe("Container", func() {
 			bytes, err := ioutil.ReadAll(reader)
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(string(bytes)).Should(Equal("kewl"))
-
-			Ω(fakeConnection.StreamedOut("some-handle")).Should(ContainElement(
-				fake_connection.StreamOutSpec{
-					Source: "from",
-				},
-			))
 		})
 
 		Context("when streaming out fails", func() {
