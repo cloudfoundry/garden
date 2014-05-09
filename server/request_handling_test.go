@@ -140,6 +140,7 @@ var _ = Describe("When a client connects", func() {
 			serverBackend.CapacityResult = warden.Capacity{
 				MemoryInBytes: 1111,
 				DiskInBytes:   2222,
+				MaxContainers: 42,
 			}
 		})
 
@@ -151,6 +152,7 @@ var _ = Describe("When a client connects", func() {
 
 			Expect(response.GetMemoryInBytes()).To(Equal(uint64(1111)))
 			Expect(response.GetDiskInBytes()).To(Equal(uint64(2222)))
+			Expect(response.GetMaxContainers()).To(Equal(uint64(42)))
 
 			close(done)
 		}, 1.0)

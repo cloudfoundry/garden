@@ -32,6 +32,7 @@ type BindMount struct {
 type Capacity struct {
 	MemoryInBytes uint64
 	DiskInBytes   uint64
+	MaxContainers uint64
 }
 
 type Properties map[string]string

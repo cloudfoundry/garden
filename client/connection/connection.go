@@ -132,6 +132,7 @@ func (c *connection) Capacity() (warden.Capacity, error) {
 	return warden.Capacity{
 		MemoryInBytes: res.GetMemoryInBytes(),
 		DiskInBytes:   res.GetDiskInBytes(),
+		MaxContainers: res.GetMaxContainers(),
 	}, nil
 }
 

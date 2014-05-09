@@ -24,6 +24,7 @@ func (*CapacityRequest) ProtoMessage()    {}
 type CapacityResponse struct {
 	MemoryInBytes    *uint64 `protobuf:"varint,1,req,name=memory_in_bytes" json:"memory_in_bytes,omitempty"`
 	DiskInBytes      *uint64 `protobuf:"varint,2,req,name=disk_in_bytes" json:"disk_in_bytes,omitempty"`
+	MaxContainers    *uint64 `protobuf:"varint,3,req,name=max_containers" json:"max_containers,omitempty"`
 	XXX_unrecognized []byte  `json:"-"`
 }
 
@@ -41,6 +42,13 @@ func (m *CapacityResponse) GetMemoryInBytes() uint64 {
 func (m *CapacityResponse) GetDiskInBytes() uint64 {
 	if m != nil && m.DiskInBytes != nil {
 		return *m.DiskInBytes
+	}
+	return 0
+}
+
+func (m *CapacityResponse) GetMaxContainers() uint64 {
+	if m != nil && m.MaxContainers != nil {
+		return *m.MaxContainers
 	}
 	return 0
 }

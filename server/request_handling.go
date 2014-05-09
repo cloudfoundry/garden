@@ -31,6 +31,7 @@ func (s *WardenServer) handleCapacity(echo *protocol.CapacityRequest) (proto.Mes
 	return &protocol.CapacityResponse{
 		MemoryInBytes: proto.Uint64(capacity.MemoryInBytes),
 		DiskInBytes:   proto.Uint64(capacity.DiskInBytes),
+		MaxContainers: proto.Uint64(capacity.MaxContainers),
 	}, nil
 }
 

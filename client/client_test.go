@@ -69,6 +69,7 @@ var _ = Describe("Client", func() {
 				return warden.Capacity{
 					MemoryInBytes: 1111,
 					DiskInBytes:   2222,
+					MaxContainers: 42,
 				}, nil
 			}
 		})

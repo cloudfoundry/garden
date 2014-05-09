@@ -116,6 +116,7 @@ var _ = Describe("Connection", func() {
 					&protocol.CapacityResponse{
 						MemoryInBytes: proto.Uint64(1111),
 						DiskInBytes:   proto.Uint64(2222),
+						MaxContainers: proto.Uint64(42),
 					},
 				)
 			})
@@ -126,6 +127,7 @@ var _ = Describe("Connection", func() {
 
 				Ω(capacity.MemoryInBytes).Should(BeNumerically("==", 1111))
 				Ω(capacity.DiskInBytes).Should(BeNumerically("==", 2222))
+				Ω(capacity.MaxContainers).Should(BeNumerically("==", 42))
 
 				assertWriteBufferContains(&protocol.CapacityRequest{})
 			})
