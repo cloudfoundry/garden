@@ -7,6 +7,8 @@ import (
 	"github.com/cloudfoundry-incubator/garden/warden"
 )
 
+const defaultBytes = 1024 * 1024 * 1024
+
 type FakeBackend struct {
 	Started    bool
 	StartError error
@@ -40,6 +42,11 @@ func (e UnknownHandleError) Error() string {
 func New() *FakeBackend {
 	return &FakeBackend{
 		CreatedContainers: make(map[string]*FakeContainer),
+		CapacityResult: warden.Capacity{
+			MemoryInBytes: defaultBytes,
+			DiskInBytes:   defaultBytes,
+			MaxContainers: 1024,
+		},
 	}
 }
 
