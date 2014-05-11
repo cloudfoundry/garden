@@ -457,7 +457,12 @@ func (c *connection) StreamIn(handle string, dstPath string) (io.WriteCloser, er
 
 	return releasenotifier.ReleaseNotifier{
 		WriteCloser: transport.NewProtobufStreamWriter(c.conn),
-		Callback:    c.writeLock.Unlock,
+		Callback: func() error {
+			c.writeLock.Unlock()
+
+			var finalResponse protocol.StreamInResponse
+			return c.readResponse(&finalResponse)
+		},
 	}, nil
 }
 
@@ -477,8 +482,11 @@ func (c *connection) StreamOut(handle string, srcPath string) (io.Reader, error)
 	c.readLock.Lock()
 
 	return releasenotifier.ReleaseNotifier{
-		Reader:   transport.NewProtobufStreamReader(c.read),
-		Callback: c.readLock.Unlock,
+		Reader: transport.NewProtobufStreamReader(c.read),
+		Callback: func() error {
+			c.readLock.Unlock()
+			return nil
+		},
 	}, nil
 }
 

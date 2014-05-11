@@ -168,7 +168,12 @@ func (s *WardenServer) handleStreamIn(conn net.Conn, reader *bufio.Reader, reque
 		return nil, err
 	}
 
-	return nil, streamWriter.Close()
+	err = streamWriter.Close()
+	if err != nil {
+		return nil, err
+	}
+
+	return &protocol.StreamInResponse{}, nil
 }
 
 func (s *WardenServer) handleStreamOut(conn net.Conn, request *protocol.StreamOutRequest) (proto.Message, error) {

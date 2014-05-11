@@ -588,7 +588,7 @@ var _ = Describe("When a client connects", func() {
 			)
 		}
 
-		It("streams the file in and sends two StreamInResponses", func(done Done) {
+		It("sends an initial StreamInResponse, streams the file in, waits for completion, and sends a StreamInResponse", func(done Done) {
 			startStream()
 
 			var response protocol.StreamInResponse
@@ -603,10 +603,12 @@ var _ = Describe("When a client connects", func() {
 
 			Eventually(streamedIn.InStream).Should(gbytes.Say("chunk-1;chunk-2;chunk-3;"))
 
-			Expect(streamedIn.CloseTracker.IsClosed()).Should(BeTrue())
+			Expect(streamedIn.InStream.Closed()).Should(BeTrue())
+
+			readResponse(&response)
 
 			close(done)
-		}, 1.0)
+		}, 5.0)
 
 		Context("when the container is not found", func() {
 			BeforeEach(func() {

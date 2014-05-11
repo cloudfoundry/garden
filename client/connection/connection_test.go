@@ -43,6 +43,7 @@ var _ = Describe("Connection", func() {
 	var (
 		connection     Connection
 		writeBuffer    *bytes.Buffer
+		readBuffer     *bytes.Buffer
 		wardenMessages []proto.Message
 		resourceLimits warden.ResourceLimits
 	)
@@ -60,9 +61,10 @@ var _ = Describe("Connection", func() {
 
 	JustBeforeEach(func() {
 		writeBuffer = bytes.NewBuffer([]byte{})
+		readBuffer = protocol.Messages(wardenMessages...)
 
 		fakeConn := &FakeConn{
-			ReadBuffer:  protocol.Messages(wardenMessages...),
+			ReadBuffer:  readBuffer,
 			WriteBuffer: writeBuffer,
 		}
 
@@ -587,6 +589,7 @@ var _ = Describe("Connection", func() {
 		BeforeEach(func() {
 			wardenMessages = append(wardenMessages,
 				&protocol.StreamInResponse{},
+				&protocol.StreamInResponse{},
 			)
 		})
 
@@ -600,7 +603,8 @@ var _ = Describe("Connection", func() {
 			_, err = writer.Write([]byte("chunk-2"))
 			Ω(err).ShouldNot(HaveOccurred())
 
-			writer.Close()
+			err = writer.Close()
+			Ω(err).ShouldNot(HaveOccurred())
 
 			assertWriteBufferContains(
 				&protocol.StreamInRequest{
@@ -617,6 +621,26 @@ var _ = Describe("Connection", func() {
 					EOF: proto.Bool(true),
 				},
 			)
+		})
+
+		Context("when the second message never comes in", func() {
+			BeforeEach(func() {
+				wardenMessages = wardenMessages[:len(wardenMessages)-1]
+			})
+
+			It("returns an error on close", func() {
+				writer, err := connection.StreamIn("foo-handle", "/bar")
+				Ω(err).ShouldNot(HaveOccurred())
+
+				_, err = writer.Write([]byte("chunk-1"))
+				Ω(err).ShouldNot(HaveOccurred())
+
+				_, err = writer.Write([]byte("chunk-2"))
+				Ω(err).ShouldNot(HaveOccurred())
+
+				err = writer.Close()
+				Ω(err).Should(HaveOccurred())
+			})
 		})
 	})
 

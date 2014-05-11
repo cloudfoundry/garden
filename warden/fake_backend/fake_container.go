@@ -96,9 +96,8 @@ type StopSpec struct {
 }
 
 type StreamInSpec struct {
-	InStream     *gbytes.Buffer
-	DestPath     string
-	CloseTracker *CloseTracker
+	InStream *gbytes.Buffer
+	DestPath string
 }
 
 func NewFakeContainer(spec warden.ContainerSpec) *FakeContainer {
@@ -203,15 +202,12 @@ func (c *FakeContainer) Info() (warden.ContainerInfo, error) {
 func (c *FakeContainer) StreamIn(dst string) (io.WriteCloser, error) {
 	buffer := gbytes.NewBuffer()
 
-	closeTracker := NewCloseTracker(nil, buffer)
-
 	c.StreamedIn = append(c.StreamedIn, StreamInSpec{
-		InStream:     buffer,
-		DestPath:     dst,
-		CloseTracker: closeTracker,
+		InStream: buffer,
+		DestPath: dst,
 	})
 
-	return closeTracker, c.StreamInError
+	return buffer, c.StreamInError
 }
 
 func (c *FakeContainer) StreamOut(srcPath string) (io.Reader, error) {

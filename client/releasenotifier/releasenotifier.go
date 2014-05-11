@@ -6,12 +6,16 @@ type ReleaseNotifier struct {
 	io.Reader
 	io.WriteCloser
 
-	Callback func()
+	Callback func() error
 }
 
 func (notifier ReleaseNotifier) Close() error {
-	notifier.Callback()
-	return notifier.WriteCloser.Close()
+	err := notifier.WriteCloser.Close()
+	if err != nil {
+		return err
+	}
+
+	return notifier.Callback()
 }
 
 func (notifier ReleaseNotifier) Read(buf []byte) (int, error) {
