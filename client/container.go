@@ -51,8 +51,9 @@ func (container *container) StreamIn(dstPath string) (io.WriteCloser, error) {
 
 	return releasenotifier.ReleaseNotifier{
 		WriteCloser: writeCloser,
-		Callback: func() {
+		Callback: func() error {
 			container.pool.Release(conn)
+			return nil
 		},
 	}, nil
 }
@@ -68,8 +69,9 @@ func (container *container) StreamOut(srcPath string) (io.Reader, error) {
 
 	return releasenotifier.ReleaseNotifier{
 		Reader: reader,
-		Callback: func() {
+		Callback: func() error {
 			container.pool.Release(conn)
+			return nil
 		},
 	}, nil
 }
