@@ -2,6 +2,7 @@ package fake_connection
 
 import (
 	"bytes"
+	"code.google.com/p/goprotobuf/proto"
 	"io"
 	"sync"
 
@@ -431,4 +432,16 @@ func (connection *FakeConnection) NetOuted(handle string) []NetOutSpec {
 	defer connection.lock.RUnlock()
 
 	return connection.netOuted[handle]
+}
+
+func (connection *FakeConnection) SendMessage(req proto.Message) error {
+	return nil
+}
+
+func (connection *FakeConnection) RoundTrip(request proto.Message, response proto.Message) error {
+	return nil
+}
+
+func (connection *FakeConnection) ReadResponse(response proto.Message) error {
+	return nil
 }

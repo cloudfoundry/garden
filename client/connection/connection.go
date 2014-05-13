@@ -3,7 +3,6 @@ package connection
 import (
 	"bufio"
 	"errors"
-	"fmt"
 	"io"
 	"net"
 	"sync"
@@ -47,6 +46,10 @@ type Connection interface {
 
 	NetIn(handle string, hostPort, containerPort uint32) (uint32, uint32, error)
 	NetOut(handle string, network string, port uint32) error
+
+	SendMessage(req proto.Message) error
+	RoundTrip(request proto.Message, response proto.Message) error
+	ReadResponse(response proto.Message) error
 }
 
 type connection struct {
@@ -124,7 +127,7 @@ func (c *connection) Capacity() (warden.Capacity, error) {
 	req := &protocol.CapacityRequest{}
 	res := &protocol.CapacityResponse{}
 
-	err := c.roundTrip(req, res)
+	err := c.RoundTrip(req, res)
 	if err != nil {
 		return warden.Capacity{}, err
 	}
@@ -193,7 +196,7 @@ func (c *connection) Create(spec warden.ContainerSpec) (string, error) {
 
 	res := &protocol.CreateResponse{}
 
-	err := c.roundTrip(req, res)
+	err := c.RoundTrip(req, res)
 	if err != nil {
 		return "", err
 	}
@@ -202,7 +205,7 @@ func (c *connection) Create(spec warden.ContainerSpec) (string, error) {
 }
 
 func (c *connection) Stop(handle string, background, kill bool) error {
-	err := c.roundTrip(
+	err := c.RoundTrip(
 		&protocol.StopRequest{
 			Handle:     proto.String(handle),
 			Background: proto.Bool(background),
@@ -219,7 +222,7 @@ func (c *connection) Stop(handle string, background, kill bool) error {
 }
 
 func (c *connection) Destroy(handle string) error {
-	err := c.roundTrip(
+	err := c.RoundTrip(
 		&protocol.DestroyRequest{Handle: proto.String(handle)},
 		&protocol.DestroyResponse{},
 	)
@@ -232,7 +235,7 @@ func (c *connection) Destroy(handle string) error {
 }
 
 func (c *connection) Run(handle string, spec warden.ProcessSpec) (uint32, <-chan warden.ProcessStream, error) {
-	err := c.sendMessage(
+	err := c.SendMessage(
 		&protocol.RunRequest{
 			Handle:     proto.String(handle),
 			Script:     proto.String(spec.Script),
@@ -264,7 +267,7 @@ func (c *connection) Run(handle string, spec warden.ProcessSpec) (uint32, <-chan
 
 	firstResponse := &protocol.ProcessPayload{}
 
-	err = c.readResponse(firstResponse)
+	err = c.ReadResponse(firstResponse)
 	if err != nil {
 		return 0, nil, err
 	}
@@ -277,7 +280,7 @@ func (c *connection) Run(handle string, spec warden.ProcessSpec) (uint32, <-chan
 }
 
 func (c *connection) Attach(handle string, processID uint32) (<-chan warden.ProcessStream, error) {
-	err := c.sendMessage(
+	err := c.SendMessage(
 		&protocol.AttachRequest{
 			Handle:    proto.String(handle),
 			ProcessId: proto.Uint32(processID),
@@ -298,7 +301,7 @@ func (c *connection) Attach(handle string, processID uint32) (<-chan warden.Proc
 func (c *connection) NetIn(handle string, hostPort, containerPort uint32) (uint32, uint32, error) {
 	res := &protocol.NetInResponse{}
 
-	err := c.roundTrip(
+	err := c.RoundTrip(
 		&protocol.NetInRequest{
 			Handle:        proto.String(handle),
 			HostPort:      proto.Uint32(hostPort),
@@ -315,7 +318,7 @@ func (c *connection) NetIn(handle string, hostPort, containerPort uint32) (uint3
 }
 
 func (c *connection) NetOut(handle string, network string, port uint32) error {
-	err := c.roundTrip(
+	err := c.RoundTrip(
 		&protocol.NetOutRequest{
 			Handle:  proto.String(handle),
 			Network: proto.String(network),
@@ -334,7 +337,7 @@ func (c *connection) NetOut(handle string, network string, port uint32) error {
 func (c *connection) LimitBandwidth(handle string, limits warden.BandwidthLimits) (warden.BandwidthLimits, error) {
 	res := &protocol.LimitBandwidthResponse{}
 
-	err := c.roundTrip(
+	err := c.RoundTrip(
 		&protocol.LimitBandwidthRequest{
 			Handle: proto.String(handle),
 			Rate:   proto.Uint64(limits.RateInBytesPerSecond),
@@ -356,7 +359,7 @@ func (c *connection) LimitBandwidth(handle string, limits warden.BandwidthLimits
 func (c *connection) LimitCPU(handle string, limits warden.CPULimits) (warden.CPULimits, error) {
 	res := &protocol.LimitCpuResponse{}
 
-	err := c.roundTrip(
+	err := c.RoundTrip(
 		&protocol.LimitCpuRequest{
 			Handle:        proto.String(handle),
 			LimitInShares: proto.Uint64(limits.LimitInShares),
@@ -376,7 +379,7 @@ func (c *connection) LimitCPU(handle string, limits warden.CPULimits) (warden.CP
 func (c *connection) LimitDisk(handle string, limits warden.DiskLimits) (warden.DiskLimits, error) {
 	res := &protocol.LimitDiskResponse{}
 
-	err := c.roundTrip(
+	err := c.RoundTrip(
 		&protocol.LimitDiskRequest{
 			Handle: proto.String(handle),
 
@@ -423,7 +426,7 @@ func (c *connection) LimitDisk(handle string, limits warden.DiskLimits) (warden.
 func (c *connection) LimitMemory(handle string, limits warden.MemoryLimits) (warden.MemoryLimits, error) {
 	res := &protocol.LimitMemoryResponse{}
 
-	err := c.roundTrip(
+	err := c.RoundTrip(
 		&protocol.LimitMemoryRequest{
 			Handle:       proto.String(handle),
 			LimitInBytes: proto.Uint64(limits.LimitInBytes),
@@ -441,7 +444,7 @@ func (c *connection) LimitMemory(handle string, limits warden.MemoryLimits) (war
 }
 
 func (c *connection) StreamIn(handle string, dstPath string) (io.WriteCloser, error) {
-	err := c.roundTrip(
+	err := c.RoundTrip(
 		&protocol.StreamInRequest{
 			Handle:  proto.String(handle),
 			DstPath: proto.String(dstPath),
@@ -461,13 +464,13 @@ func (c *connection) StreamIn(handle string, dstPath string) (io.WriteCloser, er
 			c.writeLock.Unlock()
 
 			var finalResponse protocol.StreamInResponse
-			return c.readResponse(&finalResponse)
+			return c.ReadResponse(&finalResponse)
 		},
 	}, nil
 }
 
 func (c *connection) StreamOut(handle string, srcPath string) (io.Reader, error) {
-	err := c.roundTrip(
+	err := c.RoundTrip(
 		&protocol.StreamOutRequest{
 			Handle:  proto.String(handle),
 			SrcPath: proto.String(srcPath),
@@ -502,7 +505,7 @@ func (c *connection) List(filterProperties warden.Properties) ([]string, error) 
 	req := &protocol.ListRequest{Properties: props}
 	res := &protocol.ListResponse{}
 
-	err := c.roundTrip(req, res)
+	err := c.RoundTrip(req, res)
 	if err != nil {
 		return nil, err
 	}
@@ -514,7 +517,7 @@ func (c *connection) Info(handle string) (warden.ContainerInfo, error) {
 	req := &protocol.InfoRequest{Handle: proto.String(handle)}
 	res := &protocol.InfoResponse{}
 
-	err := c.roundTrip(req, res)
+	err := c.RoundTrip(req, res)
 	if err != nil {
 		return warden.ContainerInfo{}, err
 	}
@@ -598,44 +601,20 @@ func (c *connection) Info(handle string) (warden.ContainerInfo, error) {
 	}, nil
 }
 
-func (c *connection) roundTrip(request proto.Message, response proto.Message) error {
-	err := c.sendMessage(request)
+func (c *connection) RoundTrip(request proto.Message, response proto.Message) error {
+	err := c.SendMessage(request)
 	if err != nil {
 		return err
 	}
 
-	return c.readResponse(response)
+	return c.ReadResponse(response)
 }
 
-func (c *connection) sendMessage(req proto.Message) error {
+func (c *connection) SendMessage(req proto.Message) error {
 	c.writeLock.Lock()
 	defer c.writeLock.Unlock()
 
-	request, err := proto.Marshal(req)
-	if err != nil {
-		return err
-	}
-
-	msg := &protocol.Message{
-		Type:    protocol.TypeForMessage(req).Enum(),
-		Payload: request,
-	}
-
-	data, err := proto.Marshal(msg)
-	if err != nil {
-		return err
-	}
-
-	_, err = c.conn.Write(
-		[]byte(
-			fmt.Sprintf(
-				"%d\r\n%s\r\n",
-				len(data),
-				data,
-			),
-		),
-	)
-
+	err := transport.WriteMessage(c.conn, req)
 	if err != nil {
 		c.notifyDisconnected()
 		return err
@@ -656,7 +635,7 @@ func (c *connection) notifyDisconnected() {
 	})
 }
 
-func (c *connection) readResponse(response proto.Message) error {
+func (c *connection) ReadResponse(response proto.Message) error {
 	c.readLock.Lock()
 	defer c.readLock.Unlock()
 	return transport.ReadMessage(c.read, response)
@@ -699,7 +678,7 @@ func (c *connection) streamPayloads(stream chan<- warden.ProcessStream) {
 	for {
 		payload := &protocol.ProcessPayload{}
 
-		err := c.readResponse(payload)
+		err := c.ReadResponse(payload)
 		if err != nil {
 			close(stream)
 			break
