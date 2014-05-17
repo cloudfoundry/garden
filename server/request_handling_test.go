@@ -2000,6 +2000,10 @@ var _ = Describe("When a client connects", func() {
 					OutRate:  3,
 					OutBurst: 4,
 				},
+				MappedPorts: []warden.PortMapping{
+					{HostPort: 1234, ContainerPort: 5678},
+					{HostPort: 1235, ContainerPort: 5679},
+				},
 			}
 
 			writeMessages(&protocol.InfoRequest{
@@ -2057,6 +2061,11 @@ var _ = Describe("When a client connects", func() {
 			Expect(response.GetBandwidthStat().GetOutRate()).To(Equal(uint64(3)))
 			Expect(response.GetBandwidthStat().GetOutBurst()).To(Equal(uint64(4)))
 
+			Expect(response.GetMappedPorts()).To(HaveLen(2))
+			Expect(response.GetMappedPorts()[0].GetHostPort()).To(Equal(uint32(1234)))
+			Expect(response.GetMappedPorts()[0].GetContainerPort()).To(Equal(uint32(5678)))
+			Expect(response.GetMappedPorts()[1].GetHostPort()).To(Equal(uint32(1235)))
+			Expect(response.GetMappedPorts()[1].GetContainerPort()).To(Equal(uint32(5679)))
 			close(done)
 		}, 1.0)
 

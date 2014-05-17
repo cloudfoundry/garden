@@ -561,6 +561,14 @@ func (s *WardenServer) handleInfo(request *protocol.InfoRequest) (proto.Message,
 		processIDs[i] = uint64(processID)
 	}
 
+	mappedPorts := []*protocol.InfoResponse_PortMapping{}
+	for _, mapping := range info.MappedPorts {
+		mappedPorts = append(mappedPorts, &protocol.InfoResponse_PortMapping{
+			HostPort:      proto.Uint32(mapping.HostPort),
+			ContainerPort: proto.Uint32(mapping.ContainerPort),
+		})
+	}
+
 	return &protocol.InfoResponse{
 		State:         proto.String(info.State),
 		Events:        info.Events,
@@ -619,6 +627,8 @@ func (s *WardenServer) handleInfo(request *protocol.InfoRequest) (proto.Message,
 			OutRate:  proto.Uint64(info.BandwidthStat.OutRate),
 			OutBurst: proto.Uint64(info.BandwidthStat.OutBurst),
 		},
+
+		MappedPorts: mappedPorts,
 	}, nil
 }
 

@@ -46,6 +46,11 @@ type ProcessStream struct {
 	ExitStatus *uint32
 }
 
+type PortMapping struct {
+	HostPort      uint32
+	ContainerPort uint32
+}
+
 type ProcessStreamSource int32
 
 const (
@@ -67,6 +72,7 @@ type ContainerInfo struct {
 	DiskStat      ContainerDiskStat
 	BandwidthStat ContainerBandwidthStat
 	Properties    Properties
+	MappedPorts   []PortMapping
 }
 
 type ContainerMemoryStat struct {
