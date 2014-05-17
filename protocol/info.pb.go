@@ -41,6 +41,7 @@ type InfoResponse struct {
 	BandwidthStat    *InfoResponse_BandwidthStat `protobuf:"bytes,43,opt,name=bandwidth_stat" json:"bandwidth_stat,omitempty"`
 	ProcessIds       []uint64                    `protobuf:"varint,44,rep,name=process_ids" json:"process_ids,omitempty"`
 	Properties       []*Property                 `protobuf:"bytes,45,rep,name=properties" json:"properties,omitempty"`
+	MappedPorts      []*InfoResponse_PortMapping `protobuf:"bytes,46,rep,name=mapped_ports" json:"mapped_ports,omitempty"`
 	XXX_unrecognized []byte                      `json:"-"`
 }
 
@@ -121,6 +122,13 @@ func (m *InfoResponse) GetProcessIds() []uint64 {
 func (m *InfoResponse) GetProperties() []*Property {
 	if m != nil {
 		return m.Properties
+	}
+	return nil
+}
+
+func (m *InfoResponse) GetMappedPorts() []*InfoResponse_PortMapping {
+	if m != nil {
+		return m.MappedPorts
 	}
 	return nil
 }
@@ -449,6 +457,30 @@ func (m *InfoResponse_BandwidthStat) GetOutRate() uint64 {
 func (m *InfoResponse_BandwidthStat) GetOutBurst() uint64 {
 	if m != nil && m.OutBurst != nil {
 		return *m.OutBurst
+	}
+	return 0
+}
+
+type InfoResponse_PortMapping struct {
+	HostPort         *uint32 `protobuf:"varint,1,req,name=host_port" json:"host_port,omitempty"`
+	ContainerPort    *uint32 `protobuf:"varint,2,req,name=container_port" json:"container_port,omitempty"`
+	XXX_unrecognized []byte  `json:"-"`
+}
+
+func (m *InfoResponse_PortMapping) Reset()         { *m = InfoResponse_PortMapping{} }
+func (m *InfoResponse_PortMapping) String() string { return proto.CompactTextString(m) }
+func (*InfoResponse_PortMapping) ProtoMessage()    {}
+
+func (m *InfoResponse_PortMapping) GetHostPort() uint32 {
+	if m != nil && m.HostPort != nil {
+		return *m.HostPort
+	}
+	return 0
+}
+
+func (m *InfoResponse_PortMapping) GetContainerPort() uint32 {
+	if m != nil && m.ContainerPort != nil {
+		return *m.ContainerPort
 	}
 	return 0
 }
