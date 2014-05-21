@@ -80,10 +80,6 @@ type FakeContainer struct {
 
 	InfoError    error
 	ReportedInfo warden.ContainerInfo
-
-	SnapshotError  error
-	SavedSnapshots []io.Writer
-	snapshotMutex  *sync.RWMutex
 }
 
 type NetOutSpec struct {
@@ -119,8 +115,7 @@ func NewFakeContainer(spec warden.ContainerSpec) *FakeContainer {
 
 		StreamOutBuffer: new(bytes.Buffer),
 
-		stopMutex:     new(sync.RWMutex),
-		snapshotMutex: new(sync.RWMutex),
+		stopMutex: new(sync.RWMutex),
 	}
 }
 
@@ -138,19 +133,6 @@ func (c *FakeContainer) Properties() warden.Properties {
 
 func (c *FakeContainer) GraceTime() time.Duration {
 	return c.Spec.GraceTime
-}
-
-func (c *FakeContainer) Snapshot(snapshot io.Writer) error {
-	if c.SnapshotError != nil {
-		return c.SnapshotError
-	}
-
-	c.snapshotMutex.Lock()
-	defer c.snapshotMutex.Unlock()
-
-	c.SavedSnapshots = append(c.SavedSnapshots, snapshot)
-
-	return nil
 }
 
 func (c *FakeContainer) Start() error {
