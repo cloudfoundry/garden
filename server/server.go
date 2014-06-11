@@ -143,13 +143,12 @@ func (s *WardenServer) serveConnection(conn net.Conn) {
 		}
 
 		request, err := transport.ReadRequest(read)
-		if err == io.EOF {
-			break
-		}
-
 		if err != nil {
-			log.Println("error reading request:", err)
-			continue
+			if err != io.EOF {
+				log.Println("error reading request:", err)
+			}
+
+			break
 		}
 
 		if <-s.stopping {
