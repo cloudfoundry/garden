@@ -1,18 +1,17 @@
 package timebomb
 
 import (
+	"sync"
 	"time"
-
-	"github.com/cloudfoundry-incubator/garden/drain"
 )
 
 type TimeBomb struct {
 	countdown time.Duration
 	detonate  func()
 
-	reset    chan bool
-	defuse   chan bool
-	cooldown *drain.Drain
+	pauses int
+	timer  *time.Timer
+	lock   *sync.Mutex
 }
 
 func New(countdown time.Duration, detonate func()) *TimeBomb {
@@ -20,57 +19,53 @@ func New(countdown time.Duration, detonate func()) *TimeBomb {
 		countdown: countdown,
 		detonate:  detonate,
 
-		reset:    make(chan bool),
-		defuse:   make(chan bool),
-		cooldown: drain.New(),
+		lock: new(sync.Mutex),
 	}
 }
 
 func (b *TimeBomb) Strap() {
-	go func() {
-		for {
-			cool := b.waitForCooldown()
-			if !cool {
-				continue
-			}
-
-			select {
-			case <-time.After(b.countdown):
-				b.detonate()
-				return
-			case <-b.reset:
-			case <-b.defuse:
-				return
-			}
-		}
-	}()
+	b.lock.Lock()
+	b.timer = time.AfterFunc(b.countdown, b.detonate)
+	b.lock.Unlock()
 }
 
-func (b *TimeBomb) Pause() {
-	b.cooldown.Incr()
-	b.reset <- true
+func (b *TimeBomb) Pause() bool {
+	b.lock.Lock()
+	defer b.lock.Unlock()
+
+	timer := b.timer
+	b.timer = nil
+
+	b.pauses++
+
+	if timer == nil {
+		return true
+	}
+
+	if !timer.Stop() {
+		return false
+	}
+
+	return true
 }
 
-func (b *TimeBomb) Defuse() {
-	b.defuse <- true
+func (b *TimeBomb) Defuse() bool {
+	b.lock.Lock()
+	defer b.lock.Unlock()
+
+	timer := b.timer
+	b.timer = nil
+
+	return timer.Stop()
 }
 
 func (b *TimeBomb) Unpause() {
-	b.cooldown.Decr()
-}
+	b.lock.Lock()
+	defer b.lock.Unlock()
 
-func (b *TimeBomb) waitForCooldown() bool {
-	ready := make(chan bool, 1)
+	b.pauses--
 
-	go func() {
-		b.cooldown.Wait()
-		ready <- true
-	}()
-
-	select {
-	case <-ready:
-		return true
-	case <-b.reset:
-		return false
+	if b.pauses == 0 {
+		b.timer = time.AfterFunc(b.countdown, b.detonate)
 	}
 }
