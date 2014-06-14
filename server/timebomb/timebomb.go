@@ -9,9 +9,10 @@ type TimeBomb struct {
 	countdown time.Duration
 	detonate  func()
 
-	pauses int
-	timer  *time.Timer
-	lock   *sync.Mutex
+	pauses  int
+	defused bool
+	timer   *time.Timer
+	lock    *sync.Mutex
 }
 
 func New(countdown time.Duration, detonate func()) *TimeBomb {
@@ -53,8 +54,14 @@ func (b *TimeBomb) Defuse() bool {
 	b.lock.Lock()
 	defer b.lock.Unlock()
 
+	b.defused = true
+
 	timer := b.timer
 	b.timer = nil
+
+	if timer == nil {
+		return true
+	}
 
 	return timer.Stop()
 }
@@ -65,7 +72,7 @@ func (b *TimeBomb) Unpause() {
 
 	b.pauses--
 
-	if b.pauses == 0 {
+	if !b.defused && b.pauses == 0 {
 		b.timer = time.AfterFunc(b.countdown, b.detonate)
 	}
 }
