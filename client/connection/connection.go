@@ -6,6 +6,7 @@ import (
 	"io"
 	"net"
 	"sync"
+	"time"
 
 	"code.google.com/p/goprotobuf/proto"
 
@@ -58,7 +59,8 @@ type connection struct {
 	disconnected   chan struct{}
 	disconnectOnce *sync.Once
 
-	conn net.Conn
+	conn         net.Conn
+	writeTimeout time.Duration
 
 	read *bufio.Reader
 
@@ -91,16 +93,18 @@ func Connect(network, addr string) (Connection, error) {
 		return nil, err
 	}
 
-	return New(conn), nil
+	return New(conn, 10*time.Second), nil
 }
 
-func New(conn net.Conn) Connection {
+func New(conn net.Conn, writeTimeout time.Duration) Connection {
 	messages := make(chan *protocol.Message)
 
 	messagesR, messagesW := io.Pipe()
 
 	connection := &connection{
 		messages: messages,
+
+		writeTimeout: writeTimeout,
 
 		disconnected:   make(chan struct{}),
 		disconnectOnce: &sync.Once{},
@@ -460,7 +464,10 @@ func (c *connection) StreamIn(handle string, dstPath string) (io.WriteCloser, er
 
 	return releasenotifier.ReleaseNotifier{
 		WriteCloser: transport.NewProtobufStreamWriter(c.conn),
-		Callback: func() error {
+		WriteCallback: func() error {
+			return c.conn.SetWriteDeadline(time.Now().Add(c.writeTimeout))
+		},
+		CloseCallback: func() error {
 			c.writeLock.Unlock()
 
 			var finalResponse protocol.StreamInResponse
@@ -486,7 +493,7 @@ func (c *connection) StreamOut(handle string, srcPath string) (io.Reader, error)
 
 	return releasenotifier.ReleaseNotifier{
 		Reader: transport.NewProtobufStreamReader(c.read),
-		Callback: func() error {
+		CloseCallback: func() error {
 			c.readLock.Unlock()
 			return nil
 		},

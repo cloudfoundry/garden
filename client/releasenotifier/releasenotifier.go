@@ -6,7 +6,8 @@ type ReleaseNotifier struct {
 	io.Reader
 	io.WriteCloser
 
-	Callback func() error
+	WriteCallback func() error
+	CloseCallback func() error
 }
 
 func (notifier ReleaseNotifier) Close() error {
@@ -15,13 +16,22 @@ func (notifier ReleaseNotifier) Close() error {
 		return err
 	}
 
-	return notifier.Callback()
+	return notifier.CloseCallback()
+}
+
+func (notifier ReleaseNotifier) Write(buf []byte) (int, error) {
+	if notifier.WriteCallback != nil {
+		if err := notifier.WriteCallback(); err != nil {
+			return 0, err
+		}
+	}
+	return notifier.WriteCloser.Write(buf)
 }
 
 func (notifier ReleaseNotifier) Read(buf []byte) (int, error) {
 	n, err := notifier.Reader.Read(buf)
 	if err != nil {
-		notifier.Callback()
+		notifier.CloseCallback()
 	}
 
 	return n, err

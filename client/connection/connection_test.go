@@ -1,8 +1,6 @@
 package connection_test
 
 import (
-	"bufio"
-	"bytes"
 	"io/ioutil"
 	"net"
 	"time"
@@ -13,7 +11,6 @@ import (
 
 	. "github.com/cloudfoundry-incubator/garden/client/connection"
 	protocol "github.com/cloudfoundry-incubator/garden/protocol"
-	"github.com/cloudfoundry-incubator/garden/transport"
 	"github.com/cloudfoundry-incubator/garden/warden"
 )
 
@@ -42,37 +39,28 @@ var _ = Describe("Info", func() {
 var _ = Describe("Connection", func() {
 	var (
 		connection     Connection
-		writeBuffer    *bytes.Buffer
-		readBuffer     *bytes.Buffer
-		wardenMessages []proto.Message
 		resourceLimits warden.ResourceLimits
+		dummyServer    *DummyServer
 	)
 
 	assertWriteBufferContains := func(messages ...proto.Message) {
-		reader := bufio.NewReader(bytes.NewBuffer(writeBuffer.Bytes()))
-
 		for _, msg := range messages {
-			req, err := transport.ReadRequest(reader)
-			Ω(err).ShouldNot(HaveOccurred())
-
-			Ω(req).Should(Equal(msg))
+			var req proto.Message
+			Eventually(dummyServer.ReceivedMessages).Should(Receive(&req))
+			ExpectWithOffset(1, req).To(Equal(msg))
 		}
 	}
 
-	JustBeforeEach(func() {
-		writeBuffer = bytes.NewBuffer([]byte{})
-		readBuffer = protocol.Messages(wardenMessages...)
-
-		fakeConn := &FakeConn{
-			ReadBuffer:  readBuffer,
-			WriteBuffer: writeBuffer,
-		}
-
-		connection = New(fakeConn)
+	AfterEach(func() {
+		dummyServer.Close()
 	})
 
 	BeforeEach(func() {
-		wardenMessages = []proto.Message{}
+		dummyServer = NewDummyServer()
+		conn, err := net.Dial("tcp", dummyServer.Addr().String())
+
+		Ω(err).ShouldNot(HaveOccurred())
+		connection = New(conn, 500*time.Millisecond)
 
 		rlimits := &warden.ResourceLimits{
 			As:         proto.Uint64(1),
@@ -114,13 +102,11 @@ var _ = Describe("Connection", func() {
 	Describe("Getting capacity", func() {
 		Context("when the response is successful", func() {
 			BeforeEach(func() {
-				wardenMessages = append(wardenMessages,
-					&protocol.CapacityResponse{
-						MemoryInBytes: proto.Uint64(1111),
-						DiskInBytes:   proto.Uint64(2222),
-						MaxContainers: proto.Uint64(42),
-					},
-				)
+				dummyServer.MessagesToSend <- &protocol.CapacityResponse{
+					MemoryInBytes: proto.Uint64(1111),
+					DiskInBytes:   proto.Uint64(2222),
+					MaxContainers: proto.Uint64(42),
+				}
 			})
 
 			It("should return the server's capacity", func() {
@@ -137,6 +123,7 @@ var _ = Describe("Connection", func() {
 
 		Context("when a connection error occurs", func() {
 			It("should return an error", func() {
+				dummyServer.Close()
 				_, err := connection.Capacity()
 				Ω(err).Should(HaveOccurred())
 			})
@@ -145,11 +132,9 @@ var _ = Describe("Connection", func() {
 
 	Describe("Creating", func() {
 		BeforeEach(func() {
-			wardenMessages = append(wardenMessages,
-				&protocol.CreateResponse{
-					Handle: proto.String("foohandle"),
-				},
-			)
+			dummyServer.MessagesToSend <- &protocol.CreateResponse{
+				Handle: proto.String("foohandle"),
+			}
 		})
 
 		It("should create a container", func() {
@@ -216,9 +201,7 @@ var _ = Describe("Connection", func() {
 
 	Describe("Stopping", func() {
 		BeforeEach(func() {
-			wardenMessages = append(wardenMessages,
-				&protocol.StopResponse{},
-			)
+			dummyServer.MessagesToSend <- &protocol.StopResponse{}
 		})
 
 		It("should stop the container", func() {
@@ -235,9 +218,7 @@ var _ = Describe("Connection", func() {
 
 	Describe("Destroying", func() {
 		BeforeEach(func() {
-			wardenMessages = append(wardenMessages,
-				&protocol.DestroyResponse{},
-			)
+			dummyServer.MessagesToSend <- &protocol.DestroyResponse{}
 		})
 
 		It("should stop the container", func() {
@@ -253,9 +234,7 @@ var _ = Describe("Connection", func() {
 	Describe("Limiting Memory", func() {
 		Describe("Setting the memory limit", func() {
 			BeforeEach(func() {
-				wardenMessages = append(wardenMessages,
-					&protocol.LimitMemoryResponse{LimitInBytes: proto.Uint64(40)},
-				)
+				dummyServer.MessagesToSend <- &protocol.LimitMemoryResponse{LimitInBytes: proto.Uint64(40)}
 			})
 
 			It("should limit memory", func() {
@@ -275,9 +254,7 @@ var _ = Describe("Connection", func() {
 
 	Describe("Limiting CPU", func() {
 		BeforeEach(func() {
-			wardenMessages = append(wardenMessages,
-				&protocol.LimitCpuResponse{LimitInShares: proto.Uint64(40)},
-			)
+			dummyServer.MessagesToSend <- &protocol.LimitCpuResponse{LimitInShares: proto.Uint64(40)}
 		})
 
 		It("should limit CPU", func() {
@@ -296,12 +273,10 @@ var _ = Describe("Connection", func() {
 
 	Describe("Limiting Bandwidth", func() {
 		BeforeEach(func() {
-			wardenMessages = append(wardenMessages,
-				&protocol.LimitBandwidthResponse{
-					Rate:  proto.Uint64(1),
-					Burst: proto.Uint64(2),
-				},
-			)
+			dummyServer.MessagesToSend <- &protocol.LimitBandwidthResponse{
+				Rate:  proto.Uint64(1),
+				Burst: proto.Uint64(2),
+			}
 		})
 
 		It("should limit Bandwidth", func() {
@@ -324,22 +299,20 @@ var _ = Describe("Connection", func() {
 	Describe("Limiting Disk", func() {
 		Describe("Setting the disk limit", func() {
 			BeforeEach(func() {
-				wardenMessages = append(wardenMessages,
-					&protocol.LimitDiskResponse{
-						BlockLimit: proto.Uint64(1),
-						Block:      proto.Uint64(2),
-						BlockSoft:  proto.Uint64(3),
-						BlockHard:  proto.Uint64(4),
-						InodeLimit: proto.Uint64(5),
-						Inode:      proto.Uint64(6),
-						InodeSoft:  proto.Uint64(7),
-						InodeHard:  proto.Uint64(8),
-						ByteLimit:  proto.Uint64(9),
-						Byte:       proto.Uint64(10),
-						ByteSoft:   proto.Uint64(11),
-						ByteHard:   proto.Uint64(12),
-					},
-				)
+				dummyServer.MessagesToSend <- &protocol.LimitDiskResponse{
+					BlockLimit: proto.Uint64(1),
+					Block:      proto.Uint64(2),
+					BlockSoft:  proto.Uint64(3),
+					BlockHard:  proto.Uint64(4),
+					InodeLimit: proto.Uint64(5),
+					Inode:      proto.Uint64(6),
+					InodeSoft:  proto.Uint64(7),
+					InodeHard:  proto.Uint64(8),
+					ByteLimit:  proto.Uint64(9),
+					Byte:       proto.Uint64(10),
+					ByteSoft:   proto.Uint64(11),
+					ByteHard:   proto.Uint64(12),
+				}
 			})
 
 			It("should limit disk", func() {
@@ -402,9 +375,7 @@ var _ = Describe("Connection", func() {
 
 	Describe("NetOut", func() {
 		BeforeEach(func() {
-			wardenMessages = append(wardenMessages,
-				&protocol.NetOutResponse{},
-			)
+			dummyServer.MessagesToSend <- &protocol.NetOutResponse{}
 		})
 
 		It("should return the allocated ports", func() {
@@ -421,11 +392,9 @@ var _ = Describe("Connection", func() {
 
 	Describe("Listing containers", func() {
 		BeforeEach(func() {
-			wardenMessages = append(wardenMessages,
-				&protocol.ListResponse{
-					Handles: []string{"container1", "container2", "container3"},
-				},
-			)
+			dummyServer.MessagesToSend <- &protocol.ListResponse{
+				Handles: []string{"container1", "container2", "container3"},
+			}
 		})
 
 		It("should return the list of containers", func() {
@@ -447,72 +416,70 @@ var _ = Describe("Connection", func() {
 
 	Describe("Getting container info", func() {
 		BeforeEach(func() {
-			wardenMessages = append(wardenMessages,
-				&protocol.InfoResponse{
-					State:         proto.String("chilling out"),
-					Events:        []string{"maxing", "relaxing all cool"},
-					HostIp:        proto.String("host-ip"),
-					ContainerIp:   proto.String("container-ip"),
-					ContainerPath: proto.String("container-path"),
-					ProcessIds:    []uint64{1, 2},
+			dummyServer.MessagesToSend <- &protocol.InfoResponse{
+				State:         proto.String("chilling out"),
+				Events:        []string{"maxing", "relaxing all cool"},
+				HostIp:        proto.String("host-ip"),
+				ContainerIp:   proto.String("container-ip"),
+				ContainerPath: proto.String("container-path"),
+				ProcessIds:    []uint64{1, 2},
 
-					Properties: []*protocol.Property{
-						{
-							Key:   proto.String("prop-key"),
-							Value: proto.String("prop-value"),
-						},
-					},
-
-					MemoryStat: &protocol.InfoResponse_MemoryStat{
-						Cache:                   proto.Uint64(1),
-						Rss:                     proto.Uint64(2),
-						MappedFile:              proto.Uint64(3),
-						Pgpgin:                  proto.Uint64(4),
-						Pgpgout:                 proto.Uint64(5),
-						Swap:                    proto.Uint64(6),
-						Pgfault:                 proto.Uint64(7),
-						Pgmajfault:              proto.Uint64(8),
-						InactiveAnon:            proto.Uint64(9),
-						ActiveAnon:              proto.Uint64(10),
-						InactiveFile:            proto.Uint64(11),
-						ActiveFile:              proto.Uint64(12),
-						Unevictable:             proto.Uint64(13),
-						HierarchicalMemoryLimit: proto.Uint64(14),
-						HierarchicalMemswLimit:  proto.Uint64(15),
-						TotalCache:              proto.Uint64(16),
-						TotalRss:                proto.Uint64(17),
-						TotalMappedFile:         proto.Uint64(18),
-						TotalPgpgin:             proto.Uint64(19),
-						TotalPgpgout:            proto.Uint64(20),
-						TotalSwap:               proto.Uint64(21),
-						TotalPgfault:            proto.Uint64(22),
-						TotalPgmajfault:         proto.Uint64(23),
-						TotalInactiveAnon:       proto.Uint64(24),
-						TotalActiveAnon:         proto.Uint64(25),
-						TotalInactiveFile:       proto.Uint64(26),
-						TotalActiveFile:         proto.Uint64(27),
-						TotalUnevictable:        proto.Uint64(28),
-					},
-
-					CpuStat: &protocol.InfoResponse_CpuStat{
-						Usage:  proto.Uint64(1),
-						User:   proto.Uint64(2),
-						System: proto.Uint64(3),
-					},
-
-					DiskStat: &protocol.InfoResponse_DiskStat{
-						BytesUsed:  proto.Uint64(1),
-						InodesUsed: proto.Uint64(2),
-					},
-
-					BandwidthStat: &protocol.InfoResponse_BandwidthStat{
-						InRate:   proto.Uint64(1),
-						InBurst:  proto.Uint64(2),
-						OutRate:  proto.Uint64(3),
-						OutBurst: proto.Uint64(4),
+				Properties: []*protocol.Property{
+					{
+						Key:   proto.String("prop-key"),
+						Value: proto.String("prop-value"),
 					},
 				},
-			)
+
+				MemoryStat: &protocol.InfoResponse_MemoryStat{
+					Cache:                   proto.Uint64(1),
+					Rss:                     proto.Uint64(2),
+					MappedFile:              proto.Uint64(3),
+					Pgpgin:                  proto.Uint64(4),
+					Pgpgout:                 proto.Uint64(5),
+					Swap:                    proto.Uint64(6),
+					Pgfault:                 proto.Uint64(7),
+					Pgmajfault:              proto.Uint64(8),
+					InactiveAnon:            proto.Uint64(9),
+					ActiveAnon:              proto.Uint64(10),
+					InactiveFile:            proto.Uint64(11),
+					ActiveFile:              proto.Uint64(12),
+					Unevictable:             proto.Uint64(13),
+					HierarchicalMemoryLimit: proto.Uint64(14),
+					HierarchicalMemswLimit:  proto.Uint64(15),
+					TotalCache:              proto.Uint64(16),
+					TotalRss:                proto.Uint64(17),
+					TotalMappedFile:         proto.Uint64(18),
+					TotalPgpgin:             proto.Uint64(19),
+					TotalPgpgout:            proto.Uint64(20),
+					TotalSwap:               proto.Uint64(21),
+					TotalPgfault:            proto.Uint64(22),
+					TotalPgmajfault:         proto.Uint64(23),
+					TotalInactiveAnon:       proto.Uint64(24),
+					TotalActiveAnon:         proto.Uint64(25),
+					TotalInactiveFile:       proto.Uint64(26),
+					TotalActiveFile:         proto.Uint64(27),
+					TotalUnevictable:        proto.Uint64(28),
+				},
+
+				CpuStat: &protocol.InfoResponse_CpuStat{
+					Usage:  proto.Uint64(1),
+					User:   proto.Uint64(2),
+					System: proto.Uint64(3),
+				},
+
+				DiskStat: &protocol.InfoResponse_DiskStat{
+					BytesUsed:  proto.Uint64(1),
+					InodesUsed: proto.Uint64(2),
+				},
+
+				BandwidthStat: &protocol.InfoResponse_BandwidthStat{
+					InRate:   proto.Uint64(1),
+					InBurst:  proto.Uint64(2),
+					OutRate:  proto.Uint64(3),
+					OutBurst: proto.Uint64(4),
+				},
+			}
 		})
 
 		It("should return the container's info", func() {
@@ -587,10 +554,7 @@ var _ = Describe("Connection", func() {
 
 	Describe("Streaming in", func() {
 		BeforeEach(func() {
-			wardenMessages = append(wardenMessages,
-				&protocol.StreamInResponse{},
-				&protocol.StreamInResponse{},
-			)
+			dummyServer.MessagesToSend <- &protocol.StreamInResponse{}
 		})
 
 		It("tells warden to stream, and then streams the content as a series of chunks", func() {
@@ -602,6 +566,8 @@ var _ = Describe("Connection", func() {
 
 			_, err = writer.Write([]byte("chunk-2"))
 			Ω(err).ShouldNot(HaveOccurred())
+
+			dummyServer.MessagesToSend <- &protocol.StreamInResponse{}
 
 			err = writer.Close()
 			Ω(err).ShouldNot(HaveOccurred())
@@ -624,10 +590,6 @@ var _ = Describe("Connection", func() {
 		})
 
 		Context("when the second message never comes in", func() {
-			BeforeEach(func() {
-				wardenMessages = wardenMessages[:len(wardenMessages)-1]
-			})
-
 			It("returns an error on close", func() {
 				writer, err := connection.StreamIn("foo-handle", "/bar")
 				Ω(err).ShouldNot(HaveOccurred())
@@ -638,29 +600,47 @@ var _ = Describe("Connection", func() {
 				_, err = writer.Write([]byte("chunk-2"))
 				Ω(err).ShouldNot(HaveOccurred())
 
+				dummyServer.Close()
+
 				err = writer.Close()
 				Ω(err).Should(HaveOccurred())
 			})
+		})
+
+		Context("when an error occurs before the write is finished", func() {
+			It("returns an error when the stream is written to", func(done Done) {
+				dummyServer.StopReading()
+
+				writer, err := connection.StreamIn("foo-handle", "/bar")
+				Ω(err).ShouldNot(HaveOccurred())
+
+				bigBuffer := make([]byte, 1024*1024)
+
+				Eventually(func() error {
+					_, err := writer.Write(bigBuffer)
+					return err
+				}).Should(HaveOccurred())
+
+				close(done)
+			}, 3)
 		})
 	})
 
 	Describe("Streaming Out", func() {
 		BeforeEach(func() {
-			wardenMessages = append(wardenMessages,
-				&protocol.StreamOutResponse{},
-				&protocol.StreamChunk{
-					Content: []byte("hell"),
-				},
-				&protocol.StreamChunk{
-					Content: []byte("o-"),
-				},
-				&protocol.StreamChunk{
-					Content: []byte("world!"),
-				},
-				&protocol.StreamChunk{
-					EOF: proto.Bool(true),
-				},
-			)
+			dummyServer.MessagesToSend <- &protocol.StreamOutResponse{}
+			dummyServer.MessagesToSend <- &protocol.StreamChunk{
+				Content: []byte("hell"),
+			}
+			dummyServer.MessagesToSend <- &protocol.StreamChunk{
+				Content: []byte("o-"),
+			}
+			dummyServer.MessagesToSend <- &protocol.StreamChunk{
+				Content: []byte("world!"),
+			}
+			dummyServer.MessagesToSend <- &protocol.StreamChunk{
+				EOF: proto.Bool(true),
+			}
 		})
 
 		It("asks warden for the given file, then reads its content as a series of chunks", func() {
@@ -679,18 +659,10 @@ var _ = Describe("Connection", func() {
 	})
 
 	Describe("When a connection error occurs", func() {
-		BeforeEach(func() {
-			wardenMessages = append(wardenMessages,
-				&protocol.DestroyResponse{},
-				//EOF
-			)
-		})
-
 		It("should disconnect", func() {
-			Ω(connection.Disconnected()).ShouldNot(BeClosed())
+			Consistently(connection.Disconnected()).ShouldNot(BeClosed())
 
-			err := connection.Destroy("foo-handle")
-			Ω(err).ShouldNot(HaveOccurred())
+			dummyServer.Close()
 
 			Eventually(connection.Disconnected()).Should(BeClosed())
 		})
@@ -698,9 +670,7 @@ var _ = Describe("Connection", func() {
 
 	Describe("Disconnecting", func() {
 		BeforeEach(func() {
-			wardenMessages = append(wardenMessages,
-				&protocol.ErrorResponse{Message: proto.String("boo")},
-			)
+			dummyServer.MessagesToSend <- &protocol.ErrorResponse{Message: proto.String("boo")}
 		})
 
 		It("should error", func() {
@@ -720,12 +690,10 @@ var _ = Describe("Connection", func() {
 
 		Context("when running one process", func() {
 			BeforeEach(func() {
-				wardenMessages = append(wardenMessages,
-					&protocol.ProcessPayload{ProcessId: proto.Uint32(42)},
-					&protocol.ProcessPayload{ProcessId: proto.Uint32(42), Source: &stdout, Data: proto.String("1")},
-					&protocol.ProcessPayload{ProcessId: proto.Uint32(42), Source: &stderr, Data: proto.String("2")},
-					&protocol.ProcessPayload{ProcessId: proto.Uint32(42), ExitStatus: proto.Uint32(3)},
-				)
+				dummyServer.MessagesToSend <- &protocol.ProcessPayload{ProcessId: proto.Uint32(42)}
+				dummyServer.MessagesToSend <- &protocol.ProcessPayload{ProcessId: proto.Uint32(42), Source: &stdout, Data: proto.String("1")}
+				dummyServer.MessagesToSend <- &protocol.ProcessPayload{ProcessId: proto.Uint32(42), Source: &stderr, Data: proto.String("2")}
+				dummyServer.MessagesToSend <- &protocol.ProcessPayload{ProcessId: proto.Uint32(42), ExitStatus: proto.Uint32(3)}
 			})
 
 			It("should start the process and stream output", func(done Done) {
@@ -781,12 +749,10 @@ var _ = Describe("Connection", func() {
 
 		Context("spawning multiple processes", func() {
 			BeforeEach(func() {
-				wardenMessages = append(wardenMessages,
-					&protocol.ProcessPayload{ProcessId: proto.Uint32(42)},
-					//we do this, so that the first Run has some output to read......
-					&protocol.ProcessPayload{ProcessId: proto.Uint32(42)},
-					&protocol.ProcessPayload{ProcessId: proto.Uint32(43)},
-				)
+				dummyServer.MessagesToSend <- &protocol.ProcessPayload{ProcessId: proto.Uint32(42)}
+				//we do this, so that the first Run has some output to read......
+				dummyServer.MessagesToSend <- &protocol.ProcessPayload{ProcessId: proto.Uint32(42)}
+				dummyServer.MessagesToSend <- &protocol.ProcessPayload{ProcessId: proto.Uint32(43)}
 			})
 
 			It("should be able to spawn multiple processes sequentially", func() {
@@ -802,8 +768,6 @@ var _ = Describe("Connection", func() {
 					Privileged: proto.Bool(false),
 					Rlimits:    &protocol.ResourceLimits{},
 				})
-
-				writeBuffer.Reset()
 
 				time.Sleep(1 * time.Second)
 
@@ -828,11 +792,9 @@ var _ = Describe("Connection", func() {
 			stdout := protocol.ProcessPayload_stdout
 			stderr := protocol.ProcessPayload_stderr
 
-			wardenMessages = append(wardenMessages,
-				&protocol.ProcessPayload{ProcessId: proto.Uint32(42), Source: &stdout, Data: proto.String("1")},
-				&protocol.ProcessPayload{ProcessId: proto.Uint32(42), Source: &stderr, Data: proto.String("2")},
-				&protocol.ProcessPayload{ProcessId: proto.Uint32(42), ExitStatus: proto.Uint32(3)},
-			)
+			dummyServer.MessagesToSend <- &protocol.ProcessPayload{ProcessId: proto.Uint32(42), Source: &stdout, Data: proto.String("1")}
+			dummyServer.MessagesToSend <- &protocol.ProcessPayload{ProcessId: proto.Uint32(42), Source: &stderr, Data: proto.String("2")}
+			dummyServer.MessagesToSend <- &protocol.ProcessPayload{ProcessId: proto.Uint32(42), ExitStatus: proto.Uint32(3)}
 		})
 
 		It("should stream", func(done Done) {
