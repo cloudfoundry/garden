@@ -41,6 +41,7 @@ var _ = Describe("Connection", func() {
 		connection     Connection
 		resourceLimits warden.ResourceLimits
 		dummyServer    *DummyServer
+		writeTimeout   = 500 * time.Millisecond
 	)
 
 	assertWriteBufferContains := func(messages ...proto.Message) {
@@ -60,7 +61,7 @@ var _ = Describe("Connection", func() {
 		conn, err := net.Dial("tcp", dummyServer.Addr().String())
 
 		Ω(err).ShouldNot(HaveOccurred())
-		connection = New(conn, 500*time.Millisecond)
+		connection = New(conn, writeTimeout)
 
 		rlimits := &warden.ResourceLimits{
 			As:         proto.Uint64(1),
@@ -553,11 +554,9 @@ var _ = Describe("Connection", func() {
 	})
 
 	Describe("Streaming in", func() {
-		BeforeEach(func() {
-			dummyServer.MessagesToSend <- &protocol.StreamInResponse{}
-		})
-
 		It("tells warden to stream, and then streams the content as a series of chunks", func() {
+			dummyServer.MessagesToSend <- &protocol.StreamInResponse{}
+
 			writer, err := connection.StreamIn("foo-handle", "/bar")
 			Ω(err).ShouldNot(HaveOccurred())
 
@@ -591,6 +590,8 @@ var _ = Describe("Connection", func() {
 
 		Context("when the second message never comes in", func() {
 			It("returns an error on close", func() {
+				dummyServer.MessagesToSend <- &protocol.StreamInResponse{}
+
 				writer, err := connection.StreamIn("foo-handle", "/bar")
 				Ω(err).ShouldNot(HaveOccurred())
 
@@ -609,6 +610,7 @@ var _ = Describe("Connection", func() {
 
 		Context("when an error occurs before the write is finished", func() {
 			It("returns an error when the stream is written to", func(done Done) {
+				dummyServer.MessagesToSend <- &protocol.StreamInResponse{}
 				dummyServer.StopReading()
 
 				writer, err := connection.StreamIn("foo-handle", "/bar")
@@ -623,6 +625,27 @@ var _ = Describe("Connection", func() {
 
 				close(done)
 			}, 3)
+		})
+
+		Context("when sending more data after the stream is closed", func() {
+			It("does not time out (resets the write deadline)", func() {
+				dummyServer.MessagesToSend <- &protocol.StreamInResponse{}
+				dummyServer.MessagesToSend <- &protocol.StreamInResponse{}
+
+				writer, err := connection.StreamIn("foo-handle", "/bar")
+				Ω(err).ShouldNot(HaveOccurred())
+
+				_, err = writer.Write([]byte("chunk-1"))
+				Ω(err).ShouldNot(HaveOccurred())
+				err = writer.Close()
+				Ω(err).ShouldNot(HaveOccurred())
+
+				time.Sleep(writeTimeout)
+
+				dummyServer.MessagesToSend <- &protocol.DestroyResponse{}
+				err = connection.Destroy("foo-handle")
+				Ω(err).ShouldNot(HaveOccurred())
+			})
 		})
 	})
 

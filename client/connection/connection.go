@@ -468,8 +468,8 @@ func (c *connection) StreamIn(handle string, dstPath string) (io.WriteCloser, er
 			return c.conn.SetWriteDeadline(time.Now().Add(c.writeTimeout))
 		},
 		CloseCallback: func() error {
+			c.conn.SetWriteDeadline(time.Time{})
 			c.writeLock.Unlock()
-
 			var finalResponse protocol.StreamInResponse
 			return c.ReadResponse(&finalResponse)
 		},
