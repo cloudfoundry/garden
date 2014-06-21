@@ -14,6 +14,8 @@ WORKSPACE=$PWD/Godeps/_workspace
 export GOPATH=$WORKSPACE:$GOPATH
 export PATH=$WORKSPACE/bin:$PATH
 
+go get -t -u -v ./...
+
 go install github.com/onsi/ginkgo/ginkgo
 
 ginkgo -cover -race -r -i -skipMeasurements -randomizeAllSpecs "$@"
