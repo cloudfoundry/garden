@@ -1026,27 +1026,20 @@ var _ = Describe("When a client connects", func() {
 		Describe("attaching", func() {
 			exitStatus := uint32(42)
 
-			chunks := []warden.ProcessStream{
-				{
-					Source: warden.ProcessStreamSourceStdout,
-					Data:   []byte("process out\n"),
-				},
-				{
-					Source: warden.ProcessStreamSourceStderr,
-					Data:   []byte("process err\n"),
-				},
-				{
-					ExitStatus: &exitStatus,
-				},
-			}
-
 			It("responds with a ProcessPayload for every chunk", func() {
-				fakeContainer.StreamedProcessChunks = chunks
+				streamIn := make(chan warden.ProcessStream, 1)
+
+				fakeContainer.StreamChannel = streamIn
 
 				stream, err := container.Attach(123)
 				Ω(err).ShouldNot(HaveOccurred())
 
 				Expect(fakeContainer.Attached).To(ContainElement(uint32(123)))
+
+				streamIn <- warden.ProcessStream{
+					Source: warden.ProcessStreamSourceStdout,
+					Data:   []byte("process out\n"),
+				}
 
 				var chunk warden.ProcessStream
 				Eventually(stream).Should(Receive(&chunk))
@@ -1055,16 +1048,29 @@ var _ = Describe("When a client connects", func() {
 					Data:   []byte("process out\n"),
 				}))
 
+				streamIn <- warden.ProcessStream{
+					Source: warden.ProcessStreamSourceStderr,
+					Data:   []byte("process err\n"),
+				}
+
 				Eventually(stream).Should(Receive(&chunk))
 				Ω(chunk).Should(Equal(warden.ProcessStream{
 					Source: warden.ProcessStreamSourceStderr,
 					Data:   []byte("process err\n"),
 				}))
 
+				streamIn <- warden.ProcessStream{
+					ExitStatus: &exitStatus,
+				}
+
 				Eventually(stream).Should(Receive(&chunk))
 				Ω(chunk).Should(Equal(warden.ProcessStream{
 					ExitStatus: &exitStatus,
 				}))
+
+				close(streamIn)
+
+				Eventually(stream).Should(BeClosed())
 			})
 
 			Context("when the container has a grace time", func() {
@@ -1082,17 +1088,37 @@ var _ = Describe("When a client connects", func() {
 				})
 
 				It("resets as long as it's streaming", func() {
-					fakeContainer.StreamedProcessChunks = chunks
+					streamIn := make(chan warden.ProcessStream, 1)
 
-					fakeContainer.StreamDelay = 1 * time.Second
+					fakeContainer.StreamChannel = streamIn
 
 					stream, err := container.Attach(123)
 					Ω(err).ShouldNot(HaveOccurred())
 
 					Expect(fakeContainer.Attached).To(ContainElement(uint32(123)))
 
+					streamIn <- warden.ProcessStream{
+						Source: warden.ProcessStreamSourceStdout,
+						Data:   []byte("process out\n"),
+					}
+
 					Eventually(stream).Should(Receive())
+
+					time.Sleep(time.Second)
+
+					streamIn <- warden.ProcessStream{
+						Source: warden.ProcessStreamSourceStderr,
+						Data:   []byte("process err\n"),
+					}
+
 					Eventually(stream).Should(Receive())
+
+					time.Sleep(time.Second)
+
+					streamIn <- warden.ProcessStream{
+						ExitStatus: &exitStatus,
+					}
+
 					Eventually(stream).Should(Receive())
 
 					before := time.Now()
@@ -1164,29 +1190,23 @@ var _ = Describe("When a client connects", func() {
 
 			exitStatus := uint32(42)
 
-			chunks := []warden.ProcessStream{
-				{
-					Source:     warden.ProcessStreamSourceStdout,
-					Data:       []byte("process out\n"),
-					ExitStatus: nil,
-				},
-				{
-					Source:     warden.ProcessStreamSourceStderr,
-					Data:       []byte("process err\n"),
-					ExitStatus: nil,
-				},
-				{
-					ExitStatus: &exitStatus,
-				},
-			}
-
 			It("runs the process and streams the output", func() {
-				fakeContainer.StreamedProcessChunks = chunks
+				streamIn := make(chan warden.ProcessStream, 1)
+
+				fakeContainer.StreamChannel = streamIn
+
 				fakeContainer.RunningProcessID = 123
 
 				pid, stream, err := container.Run(processSpec)
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(pid).Should(Equal(uint32(123)))
+
+				Expect(fakeContainer.RunningProcesses).To(ContainElement(processSpec))
+
+				streamIn <- warden.ProcessStream{
+					Source: warden.ProcessStreamSourceStdout,
+					Data:   []byte("process out\n"),
+				}
 
 				var chunk warden.ProcessStream
 				Eventually(stream).Should(Receive(&chunk))
@@ -1195,18 +1215,29 @@ var _ = Describe("When a client connects", func() {
 					Data:   []byte("process out\n"),
 				}))
 
+				streamIn <- warden.ProcessStream{
+					Source: warden.ProcessStreamSourceStderr,
+					Data:   []byte("process err\n"),
+				}
+
 				Eventually(stream).Should(Receive(&chunk))
 				Ω(chunk).Should(Equal(warden.ProcessStream{
 					Source: warden.ProcessStreamSourceStderr,
 					Data:   []byte("process err\n"),
 				}))
 
+				streamIn <- warden.ProcessStream{
+					ExitStatus: &exitStatus,
+				}
+
 				Eventually(stream).Should(Receive(&chunk))
 				Ω(chunk).Should(Equal(warden.ProcessStream{
 					ExitStatus: &exitStatus,
 				}))
 
-				Expect(fakeContainer.RunningProcesses).To(ContainElement(processSpec))
+				close(streamIn)
+
+				Eventually(stream).Should(BeClosed())
 			})
 
 			Context("when the container is not found", func() {
@@ -1246,15 +1277,38 @@ var _ = Describe("When a client connects", func() {
 				})
 
 				It("resets the container's grace time as long as it's streaming", func() {
-					fakeContainer.StreamedProcessChunks = chunks
+					streamIn := make(chan warden.ProcessStream, 1)
 
-					fakeContainer.StreamDelay = 1 * time.Second
+					fakeContainer.StreamChannel = streamIn
 
-					_, stream, err := container.Run(processSpec)
+					fakeContainer.RunningProcessID = 123
+
+					pid, stream, err := container.Run(processSpec)
 					Ω(err).ShouldNot(HaveOccurred())
+					Ω(pid).Should(Equal(uint32(123)))
+
+					streamIn <- warden.ProcessStream{
+						Source: warden.ProcessStreamSourceStdout,
+						Data:   []byte("process out\n"),
+					}
 
 					Eventually(stream).Should(Receive())
+
+					time.Sleep(time.Second)
+
+					streamIn <- warden.ProcessStream{
+						Source: warden.ProcessStreamSourceStderr,
+						Data:   []byte("process err\n"),
+					}
+
 					Eventually(stream).Should(Receive())
+
+					time.Sleep(time.Second)
+
+					streamIn <- warden.ProcessStream{
+						ExitStatus: &exitStatus,
+					}
+
 					Eventually(stream).Should(Receive())
 
 					before := time.Now()

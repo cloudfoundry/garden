@@ -585,9 +585,13 @@ func (s *WardenServer) handleRun(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.WriteHeader(http.StatusCreated)
+
 	s.writeResponse(w, &protocol.ProcessPayload{
 		ProcessId: proto.Uint32(processID),
 	})
+
+	w.(http.Flusher).Flush()
 
 	// do not block shutdown on run/attach
 	s.handling.Done()
@@ -625,6 +629,8 @@ func (s *WardenServer) handleAttach(w http.ResponseWriter, r *http.Request) {
 	// do not block shutdown on run/attach
 	s.handling.Done()
 	defer s.handling.Add(1)
+
+	w.(http.Flusher).Flush()
 
 	s.streamProcessToConnection(processID, stream, w)
 }
@@ -798,6 +804,10 @@ func (s *WardenServer) streamProcessToConnection(processID uint32, stream <-chan
 				ProcessId:  proto.Uint32(processID),
 				ExitStatus: proto.Uint32(*payload.ExitStatus),
 			})
+
+			w.(http.Flusher).Flush()
+
+			break
 		}
 
 		var payloadSource protocol.ProcessPayload_Source
@@ -819,5 +829,7 @@ func (s *WardenServer) streamProcessToConnection(processID uint32, stream <-chan
 		if err != nil {
 			break
 		}
+
+		w.(http.Flusher).Flush()
 	}
 }

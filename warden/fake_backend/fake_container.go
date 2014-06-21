@@ -41,8 +41,9 @@ type FakeContainer struct {
 	AttachError error
 	Attached    []uint32
 
+	StreamChannel <-chan warden.ProcessStream
+
 	StreamedProcessChunks []warden.ProcessStream
-	StreamDelay           time.Duration
 
 	DidLimitBandwidth   bool
 	LimitBandwidthError error
@@ -287,7 +288,7 @@ func (c *FakeContainer) Run(spec warden.ProcessSpec) (uint32, <-chan warden.Proc
 
 	c.RunningProcesses = append(c.RunningProcesses, spec)
 
-	return c.RunningProcessID, c.fakeAttach(), nil
+	return c.RunningProcessID, c.StreamChannel, nil
 }
 
 func (c *FakeContainer) Attach(processID uint32) (<-chan warden.ProcessStream, error) {
@@ -297,7 +298,7 @@ func (c *FakeContainer) Attach(processID uint32) (<-chan warden.ProcessStream, e
 
 	c.Attached = append(c.Attached, processID)
 
-	return c.fakeAttach(), nil
+	return c.StreamChannel, nil
 }
 
 func (c *FakeContainer) NetIn(hostPort uint32, containerPort uint32) (uint32, uint32, error) {
@@ -322,19 +323,4 @@ func (c *FakeContainer) NetOut(network string, port uint32) error {
 
 func (c *FakeContainer) Cleanup() {
 	c.CleanedUp = true
-}
-
-func (c *FakeContainer) fakeAttach() chan warden.ProcessStream {
-	stream := make(chan warden.ProcessStream, len(c.StreamedProcessChunks))
-
-	go func() {
-		for _, chunk := range c.StreamedProcessChunks {
-			time.Sleep(c.StreamDelay)
-			stream <- chunk
-		}
-
-		close(stream)
-	}()
-
-	return stream
 }
