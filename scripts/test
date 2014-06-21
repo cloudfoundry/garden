@@ -18,7 +18,7 @@ go get -t -u -v ./... || true
 
 go install github.com/onsi/ginkgo/ginkgo
 
-ginkgo -cover -race -r -i -skipMeasurements -randomizeAllSpecs "$@"
+ginkgo -cover -race -r -skipMeasurements -randomizeAllSpecs "$@"
 
 # don't leak coveralls token
 set +x
