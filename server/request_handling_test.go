@@ -545,7 +545,7 @@ var _ = Describe("When a client connects", func() {
 			})
 		})
 
-		PDescribe("getting the current bandwidth limits", func() {
+		Describe("getting the current bandwidth limits", func() {
 			It("returns the limits returned by the backend", func() {
 				effectiveLimits := warden.BandwidthLimits{
 					RateInBytesPerSecond:      1230,

@@ -75,7 +75,7 @@ var _ = Describe("Connection", func() {
 			BeforeEach(func() {
 				server.AppendHandlers(
 					ghttp.CombineHandlers(
-						ghttp.VerifyRequest("POST", "/ping"),
+						ghttp.VerifyRequest("GET", "/ping"),
 						ghttp.RespondWith(200, marshalProto(&protocol.PingResponse{})),
 					),
 				)
@@ -91,7 +91,7 @@ var _ = Describe("Connection", func() {
 			BeforeEach(func() {
 				server.AppendHandlers(
 					ghttp.CombineHandlers(
-						ghttp.VerifyRequest("POST", "/ping"),
+						ghttp.VerifyRequest("GET", "/ping"),
 						ghttp.RespondWith(500, ""),
 					),
 				)
@@ -109,8 +109,7 @@ var _ = Describe("Connection", func() {
 			BeforeEach(func() {
 				server.AppendHandlers(
 					ghttp.CombineHandlers(
-						ghttp.VerifyRequest("POST", "/capacity"),
-						verifyProtoBody(&protocol.CapacityRequest{}),
+						ghttp.VerifyRequest("GET", "/capacity"),
 						ghttp.RespondWith(200, marshalProto(&protocol.CapacityResponse{
 							MemoryInBytes: proto.Uint64(1111),
 							DiskInBytes:   proto.Uint64(2222),
@@ -132,7 +131,7 @@ var _ = Describe("Connection", func() {
 			BeforeEach(func() {
 				server.AppendHandlers(
 					ghttp.CombineHandlers(
-						ghttp.VerifyRequest("POST", "/capacity"),
+						ghttp.VerifyRequest("GET", "/capacity"),
 						ghttp.RespondWith(500, "")))
 			})
 
@@ -152,7 +151,7 @@ var _ = Describe("Connection", func() {
 
 			server.AppendHandlers(
 				ghttp.CombineHandlers(
-					ghttp.VerifyRequest("POST", "/create"),
+					ghttp.VerifyRequest("POST", "/containers"),
 					verifyProtoBody(&protocol.CreateRequest{
 						Handle:    proto.String("some-handle"),
 						GraceTime: proto.Uint32(10),
@@ -214,11 +213,25 @@ var _ = Describe("Connection", func() {
 		})
 	})
 
+	Describe("Destroying", func() {
+		BeforeEach(func() {
+			server.AppendHandlers(
+				ghttp.CombineHandlers(
+					ghttp.VerifyRequest("DELETE", "/containers/foo"),
+					ghttp.RespondWith(200, marshalProto(&protocol.DestroyResponse{}))))
+		})
+
+		It("should stop the container", func() {
+			err := connection.Destroy("foo")
+			Ω(err).ShouldNot(HaveOccurred())
+		})
+	})
+
 	Describe("Stopping", func() {
 		BeforeEach(func() {
 			server.AppendHandlers(
 				ghttp.CombineHandlers(
-					ghttp.VerifyRequest("POST", "/stop"),
+					ghttp.VerifyRequest("PUT", "/containers/foo/stop"),
 					verifyProtoBody(&protocol.StopRequest{
 						Handle:     proto.String("foo"),
 						Background: proto.Bool(true),
@@ -233,34 +246,21 @@ var _ = Describe("Connection", func() {
 		})
 	})
 
-	Describe("Destroying", func() {
-		BeforeEach(func() {
-			server.AppendHandlers(
-				ghttp.CombineHandlers(
-					ghttp.VerifyRequest("POST", "/destroy"),
-					verifyProtoBody(&protocol.DestroyRequest{
-						Handle: proto.String("foo"),
-					}),
-					ghttp.RespondWith(200, marshalProto(&protocol.DestroyResponse{}))))
-		})
-
-		It("should stop the container", func() {
-			err := connection.Destroy("foo")
-			Ω(err).ShouldNot(HaveOccurred())
-		})
-	})
-
 	Describe("Limiting Memory", func() {
 		Describe("setting the memory limit", func() {
 			BeforeEach(func() {
 				server.AppendHandlers(
 					ghttp.CombineHandlers(
-						ghttp.VerifyRequest("POST", "/limit_memory"),
+						ghttp.VerifyRequest("PUT", "/containers/foo/limits/memory"),
 						verifyProtoBody(&protocol.LimitMemoryRequest{
 							Handle:       proto.String("foo"),
 							LimitInBytes: proto.Uint64(42),
 						}),
-						ghttp.RespondWith(200, marshalProto(&protocol.LimitMemoryResponse{LimitInBytes: proto.Uint64(40)}))))
+						ghttp.RespondWith(200, marshalProto(&protocol.LimitMemoryResponse{
+							LimitInBytes: proto.Uint64(40),
+						})),
+					),
+				)
 			})
 
 			It("should limit memory", func() {
@@ -277,14 +277,15 @@ var _ = Describe("Connection", func() {
 			BeforeEach(func() {
 				server.AppendHandlers(
 					ghttp.CombineHandlers(
-						ghttp.VerifyRequest("POST", "/limit_memory"),
-						verifyProtoBody(&protocol.LimitMemoryRequest{
-							Handle: proto.String("foo"),
-						}),
-						ghttp.RespondWith(200, marshalProto(&protocol.LimitMemoryResponse{LimitInBytes: proto.Uint64(40)}))))
+						ghttp.VerifyRequest("GET", "/containers/foo/limits/memory"),
+						ghttp.RespondWith(200, marshalProto(&protocol.LimitMemoryResponse{
+							LimitInBytes: proto.Uint64(40),
+						})),
+					),
+				)
 			})
 
-			It("sends a nil memory limit request", func() {
+			It("gets the memory limit", func() {
 				currentLimits, err := connection.CurrentMemoryLimits("foo")
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(currentLimits.LimitInBytes).Should(BeNumerically("==", 40))
@@ -297,12 +298,16 @@ var _ = Describe("Connection", func() {
 			BeforeEach(func() {
 				server.AppendHandlers(
 					ghttp.CombineHandlers(
-						ghttp.VerifyRequest("POST", "/limit_cpu"),
+						ghttp.VerifyRequest("PUT", "/containers/foo/limits/cpu"),
 						verifyProtoBody(&protocol.LimitCpuRequest{
 							Handle:        proto.String("foo"),
 							LimitInShares: proto.Uint64(42),
 						}),
-						ghttp.RespondWith(200, marshalProto(&protocol.LimitCpuResponse{LimitInShares: proto.Uint64(40)}))))
+						ghttp.RespondWith(200, marshalProto(&protocol.LimitCpuResponse{
+							LimitInShares: proto.Uint64(40),
+						})),
+					),
+				)
 			})
 
 			It("should limit CPU", func() {
@@ -319,11 +324,12 @@ var _ = Describe("Connection", func() {
 			BeforeEach(func() {
 				server.AppendHandlers(
 					ghttp.CombineHandlers(
-						ghttp.VerifyRequest("POST", "/limit_cpu"),
-						verifyProtoBody(&protocol.LimitCpuRequest{
-							Handle: proto.String("foo"),
-						}),
-						ghttp.RespondWith(200, marshalProto(&protocol.LimitCpuResponse{LimitInShares: proto.Uint64(40)}))))
+						ghttp.VerifyRequest("GET", "/containers/foo/limits/cpu"),
+						ghttp.RespondWith(200, marshalProto(&protocol.LimitCpuResponse{
+							LimitInShares: proto.Uint64(40),
+						})),
+					),
+				)
 			})
 
 			It("sends a nil cpu limit request", func() {
@@ -340,7 +346,7 @@ var _ = Describe("Connection", func() {
 			BeforeEach(func() {
 				server.AppendHandlers(
 					ghttp.CombineHandlers(
-						ghttp.VerifyRequest("POST", "/limit_bandwidth"),
+						ghttp.VerifyRequest("PUT", "/containers/foo/limits/bandwidth"),
 						verifyProtoBody(&protocol.LimitBandwidthRequest{
 							Handle: proto.String("foo"),
 							Rate:   proto.Uint64(42),
@@ -349,7 +355,9 @@ var _ = Describe("Connection", func() {
 						ghttp.RespondWith(200, marshalProto(&protocol.LimitBandwidthResponse{
 							Rate:  proto.Uint64(1),
 							Burst: proto.Uint64(2),
-						}))))
+						})),
+					),
+				)
 			})
 
 			It("should limit Bandwidth", func() {
@@ -364,19 +372,17 @@ var _ = Describe("Connection", func() {
 			})
 		})
 
-		// API currently forbids this (rate + burst are required) - AS
-		PDescribe("getting", func() {
+		Describe("getting", func() {
 			BeforeEach(func() {
 				server.AppendHandlers(
 					ghttp.CombineHandlers(
-						ghttp.VerifyRequest("POST", "/limit_bandwidth"),
-						verifyProtoBody(&protocol.LimitBandwidthRequest{
-							Handle: proto.String("foo"),
-						}),
+						ghttp.VerifyRequest("GET", "/containers/foo/limits/bandwidth"),
 						ghttp.RespondWith(200, marshalProto(&protocol.LimitBandwidthResponse{
 							Rate:  proto.Uint64(1),
 							Burst: proto.Uint64(2),
-						}))))
+						})),
+					),
+				)
 			})
 
 			It("sends a nil bandwidth limit request", func() {
@@ -394,7 +400,7 @@ var _ = Describe("Connection", func() {
 			BeforeEach(func() {
 				server.AppendHandlers(
 					ghttp.CombineHandlers(
-						ghttp.VerifyRequest("POST", "/limit_disk"),
+						ghttp.VerifyRequest("PUT", "/containers/foo/limits/disk"),
 						verifyProtoBody(&protocol.LimitDiskRequest{
 							Handle: proto.String("foo"),
 
@@ -414,7 +420,9 @@ var _ = Describe("Connection", func() {
 							InodeHard: proto.Uint64(8),
 							ByteSoft:  proto.Uint64(11),
 							ByteHard:  proto.Uint64(12),
-						}))))
+						})),
+					),
+				)
 			})
 
 			It("should limit disk", func() {
@@ -445,10 +453,7 @@ var _ = Describe("Connection", func() {
 			BeforeEach(func() {
 				server.AppendHandlers(
 					ghttp.CombineHandlers(
-						ghttp.VerifyRequest("POST", "/limit_disk"),
-						verifyProtoBody(&protocol.LimitDiskRequest{
-							Handle: proto.String("foo"),
-						}),
+						ghttp.VerifyRequest("GET", "/containers/foo/limits/disk"),
 						ghttp.RespondWith(200, marshalProto(&protocol.LimitDiskResponse{
 							BlockSoft: proto.Uint64(3),
 							BlockHard: proto.Uint64(4),
@@ -456,7 +461,9 @@ var _ = Describe("Connection", func() {
 							InodeHard: proto.Uint64(8),
 							ByteSoft:  proto.Uint64(11),
 							ByteHard:  proto.Uint64(12),
-						}))))
+						})),
+					),
+				)
 			})
 
 			It("sends a nil disk limit request", func() {
@@ -479,7 +486,7 @@ var _ = Describe("Connection", func() {
 		BeforeEach(func() {
 			server.AppendHandlers(
 				ghttp.CombineHandlers(
-					ghttp.VerifyRequest("POST", "/net_out"),
+					ghttp.VerifyRequest("POST", "/containers/foo-handle/net/out"),
 					verifyProtoBody(&protocol.NetOutRequest{
 						Handle:  proto.String("foo-handle"),
 						Network: proto.String("foo-network"),
@@ -498,7 +505,7 @@ var _ = Describe("Connection", func() {
 		BeforeEach(func() {
 			server.AppendHandlers(
 				ghttp.CombineHandlers(
-					ghttp.VerifyRequest("POST", "/net_in"),
+					ghttp.VerifyRequest("POST", "/containers/foo-handle/net/in"),
 					verifyProtoBody(&protocol.NetInRequest{
 						Handle:        proto.String("foo-handle"),
 						HostPort:      proto.Uint32(8080),
@@ -522,15 +529,7 @@ var _ = Describe("Connection", func() {
 		BeforeEach(func() {
 			server.AppendHandlers(
 				ghttp.CombineHandlers(
-					ghttp.VerifyRequest("POST", "/list"),
-					verifyProtoBody(&protocol.ListRequest{
-						Properties: []*protocol.Property{
-							{
-								Key:   proto.String("foo"),
-								Value: proto.String("bar"),
-							},
-						},
-					}),
+					ghttp.VerifyRequest("GET", "/containers", "foo=bar"),
 					ghttp.RespondWith(200, marshalProto(&protocol.ListResponse{
 						Handles: []string{"container1", "container2", "container3"},
 					}))))
@@ -548,10 +547,7 @@ var _ = Describe("Connection", func() {
 		BeforeEach(func() {
 			server.AppendHandlers(
 				ghttp.CombineHandlers(
-					ghttp.VerifyRequest("POST", "/info"),
-					verifyProtoBody(&protocol.InfoRequest{
-						Handle: proto.String("handle"),
-					}),
+					ghttp.VerifyRequest("GET", "/containers/some-handle/info"),
 					ghttp.RespondWith(200, marshalProto(&protocol.InfoResponse{
 						State:         proto.String("chilling out"),
 						Events:        []string{"maxing", "relaxing all cool"},
@@ -630,7 +626,7 @@ var _ = Describe("Connection", func() {
 		})
 
 		It("should return the container's info", func() {
-			info, err := connection.Info("handle")
+			info, err := connection.Info("some-handle")
 			Ω(err).ShouldNot(HaveOccurred())
 
 			Ω(info.State).Should(Equal("chilling out"))
@@ -705,7 +701,7 @@ var _ = Describe("Connection", func() {
 			BeforeEach(func() {
 				server.AppendHandlers(
 					ghttp.CombineHandlers(
-						ghttp.VerifyRequest("POST", "/stream_in", "destination=%2Fbar&handle=foo-handle"),
+						ghttp.VerifyRequest("PUT", "/containers/foo-handle/files", "destination=%2Fbar"),
 						func(w http.ResponseWriter, r *http.Request) {
 							body, err := ioutil.ReadAll(r.Body)
 							Ω(err).ShouldNot(HaveOccurred())
@@ -730,7 +726,7 @@ var _ = Describe("Connection", func() {
 			BeforeEach(func() {
 				server.AppendHandlers(
 					ghttp.CombineHandlers(
-						ghttp.VerifyRequest("POST", "/stream_in", "destination=%2Fbar&handle=foo-handle"),
+						ghttp.VerifyRequest("PUT", "/containers/foo-handle/files", "destination=%2Fbar"),
 						ghttp.RespondWith(http.StatusInternalServerError, "no."),
 					),
 				)
@@ -749,7 +745,7 @@ var _ = Describe("Connection", func() {
 			BeforeEach(func() {
 				server.AppendHandlers(
 					ghttp.CombineHandlers(
-						ghttp.VerifyRequest("POST", "/stream_in", "destination=%2Fbar&handle=foo-handle"),
+						ghttp.VerifyRequest("PUT", "/containers/foo-handle/files", "destination=%2Fbar"),
 						ghttp.RespondWith(http.StatusInternalServerError, "no."),
 						func(w http.ResponseWriter, r *http.Request) {
 							server.HTTPTestServer.CloseClientConnections()
@@ -774,7 +770,7 @@ var _ = Describe("Connection", func() {
 			BeforeEach(func() {
 				server.AppendHandlers(
 					ghttp.CombineHandlers(
-						ghttp.VerifyRequest("POST", "/stream_out", "handle=foo-handle&source=%2Fbar"),
+						ghttp.VerifyRequest("GET", "/containers/foo-handle/files", "source=%2Fbar"),
 						ghttp.RespondWith(200, "hello-world!"),
 					),
 				)
@@ -796,7 +792,7 @@ var _ = Describe("Connection", func() {
 			BeforeEach(func() {
 				server.AppendHandlers(
 					ghttp.CombineHandlers(
-						ghttp.VerifyRequest("POST", "/stream_out", "handle=foo-handle&source=%2Fbar"),
+						ghttp.VerifyRequest("GET", "/containers/foo-handle/files", "source=%2Fbar"),
 						func(w http.ResponseWriter, r *http.Request) {
 							w.Header().Set("Content-Length", "500")
 						},
@@ -823,7 +819,7 @@ var _ = Describe("Connection", func() {
 			BeforeEach(func() {
 				server.AppendHandlers(
 					ghttp.CombineHandlers(
-						ghttp.VerifyRequest("POST", "/run"),
+						ghttp.VerifyRequest("POST", "/containers/foo-handle/processes"),
 						verifyProtoBody(&protocol.RunRequest{
 							Handle:     proto.String("foo-handle"),
 							Script:     proto.String("lol"),
@@ -885,7 +881,7 @@ var _ = Describe("Connection", func() {
 			BeforeEach(func() {
 				server.AppendHandlers(
 					ghttp.CombineHandlers(
-						ghttp.VerifyRequest("POST", "/run"),
+						ghttp.VerifyRequest("POST", "/containers/foo-handle/processes"),
 						verifyProtoBody(&protocol.RunRequest{
 							Handle:     proto.String("foo-handle"),
 							Script:     proto.String("echo hi"),
@@ -896,7 +892,7 @@ var _ = Describe("Connection", func() {
 							&protocol.ProcessPayload{ProcessId: proto.Uint32(42)},
 							&protocol.ProcessPayload{ProcessId: proto.Uint32(42)}))),
 					ghttp.CombineHandlers(
-						ghttp.VerifyRequest("POST", "/run"),
+						ghttp.VerifyRequest("POST", "/containers/foo-handle/processes"),
 						verifyProtoBody(&protocol.RunRequest{
 							Handle:     proto.String("foo-handle"),
 							Script:     proto.String("echo bye"),
@@ -936,11 +932,7 @@ var _ = Describe("Connection", func() {
 
 			server.AppendHandlers(
 				ghttp.CombineHandlers(
-					ghttp.VerifyRequest("POST", "/attach"),
-					verifyProtoBody(&protocol.AttachRequest{
-						Handle:    proto.String("foo-handle"),
-						ProcessId: proto.Uint32(42),
-					}),
+					ghttp.VerifyRequest("GET", "/containers/foo-handle/processes/42"),
 					ghttp.RespondWith(200, marshalProto(
 						&protocol.ProcessPayload{ProcessId: proto.Uint32(42), Source: &stdout, Data: proto.String("1")},
 						&protocol.ProcessPayload{ProcessId: proto.Uint32(42), Source: &stderr, Data: proto.String("2")},

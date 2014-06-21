@@ -10,8 +10,10 @@ import (
 	"time"
 
 	"code.google.com/p/gogoprotobuf/proto"
+	"github.com/cloudfoundry-incubator/garden/routes"
 	"github.com/cloudfoundry-incubator/garden/server/bomberman"
 	"github.com/cloudfoundry-incubator/garden/warden"
+	"github.com/tedsuo/router"
 )
 
 type WardenServer struct {
@@ -115,25 +117,34 @@ func (s *WardenServer) trackStopping() {
 }
 
 func (s *WardenServer) handleConnections(listener net.Listener) {
-	mux := http.NewServeMux()
+	handlers := map[string]http.Handler{
+		routes.Ping:                   http.HandlerFunc(s.handlePing),
+		routes.Capacity:               http.HandlerFunc(s.handleCapacity),
+		routes.Create:                 http.HandlerFunc(s.handleCreate),
+		routes.Destroy:                http.HandlerFunc(s.handleDestroy),
+		routes.List:                   http.HandlerFunc(s.handleList),
+		routes.Stop:                   http.HandlerFunc(s.handleStop),
+		routes.StreamIn:               http.HandlerFunc(s.handleStreamIn),
+		routes.StreamOut:              http.HandlerFunc(s.handleStreamOut),
+		routes.LimitBandwidth:         http.HandlerFunc(s.handleLimitBandwidth),
+		routes.CurrentBandwidthLimits: http.HandlerFunc(s.handleCurrentBandwidthLimits),
+		routes.LimitCPU:               http.HandlerFunc(s.handleLimitCPU),
+		routes.CurrentCPULimits:       http.HandlerFunc(s.handleCurrentCPULimits),
+		routes.LimitDisk:              http.HandlerFunc(s.handleLimitDisk),
+		routes.CurrentDiskLimits:      http.HandlerFunc(s.handleCurrentDiskLimits),
+		routes.LimitMemory:            http.HandlerFunc(s.handleLimitMemory),
+		routes.CurrentMemoryLimits:    http.HandlerFunc(s.handleCurrentMemoryLimits),
+		routes.NetIn:                  http.HandlerFunc(s.handleNetIn),
+		routes.NetOut:                 http.HandlerFunc(s.handleNetOut),
+		routes.Info:                   http.HandlerFunc(s.handleInfo),
+		routes.Run:                    http.HandlerFunc(s.handleRun),
+		routes.Attach:                 http.HandlerFunc(s.handleAttach),
+	}
 
-	mux.HandleFunc("/ping", s.handlePing)
-	mux.HandleFunc("/capacity", s.handleCapacity)
-	mux.HandleFunc("/create", s.handleCreate)
-	mux.HandleFunc("/destroy", s.handleDestroy)
-	mux.HandleFunc("/list", s.handleList)
-	mux.HandleFunc("/stop", s.handleStop)
-	mux.HandleFunc("/stream_in", s.handleStreamIn)
-	mux.HandleFunc("/stream_out", s.handleStreamOut)
-	mux.HandleFunc("/limit_bandwidth", s.handleLimitBandwidth)
-	mux.HandleFunc("/limit_memory", s.handleLimitMemory)
-	mux.HandleFunc("/limit_disk", s.handleLimitDisk)
-	mux.HandleFunc("/limit_cpu", s.handleLimitCpu)
-	mux.HandleFunc("/net_in", s.handleNetIn)
-	mux.HandleFunc("/net_out", s.handleNetOut)
-	mux.HandleFunc("/info", s.handleInfo)
-	mux.HandleFunc("/run", s.handleRun)
-	mux.HandleFunc("/attach", s.handleAttach)
+	mux, err := router.NewRouter(routes.Routes, handlers)
+	if err != nil {
+		log.Fatalln("failed to initialize router:", err)
+	}
 
 	server := http.Server{
 		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

@@ -3,6 +3,7 @@ package connection
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -11,8 +12,10 @@ import (
 
 	"code.google.com/p/goprotobuf/proto"
 	protocol "github.com/cloudfoundry-incubator/garden/protocol"
+	"github.com/cloudfoundry-incubator/garden/routes"
 	"github.com/cloudfoundry-incubator/garden/transport"
 	"github.com/cloudfoundry-incubator/garden/warden"
+	"github.com/tedsuo/router"
 )
 
 var ErrDisconnected = errors.New("disconnected")
@@ -54,6 +57,8 @@ type Connection interface {
 type connection struct {
 	httpClient        *http.Client
 	noKeepaliveClient *http.Client
+
+	req *router.RequestGenerator
 }
 
 type WardenError struct {
@@ -72,6 +77,8 @@ func New(network, address string) Connection {
 	}
 
 	return &connection{
+		req: router.NewRequestGenerator("http://warden", routes.Routes),
+
 		httpClient: &http.Client{
 			Transport: &http.Transport{
 				Dial: dialer,
@@ -87,21 +94,21 @@ func New(network, address string) Connection {
 }
 
 func (c *connection) Ping() error {
-	return c.post("/ping", &protocol.PingRequest{}, &protocol.PingResponse{})
+	return c.do(routes.Ping, nil, &protocol.PingResponse{}, nil, nil)
 }
 
 func (c *connection) Capacity() (warden.Capacity, error) {
-	res := &protocol.CapacityResponse{}
+	capacity := &protocol.CapacityResponse{}
 
-	err := c.post("/capacity", &protocol.CapacityRequest{}, res)
+	err := c.do(routes.Capacity, nil, capacity, nil, nil)
 	if err != nil {
 		return warden.Capacity{}, err
 	}
 
 	return warden.Capacity{
-		MemoryInBytes: res.GetMemoryInBytes(),
-		DiskInBytes:   res.GetDiskInBytes(),
-		MaxContainers: res.GetMaxContainers(),
+		MemoryInBytes: capacity.GetMemoryInBytes(),
+		DiskInBytes:   capacity.GetDiskInBytes(),
+		MaxContainers: capacity.GetMaxContainers(),
 	}, nil
 }
 
@@ -161,7 +168,7 @@ func (c *connection) Create(spec warden.ContainerSpec) (string, error) {
 	req.Properties = props
 
 	res := &protocol.CreateResponse{}
-	err := c.post("/create", req, res)
+	err := c.do(routes.Create, req, res, nil, nil)
 	if err != nil {
 		return "", err
 	}
@@ -170,51 +177,71 @@ func (c *connection) Create(spec warden.ContainerSpec) (string, error) {
 }
 
 func (c *connection) Stop(handle string, background, kill bool) error {
-	return c.post(
-		"/stop",
+	return c.do(
+		routes.Stop,
 		&protocol.StopRequest{
 			Handle:     proto.String(handle),
 			Background: proto.Bool(background),
 			Kill:       proto.Bool(kill),
 		},
 		&protocol.StopResponse{},
+		router.Params{
+			"handle": handle,
+		},
+		nil,
 	)
 }
 
 func (c *connection) Destroy(handle string) error {
-	return c.post(
-		"/destroy",
-		&protocol.DestroyRequest{Handle: proto.String(handle)},
+	return c.do(
+		routes.Destroy,
+		nil,
 		&protocol.DestroyResponse{},
+		router.Params{
+			"handle": handle,
+		},
+		nil,
 	)
 }
 
 func (c *connection) Run(handle string, spec warden.ProcessSpec) (uint32, <-chan warden.ProcessStream, error) {
-	respBody, err := c.postWithProcessPayloadResponse(
-		"/run",
-		&protocol.RunRequest{
-			Handle:     proto.String(handle),
-			Script:     proto.String(spec.Script),
-			Privileged: proto.Bool(spec.Privileged),
-			Rlimits: &protocol.ResourceLimits{
-				As:         spec.Limits.As,
-				Core:       spec.Limits.Core,
-				Cpu:        spec.Limits.Cpu,
-				Data:       spec.Limits.Data,
-				Fsize:      spec.Limits.Fsize,
-				Locks:      spec.Limits.Locks,
-				Memlock:    spec.Limits.Memlock,
-				Msgqueue:   spec.Limits.Msgqueue,
-				Nice:       spec.Limits.Nice,
-				Nofile:     spec.Limits.Nofile,
-				Nproc:      spec.Limits.Nproc,
-				Rss:        spec.Limits.Rss,
-				Rtprio:     spec.Limits.Rtprio,
-				Sigpending: spec.Limits.Sigpending,
-				Stack:      spec.Limits.Stack,
-			},
-			Env: convertEnvironmentVariables(spec.EnvironmentVariables),
+	reqBody := new(bytes.Buffer)
+
+	err := transport.WriteMessage(reqBody, &protocol.RunRequest{
+		Handle:     proto.String(handle),
+		Script:     proto.String(spec.Script),
+		Privileged: proto.Bool(spec.Privileged),
+		Rlimits: &protocol.ResourceLimits{
+			As:         spec.Limits.As,
+			Core:       spec.Limits.Core,
+			Cpu:        spec.Limits.Cpu,
+			Data:       spec.Limits.Data,
+			Fsize:      spec.Limits.Fsize,
+			Locks:      spec.Limits.Locks,
+			Memlock:    spec.Limits.Memlock,
+			Msgqueue:   spec.Limits.Msgqueue,
+			Nice:       spec.Limits.Nice,
+			Nofile:     spec.Limits.Nofile,
+			Nproc:      spec.Limits.Nproc,
+			Rss:        spec.Limits.Rss,
+			Rtprio:     spec.Limits.Rtprio,
+			Sigpending: spec.Limits.Sigpending,
+			Stack:      spec.Limits.Stack,
 		},
+		Env: convertEnvironmentVariables(spec.EnvironmentVariables),
+	})
+	if err != nil {
+		return 0, nil, err
+	}
+
+	respBody, err := c.doStream(
+		routes.Run,
+		reqBody,
+		router.Params{
+			"handle": handle,
+		},
+		nil,
+		"application/octet-stream",
 	)
 	if err != nil {
 		return 0, nil, err
@@ -234,12 +261,25 @@ func (c *connection) Run(handle string, spec warden.ProcessSpec) (uint32, <-chan
 }
 
 func (c *connection) Attach(handle string, processID uint32) (<-chan warden.ProcessStream, error) {
-	respBody, err := c.postWithProcessPayloadResponse(
-		"/attach",
-		&protocol.AttachRequest{
-			Handle:    proto.String(handle),
-			ProcessId: proto.Uint32(processID),
+	reqBody := new(bytes.Buffer)
+
+	err := transport.WriteMessage(reqBody, &protocol.AttachRequest{
+		Handle:    proto.String(handle),
+		ProcessId: proto.Uint32(processID),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	respBody, err := c.doStream(
+		routes.Attach,
+		reqBody,
+		router.Params{
+			"handle": handle,
+			"pid":    fmt.Sprintf("%d", processID),
 		},
+		nil,
+		"",
 	)
 
 	if err != nil {
@@ -255,14 +295,19 @@ func (c *connection) Attach(handle string, processID uint32) (<-chan warden.Proc
 
 func (c *connection) NetIn(handle string, hostPort, containerPort uint32) (uint32, uint32, error) {
 	res := &protocol.NetInResponse{}
-	err := c.post(
-		"/net_in",
+
+	err := c.do(
+		routes.NetIn,
 		&protocol.NetInRequest{
 			Handle:        proto.String(handle),
 			HostPort:      proto.Uint32(hostPort),
 			ContainerPort: proto.Uint32(containerPort),
 		},
 		res,
+		router.Params{
+			"handle": handle,
+		},
+		nil,
 	)
 
 	if err != nil {
@@ -273,28 +318,36 @@ func (c *connection) NetIn(handle string, hostPort, containerPort uint32) (uint3
 }
 
 func (c *connection) NetOut(handle string, network string, port uint32) error {
-	return c.post(
-		"/net_out",
+	return c.do(
+		routes.NetOut,
 		&protocol.NetOutRequest{
 			Handle:  proto.String(handle),
 			Network: proto.String(network),
 			Port:    proto.Uint32(port),
 		},
 		&protocol.NetOutResponse{},
+		router.Params{
+			"handle": handle,
+		},
+		nil,
 	)
 }
 
 func (c *connection) LimitBandwidth(handle string, limits warden.BandwidthLimits) (warden.BandwidthLimits, error) {
 	res := &protocol.LimitBandwidthResponse{}
 
-	err := c.post(
-		"/limit_bandwidth",
+	err := c.do(
+		routes.LimitBandwidth,
 		&protocol.LimitBandwidthRequest{
 			Handle: proto.String(handle),
 			Rate:   proto.Uint64(limits.RateInBytesPerSecond),
 			Burst:  proto.Uint64(limits.BurstRateInBytesPerSecond),
 		},
 		res,
+		router.Params{
+			"handle": handle,
+		},
+		nil,
 	)
 
 	if err != nil {
@@ -310,12 +363,14 @@ func (c *connection) LimitBandwidth(handle string, limits warden.BandwidthLimits
 func (c *connection) CurrentBandwidthLimits(handle string) (warden.BandwidthLimits, error) {
 	res := &protocol.LimitBandwidthResponse{}
 
-	err := c.post(
-		"/limit_bandwidth",
-		&protocol.LimitBandwidthRequest{
-			Handle: proto.String(handle),
-		},
+	err := c.do(
+		routes.CurrentBandwidthLimits,
+		nil,
 		res,
+		router.Params{
+			"handle": handle,
+		},
+		nil,
 	)
 
 	if err != nil {
@@ -331,13 +386,17 @@ func (c *connection) CurrentBandwidthLimits(handle string) (warden.BandwidthLimi
 func (c *connection) LimitCPU(handle string, limits warden.CPULimits) (warden.CPULimits, error) {
 	res := &protocol.LimitCpuResponse{}
 
-	err := c.post(
-		"/limit_cpu",
+	err := c.do(
+		routes.LimitCPU,
 		&protocol.LimitCpuRequest{
 			Handle:        proto.String(handle),
 			LimitInShares: proto.Uint64(limits.LimitInShares),
 		},
 		res,
+		router.Params{
+			"handle": handle,
+		},
+		nil,
 	)
 
 	if err != nil {
@@ -352,12 +411,14 @@ func (c *connection) LimitCPU(handle string, limits warden.CPULimits) (warden.CP
 func (c *connection) CurrentCPULimits(handle string) (warden.CPULimits, error) {
 	res := &protocol.LimitCpuResponse{}
 
-	err := c.post(
-		"/limit_cpu",
-		&protocol.LimitCpuRequest{
-			Handle: proto.String(handle),
-		},
+	err := c.do(
+		routes.CurrentCPULimits,
+		nil,
 		res,
+		router.Params{
+			"handle": handle,
+		},
+		nil,
 	)
 
 	if err != nil {
@@ -372,8 +433,8 @@ func (c *connection) CurrentCPULimits(handle string) (warden.CPULimits, error) {
 func (c *connection) LimitDisk(handle string, limits warden.DiskLimits) (warden.DiskLimits, error) {
 	res := &protocol.LimitDiskResponse{}
 
-	err := c.post(
-		"/limit_disk",
+	err := c.do(
+		routes.LimitDisk,
 		&protocol.LimitDiskRequest{
 			Handle: proto.String(handle),
 
@@ -387,6 +448,10 @@ func (c *connection) LimitDisk(handle string, limits warden.DiskLimits) (warden.
 			ByteHard: proto.Uint64(limits.ByteHard),
 		},
 		res,
+		router.Params{
+			"handle": handle,
+		},
+		nil,
 	)
 
 	if err != nil {
@@ -408,12 +473,14 @@ func (c *connection) LimitDisk(handle string, limits warden.DiskLimits) (warden.
 func (c *connection) CurrentDiskLimits(handle string) (warden.DiskLimits, error) {
 	res := &protocol.LimitDiskResponse{}
 
-	err := c.post(
-		"/limit_disk",
-		&protocol.LimitDiskRequest{
-			Handle: proto.String(handle),
-		},
+	err := c.do(
+		routes.CurrentDiskLimits,
+		nil,
 		res,
+		router.Params{
+			"handle": handle,
+		},
+		nil,
 	)
 
 	if err != nil {
@@ -435,13 +502,17 @@ func (c *connection) CurrentDiskLimits(handle string) (warden.DiskLimits, error)
 func (c *connection) LimitMemory(handle string, limits warden.MemoryLimits) (warden.MemoryLimits, error) {
 	res := &protocol.LimitMemoryResponse{}
 
-	err := c.post(
-		"/limit_memory",
+	err := c.do(
+		routes.LimitMemory,
 		&protocol.LimitMemoryRequest{
 			Handle:       proto.String(handle),
 			LimitInBytes: proto.Uint64(limits.LimitInBytes),
 		},
 		res,
+		router.Params{
+			"handle": handle,
+		},
+		nil,
 	)
 
 	if err != nil {
@@ -456,12 +527,14 @@ func (c *connection) LimitMemory(handle string, limits warden.MemoryLimits) (war
 func (c *connection) CurrentMemoryLimits(handle string) (warden.MemoryLimits, error) {
 	res := &protocol.LimitMemoryResponse{}
 
-	err := c.post(
-		"/limit_memory",
-		&protocol.LimitMemoryRequest{
-			Handle: proto.String(handle),
-		},
+	err := c.do(
+		routes.CurrentMemoryLimits,
+		nil,
 		res,
+		router.Params{
+			"handle": handle,
+		},
+		nil,
 	)
 
 	if err != nil {
@@ -474,47 +547,53 @@ func (c *connection) CurrentMemoryLimits(handle string) (warden.MemoryLimits, er
 }
 
 func (c *connection) StreamIn(handle string, dstPath string, reader io.Reader) error {
-	return c.postWithStreamedRequest(
-		&url.URL{
-			Scheme: "http",
-			Host:   "warden",
-			Path:   "/stream_in",
-			RawQuery: url.Values{
-				"handle":      []string{handle},
-				"destination": []string{dstPath},
-			}.Encode(),
-		},
+	body, err := c.doStream(
+		routes.StreamIn,
 		reader,
+		router.Params{
+			"handle": handle,
+		},
+		url.Values{
+			"destination": []string{dstPath},
+		},
+		"application/x-tar",
 	)
+	if err != nil {
+		return err
+	}
+
+	return body.Close()
 }
 
 func (c *connection) StreamOut(handle string, srcPath string) (io.ReadCloser, error) {
-	return c.postWithStreamedResponse(
-		&url.URL{
-			Scheme: "http",
-			Host:   "warden",
-			Path:   "/stream_out",
-			RawQuery: url.Values{
-				"handle": []string{handle},
-				"source": []string{srcPath},
-			}.Encode(),
+	return c.doStream(
+		routes.StreamOut,
+		nil,
+		router.Params{
+			"handle": handle,
 		},
+		url.Values{
+			"source": []string{srcPath},
+		},
+		"",
 	)
 }
 
 func (c *connection) List(filterProperties warden.Properties) ([]string, error) {
-	props := []*protocol.Property{}
-	for key, val := range filterProperties {
-		props = append(props, &protocol.Property{
-			Key:   proto.String(key),
-			Value: proto.String(val),
-		})
+	values := url.Values{}
+	for name, val := range filterProperties {
+		values[name] = []string{val}
 	}
 
-	req := &protocol.ListRequest{Properties: props}
 	res := &protocol.ListResponse{}
 
-	err := c.post("/list", req, res)
+	err := c.do(
+		routes.List,
+		nil,
+		res,
+		nil,
+		values,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -523,10 +602,9 @@ func (c *connection) List(filterProperties warden.Properties) ([]string, error) 
 }
 
 func (c *connection) Info(handle string) (warden.ContainerInfo, error) {
-	req := &protocol.InfoRequest{Handle: proto.String(handle)}
 	res := &protocol.InfoResponse{}
 
-	err := c.post("/info", req, res)
+	err := c.do(routes.Info, nil, res, router.Params{"handle": handle}, nil)
 	if err != nil {
 		return warden.ContainerInfo{}, err
 	}
@@ -639,6 +717,9 @@ func convertEnvironmentVariables(environmentVariables []warden.EnvironmentVariab
 }
 
 func (c *connection) streamPayloads(reader io.ReadCloser, stream chan<- warden.ProcessStream) {
+	defer reader.Close()
+	defer close(stream)
+
 	for {
 		payload := &protocol.ProcessPayload{}
 
@@ -671,74 +752,74 @@ func (c *connection) streamPayloads(reader io.ReadCloser, stream chan<- warden.P
 			}
 		}
 	}
-
-	close(stream)
-	reader.Close()
 }
 
-func (c *connection) post(route string, req, res proto.Message) error {
-	reqBody := new(bytes.Buffer)
+func (c *connection) do(
+	handler string,
+	req, res proto.Message,
+	params router.Params,
+	query url.Values,
+) error {
+	var body io.Reader
 
-	err := transport.WriteMessage(reqBody, req)
+	if req != nil {
+		buf := new(bytes.Buffer)
+
+		err := transport.WriteMessage(buf, req)
+		if err != nil {
+			return err
+		}
+
+		body = buf
+	}
+
+	contentType := ""
+	if req != nil {
+		contentType = "application/octet-stream"
+	}
+
+	response, err := c.doStream(
+		handler,
+		body,
+		params,
+		query,
+		contentType,
+	)
 	if err != nil {
 		return err
 	}
 
-	httpResp, err := c.httpClient.Post("http://warden"+route, "application/octet-stream", reqBody)
+	defer response.Close()
+
+	return transport.ReadMessage(response, res)
+}
+
+func (c *connection) doStream(
+	handler string,
+	body io.Reader,
+	params router.Params,
+	query url.Values,
+	contentType string,
+) (io.ReadCloser, error) {
+	request, err := c.req.RequestForHandler(handler, params, body)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	defer httpResp.Body.Close()
+	if contentType != "" {
+		request.Header.Set("Content-Type", contentType)
+	}
+
+	if query != nil {
+		request.URL.RawQuery = query.Encode()
+	}
+
+	httpResp, err := c.noKeepaliveClient.Do(request)
+	if err != nil {
+		return nil, err
+	}
 
 	if httpResp.StatusCode < 200 || httpResp.StatusCode > 299 {
-		return errors.New(httpResp.Status)
-	}
-
-	return transport.ReadMessage(httpResp.Body, res)
-}
-
-func (c *connection) postWithStreamedResponse(u *url.URL) (io.ReadCloser, error) {
-	httpResp, err := c.noKeepaliveClient.Post(u.String(), "application/octet-stream", nil)
-	if err != nil {
-		return nil, err
-	}
-
-	if httpResp.StatusCode != http.StatusOK {
-		httpResp.Body.Close()
-		return nil, errors.New(httpResp.Status)
-	}
-
-	return httpResp.Body, nil
-}
-
-func (c *connection) postWithStreamedRequest(u *url.URL, reader io.Reader) error {
-	resp, err := c.noKeepaliveClient.Post(u.String(), "application/octet-stream", reader)
-	if err != nil {
-		return err
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return errors.New(resp.Status)
-	}
-
-	return nil
-}
-
-func (c *connection) postWithProcessPayloadResponse(route string, req proto.Message) (io.ReadCloser, error) {
-	reqBody := new(bytes.Buffer)
-
-	err := transport.WriteMessage(reqBody, req)
-	if err != nil {
-		return nil, err
-	}
-
-	httpResp, err := c.httpClient.Post("http://warden"+route, "application/octet-stream", reqBody)
-	if err != nil {
-		return nil, err
-	}
-
-	if httpResp.StatusCode != http.StatusOK {
 		httpResp.Body.Close()
 		return nil, errors.New(httpResp.Status)
 	}

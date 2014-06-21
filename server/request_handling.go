@@ -2,6 +2,7 @@ package server
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"time"
@@ -91,34 +92,12 @@ func (s *WardenServer) handleCreate(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (s *WardenServer) handleDestroy(w http.ResponseWriter, r *http.Request) {
-	var request protocol.DestroyRequest
-	if !s.readRequest(&request, w, r) {
-		return
-	}
-
-	handle := request.GetHandle()
-
-	err := s.backend.Destroy(handle)
-	if err != nil {
-		s.writeError(w, err)
-		return
-	}
-
-	s.bomberman.Defuse(handle)
-
-	s.writeResponse(w, &protocol.DestroyResponse{})
-}
-
 func (s *WardenServer) handleList(w http.ResponseWriter, r *http.Request) {
-	var request protocol.ListRequest
-	if !s.readRequest(&request, w, r) {
-		return
-	}
-
 	properties := warden.Properties{}
-	for _, prop := range request.GetProperties() {
-		properties[prop.GetKey()] = prop.GetValue()
+	for name, vals := range r.URL.Query() {
+		if len(vals) > 0 {
+			properties[name] = vals[0]
+		}
 	}
 
 	containers, err := s.backend.Containers(properties)
@@ -136,13 +115,28 @@ func (s *WardenServer) handleList(w http.ResponseWriter, r *http.Request) {
 	s.writeResponse(w, &protocol.ListResponse{Handles: handles})
 }
 
+func (s *WardenServer) handleDestroy(w http.ResponseWriter, r *http.Request) {
+	handle := r.FormValue(":handle")
+
+	err := s.backend.Destroy(handle)
+	if err != nil {
+		s.writeError(w, err)
+		return
+	}
+
+	s.bomberman.Defuse(handle)
+
+	s.writeResponse(w, &protocol.DestroyResponse{})
+}
+
 func (s *WardenServer) handleStop(w http.ResponseWriter, r *http.Request) {
+	handle := r.FormValue(":handle")
+
 	var request protocol.StopRequest
 	if !s.readRequest(&request, w, r) {
 		return
 	}
 
-	handle := request.GetHandle()
 	kill := request.GetKill()
 
 	container, err := s.backend.Lookup(handle)
@@ -164,7 +158,8 @@ func (s *WardenServer) handleStop(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *WardenServer) handleStreamIn(w http.ResponseWriter, r *http.Request) {
-	handle := r.URL.Query().Get("handle")
+	handle := r.FormValue(":handle")
+
 	dstPath := r.URL.Query().Get("destination")
 
 	container, err := s.backend.Lookup(handle)
@@ -186,7 +181,8 @@ func (s *WardenServer) handleStreamIn(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *WardenServer) handleStreamOut(w http.ResponseWriter, r *http.Request) {
-	handle := r.URL.Query().Get("handle")
+	handle := r.FormValue(":handle")
+
 	srcPath := r.URL.Query().Get("source")
 
 	container, err := s.backend.Lookup(handle)
@@ -212,12 +208,14 @@ func (s *WardenServer) handleStreamOut(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *WardenServer) handleLimitBandwidth(w http.ResponseWriter, r *http.Request) {
+	handle := r.FormValue(":handle")
+
 	var request protocol.LimitBandwidthRequest
 	if !s.readRequest(&request, w, r) {
 		return
 	}
 
-	container, err := s.backend.Lookup(request.GetHandle())
+	container, err := s.backend.Lookup(handle)
 	if err != nil {
 		s.writeError(w, err)
 		return
@@ -247,12 +245,38 @@ func (s *WardenServer) handleLimitBandwidth(w http.ResponseWriter, r *http.Reque
 	})
 }
 
+func (s *WardenServer) handleCurrentBandwidthLimits(w http.ResponseWriter, r *http.Request) {
+	handle := r.FormValue(":handle")
+
+	container, err := s.backend.Lookup(handle)
+	if err != nil {
+		s.writeError(w, err)
+		return
+	}
+
+	s.bomberman.Pause(container.Handle())
+	defer s.bomberman.Unpause(container.Handle())
+
+	limits, err := container.CurrentBandwidthLimits()
+	if err != nil {
+		s.writeError(w, err)
+		return
+	}
+
+	s.writeResponse(w, &protocol.LimitBandwidthResponse{
+		Rate:  proto.Uint64(limits.RateInBytesPerSecond),
+		Burst: proto.Uint64(limits.BurstRateInBytesPerSecond),
+	})
+}
+
 func (s *WardenServer) handleLimitMemory(w http.ResponseWriter, r *http.Request) {
+	handle := r.FormValue(":handle")
+
 	var request protocol.LimitMemoryRequest
 	if !s.readRequest(&request, w, r) {
 		return
 	}
-	handle := request.GetHandle()
+
 	limitInBytes := request.GetLimitInBytes()
 
 	container, err := s.backend.Lookup(handle)
@@ -286,13 +310,37 @@ func (s *WardenServer) handleLimitMemory(w http.ResponseWriter, r *http.Request)
 	})
 }
 
+func (s *WardenServer) handleCurrentMemoryLimits(w http.ResponseWriter, r *http.Request) {
+	handle := r.FormValue(":handle")
+
+	container, err := s.backend.Lookup(handle)
+	if err != nil {
+		s.writeError(w, err)
+		return
+	}
+
+	s.bomberman.Pause(container.Handle())
+	defer s.bomberman.Unpause(container.Handle())
+
+	limits, err := container.CurrentMemoryLimits()
+	if err != nil {
+		s.writeError(w, err)
+		return
+	}
+
+	s.writeResponse(w, &protocol.LimitMemoryResponse{
+		LimitInBytes: proto.Uint64(limits.LimitInBytes),
+	})
+}
+
 func (s *WardenServer) handleLimitDisk(w http.ResponseWriter, r *http.Request) {
+	handle := r.FormValue(":handle")
+
 	var request protocol.LimitDiskRequest
 	if !s.readRequest(&request, w, r) {
 		return
 	}
 
-	handle := request.GetHandle()
 	blockSoft := request.GetBlockSoft()
 	blockHard := request.GetBlockHard()
 	inodeSoft := request.GetInodeSoft()
@@ -348,13 +396,42 @@ func (s *WardenServer) handleLimitDisk(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (s *WardenServer) handleLimitCpu(w http.ResponseWriter, r *http.Request) {
+func (s *WardenServer) handleCurrentDiskLimits(w http.ResponseWriter, r *http.Request) {
+	handle := r.FormValue(":handle")
+
+	container, err := s.backend.Lookup(handle)
+	if err != nil {
+		s.writeError(w, err)
+		return
+	}
+
+	s.bomberman.Pause(container.Handle())
+	defer s.bomberman.Unpause(container.Handle())
+
+	limits, err := container.CurrentDiskLimits()
+	if err != nil {
+		s.writeError(w, err)
+		return
+	}
+
+	s.writeResponse(w, &protocol.LimitDiskResponse{
+		BlockSoft: proto.Uint64(limits.BlockSoft),
+		BlockHard: proto.Uint64(limits.BlockHard),
+		InodeSoft: proto.Uint64(limits.InodeSoft),
+		InodeHard: proto.Uint64(limits.InodeHard),
+		ByteSoft:  proto.Uint64(limits.ByteSoft),
+		ByteHard:  proto.Uint64(limits.ByteHard),
+	})
+}
+
+func (s *WardenServer) handleLimitCPU(w http.ResponseWriter, r *http.Request) {
+	handle := r.FormValue(":handle")
+
 	var request protocol.LimitCpuRequest
 	if !s.readRequest(&request, w, r) {
 		return
 	}
 
-	handle := request.GetHandle()
 	limitInShares := request.GetLimitInShares()
 
 	container, err := s.backend.Lookup(handle)
@@ -387,13 +464,37 @@ func (s *WardenServer) handleLimitCpu(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (s *WardenServer) handleCurrentCPULimits(w http.ResponseWriter, r *http.Request) {
+	handle := r.FormValue(":handle")
+
+	container, err := s.backend.Lookup(handle)
+	if err != nil {
+		s.writeError(w, err)
+		return
+	}
+
+	s.bomberman.Pause(container.Handle())
+	defer s.bomberman.Unpause(container.Handle())
+
+	limits, err := container.CurrentCPULimits()
+	if err != nil {
+		s.writeError(w, err)
+		return
+	}
+
+	s.writeResponse(w, &protocol.LimitCpuResponse{
+		LimitInShares: proto.Uint64(limits.LimitInShares),
+	})
+}
+
 func (s *WardenServer) handleNetIn(w http.ResponseWriter, r *http.Request) {
+	handle := r.FormValue(":handle")
+
 	var request protocol.NetInRequest
 	if !s.readRequest(&request, w, r) {
 		return
 	}
 
-	handle := request.GetHandle()
 	hostPort := request.GetHostPort()
 	containerPort := request.GetContainerPort()
 
@@ -419,12 +520,13 @@ func (s *WardenServer) handleNetIn(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *WardenServer) handleNetOut(w http.ResponseWriter, r *http.Request) {
+	handle := r.FormValue(":handle")
+
 	var request protocol.NetOutRequest
 	if !s.readRequest(&request, w, r) {
 		return
 	}
 
-	handle := request.GetHandle()
 	network := request.GetNetwork()
 	port := request.GetPort()
 
@@ -447,12 +549,13 @@ func (s *WardenServer) handleNetOut(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *WardenServer) handleRun(w http.ResponseWriter, r *http.Request) {
+	handle := r.FormValue(":handle")
+
 	var request protocol.RunRequest
 	if !s.readRequest(&request, w, r) {
 		return
 	}
 
-	handle := request.GetHandle()
 	script := request.GetScript()
 	privileged := request.GetPrivileged()
 	env := request.GetEnv()
@@ -494,13 +597,15 @@ func (s *WardenServer) handleRun(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *WardenServer) handleAttach(w http.ResponseWriter, r *http.Request) {
-	var request protocol.AttachRequest
-	if !s.readRequest(&request, w, r) {
+	handle := r.FormValue(":handle")
+
+	var processID uint32
+
+	_, err := fmt.Sscanf(r.FormValue(":pid"), "%d", &processID)
+	if err != nil {
+		s.writeError(w, err)
 		return
 	}
-
-	handle := request.GetHandle()
-	processID := request.GetProcessId()
 
 	container, err := s.backend.Lookup(handle)
 	if err != nil {
@@ -525,12 +630,7 @@ func (s *WardenServer) handleAttach(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *WardenServer) handleInfo(w http.ResponseWriter, r *http.Request) {
-	var request protocol.InfoRequest
-	if !s.readRequest(&request, w, r) {
-		return
-	}
-
-	handle := request.GetHandle()
+	handle := r.FormValue(":handle")
 
 	container, err := s.backend.Lookup(handle)
 	if err != nil {
