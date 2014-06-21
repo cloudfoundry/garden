@@ -1,37 +1,32 @@
 package client_test
 
 import (
+	"bytes"
 	"errors"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 	"io"
 	"io/ioutil"
 	"strings"
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
 
 	. "github.com/cloudfoundry-incubator/garden/client"
-	"github.com/cloudfoundry-incubator/garden/client/connection"
 	"github.com/cloudfoundry-incubator/garden/client/connection/fake_connection"
 	"github.com/cloudfoundry-incubator/garden/warden"
 )
 
 var _ = Describe("Container", func() {
-	var connectionProvider ConnectionProvider
 	var container warden.Container
 
 	var fakeConnection *fake_connection.FakeConnection
 
 	BeforeEach(func() {
 		fakeConnection = fake_connection.New()
-
-		connectionProvider = &FakeConnectionProvider{
-			Connection: fakeConnection,
-		}
 	})
 
 	JustBeforeEach(func() {
 		var err error
 
-		client := New(connectionProvider)
+		client := New(fakeConnection)
 
 		fakeConnection.WhenCreating = func(warden.ContainerSpec) (string, error) {
 			return "some-handle", nil
@@ -111,36 +106,31 @@ var _ = Describe("Container", func() {
 
 	Describe("StreamIn", func() {
 		It("sends a stream in request", func() {
-			reader, w := io.Pipe()
-			fakeConnection.WhenStreamingIn = func(handle string, dst string) (io.WriteCloser, error) {
+			fakeConnection.WhenStreamingIn = func(handle string, dst string, reader io.Reader) error {
 				Ω(dst).Should(Equal("to"))
-				return w, nil
+
+				content, err := ioutil.ReadAll(reader)
+				Ω(err).ShouldNot(HaveOccurred())
+				Ω(string(content)).Should(Equal("stuff"))
+
+				return nil
 			}
 
-			writer, err := container.StreamIn("to")
+			err := container.StreamIn("to", bytes.NewBufferString("stuff"))
 			Ω(err).ShouldNot(HaveOccurred())
-
-			go func() {
-				writer.Write([]byte("stuff"))
-				writer.Close()
-			}()
-
-			content, err := ioutil.ReadAll(reader)
-			Ω(err).ShouldNot(HaveOccurred())
-			Ω(string(content)).Should(Equal("stuff"))
 		})
 
 		Context("when streaming in fails", func() {
 			disaster := errors.New("oh no!")
 
 			BeforeEach(func() {
-				fakeConnection.WhenStreamingIn = func(handle string, dst string) (io.WriteCloser, error) {
-					return nil, disaster
+				fakeConnection.WhenStreamingIn = func(handle string, dst string, src io.Reader) error {
+					return disaster
 				}
 			})
 
 			It("returns the error", func() {
-				_, err := container.StreamIn("to")
+				err := container.StreamIn("to", nil)
 				Ω(err).Should(Equal(disaster))
 			})
 		})
@@ -148,9 +138,9 @@ var _ = Describe("Container", func() {
 
 	Describe("StreamOut", func() {
 		It("sends a stream out request", func() {
-			fakeConnection.WhenStreamingOut = func(handle string, src string) (io.Reader, error) {
+			fakeConnection.WhenStreamingOut = func(handle string, src string) (io.ReadCloser, error) {
 				Ω(src).Should(Equal("from"))
-				return strings.NewReader("kewl"), nil
+				return ioutil.NopCloser(strings.NewReader("kewl")), nil
 			}
 
 			reader, err := container.StreamOut("from")
@@ -163,7 +153,7 @@ var _ = Describe("Container", func() {
 			disaster := errors.New("oh no!")
 
 			BeforeEach(func() {
-				fakeConnection.WhenStreamingOut = func(handle string, src string) (io.Reader, error) {
+				fakeConnection.WhenStreamingOut = func(handle string, src string) (io.ReadCloser, error) {
 					return nil, disaster
 				}
 			})
@@ -302,7 +292,7 @@ var _ = Describe("Container", func() {
 				BurstRateInBytesPerSecond: 2,
 			}
 
-			fakeConnection.WhenLimitingBandwidth = func(handle string, limits warden.BandwidthLimits) (warden.BandwidthLimits, error) {
+			fakeConnection.WhenGettingCurrentBandwidthLimits = func(handle string) (warden.BandwidthLimits, error) {
 				return limitsToReturn, nil
 			}
 
@@ -316,7 +306,7 @@ var _ = Describe("Container", func() {
 			disaster := errors.New("oh no!")
 
 			BeforeEach(func() {
-				fakeConnection.WhenLimitingBandwidth = func(handle string, limits warden.BandwidthLimits) (warden.BandwidthLimits, error) {
+				fakeConnection.WhenGettingCurrentBandwidthLimits = func(handle string) (warden.BandwidthLimits, error) {
 					return warden.BandwidthLimits{}, disaster
 				}
 			})
@@ -334,7 +324,7 @@ var _ = Describe("Container", func() {
 				LimitInShares: 1,
 			}
 
-			fakeConnection.WhenLimitingCPU = func(handle string, limits warden.CPULimits) (warden.CPULimits, error) {
+			fakeConnection.WhenGettingCurrentCPULimits = func(handle string) (warden.CPULimits, error) {
 				return limitsToReturn, nil
 			}
 
@@ -348,7 +338,7 @@ var _ = Describe("Container", func() {
 			disaster := errors.New("oh no!")
 
 			BeforeEach(func() {
-				fakeConnection.WhenLimitingCPU = func(handle string, limits warden.CPULimits) (warden.CPULimits, error) {
+				fakeConnection.WhenGettingCurrentCPULimits = func(handle string) (warden.CPULimits, error) {
 					return warden.CPULimits{}, disaster
 				}
 			})
@@ -363,21 +353,15 @@ var _ = Describe("Container", func() {
 	Describe("CurrentDiskLimits", func() {
 		It("sends an empty limit request and returns its response", func() {
 			limitsToReturn := warden.DiskLimits{
-				BlockLimit: 1,
-				Block:      2,
-				BlockSoft:  3,
-				BlockHard:  4,
-				InodeLimit: 5,
-				Inode:      6,
-				InodeSoft:  7,
-				InodeHard:  8,
-				ByteLimit:  9,
-				Byte:       10,
-				ByteSoft:   11,
-				ByteHard:   12,
+				BlockSoft: 3,
+				BlockHard: 4,
+				InodeSoft: 7,
+				InodeHard: 8,
+				ByteSoft:  11,
+				ByteHard:  12,
 			}
 
-			fakeConnection.WhenLimitingDisk = func(handle string, limits warden.DiskLimits) (warden.DiskLimits, error) {
+			fakeConnection.WhenGettingCurrentDiskLimits = func(handle string) (warden.DiskLimits, error) {
 				return limitsToReturn, nil
 			}
 
@@ -391,7 +375,7 @@ var _ = Describe("Container", func() {
 			disaster := errors.New("oh no!")
 
 			BeforeEach(func() {
-				fakeConnection.WhenLimitingDisk = func(handle string, limits warden.DiskLimits) (warden.DiskLimits, error) {
+				fakeConnection.WhenGettingCurrentDiskLimits = func(handle string) (warden.DiskLimits, error) {
 					return warden.DiskLimits{}, disaster
 				}
 			})
@@ -404,12 +388,12 @@ var _ = Describe("Container", func() {
 	})
 
 	Describe("CurrentMemoryLimits", func() {
-		It("sends an empty limit request and returns its response", func() {
+		It("gets the current limits", func() {
 			limitsToReturn := warden.MemoryLimits{
 				LimitInBytes: 1,
 			}
 
-			fakeConnection.WhenLimitingMemory = func(handle string, limits warden.MemoryLimits) (warden.MemoryLimits, error) {
+			fakeConnection.WhenGettingCurrentMemoryLimits = func(handle string) (warden.MemoryLimits, error) {
 				return limitsToReturn, nil
 			}
 
@@ -423,7 +407,7 @@ var _ = Describe("Container", func() {
 			disaster := errors.New("oh no!")
 
 			BeforeEach(func() {
-				fakeConnection.WhenLimitingMemory = func(handle string, limits warden.MemoryLimits) (warden.MemoryLimits, error) {
+				fakeConnection.WhenGettingCurrentMemoryLimits = func(handle string) (warden.MemoryLimits, error) {
 					return warden.MemoryLimits{}, disaster
 				}
 			})
@@ -436,19 +420,6 @@ var _ = Describe("Container", func() {
 	})
 
 	Describe("Run", func() {
-		var otherFakeConnection *fake_connection.FakeConnection
-
-		BeforeEach(func() {
-			otherFakeConnection = fake_connection.New()
-
-			connectionProvider = &ManyConnectionProvider{
-				Connections: []connection.Connection{
-					fakeConnection,
-					otherFakeConnection,
-				},
-			}
-		})
-
 		It("sends a run request and returns the process id and a stream", func() {
 			fakeConnection.WhenRunning = func(handle string, spec warden.ProcessSpec) (uint32, <-chan warden.ProcessStream, error) {
 				stream := make(chan warden.ProcessStream, 3)
@@ -500,59 +471,9 @@ var _ = Describe("Container", func() {
 
 			Ω(stream).Should(BeClosed())
 		})
-
-		Context("when the request fails", func() {
-			disaster := errors.New("oh no!")
-
-			BeforeEach(func() {
-				fakeConnection.WhenRunning = func(handle string, spec warden.ProcessSpec) (uint32, <-chan warden.ProcessStream, error) {
-					return 0, nil, disaster
-				}
-			})
-
-			It("releases the connection", func() {
-				_, _, err := container.Run(warden.ProcessSpec{})
-				Ω(err).Should(Equal(disaster))
-
-				err = container.Stop(false)
-				Ω(err).ShouldNot(HaveOccurred())
-
-				Ω(fakeConnection.Stopped("some-handle")).ShouldNot(BeEmpty())
-			})
-		})
-
-		Context("while streaming", func() {
-			It("does not permit reuse of the connection", func() {
-				fakeConnection.WhenRunning = func(handle string, spec warden.ProcessSpec) (uint32, <-chan warden.ProcessStream, error) {
-					return 1, make(chan warden.ProcessStream), nil
-				}
-
-				_, _, err := container.Run(warden.ProcessSpec{})
-				Ω(err).ShouldNot(HaveOccurred())
-
-				err = container.Stop(false)
-				Ω(err).ShouldNot(HaveOccurred())
-
-				Ω(fakeConnection.Stopped("some-handle")).Should(BeEmpty())
-				Ω(otherFakeConnection.Stopped("some-handle")).ShouldNot(BeEmpty())
-			})
-		})
 	})
 
 	Describe("Attach", func() {
-		var otherFakeConnection *fake_connection.FakeConnection
-
-		BeforeEach(func() {
-			otherFakeConnection = fake_connection.New()
-
-			connectionProvider = &ManyConnectionProvider{
-				Connections: []connection.Connection{
-					fakeConnection,
-					otherFakeConnection,
-				},
-			}
-		})
-
 		It("sends an attach request and returns a stream", func() {
 			fakeConnection.WhenAttaching = func(handle string, processID uint32) (<-chan warden.ProcessStream, error) {
 				stream := make(chan warden.ProcessStream, 3)
@@ -598,43 +519,6 @@ var _ = Describe("Container", func() {
 			}))
 
 			Ω(stream).Should(BeClosed())
-		})
-
-		Context("when the request fails", func() {
-			disaster := errors.New("oh no!")
-
-			BeforeEach(func() {
-				fakeConnection.WhenAttaching = func(handle string, processID uint32) (<-chan warden.ProcessStream, error) {
-					return nil, disaster
-				}
-			})
-
-			It("releases the connection", func() {
-				_, err := container.Attach(42)
-				Ω(err).Should(Equal(disaster))
-
-				err = container.Stop(false)
-				Ω(err).ShouldNot(HaveOccurred())
-
-				Ω(fakeConnection.Stopped("some-handle")).ShouldNot(BeEmpty())
-			})
-		})
-
-		Context("while streaming", func() {
-			It("does not permit reuse of the connection", func() {
-				fakeConnection.WhenAttaching = func(handle string, processID uint32) (<-chan warden.ProcessStream, error) {
-					return make(chan warden.ProcessStream), nil
-				}
-
-				_, err := container.Attach(42)
-				Ω(err).ShouldNot(HaveOccurred())
-
-				err = container.Stop(false)
-				Ω(err).ShouldNot(HaveOccurred())
-
-				Ω(fakeConnection.Stopped("some-handle")).Should(BeEmpty())
-				Ω(otherFakeConnection.Stopped("some-handle")).ShouldNot(BeEmpty())
-			})
 		})
 	})
 

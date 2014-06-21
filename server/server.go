@@ -1,20 +1,16 @@
 package server
 
 import (
-	"bufio"
 	"fmt"
-	"io"
 	"log"
 	"net"
+	"net/http"
 	"os"
+	"sync"
 	"time"
 
 	"code.google.com/p/gogoprotobuf/proto"
-
-	"github.com/cloudfoundry-incubator/garden/drain"
-	protocol "github.com/cloudfoundry-incubator/garden/protocol"
 	"github.com/cloudfoundry-incubator/garden/server/bomberman"
-	"github.com/cloudfoundry-incubator/garden/transport"
 	"github.com/cloudfoundry-incubator/garden/warden"
 )
 
@@ -25,8 +21,8 @@ type WardenServer struct {
 	containerGraceTime time.Duration
 	backend            warden.Backend
 
-	listener     net.Listener
-	openRequests *drain.Drain
+	listener net.Listener
+	handling *sync.WaitGroup
 
 	setStopping chan bool
 	stopping    chan bool
@@ -57,7 +53,7 @@ func New(
 		setStopping: make(chan bool),
 		stopping:    make(chan bool),
 
-		openRequests: drain.New(),
+		handling: new(sync.WaitGroup),
 	}
 }
 
@@ -103,7 +99,7 @@ func (s *WardenServer) Start() error {
 func (s *WardenServer) Stop() {
 	s.setStopping <- true
 	s.listener.Close()
-	s.openRequests.Wait()
+	s.handling.Wait()
 	s.backend.Stop()
 }
 
@@ -119,102 +115,48 @@ func (s *WardenServer) trackStopping() {
 }
 
 func (s *WardenServer) handleConnections(listener net.Listener) {
-	for {
-		conn, err := listener.Accept()
-		if err != nil {
-			// listener closed
-			break
-		}
+	mux := http.NewServeMux()
 
-		go s.serveConnection(conn)
-	}
-}
+	mux.HandleFunc("/ping", s.handlePing)
+	mux.HandleFunc("/capacity", s.handleCapacity)
+	mux.HandleFunc("/create", s.handleCreate)
+	mux.HandleFunc("/destroy", s.handleDestroy)
+	mux.HandleFunc("/list", s.handleList)
+	mux.HandleFunc("/stop", s.handleStop)
+	mux.HandleFunc("/stream_in", s.handleStreamIn)
+	mux.HandleFunc("/stream_out", s.handleStreamOut)
+	mux.HandleFunc("/limit_bandwidth", s.handleLimitBandwidth)
+	mux.HandleFunc("/limit_memory", s.handleLimitMemory)
+	mux.HandleFunc("/limit_disk", s.handleLimitDisk)
+	mux.HandleFunc("/limit_cpu", s.handleLimitCpu)
+	mux.HandleFunc("/net_in", s.handleNetIn)
+	mux.HandleFunc("/net_out", s.handleNetOut)
+	mux.HandleFunc("/info", s.handleInfo)
+	mux.HandleFunc("/run", s.handleRun)
+	mux.HandleFunc("/attach", s.handleAttach)
 
-func (s *WardenServer) serveConnection(conn net.Conn) {
-	read := bufio.NewReader(conn)
+	server := http.Server{
+		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			mux.ServeHTTP(w, r)
+			s.handling.Done()
+		}),
 
-	for {
-		var response proto.Message
-		var err error
-
-		if <-s.stopping {
-			conn.Close()
-			break
-		}
-
-		request, err := transport.ReadRequest(read)
-		if err != nil {
-			if err != io.EOF {
-				log.Println("error reading request:", err)
+		ConnState: func(conn net.Conn, state http.ConnState) {
+			if state == http.StateNew {
+				return
 			}
 
-			break
-		}
+			if state == http.StateActive {
+				s.handling.Add(1)
 
-		if <-s.stopping {
-			conn.Close()
-			break
-		}
-
-		s.openRequests.Incr()
-
-		switch req := request.(type) {
-		case *protocol.PingRequest:
-			response, err = s.handlePing(req)
-		case *protocol.EchoRequest:
-			response, err = s.handleEcho(req)
-		case *protocol.CapacityRequest:
-			response, err = s.handleCapacity(req)
-		case *protocol.CreateRequest:
-			response, err = s.handleCreate(req)
-		case *protocol.DestroyRequest:
-			response, err = s.handleDestroy(req)
-		case *protocol.ListRequest:
-			response, err = s.handleList(req)
-		case *protocol.StopRequest:
-			response, err = s.handleStop(req)
-		case *protocol.StreamInRequest:
-			response, err = s.handleStreamIn(conn, read, req)
-		case *protocol.StreamOutRequest:
-			response, err = s.handleStreamOut(conn, req)
-		case *protocol.RunRequest:
-			s.openRequests.Decr()
-			response, err = s.handleRun(conn, req)
-			s.openRequests.Incr()
-		case *protocol.AttachRequest:
-			s.openRequests.Decr()
-			response, err = s.handleAttach(conn, req)
-			s.openRequests.Incr()
-		case *protocol.LimitBandwidthRequest:
-			response, err = s.handleLimitBandwidth(req)
-		case *protocol.LimitMemoryRequest:
-			response, err = s.handleLimitMemory(req)
-		case *protocol.LimitDiskRequest:
-			response, err = s.handleLimitDisk(req)
-		case *protocol.LimitCpuRequest:
-			response, err = s.handleLimitCpu(req)
-		case *protocol.NetInRequest:
-			response, err = s.handleNetIn(req)
-		case *protocol.NetOutRequest:
-			response, err = s.handleNetOut(req)
-		case *protocol.InfoRequest:
-			response, err = s.handleInfo(req)
-		default:
-			err = UnhandledRequestError{request}
-		}
-
-		if err != nil {
-			response = &protocol.ErrorResponse{
-				Message: proto.String(err.Error()),
+				if <-s.stopping {
+					conn.Close()
+				}
 			}
-		}
-
-		if response != nil {
-			protocol.Messages(response).WriteTo(conn)
-		}
-
-		s.openRequests.Decr()
+		},
 	}
+
+	server.Serve(listener)
 }
 
 func (s *WardenServer) removeExistingSocket() error {

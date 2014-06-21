@@ -15,8 +15,10 @@ type FakeBackend struct {
 
 	Stopped bool
 
-	CreateResult    *FakeContainer
-	CreateError     error
+	CreateResult *FakeContainer
+	WhenCreating func()
+	CreateError  error
+
 	DestroyError    error
 	ContainersError error
 
@@ -27,6 +29,8 @@ type FakeBackend struct {
 
 	CapacityError  error
 	CapacityResult warden.Capacity
+
+	PingError error
 
 	sync.RWMutex
 }
@@ -64,6 +68,10 @@ func (b *FakeBackend) Stop() {
 	b.Stopped = true
 }
 
+func (b *FakeBackend) Ping() error {
+	return b.PingError
+}
+
 func (b *FakeBackend) Capacity() (warden.Capacity, error) {
 	if b.CapacityError != nil {
 		return warden.Capacity{}, b.CapacityError
@@ -87,6 +95,10 @@ func (b *FakeBackend) Create(spec warden.ContainerSpec) (warden.Container, error
 
 	b.Lock()
 	defer b.Unlock()
+
+	if b.WhenCreating != nil {
+		b.WhenCreating()
+	}
 
 	b.CreatedContainers[container.Handle()] = container
 

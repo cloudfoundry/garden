@@ -5,6 +5,8 @@ import (
 )
 
 type Client interface {
+	Ping() error
+
 	Capacity() (Capacity, error)
 
 	Create(ContainerSpec) (Container, error)

@@ -4,21 +4,20 @@ import (
 	"io"
 
 	"github.com/cloudfoundry-incubator/garden/client/connection"
-	"github.com/cloudfoundry-incubator/garden/client/releasenotifier"
 	"github.com/cloudfoundry-incubator/garden/warden"
 )
 
 type container struct {
 	handle string
 
-	pool *connectionPool
+	connection connection.Connection
 }
 
-func newContainer(handle string, pool *connectionPool) *container {
+func newContainer(handle string, connection connection.Connection) warden.Container {
 	return &container{
 		handle: handle,
 
-		pool: pool,
+		connection: connection,
 	}
 }
 
@@ -27,60 +26,23 @@ func (container *container) Handle() string {
 }
 
 func (container *container) Stop(kill bool) error {
-	conn := container.pool.Acquire()
-	defer container.pool.Release(conn)
-
-	return conn.Stop(container.handle, false, kill)
+	return container.connection.Stop(container.handle, false, kill)
 }
 
 func (container *container) Info() (warden.ContainerInfo, error) {
-	conn := container.pool.Acquire()
-	defer container.pool.Release(conn)
-
-	return conn.Info(container.handle)
+	return container.connection.Info(container.handle)
 }
 
-func (container *container) StreamIn(dstPath string) (io.WriteCloser, error) {
-	conn := container.pool.Acquire()
-
-	writeCloser, err := conn.StreamIn(container.handle, dstPath)
-	if err != nil {
-		container.pool.Release(conn)
-		return nil, err
-	}
-
-	return releasenotifier.ReleaseNotifier{
-		WriteCloser: writeCloser,
-		CloseCallback: func() error {
-			container.pool.Release(conn)
-			return nil
-		},
-	}, nil
+func (container *container) StreamIn(dstPath string, reader io.Reader) error {
+	return container.connection.StreamIn(container.handle, dstPath, reader)
 }
 
-func (container *container) StreamOut(srcPath string) (io.Reader, error) {
-	conn := container.pool.Acquire()
-
-	reader, err := conn.StreamOut(container.handle, srcPath)
-	if err != nil {
-		container.pool.Release(conn)
-		return nil, err
-	}
-
-	return releasenotifier.ReleaseNotifier{
-		Reader: reader,
-		CloseCallback: func() error {
-			container.pool.Release(conn)
-			return nil
-		},
-	}, nil
+func (container *container) StreamOut(srcPath string) (io.ReadCloser, error) {
+	return container.connection.StreamOut(container.handle, srcPath)
 }
 
 func (container *container) LimitBandwidth(limits warden.BandwidthLimits) error {
-	conn := container.pool.Acquire()
-	defer container.pool.Release(conn)
-
-	_, err := conn.LimitBandwidth(container.handle, limits)
+	_, err := container.connection.LimitBandwidth(container.handle, limits)
 	if err != nil {
 		return err
 	}
@@ -89,17 +51,11 @@ func (container *container) LimitBandwidth(limits warden.BandwidthLimits) error 
 }
 
 func (container *container) CurrentBandwidthLimits() (warden.BandwidthLimits, error) {
-	conn := container.pool.Acquire()
-	defer container.pool.Release(conn)
-
-	return conn.LimitBandwidth(container.handle, warden.BandwidthLimits{})
+	return container.connection.CurrentBandwidthLimits(container.handle)
 }
 
 func (container *container) LimitCPU(limits warden.CPULimits) error {
-	conn := container.pool.Acquire()
-	defer container.pool.Release(conn)
-
-	_, err := conn.LimitCPU(container.handle, limits)
+	_, err := container.connection.LimitCPU(container.handle, limits)
 	if err != nil {
 		return err
 	}
@@ -108,17 +64,11 @@ func (container *container) LimitCPU(limits warden.CPULimits) error {
 }
 
 func (container *container) CurrentCPULimits() (warden.CPULimits, error) {
-	conn := container.pool.Acquire()
-	defer container.pool.Release(conn)
-
-	return conn.LimitCPU(container.handle, warden.CPULimits{})
+	return container.connection.CurrentCPULimits(container.handle)
 }
 
 func (container *container) LimitDisk(limits warden.DiskLimits) error {
-	conn := container.pool.Acquire()
-	defer container.pool.Release(conn)
-
-	_, err := conn.LimitDisk(container.handle, limits)
+	_, err := container.connection.LimitDisk(container.handle, limits)
 	if err != nil {
 		return err
 	}
@@ -127,17 +77,11 @@ func (container *container) LimitDisk(limits warden.DiskLimits) error {
 }
 
 func (container *container) CurrentDiskLimits() (warden.DiskLimits, error) {
-	conn := container.pool.Acquire()
-	defer container.pool.Release(conn)
-
-	return conn.LimitDisk(container.handle, warden.DiskLimits{})
+	return container.connection.CurrentDiskLimits(container.handle)
 }
 
 func (container *container) LimitMemory(limits warden.MemoryLimits) error {
-	conn := container.pool.Acquire()
-	defer container.pool.Release(conn)
-
-	_, err := conn.LimitMemory(container.handle, limits)
+	_, err := container.connection.LimitMemory(container.handle, limits)
 	if err != nil {
 		return err
 	}
@@ -146,61 +90,44 @@ func (container *container) LimitMemory(limits warden.MemoryLimits) error {
 }
 
 func (container *container) CurrentMemoryLimits() (warden.MemoryLimits, error) {
-	conn := container.pool.Acquire()
-	defer container.pool.Release(conn)
-
-	return conn.LimitMemory(container.handle, warden.MemoryLimits{})
+	return container.connection.CurrentMemoryLimits(container.handle)
 }
 
 func (container *container) Run(spec warden.ProcessSpec) (uint32, <-chan warden.ProcessStream, error) {
-	conn := container.pool.Acquire()
-
-	pid, stream, err := conn.Run(container.handle, spec)
+	pid, stream, err := container.connection.Run(container.handle, spec)
 	if err != nil {
-		container.pool.Release(conn)
 		return 0, nil, err
 	}
 
 	outStream := make(chan warden.ProcessStream)
 
-	go container.streamPayloads(outStream, stream, conn)
+	go container.streamPayloads(outStream, stream)
 
 	return pid, outStream, nil
 }
 
 func (container *container) Attach(processID uint32) (<-chan warden.ProcessStream, error) {
-	conn := container.pool.Acquire()
-
-	stream, err := conn.Attach(container.handle, processID)
+	stream, err := container.connection.Attach(container.handle, processID)
 	if err != nil {
-		container.pool.Release(conn)
 		return nil, err
 	}
 
 	outStream := make(chan warden.ProcessStream)
 
-	go container.streamPayloads(outStream, stream, conn)
+	go container.streamPayloads(outStream, stream)
 
 	return outStream, nil
 }
 
 func (container *container) NetIn(hostPort, containerPort uint32) (uint32, uint32, error) {
-	conn := container.pool.Acquire()
-	defer container.pool.Release(conn)
-
-	return conn.NetIn(container.handle, hostPort, containerPort)
+	return container.connection.NetIn(container.handle, hostPort, containerPort)
 }
 
 func (container *container) NetOut(network string, port uint32) error {
-	conn := container.pool.Acquire()
-	defer container.pool.Release(conn)
-
-	return conn.NetOut(container.handle, network, port)
+	return container.connection.NetOut(container.handle, network, port)
 }
 
-func (container *container) streamPayloads(out chan<- warden.ProcessStream, in <-chan warden.ProcessStream, conn connection.Connection) {
-	defer container.pool.Release(conn)
-
+func (container *container) streamPayloads(out chan<- warden.ProcessStream, in <-chan warden.ProcessStream) {
 	for chunk := range in {
 		out <- chunk
 	}

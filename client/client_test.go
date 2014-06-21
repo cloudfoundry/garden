@@ -6,61 +6,21 @@ import (
 	. "github.com/onsi/gomega"
 
 	. "github.com/cloudfoundry-incubator/garden/client"
-	"github.com/cloudfoundry-incubator/garden/client/connection"
 	"github.com/cloudfoundry-incubator/garden/client/connection/fake_connection"
 	"github.com/cloudfoundry-incubator/garden/warden"
 )
 
 var _ = Describe("Client", func() {
-	var connectionProvider ConnectionProvider
 	var client Client
 
 	var fakeConnection *fake_connection.FakeConnection
 
 	BeforeEach(func() {
 		fakeConnection = fake_connection.New()
-
-		connectionProvider = &FakeConnectionProvider{
-			Connection: fakeConnection,
-		}
 	})
 
 	JustBeforeEach(func() {
-		client = New(connectionProvider)
-	})
-
-	Describe("when the connection is broken", func() {
-		var reconnectedConnection *fake_connection.FakeConnection
-
-		BeforeEach(func() {
-			reconnectedConnection = fake_connection.New()
-
-			connectionProvider = &ManyConnectionProvider{
-				Connections: []connection.Connection{
-					fakeConnection,
-					reconnectedConnection,
-				},
-			}
-		})
-
-		It("reconnects", func() {
-			_, err := client.Create(warden.ContainerSpec{})
-			Ω(err).ShouldNot(HaveOccurred())
-
-			Ω(fakeConnection.Created()).Should(HaveLen(1))
-
-			_, err = client.Create(warden.ContainerSpec{})
-			Ω(err).ShouldNot(HaveOccurred())
-
-			Ω(fakeConnection.Created()).Should(HaveLen(2))
-
-			fakeConnection.NotifyDisconnected()
-
-			_, err = client.Create(warden.ContainerSpec{})
-			Ω(err).ShouldNot(HaveOccurred())
-
-			Ω(reconnectedConnection.Created()).Should(HaveLen(1))
-		})
+		client = New(fakeConnection)
 	})
 
 	Describe("Capacity", func() {

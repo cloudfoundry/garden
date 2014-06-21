@@ -2,13 +2,13 @@ package transport
 
 import (
 	"fmt"
-	"net"
+	"io"
 
 	"code.google.com/p/goprotobuf/proto"
 	protocol "github.com/cloudfoundry-incubator/garden/protocol"
 )
 
-func WriteMessage(conn net.Conn, req proto.Message) error {
+func WriteMessage(writer io.Writer, req proto.Message) error {
 	request, err := proto.Marshal(req)
 	if err != nil {
 		return err
@@ -24,10 +24,10 @@ func WriteMessage(conn net.Conn, req proto.Message) error {
 		return err
 	}
 
-	_, err = conn.Write(
+	_, err = writer.Write(
 		[]byte(
 			fmt.Sprintf(
-				"%d\r\n%s\r\n",
+				"%d\n%s",
 				len(data),
 				data,
 			),

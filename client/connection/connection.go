@@ -1,16 +1,15 @@
 package connection
 
 import (
-	"bufio"
+	"bytes"
 	"errors"
 	"io"
 	"net"
-	"sync"
+	"net/http"
+	"net/url"
 	"time"
 
 	"code.google.com/p/goprotobuf/proto"
-
-	"github.com/cloudfoundry-incubator/garden/client/releasenotifier"
 	protocol "github.com/cloudfoundry-incubator/garden/protocol"
 	"github.com/cloudfoundry-incubator/garden/transport"
 	"github.com/cloudfoundry-incubator/garden/warden"
@@ -20,9 +19,7 @@ var ErrDisconnected = errors.New("disconnected")
 var ErrInvalidMessage = errors.New("invalid message payload")
 
 type Connection interface {
-	Close()
-
-	Disconnected() <-chan struct{}
+	Ping() error
 
 	Capacity() (warden.Capacity, error)
 
@@ -34,47 +31,29 @@ type Connection interface {
 
 	Info(handle string) (warden.ContainerInfo, error)
 
-	StreamIn(handle string, dstPath string) (io.WriteCloser, error)
-	StreamOut(handle string, srcPath string) (io.Reader, error)
+	StreamIn(handle string, dstPath string, reader io.Reader) error
+	StreamOut(handle string, srcPath string) (io.ReadCloser, error)
 
 	LimitBandwidth(handle string, limits warden.BandwidthLimits) (warden.BandwidthLimits, error)
 	LimitCPU(handle string, limits warden.CPULimits) (warden.CPULimits, error)
 	LimitDisk(handle string, limits warden.DiskLimits) (warden.DiskLimits, error)
 	LimitMemory(handle string, limit warden.MemoryLimits) (warden.MemoryLimits, error)
 
+	CurrentBandwidthLimits(handle string) (warden.BandwidthLimits, error)
+	CurrentCPULimits(handle string) (warden.CPULimits, error)
+	CurrentDiskLimits(handle string) (warden.DiskLimits, error)
+	CurrentMemoryLimits(handle string) (warden.MemoryLimits, error)
+
 	Run(handle string, spec warden.ProcessSpec) (uint32, <-chan warden.ProcessStream, error)
 	Attach(handle string, processID uint32) (<-chan warden.ProcessStream, error)
 
 	NetIn(handle string, hostPort, containerPort uint32) (uint32, uint32, error)
 	NetOut(handle string, network string, port uint32) error
-
-	SendMessage(req proto.Message) error
-	RoundTrip(request proto.Message, response proto.Message) error
-	ReadResponse(response proto.Message) error
 }
 
 type connection struct {
-	messages chan *protocol.Message
-
-	disconnected   chan struct{}
-	disconnectOnce *sync.Once
-
-	conn         net.Conn
-	writeTimeout time.Duration
-
-	read *bufio.Reader
-
-	writeLock sync.Mutex
-	readLock  sync.Mutex
-}
-
-type Info struct {
-	Network string
-	Addr    string
-}
-
-func (i *Info) ProvideConnection() (Connection, error) {
-	return Connect(i.Network, i.Addr)
+	httpClient        *http.Client
+	noKeepaliveClient *http.Client
 }
 
 type WardenError struct {
@@ -87,51 +66,34 @@ func (e *WardenError) Error() string {
 	return e.Message
 }
 
-func Connect(network, addr string) (Connection, error) {
-	conn, err := net.Dial(network, addr)
-	if err != nil {
-		return nil, err
+func New(network, address string) Connection {
+	dialer := func(string, string) (net.Conn, error) {
+		return net.DialTimeout(network, address, time.Second)
 	}
 
-	return New(conn, 10*time.Second), nil
-}
-
-func New(conn net.Conn, writeTimeout time.Duration) Connection {
-	messages := make(chan *protocol.Message)
-
-	messagesR, messagesW := io.Pipe()
-
-	connection := &connection{
-		messages: messages,
-
-		writeTimeout: writeTimeout,
-
-		disconnected:   make(chan struct{}),
-		disconnectOnce: &sync.Once{},
-
-		conn: conn,
-
-		read: bufio.NewReader(messagesR),
+	return &connection{
+		httpClient: &http.Client{
+			Transport: &http.Transport{
+				Dial: dialer,
+			},
+		},
+		noKeepaliveClient: &http.Client{
+			Transport: &http.Transport{
+				Dial:              dialer,
+				DisableKeepAlives: true,
+			},
+		},
 	}
-
-	go connection.readMessages(messagesW)
-
-	return connection
 }
 
-func (c *connection) Close() {
-	c.conn.Close()
-}
-
-func (c *connection) Disconnected() <-chan struct{} {
-	return c.disconnected
+func (c *connection) Ping() error {
+	return c.post("/ping", &protocol.PingRequest{}, &protocol.PingResponse{})
 }
 
 func (c *connection) Capacity() (warden.Capacity, error) {
-	req := &protocol.CapacityRequest{}
 	res := &protocol.CapacityResponse{}
 
-	err := c.RoundTrip(req, res)
+	err := c.post("/capacity", &protocol.CapacityRequest{}, res)
 	if err != nil {
 		return warden.Capacity{}, err
 	}
@@ -199,8 +161,7 @@ func (c *connection) Create(spec warden.ContainerSpec) (string, error) {
 	req.Properties = props
 
 	res := &protocol.CreateResponse{}
-
-	err := c.RoundTrip(req, res)
+	err := c.post("/create", req, res)
 	if err != nil {
 		return "", err
 	}
@@ -209,7 +170,8 @@ func (c *connection) Create(spec warden.ContainerSpec) (string, error) {
 }
 
 func (c *connection) Stop(handle string, background, kill bool) error {
-	err := c.RoundTrip(
+	return c.post(
+		"/stop",
 		&protocol.StopRequest{
 			Handle:     proto.String(handle),
 			Background: proto.Bool(background),
@@ -217,29 +179,19 @@ func (c *connection) Stop(handle string, background, kill bool) error {
 		},
 		&protocol.StopResponse{},
 	)
-
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func (c *connection) Destroy(handle string) error {
-	err := c.RoundTrip(
+	return c.post(
+		"/destroy",
 		&protocol.DestroyRequest{Handle: proto.String(handle)},
 		&protocol.DestroyResponse{},
 	)
-
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func (c *connection) Run(handle string, spec warden.ProcessSpec) (uint32, <-chan warden.ProcessStream, error) {
-	err := c.SendMessage(
+	respBody, err := c.postWithProcessPayloadResponse(
+		"/run",
 		&protocol.RunRequest{
 			Handle:     proto.String(handle),
 			Script:     proto.String(spec.Script),
@@ -264,27 +216,26 @@ func (c *connection) Run(handle string, spec warden.ProcessSpec) (uint32, <-chan
 			Env: convertEnvironmentVariables(spec.EnvironmentVariables),
 		},
 	)
-
 	if err != nil {
 		return 0, nil, err
 	}
 
 	firstResponse := &protocol.ProcessPayload{}
-
-	err = c.ReadResponse(firstResponse)
+	err = transport.ReadMessage(respBody, firstResponse)
 	if err != nil {
 		return 0, nil, err
 	}
 
 	responses := make(chan warden.ProcessStream)
 
-	go c.streamPayloads(responses)
+	go c.streamPayloads(respBody, responses)
 
 	return firstResponse.GetProcessId(), responses, nil
 }
 
 func (c *connection) Attach(handle string, processID uint32) (<-chan warden.ProcessStream, error) {
-	err := c.SendMessage(
+	respBody, err := c.postWithProcessPayloadResponse(
+		"/attach",
 		&protocol.AttachRequest{
 			Handle:    proto.String(handle),
 			ProcessId: proto.Uint32(processID),
@@ -297,15 +248,15 @@ func (c *connection) Attach(handle string, processID uint32) (<-chan warden.Proc
 
 	responses := make(chan warden.ProcessStream)
 
-	go c.streamPayloads(responses)
+	go c.streamPayloads(respBody, responses)
 
 	return responses, nil
 }
 
 func (c *connection) NetIn(handle string, hostPort, containerPort uint32) (uint32, uint32, error) {
 	res := &protocol.NetInResponse{}
-
-	err := c.RoundTrip(
+	err := c.post(
+		"/net_in",
 		&protocol.NetInRequest{
 			Handle:        proto.String(handle),
 			HostPort:      proto.Uint32(hostPort),
@@ -322,7 +273,8 @@ func (c *connection) NetIn(handle string, hostPort, containerPort uint32) (uint3
 }
 
 func (c *connection) NetOut(handle string, network string, port uint32) error {
-	err := c.RoundTrip(
+	return c.post(
+		"/net_out",
 		&protocol.NetOutRequest{
 			Handle:  proto.String(handle),
 			Network: proto.String(network),
@@ -330,18 +282,13 @@ func (c *connection) NetOut(handle string, network string, port uint32) error {
 		},
 		&protocol.NetOutResponse{},
 	)
-
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func (c *connection) LimitBandwidth(handle string, limits warden.BandwidthLimits) (warden.BandwidthLimits, error) {
 	res := &protocol.LimitBandwidthResponse{}
 
-	err := c.RoundTrip(
+	err := c.post(
+		"/limit_bandwidth",
 		&protocol.LimitBandwidthRequest{
 			Handle: proto.String(handle),
 			Rate:   proto.Uint64(limits.RateInBytesPerSecond),
@@ -360,10 +307,32 @@ func (c *connection) LimitBandwidth(handle string, limits warden.BandwidthLimits
 	}, nil
 }
 
+func (c *connection) CurrentBandwidthLimits(handle string) (warden.BandwidthLimits, error) {
+	res := &protocol.LimitBandwidthResponse{}
+
+	err := c.post(
+		"/limit_bandwidth",
+		&protocol.LimitBandwidthRequest{
+			Handle: proto.String(handle),
+		},
+		res,
+	)
+
+	if err != nil {
+		return warden.BandwidthLimits{}, err
+	}
+
+	return warden.BandwidthLimits{
+		RateInBytesPerSecond:      res.GetRate(),
+		BurstRateInBytesPerSecond: res.GetBurst(),
+	}, nil
+}
+
 func (c *connection) LimitCPU(handle string, limits warden.CPULimits) (warden.CPULimits, error) {
 	res := &protocol.LimitCpuResponse{}
 
-	err := c.RoundTrip(
+	err := c.post(
+		"/limit_cpu",
 		&protocol.LimitCpuRequest{
 			Handle:        proto.String(handle),
 			LimitInShares: proto.Uint64(limits.LimitInShares),
@@ -380,27 +349,42 @@ func (c *connection) LimitCPU(handle string, limits warden.CPULimits) (warden.CP
 	}, nil
 }
 
+func (c *connection) CurrentCPULimits(handle string) (warden.CPULimits, error) {
+	res := &protocol.LimitCpuResponse{}
+
+	err := c.post(
+		"/limit_cpu",
+		&protocol.LimitCpuRequest{
+			Handle: proto.String(handle),
+		},
+		res,
+	)
+
+	if err != nil {
+		return warden.CPULimits{}, err
+	}
+
+	return warden.CPULimits{
+		LimitInShares: res.GetLimitInShares(),
+	}, nil
+}
+
 func (c *connection) LimitDisk(handle string, limits warden.DiskLimits) (warden.DiskLimits, error) {
 	res := &protocol.LimitDiskResponse{}
 
-	err := c.RoundTrip(
+	err := c.post(
+		"/limit_disk",
 		&protocol.LimitDiskRequest{
 			Handle: proto.String(handle),
 
-			BlockLimit: proto.Uint64(limits.BlockLimit),
-			Block:      proto.Uint64(limits.Block),
-			BlockSoft:  proto.Uint64(limits.BlockSoft),
-			BlockHard:  proto.Uint64(limits.BlockHard),
+			BlockSoft: proto.Uint64(limits.BlockSoft),
+			BlockHard: proto.Uint64(limits.BlockHard),
 
-			InodeLimit: proto.Uint64(limits.InodeLimit),
-			Inode:      proto.Uint64(limits.Inode),
-			InodeSoft:  proto.Uint64(limits.InodeSoft),
-			InodeHard:  proto.Uint64(limits.InodeHard),
+			InodeSoft: proto.Uint64(limits.InodeSoft),
+			InodeHard: proto.Uint64(limits.InodeHard),
 
-			ByteLimit: proto.Uint64(limits.ByteLimit),
-			Byte:      proto.Uint64(limits.Byte),
-			ByteSoft:  proto.Uint64(limits.ByteSoft),
-			ByteHard:  proto.Uint64(limits.ByteHard),
+			ByteSoft: proto.Uint64(limits.ByteSoft),
+			ByteHard: proto.Uint64(limits.ByteHard),
 		},
 		res,
 	)
@@ -410,27 +394,49 @@ func (c *connection) LimitDisk(handle string, limits warden.DiskLimits) (warden.
 	}
 
 	return warden.DiskLimits{
-		BlockLimit: res.GetBlockLimit(),
-		Block:      res.GetBlock(),
-		BlockSoft:  res.GetBlockSoft(),
-		BlockHard:  res.GetBlockHard(),
+		BlockSoft: res.GetBlockSoft(),
+		BlockHard: res.GetBlockHard(),
 
-		InodeLimit: res.GetInodeLimit(),
-		Inode:      res.GetInode(),
-		InodeSoft:  res.GetInodeSoft(),
-		InodeHard:  res.GetInodeHard(),
+		InodeSoft: res.GetInodeSoft(),
+		InodeHard: res.GetInodeHard(),
 
-		ByteLimit: res.GetByteLimit(),
-		Byte:      res.GetByte(),
-		ByteSoft:  res.GetByteSoft(),
-		ByteHard:  res.GetByteHard(),
+		ByteSoft: res.GetByteSoft(),
+		ByteHard: res.GetByteHard(),
+	}, nil
+}
+
+func (c *connection) CurrentDiskLimits(handle string) (warden.DiskLimits, error) {
+	res := &protocol.LimitDiskResponse{}
+
+	err := c.post(
+		"/limit_disk",
+		&protocol.LimitDiskRequest{
+			Handle: proto.String(handle),
+		},
+		res,
+	)
+
+	if err != nil {
+		return warden.DiskLimits{}, err
+	}
+
+	return warden.DiskLimits{
+		BlockSoft: res.GetBlockSoft(),
+		BlockHard: res.GetBlockHard(),
+
+		InodeSoft: res.GetInodeSoft(),
+		InodeHard: res.GetInodeHard(),
+
+		ByteSoft: res.GetByteSoft(),
+		ByteHard: res.GetByteHard(),
 	}, nil
 }
 
 func (c *connection) LimitMemory(handle string, limits warden.MemoryLimits) (warden.MemoryLimits, error) {
 	res := &protocol.LimitMemoryResponse{}
 
-	err := c.RoundTrip(
+	err := c.post(
+		"/limit_memory",
 		&protocol.LimitMemoryRequest{
 			Handle:       proto.String(handle),
 			LimitInBytes: proto.Uint64(limits.LimitInBytes),
@@ -447,57 +453,53 @@ func (c *connection) LimitMemory(handle string, limits warden.MemoryLimits) (war
 	}, nil
 }
 
-func (c *connection) StreamIn(handle string, dstPath string) (io.WriteCloser, error) {
-	err := c.RoundTrip(
-		&protocol.StreamInRequest{
-			Handle:  proto.String(handle),
-			DstPath: proto.String(dstPath),
+func (c *connection) CurrentMemoryLimits(handle string) (warden.MemoryLimits, error) {
+	res := &protocol.LimitMemoryResponse{}
+
+	err := c.post(
+		"/limit_memory",
+		&protocol.LimitMemoryRequest{
+			Handle: proto.String(handle),
 		},
-		&protocol.StreamInResponse{},
+		res,
 	)
 
 	if err != nil {
-		return nil, err
+		return warden.MemoryLimits{}, err
 	}
 
-	c.writeLock.Lock()
-
-	return releasenotifier.ReleaseNotifier{
-		WriteCloser: transport.NewProtobufStreamWriter(c.conn),
-		WriteCallback: func() error {
-			return c.conn.SetWriteDeadline(time.Now().Add(c.writeTimeout))
-		},
-		CloseCallback: func() error {
-			c.conn.SetWriteDeadline(time.Time{})
-			c.writeLock.Unlock()
-			var finalResponse protocol.StreamInResponse
-			return c.ReadResponse(&finalResponse)
-		},
+	return warden.MemoryLimits{
+		LimitInBytes: res.GetLimitInBytes(),
 	}, nil
 }
 
-func (c *connection) StreamOut(handle string, srcPath string) (io.Reader, error) {
-	err := c.RoundTrip(
-		&protocol.StreamOutRequest{
-			Handle:  proto.String(handle),
-			SrcPath: proto.String(srcPath),
+func (c *connection) StreamIn(handle string, dstPath string, reader io.Reader) error {
+	return c.postWithStreamedRequest(
+		&url.URL{
+			Scheme: "http",
+			Host:   "warden",
+			Path:   "/stream_in",
+			RawQuery: url.Values{
+				"handle":      []string{handle},
+				"destination": []string{dstPath},
+			}.Encode(),
 		},
-		&protocol.StreamOutResponse{},
+		reader,
 	)
+}
 
-	if err != nil {
-		return nil, err
-	}
-
-	c.readLock.Lock()
-
-	return releasenotifier.ReleaseNotifier{
-		Reader: transport.NewProtobufStreamReader(c.read),
-		CloseCallback: func() error {
-			c.readLock.Unlock()
-			return nil
+func (c *connection) StreamOut(handle string, srcPath string) (io.ReadCloser, error) {
+	return c.postWithStreamedResponse(
+		&url.URL{
+			Scheme: "http",
+			Host:   "warden",
+			Path:   "/stream_out",
+			RawQuery: url.Values{
+				"handle": []string{handle},
+				"source": []string{srcPath},
+			}.Encode(),
 		},
-	}, nil
+	)
 }
 
 func (c *connection) List(filterProperties warden.Properties) ([]string, error) {
@@ -512,7 +514,7 @@ func (c *connection) List(filterProperties warden.Properties) ([]string, error) 
 	req := &protocol.ListRequest{Properties: props}
 	res := &protocol.ListResponse{}
 
-	err := c.RoundTrip(req, res)
+	err := c.post("/list", req, res)
 	if err != nil {
 		return nil, err
 	}
@@ -524,7 +526,7 @@ func (c *connection) Info(handle string) (warden.ContainerInfo, error) {
 	req := &protocol.InfoRequest{Handle: proto.String(handle)}
 	res := &protocol.InfoResponse{}
 
-	err := c.RoundTrip(req, res)
+	err := c.post("/info", req, res)
 	if err != nil {
 		return warden.ContainerInfo{}, err
 	}
@@ -537,6 +539,14 @@ func (c *connection) Info(handle string) (warden.ContainerInfo, error) {
 	properties := warden.Properties{}
 	for _, prop := range res.GetProperties() {
 		properties[prop.GetKey()] = prop.GetValue()
+	}
+
+	mappedPorts := []warden.PortMapping{}
+	for _, mapping := range res.GetMappedPorts() {
+		mappedPorts = append(mappedPorts, warden.PortMapping{
+			HostPort:      mapping.GetHostPort(),
+			ContainerPort: mapping.GetContainerPort(),
+		})
 	}
 
 	bandwidthStat := res.GetBandwidthStat()
@@ -605,62 +615,9 @@ func (c *connection) Info(handle string) (warden.ContainerInfo, error) {
 			TotalActiveFile:         memoryStat.GetTotalActiveFile(),
 			TotalUnevictable:        memoryStat.GetTotalUnevictable(),
 		},
+
+		MappedPorts: mappedPorts,
 	}, nil
-}
-
-func (c *connection) RoundTrip(request proto.Message, response proto.Message) error {
-	err := c.SendMessage(request)
-	if err != nil {
-		return err
-	}
-
-	return c.ReadResponse(response)
-}
-
-func (c *connection) SendMessage(req proto.Message) error {
-	c.writeLock.Lock()
-	defer c.writeLock.Unlock()
-
-	err := transport.WriteMessage(c.conn, req)
-	if err != nil {
-		c.notifyDisconnected()
-		return err
-	}
-
-	return nil
-}
-
-func (c *connection) readMessages(messagesIn io.WriteCloser) {
-	io.Copy(messagesIn, c.conn)
-	c.notifyDisconnected()
-	messagesIn.Close()
-}
-
-func (c *connection) notifyDisconnected() {
-	c.disconnectOnce.Do(func() {
-		close(c.disconnected)
-	})
-}
-
-func (c *connection) ReadResponse(response proto.Message) error {
-	c.readLock.Lock()
-	defer c.readLock.Unlock()
-	return transport.ReadMessage(c.read, response)
-}
-
-func readNBytes(payloadLen int, io *bufio.Reader) ([]byte, error) {
-	payload := make([]byte, payloadLen)
-
-	for readCount := 0; readCount < payloadLen; {
-		n, err := io.Read(payload[readCount:])
-		if err != nil {
-			return nil, err
-		}
-
-		readCount += n
-	}
-
-	return payload, nil
 }
 
 func convertEnvironmentVariables(environmentVariables []warden.EnvironmentVariable) []*protocol.EnvironmentVariable {
@@ -681,13 +638,12 @@ func convertEnvironmentVariables(environmentVariables []warden.EnvironmentVariab
 	return convertedEnvironmentVariables
 }
 
-func (c *connection) streamPayloads(stream chan<- warden.ProcessStream) {
+func (c *connection) streamPayloads(reader io.ReadCloser, stream chan<- warden.ProcessStream) {
 	for {
 		payload := &protocol.ProcessPayload{}
 
-		err := c.ReadResponse(payload)
+		err := transport.ReadMessage(reader, payload)
 		if err != nil {
-			close(stream)
 			break
 		}
 
@@ -696,9 +652,7 @@ func (c *connection) streamPayloads(stream chan<- warden.ProcessStream) {
 				ExitStatus: payload.ExitStatus,
 			}
 
-			close(stream)
-
-			return
+			break
 		} else {
 			var source warden.ProcessStreamSource
 
@@ -717,4 +671,77 @@ func (c *connection) streamPayloads(stream chan<- warden.ProcessStream) {
 			}
 		}
 	}
+
+	close(stream)
+	reader.Close()
+}
+
+func (c *connection) post(route string, req, res proto.Message) error {
+	reqBody := new(bytes.Buffer)
+
+	err := transport.WriteMessage(reqBody, req)
+	if err != nil {
+		return err
+	}
+
+	httpResp, err := c.httpClient.Post("http://warden"+route, "application/octet-stream", reqBody)
+	if err != nil {
+		return err
+	}
+
+	defer httpResp.Body.Close()
+
+	if httpResp.StatusCode < 200 || httpResp.StatusCode > 299 {
+		return errors.New(httpResp.Status)
+	}
+
+	return transport.ReadMessage(httpResp.Body, res)
+}
+
+func (c *connection) postWithStreamedResponse(u *url.URL) (io.ReadCloser, error) {
+	httpResp, err := c.noKeepaliveClient.Post(u.String(), "application/octet-stream", nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if httpResp.StatusCode != http.StatusOK {
+		httpResp.Body.Close()
+		return nil, errors.New(httpResp.Status)
+	}
+
+	return httpResp.Body, nil
+}
+
+func (c *connection) postWithStreamedRequest(u *url.URL, reader io.Reader) error {
+	resp, err := c.noKeepaliveClient.Post(u.String(), "application/octet-stream", reader)
+	if err != nil {
+		return err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return errors.New(resp.Status)
+	}
+
+	return nil
+}
+
+func (c *connection) postWithProcessPayloadResponse(route string, req proto.Message) (io.ReadCloser, error) {
+	reqBody := new(bytes.Buffer)
+
+	err := transport.WriteMessage(reqBody, req)
+	if err != nil {
+		return nil, err
+	}
+
+	httpResp, err := c.httpClient.Post("http://warden"+route, "application/octet-stream", reqBody)
+	if err != nil {
+		return nil, err
+	}
+
+	if httpResp.StatusCode != http.StatusOK {
+		httpResp.Body.Close()
+		return nil, errors.New(httpResp.Status)
+	}
+
+	return httpResp.Body, nil
 }

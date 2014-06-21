@@ -1,44 +1,53 @@
 package server
 
 import (
-	"bufio"
+	"errors"
 	"io"
-	"net"
+	"net/http"
 	"time"
-
-	"github.com/cloudfoundry-incubator/garden/transport"
 
 	"code.google.com/p/gogoprotobuf/proto"
 
 	protocol "github.com/cloudfoundry-incubator/garden/protocol"
+	"github.com/cloudfoundry-incubator/garden/transport"
 	"github.com/cloudfoundry-incubator/garden/warden"
 )
 
-func (s *WardenServer) handlePing(ping *protocol.PingRequest) (proto.Message, error) {
-	return &protocol.PingResponse{}, nil
-}
+var ErrInvalidContentType = errors.New("content-type must be application/octet-stream")
 
-func (s *WardenServer) handleEcho(echo *protocol.EchoRequest) (proto.Message, error) {
-	return &protocol.EchoResponse{Message: echo.Message}, nil
-}
-
-func (s *WardenServer) handleCapacity(echo *protocol.CapacityRequest) (proto.Message, error) {
-	capacity, err := s.backend.Capacity()
+func (s *WardenServer) handlePing(w http.ResponseWriter, r *http.Request) {
+	err := s.backend.Ping()
 	if err != nil {
-		return nil, err
+		w.WriteHeader(http.StatusServiceUnavailable)
+		return
 	}
 
-	return &protocol.CapacityResponse{
+	s.writeResponse(w, &protocol.PingResponse{})
+}
+
+func (s *WardenServer) handleCapacity(w http.ResponseWriter, r *http.Request) {
+	capacity, err := s.backend.Capacity()
+	if err != nil {
+		s.writeError(w, err)
+		return
+	}
+
+	s.writeResponse(w, &protocol.CapacityResponse{
 		MemoryInBytes: proto.Uint64(capacity.MemoryInBytes),
 		DiskInBytes:   proto.Uint64(capacity.DiskInBytes),
 		MaxContainers: proto.Uint64(capacity.MaxContainers),
-	}, nil
+	})
 }
 
-func (s *WardenServer) handleCreate(create *protocol.CreateRequest) (proto.Message, error) {
+func (s *WardenServer) handleCreate(w http.ResponseWriter, r *http.Request) {
+	var request protocol.CreateRequest
+	if !s.readRequest(&request, w, r) {
+		return
+	}
+
 	bindMounts := []warden.BindMount{}
 
-	for _, bm := range create.GetBindMounts() {
+	for _, bm := range request.GetBindMounts() {
 		bindMount := warden.BindMount{
 			SrcPath: bm.GetSrcPath(),
 			DstPath: bm.GetDstPath(),
@@ -51,58 +60,71 @@ func (s *WardenServer) handleCreate(create *protocol.CreateRequest) (proto.Messa
 
 	properties := map[string]string{}
 
-	for _, prop := range create.GetProperties() {
+	for _, prop := range request.GetProperties() {
 		properties[prop.GetKey()] = prop.GetValue()
 	}
 
 	graceTime := s.containerGraceTime
 
-	if create.GraceTime != nil {
-		graceTime = time.Duration(create.GetGraceTime()) * time.Second
+	if request.GraceTime != nil {
+		graceTime = time.Duration(request.GetGraceTime()) * time.Second
 	}
 
 	container, err := s.backend.Create(warden.ContainerSpec{
-		Handle:     create.GetHandle(),
+		Handle:     request.GetHandle(),
 		GraceTime:  graceTime,
-		RootFSPath: create.GetRootfs(),
-		Network:    create.GetNetwork(),
+		RootFSPath: request.GetRootfs(),
+		Network:    request.GetNetwork(),
 		BindMounts: bindMounts,
 		Properties: properties,
 	})
 
 	if err != nil {
-		return nil, err
+		s.writeError(w, err)
+		return
 	}
 
 	s.bomberman.Strap(container)
 
-	return &protocol.CreateResponse{
+	s.writeResponse(w, &protocol.CreateResponse{
 		Handle: proto.String(container.Handle()),
-	}, nil
+	})
 }
 
-func (s *WardenServer) handleDestroy(destroy *protocol.DestroyRequest) (proto.Message, error) {
-	handle := destroy.GetHandle()
+func (s *WardenServer) handleDestroy(w http.ResponseWriter, r *http.Request) {
+	var request protocol.DestroyRequest
+	if !s.readRequest(&request, w, r) {
+		return
+	}
+
+	handle := request.GetHandle()
 
 	err := s.backend.Destroy(handle)
 	if err != nil {
-		return nil, err
+		s.writeError(w, err)
+		return
 	}
 
 	s.bomberman.Defuse(handle)
 
-	return &protocol.DestroyResponse{}, nil
+	s.writeResponse(w, &protocol.DestroyResponse{})
 }
 
-func (s *WardenServer) handleList(list *protocol.ListRequest) (proto.Message, error) {
+func (s *WardenServer) handleList(w http.ResponseWriter, r *http.Request) {
+	var request protocol.ListRequest
+	if !s.readRequest(&request, w, r) {
+		return
+	}
+
 	properties := warden.Properties{}
-	for _, prop := range list.GetProperties() {
+	for _, prop := range request.GetProperties() {
 		properties[prop.GetKey()] = prop.GetValue()
 	}
 
 	containers, err := s.backend.Containers(properties)
 	if err != nil {
-		return nil, err
+		s.writeError(w, err)
+		return
 	}
 
 	handles := []string{}
@@ -111,142 +133,132 @@ func (s *WardenServer) handleList(list *protocol.ListRequest) (proto.Message, er
 		handles = append(handles, container.Handle())
 	}
 
-	return &protocol.ListResponse{Handles: handles}, nil
+	s.writeResponse(w, &protocol.ListResponse{Handles: handles})
 }
 
-func (s *WardenServer) handleStop(request *protocol.StopRequest) (proto.Message, error) {
+func (s *WardenServer) handleStop(w http.ResponseWriter, r *http.Request) {
+	var request protocol.StopRequest
+	if !s.readRequest(&request, w, r) {
+		return
+	}
+
 	handle := request.GetHandle()
 	kill := request.GetKill()
-	background := request.GetBackground()
 
 	container, err := s.backend.Lookup(handle)
 	if err != nil {
-		return nil, err
+		s.writeError(w, err)
+		return
 	}
 
 	s.bomberman.Pause(container.Handle())
 	defer s.bomberman.Unpause(container.Handle())
 
-	if background {
-		go container.Stop(kill)
-	} else {
-		err = container.Stop(kill)
-		if err != nil {
-			return nil, err
-		}
+	err = container.Stop(kill)
+	if err != nil {
+		s.writeError(w, err)
+		return
 	}
 
-	return &protocol.StopResponse{}, nil
+	s.writeResponse(w, &protocol.StopResponse{})
 }
 
-func (s *WardenServer) handleStreamIn(conn net.Conn, reader *bufio.Reader, request *protocol.StreamInRequest) (proto.Message, error) {
-	handle := request.GetHandle()
-	dstPath := request.GetDstPath()
+func (s *WardenServer) handleStreamIn(w http.ResponseWriter, r *http.Request) {
+	handle := r.URL.Query().Get("handle")
+	dstPath := r.URL.Query().Get("destination")
 
 	container, err := s.backend.Lookup(handle)
 	if err != nil {
-		return nil, err
+		s.writeError(w, err)
+		return
 	}
 
 	s.bomberman.Pause(container.Handle())
 	defer s.bomberman.Unpause(container.Handle())
 
-	streamWriter, err := container.StreamIn(dstPath)
+	err = container.StreamIn(dstPath, r.Body)
 	if err != nil {
-		return nil, err
+		s.writeError(w, err)
+		return
 	}
 
-	_, err = protocol.Messages(&protocol.StreamInResponse{}).WriteTo(conn)
-	if err != nil {
-		return nil, err
-	}
-
-	streamReader := transport.NewProtobufStreamReader(reader)
-
-	_, err = io.Copy(streamWriter, streamReader)
-	if err != nil {
-		return nil, err
-	}
-
-	err = streamWriter.Close()
-	if err != nil {
-		return nil, err
-	}
-
-	return &protocol.StreamInResponse{}, nil
+	s.writeResponse(w, &protocol.StreamInResponse{})
 }
 
-func (s *WardenServer) handleStreamOut(conn net.Conn, request *protocol.StreamOutRequest) (proto.Message, error) {
-	handle := request.GetHandle()
-	srcPath := request.GetSrcPath()
+func (s *WardenServer) handleStreamOut(w http.ResponseWriter, r *http.Request) {
+	handle := r.URL.Query().Get("handle")
+	srcPath := r.URL.Query().Get("source")
 
 	container, err := s.backend.Lookup(handle)
 	if err != nil {
-		return nil, err
+		s.writeError(w, err)
+		return
 	}
 
 	s.bomberman.Pause(container.Handle())
 	defer s.bomberman.Unpause(container.Handle())
-
-	_, err = protocol.Messages(&protocol.StreamOutResponse{}).WriteTo(conn)
-	if err != nil {
-		return nil, err
-	}
-
-	writer := transport.NewProtobufStreamWriter(conn)
 
 	reader, err := container.StreamOut(srcPath)
 	if err != nil {
-		return nil, err
+		s.writeError(w, err)
+		return
 	}
 
-	_, err = io.Copy(writer, reader)
+	_, err = io.Copy(w, reader)
 	if err != nil {
-		return nil, err
+		s.writeError(w, err)
+		return
 	}
-
-	return nil, writer.Close()
 }
 
-func (s *WardenServer) handleLimitBandwidth(request *protocol.LimitBandwidthRequest) (proto.Message, error) {
-	handle := request.GetHandle()
-	rate := request.GetRate()
-	burst := request.GetBurst()
+func (s *WardenServer) handleLimitBandwidth(w http.ResponseWriter, r *http.Request) {
+	var request protocol.LimitBandwidthRequest
+	if !s.readRequest(&request, w, r) {
+		return
+	}
 
-	container, err := s.backend.Lookup(handle)
+	container, err := s.backend.Lookup(request.GetHandle())
 	if err != nil {
-		return nil, err
+		s.writeError(w, err)
+		return
 	}
 
 	s.bomberman.Pause(container.Handle())
 	defer s.bomberman.Unpause(container.Handle())
 
 	err = container.LimitBandwidth(warden.BandwidthLimits{
-		RateInBytesPerSecond:      rate,
-		BurstRateInBytesPerSecond: burst,
+		RateInBytesPerSecond:      request.GetRate(),
+		BurstRateInBytesPerSecond: request.GetBurst(),
 	})
 	if err != nil {
-		return nil, err
+		s.writeError(w, err)
+		return
 	}
 
 	limits, err := container.CurrentBandwidthLimits()
 	if err != nil {
-		return nil, err
+		s.writeError(w, err)
+		return
 	}
 
-	return &protocol.LimitBandwidthResponse{
+	s.writeResponse(w, &protocol.LimitBandwidthResponse{
 		Rate:  proto.Uint64(limits.RateInBytesPerSecond),
 		Burst: proto.Uint64(limits.BurstRateInBytesPerSecond),
-	}, nil
+	})
 }
 
-func (s *WardenServer) handleLimitMemory(request *protocol.LimitMemoryRequest) (proto.Message, error) {
+func (s *WardenServer) handleLimitMemory(w http.ResponseWriter, r *http.Request) {
+	var request protocol.LimitMemoryRequest
+	if !s.readRequest(&request, w, r) {
+		return
+	}
 	handle := request.GetHandle()
 	limitInBytes := request.GetLimitInBytes()
 
 	container, err := s.backend.Lookup(handle)
 	if err != nil {
-		return nil, err
+		s.writeError(w, err)
+		return
 	}
 
 	s.bomberman.Pause(container.Handle())
@@ -258,21 +270,28 @@ func (s *WardenServer) handleLimitMemory(request *protocol.LimitMemoryRequest) (
 		})
 
 		if err != nil {
-			return nil, err
+			s.writeError(w, err)
+			return
 		}
 	}
 
 	limits, err := container.CurrentMemoryLimits()
 	if err != nil {
-		return nil, err
+		s.writeError(w, err)
+		return
 	}
 
-	return &protocol.LimitMemoryResponse{
+	s.writeResponse(w, &protocol.LimitMemoryResponse{
 		LimitInBytes: proto.Uint64(limits.LimitInBytes),
-	}, nil
+	})
 }
 
-func (s *WardenServer) handleLimitDisk(request *protocol.LimitDiskRequest) (proto.Message, error) {
+func (s *WardenServer) handleLimitDisk(w http.ResponseWriter, r *http.Request) {
+	var request protocol.LimitDiskRequest
+	if !s.readRequest(&request, w, r) {
+		return
+	}
+
 	handle := request.GetHandle()
 	blockSoft := request.GetBlockSoft()
 	blockHard := request.GetBlockHard()
@@ -289,39 +308,10 @@ func (s *WardenServer) handleLimitDisk(request *protocol.LimitDiskRequest) (prot
 		settingLimit = true
 	}
 
-	if request.Block != nil {
-		blockHard = request.GetBlock()
-		settingLimit = true
-	}
-
-	if request.BlockLimit != nil {
-		blockHard = request.GetBlockLimit()
-		settingLimit = true
-	}
-
-	if request.Inode != nil {
-		inodeHard = request.GetInode()
-		settingLimit = true
-	}
-
-	if request.InodeLimit != nil {
-		inodeHard = request.GetInodeLimit()
-		settingLimit = true
-	}
-
-	if request.Byte != nil {
-		byteHard = request.GetByte()
-		settingLimit = true
-	}
-
-	if request.ByteLimit != nil {
-		byteHard = request.GetByteLimit()
-		settingLimit = true
-	}
-
 	container, err := s.backend.Lookup(handle)
 	if err != nil {
-		return nil, err
+		s.writeError(w, err)
+		return
 	}
 
 	s.bomberman.Pause(container.Handle())
@@ -337,32 +327,40 @@ func (s *WardenServer) handleLimitDisk(request *protocol.LimitDiskRequest) (prot
 			ByteHard:  byteHard,
 		})
 		if err != nil {
-			return nil, err
+			s.writeError(w, err)
+			return
 		}
 	}
 
 	limits, err := container.CurrentDiskLimits()
 	if err != nil {
-		return nil, err
+		s.writeError(w, err)
+		return
 	}
 
-	return &protocol.LimitDiskResponse{
+	s.writeResponse(w, &protocol.LimitDiskResponse{
 		BlockSoft: proto.Uint64(limits.BlockSoft),
 		BlockHard: proto.Uint64(limits.BlockHard),
 		InodeSoft: proto.Uint64(limits.InodeSoft),
 		InodeHard: proto.Uint64(limits.InodeHard),
 		ByteSoft:  proto.Uint64(limits.ByteSoft),
 		ByteHard:  proto.Uint64(limits.ByteHard),
-	}, nil
+	})
 }
 
-func (s *WardenServer) handleLimitCpu(request *protocol.LimitCpuRequest) (proto.Message, error) {
+func (s *WardenServer) handleLimitCpu(w http.ResponseWriter, r *http.Request) {
+	var request protocol.LimitCpuRequest
+	if !s.readRequest(&request, w, r) {
+		return
+	}
+
 	handle := request.GetHandle()
 	limitInShares := request.GetLimitInShares()
 
 	container, err := s.backend.Lookup(handle)
 	if err != nil {
-		return nil, err
+		s.writeError(w, err)
+		return
 	}
 
 	s.bomberman.Pause(container.Handle())
@@ -373,28 +371,36 @@ func (s *WardenServer) handleLimitCpu(request *protocol.LimitCpuRequest) (proto.
 			LimitInShares: limitInShares,
 		})
 		if err != nil {
-			return nil, err
+			s.writeError(w, err)
+			return
 		}
 	}
 
 	limits, err := container.CurrentCPULimits()
 	if err != nil {
-		return nil, err
+		s.writeError(w, err)
+		return
 	}
 
-	return &protocol.LimitCpuResponse{
+	s.writeResponse(w, &protocol.LimitCpuResponse{
 		LimitInShares: proto.Uint64(limits.LimitInShares),
-	}, nil
+	})
 }
 
-func (s *WardenServer) handleNetIn(request *protocol.NetInRequest) (proto.Message, error) {
+func (s *WardenServer) handleNetIn(w http.ResponseWriter, r *http.Request) {
+	var request protocol.NetInRequest
+	if !s.readRequest(&request, w, r) {
+		return
+	}
+
 	handle := request.GetHandle()
 	hostPort := request.GetHostPort()
 	containerPort := request.GetContainerPort()
 
 	container, err := s.backend.Lookup(handle)
 	if err != nil {
-		return nil, err
+		s.writeError(w, err)
+		return
 	}
 
 	s.bomberman.Pause(container.Handle())
@@ -402,23 +408,30 @@ func (s *WardenServer) handleNetIn(request *protocol.NetInRequest) (proto.Messag
 
 	hostPort, containerPort, err = container.NetIn(hostPort, containerPort)
 	if err != nil {
-		return nil, err
+		s.writeError(w, err)
+		return
 	}
 
-	return &protocol.NetInResponse{
+	s.writeResponse(w, &protocol.NetInResponse{
 		HostPort:      proto.Uint32(hostPort),
 		ContainerPort: proto.Uint32(containerPort),
-	}, nil
+	})
 }
 
-func (s *WardenServer) handleNetOut(request *protocol.NetOutRequest) (proto.Message, error) {
+func (s *WardenServer) handleNetOut(w http.ResponseWriter, r *http.Request) {
+	var request protocol.NetOutRequest
+	if !s.readRequest(&request, w, r) {
+		return
+	}
+
 	handle := request.GetHandle()
 	network := request.GetNetwork()
 	port := request.GetPort()
 
 	container, err := s.backend.Lookup(handle)
 	if err != nil {
-		return nil, err
+		s.writeError(w, err)
+		return
 	}
 
 	s.bomberman.Pause(container.Handle())
@@ -426,57 +439,19 @@ func (s *WardenServer) handleNetOut(request *protocol.NetOutRequest) (proto.Mess
 
 	err = container.NetOut(network, port)
 	if err != nil {
-		return nil, err
+		s.writeError(w, err)
+		return
 	}
 
-	return &protocol.NetOutResponse{}, nil
+	s.writeResponse(w, &protocol.NetOutResponse{})
 }
 
-func (s *WardenServer) streamProcessToConnection(processID uint32, stream <-chan warden.ProcessStream, conn net.Conn) proto.Message {
-	for payload := range stream {
-		if payload.ExitStatus != nil {
-			return &protocol.ProcessPayload{
-				ProcessId:  proto.Uint32(processID),
-				ExitStatus: proto.Uint32(*payload.ExitStatus),
-			}
-		}
-
-		var payloadSource protocol.ProcessPayload_Source
-
-		switch payload.Source {
-		case warden.ProcessStreamSourceStdout:
-			payloadSource = protocol.ProcessPayload_stdout
-		case warden.ProcessStreamSourceStderr:
-			payloadSource = protocol.ProcessPayload_stderr
-		case warden.ProcessStreamSourceStdin:
-			payloadSource = protocol.ProcessPayload_stdin
-		}
-
-		protocol.Messages(&protocol.ProcessPayload{
-			ProcessId: proto.Uint32(processID),
-			Source:    &payloadSource,
-			Data:      proto.String(string(payload.Data)),
-		}).WriteTo(conn)
+func (s *WardenServer) handleRun(w http.ResponseWriter, r *http.Request) {
+	var request protocol.RunRequest
+	if !s.readRequest(&request, w, r) {
+		return
 	}
 
-	return nil
-}
-
-func convertEnvironmentVariables(environmentVariables []*protocol.EnvironmentVariable) []warden.EnvironmentVariable {
-	convertedEnvironmentVariables := []warden.EnvironmentVariable{}
-
-	for _, env := range environmentVariables {
-		convertedEnvironmentVariable := warden.EnvironmentVariable{
-			Key:   env.GetKey(),
-			Value: env.GetValue(),
-		}
-		convertedEnvironmentVariables = append(convertedEnvironmentVariables, convertedEnvironmentVariable)
-	}
-
-	return convertedEnvironmentVariables
-}
-
-func (s *WardenServer) handleRun(conn net.Conn, request *protocol.RunRequest) (proto.Message, error) {
 	handle := request.GetHandle()
 	script := request.GetScript()
 	privileged := request.GetPrivileged()
@@ -484,7 +459,8 @@ func (s *WardenServer) handleRun(conn net.Conn, request *protocol.RunRequest) (p
 
 	container, err := s.backend.Lookup(handle)
 	if err != nil {
-		return nil, err
+		s.writeError(w, err)
+		return
 	}
 
 	s.bomberman.Pause(container.Handle())
@@ -502,23 +478,34 @@ func (s *WardenServer) handleRun(conn net.Conn, request *protocol.RunRequest) (p
 
 	processID, stream, err := container.Run(ProcessSpec)
 	if err != nil {
-		return nil, err
+		s.writeError(w, err)
+		return
 	}
 
-	protocol.Messages(&protocol.ProcessPayload{
+	s.writeResponse(w, &protocol.ProcessPayload{
 		ProcessId: proto.Uint32(processID),
-	}).WriteTo(conn)
+	})
 
-	return s.streamProcessToConnection(processID, stream, conn), nil
+	// do not block shutdown on run/attach
+	s.handling.Done()
+	defer s.handling.Add(1)
+
+	s.streamProcessToConnection(processID, stream, w)
 }
 
-func (s *WardenServer) handleAttach(conn net.Conn, request *protocol.AttachRequest) (proto.Message, error) {
+func (s *WardenServer) handleAttach(w http.ResponseWriter, r *http.Request) {
+	var request protocol.AttachRequest
+	if !s.readRequest(&request, w, r) {
+		return
+	}
+
 	handle := request.GetHandle()
 	processID := request.GetProcessId()
 
 	container, err := s.backend.Lookup(handle)
 	if err != nil {
-		return nil, err
+		s.writeError(w, err)
+		return
 	}
 
 	s.bomberman.Pause(container.Handle())
@@ -526,18 +513,29 @@ func (s *WardenServer) handleAttach(conn net.Conn, request *protocol.AttachReque
 
 	stream, err := container.Attach(processID)
 	if err != nil {
-		return nil, err
+		s.writeError(w, err)
+		return
 	}
 
-	return s.streamProcessToConnection(processID, stream, conn), nil
+	// do not block shutdown on run/attach
+	s.handling.Done()
+	defer s.handling.Add(1)
+
+	s.streamProcessToConnection(processID, stream, w)
 }
 
-func (s *WardenServer) handleInfo(request *protocol.InfoRequest) (proto.Message, error) {
+func (s *WardenServer) handleInfo(w http.ResponseWriter, r *http.Request) {
+	var request protocol.InfoRequest
+	if !s.readRequest(&request, w, r) {
+		return
+	}
+
 	handle := request.GetHandle()
 
 	container, err := s.backend.Lookup(handle)
 	if err != nil {
-		return nil, err
+		s.writeError(w, err)
+		return
 	}
 
 	s.bomberman.Pause(container.Handle())
@@ -545,7 +543,8 @@ func (s *WardenServer) handleInfo(request *protocol.InfoRequest) (proto.Message,
 
 	info, err := container.Info()
 	if err != nil {
-		return nil, err
+		s.writeError(w, err)
+		return
 	}
 
 	properties := []*protocol.Property{}
@@ -569,7 +568,7 @@ func (s *WardenServer) handleInfo(request *protocol.InfoRequest) (proto.Message,
 		})
 	}
 
-	return &protocol.InfoResponse{
+	s.writeResponse(w, &protocol.InfoResponse{
 		State:         proto.String(info.State),
 		Events:        info.Events,
 		HostIp:        proto.String(info.HostIP),
@@ -629,7 +628,7 @@ func (s *WardenServer) handleInfo(request *protocol.InfoRequest) (proto.Message,
 		},
 
 		MappedPorts: mappedPorts,
-	}, nil
+	})
 }
 
 func resourceLimits(limits *protocol.ResourceLimits) warden.ResourceLimits {
@@ -649,5 +648,76 @@ func resourceLimits(limits *protocol.ResourceLimits) warden.ResourceLimits {
 		Rtprio:     limits.Rtprio,
 		Sigpending: limits.Sigpending,
 		Stack:      limits.Stack,
+	}
+}
+
+func (s *WardenServer) writeError(w http.ResponseWriter, err error) {
+	w.Header().Set("Content-Type", "text/plain")
+	w.WriteHeader(http.StatusInternalServerError)
+	w.Write([]byte(err.Error()))
+}
+
+func (s *WardenServer) writeResponse(w http.ResponseWriter, msg proto.Message) {
+	w.Header().Set("Content-Type", "application/octet-stream")
+	transport.WriteMessage(w, msg)
+}
+
+func (s *WardenServer) readRequest(msg proto.Message, w http.ResponseWriter, r *http.Request) bool {
+	if r.Header.Get("Content-Type") != "application/octet-stream" {
+		s.writeError(w, ErrInvalidContentType)
+		return false
+	}
+
+	err := transport.ReadMessage(r.Body, msg)
+	if err != nil {
+		s.writeError(w, err)
+		return false
+	}
+
+	return true
+}
+
+func convertEnvironmentVariables(environmentVariables []*protocol.EnvironmentVariable) []warden.EnvironmentVariable {
+	convertedEnvironmentVariables := []warden.EnvironmentVariable{}
+
+	for _, env := range environmentVariables {
+		convertedEnvironmentVariable := warden.EnvironmentVariable{
+			Key:   env.GetKey(),
+			Value: env.GetValue(),
+		}
+		convertedEnvironmentVariables = append(convertedEnvironmentVariables, convertedEnvironmentVariable)
+	}
+
+	return convertedEnvironmentVariables
+}
+
+func (s *WardenServer) streamProcessToConnection(processID uint32, stream <-chan warden.ProcessStream, w http.ResponseWriter) {
+	for payload := range stream {
+		if payload.ExitStatus != nil {
+			transport.WriteMessage(w, &protocol.ProcessPayload{
+				ProcessId:  proto.Uint32(processID),
+				ExitStatus: proto.Uint32(*payload.ExitStatus),
+			})
+		}
+
+		var payloadSource protocol.ProcessPayload_Source
+
+		switch payload.Source {
+		case warden.ProcessStreamSourceStdout:
+			payloadSource = protocol.ProcessPayload_stdout
+		case warden.ProcessStreamSourceStderr:
+			payloadSource = protocol.ProcessPayload_stderr
+		case warden.ProcessStreamSourceStdin:
+			payloadSource = protocol.ProcessPayload_stdin
+		}
+
+		err := transport.WriteMessage(w, &protocol.ProcessPayload{
+			ProcessId: proto.Uint32(processID),
+			Source:    &payloadSource,
+			Data:      proto.String(string(payload.Data)),
+		})
+		if err != nil {
+			break
+		}
 	}
 }

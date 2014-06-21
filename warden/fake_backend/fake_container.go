@@ -3,11 +3,11 @@ package fake_backend
 import (
 	"bytes"
 	"io"
+	"io/ioutil"
 	"sync"
 	"time"
 
 	"github.com/nu7hatch/gouuid"
-	"github.com/onsi/gomega/gbytes"
 
 	"github.com/cloudfoundry-incubator/garden/warden"
 )
@@ -92,7 +92,7 @@ type StopSpec struct {
 }
 
 type StreamInSpec struct {
-	InStream *gbytes.Buffer
+	InStream []byte
 	DestPath string
 }
 
@@ -181,20 +181,23 @@ func (c *FakeContainer) Info() (warden.ContainerInfo, error) {
 	return c.ReportedInfo, nil
 }
 
-func (c *FakeContainer) StreamIn(dst string) (io.WriteCloser, error) {
-	buffer := gbytes.NewBuffer()
+func (c *FakeContainer) StreamIn(dst string, reader io.Reader) error {
+	b, err := ioutil.ReadAll(reader)
+	if err != nil {
+		return err
+	}
 
 	c.StreamedIn = append(c.StreamedIn, StreamInSpec{
-		InStream: buffer,
+		InStream: b,
 		DestPath: dst,
 	})
 
-	return buffer, c.StreamInError
+	return c.StreamInError
 }
 
-func (c *FakeContainer) StreamOut(srcPath string) (io.Reader, error) {
+func (c *FakeContainer) StreamOut(srcPath string) (io.ReadCloser, error) {
 	c.StreamedOut = append(c.StreamedOut, srcPath)
-	return c.StreamOutBuffer, c.StreamOutError
+	return ioutil.NopCloser(c.StreamOutBuffer), c.StreamOutError
 }
 
 func (c *FakeContainer) LimitBandwidth(limits warden.BandwidthLimits) error {

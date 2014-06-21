@@ -1,9 +1,9 @@
 package transport
 
 import (
-	"bufio"
 	"errors"
 	"fmt"
+	"io"
 	"strconv"
 
 	"code.google.com/p/gogoprotobuf/proto"
@@ -34,8 +34,8 @@ func (e *TypeMismatchError) Error() string {
 	)
 }
 
-func ReadMessage(read *bufio.Reader, response proto.Message) error {
-	payload, err := readPayload(read)
+func ReadMessage(reader io.Reader, response proto.Message) error {
+	payload, err := readPayload(reader)
 	if err != nil {
 		return err
 	}
@@ -72,8 +72,8 @@ func ReadMessage(read *bufio.Reader, response proto.Message) error {
 	return proto.Unmarshal(message.GetPayload(), response)
 }
 
-func ReadRequest(read *bufio.Reader) (proto.Message, error) {
-	payload, err := readPayload(read)
+func ReadRequest(reader io.Reader) (proto.Message, error) {
+	payload, err := readPayload(reader)
 	if err != nil {
 		return nil, err
 	}
@@ -94,36 +94,47 @@ func ReadRequest(read *bufio.Reader) (proto.Message, error) {
 	return request, nil
 }
 
-func readPayload(read *bufio.Reader) ([]byte, error) {
-	msgHeader, err := read.ReadBytes('\n')
+func readPayload(reader io.Reader) ([]byte, error) {
+	msgLen, err := readHeader(reader)
 	if err != nil {
 		return nil, err
 	}
 
-	msgLen, err := strconv.ParseUint(string(msgHeader[0:len(msgHeader)-2]), 10, 0)
-	if err != nil {
-		return nil, err
-	}
-
-	payload, err := readNBytes(int(msgLen), read)
-	if err != nil {
-		return nil, err
-	}
-
-	_, err = readNBytes(2, read) // CRLN
-	if err != nil {
-		return nil, err
-	}
-
-	return payload, err
+	return readNBytes(int(msgLen), reader)
 }
 
-func readNBytes(payloadLen int, io *bufio.Reader) ([]byte, error) {
+func readHeader(reader io.Reader) (int, error) {
+	chr := make([]byte, 1)
+
+	length := 0
+	for {
+		_, err := reader.Read(chr)
+		if err != nil {
+			return 0, err
+		}
+
+		if chr[0] == '\n' {
+			break
+		}
+
+		num, err := strconv.Atoi(string(chr))
+		if err != nil {
+			return 0, err
+		}
+
+		length *= 10
+		length += num
+	}
+
+	return length, nil
+}
+
+func readNBytes(payloadLen int, reader io.Reader) ([]byte, error) {
 	payload := make([]byte, payloadLen)
 
 	for readCount := 0; readCount < payloadLen; {
-		n, err := io.Read(payload[readCount:])
-		if err != nil {
+		n, err := reader.Read(payload[readCount:])
+		if n == 0 && err != nil {
 			return nil, err
 		}
 

@@ -26,7 +26,7 @@ func Messages(msgs ...proto.Message) *bytes.Buffer {
 			panic("failed to marshal message")
 		}
 
-		buf.Write([]byte(fmt.Sprintf("%d\r\n%s\r\n", len(messagePayload), messagePayload)))
+		buf.Write([]byte(fmt.Sprintf("%d\n%s", len(messagePayload), messagePayload)))
 	}
 
 	return buf
@@ -55,8 +55,6 @@ func TypeForMessage(msg proto.Message) Message_Type {
 		return Message_StreamIn
 	case *StreamOutRequest, *StreamOutResponse:
 		return Message_StreamOut
-	case *StreamChunk:
-		return Message_StreamChunk
 
 	case *LimitMemoryRequest, *LimitMemoryResponse:
 		return Message_LimitMemory
@@ -78,8 +76,6 @@ func TypeForMessage(msg proto.Message) Message_Type {
 		return Message_Ping
 	case *ListRequest, *ListResponse:
 		return Message_List
-	case *EchoRequest, *EchoResponse:
-		return Message_Echo
 	case *CapacityRequest, *CapacityResponse:
 		return Message_Capacity
 	}
@@ -107,8 +103,6 @@ func RequestMessageForType(t Message_Type) proto.Message {
 		return &StreamInRequest{}
 	case Message_StreamOut:
 		return &StreamOutRequest{}
-	case Message_StreamChunk:
-		return &StreamChunk{}
 
 	case Message_LimitMemory:
 		return &LimitMemoryRequest{}
@@ -128,8 +122,6 @@ func RequestMessageForType(t Message_Type) proto.Message {
 		return &PingRequest{}
 	case Message_List:
 		return &ListRequest{}
-	case Message_Echo:
-		return &EchoRequest{}
 	case Message_Capacity:
 		return &CapacityRequest{}
 	}
@@ -156,8 +148,6 @@ func ResponseMessageForType(t Message_Type) proto.Message {
 		return &StreamInResponse{}
 	case Message_StreamOut:
 		return &StreamOutResponse{}
-	case Message_StreamChunk:
-		return &StreamChunk{}
 
 	case Message_LimitMemory:
 		return &LimitMemoryResponse{}
@@ -175,8 +165,6 @@ func ResponseMessageForType(t Message_Type) proto.Message {
 		return &PingResponse{}
 	case Message_List:
 		return &ListResponse{}
-	case Message_Echo:
-		return &EchoResponse{}
 	case Message_Capacity:
 		return &CapacityResponse{}
 	}
