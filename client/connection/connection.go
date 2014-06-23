@@ -30,7 +30,7 @@ type Connection interface {
 	List(properties warden.Properties) ([]string, error)
 	Destroy(handle string) error
 
-	Stop(handle string, background, kill bool) error
+	Stop(handle string, kill bool) error
 
 	Info(handle string) (warden.ContainerInfo, error)
 
@@ -176,13 +176,12 @@ func (c *connection) Create(spec warden.ContainerSpec) (string, error) {
 	return res.GetHandle(), nil
 }
 
-func (c *connection) Stop(handle string, background, kill bool) error {
+func (c *connection) Stop(handle string, kill bool) error {
 	return c.do(
 		routes.Stop,
 		&protocol.StopRequest{
-			Handle:     proto.String(handle),
-			Background: proto.Bool(background),
-			Kill:       proto.Bool(kill),
+			Handle: proto.String(handle),
+			Kill:   proto.Bool(kill),
 		},
 		&protocol.StopResponse{},
 		router.Params{

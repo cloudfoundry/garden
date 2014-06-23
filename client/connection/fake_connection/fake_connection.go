@@ -32,7 +32,7 @@ type FakeConnection struct {
 	WhenDestroying func(handle string) error
 
 	stopped      map[string][]StopSpec
-	WhenStopping func(handle string, background, kill bool) error
+	WhenStopping func(handle string, kill bool) error
 
 	WhenGettingInfo func(handle string) (warden.ContainerInfo, error)
 
@@ -73,8 +73,7 @@ type FakeConnection struct {
 }
 
 type StopSpec struct {
-	Background bool
-	Kill       bool
+	Kill bool
 }
 
 type StreamInSpec struct {
@@ -215,16 +214,15 @@ func (connection *FakeConnection) Destroyed() []string {
 	return connection.destroyed
 }
 
-func (connection *FakeConnection) Stop(handle string, background, kill bool) error {
+func (connection *FakeConnection) Stop(handle string, kill bool) error {
 	connection.lock.Lock()
 	connection.stopped[handle] = append(connection.stopped[handle], StopSpec{
-		Background: background,
-		Kill:       kill,
+		Kill: kill,
 	})
 	connection.lock.Unlock()
 
 	if connection.WhenStopping != nil {
-		return connection.WhenStopping(handle, background, kill)
+		return connection.WhenStopping(handle, kill)
 	}
 
 	return nil

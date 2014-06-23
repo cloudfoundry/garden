@@ -3,11 +3,11 @@ package client_test
 import (
 	"bytes"
 	"errors"
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
 	"io"
 	"io/ioutil"
 	"strings"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 
 	. "github.com/cloudfoundry-incubator/garden/client"
 	"github.com/cloudfoundry-incubator/garden/client/connection/fake_connection"
@@ -49,8 +49,7 @@ var _ = Describe("Container", func() {
 
 			Ω(fakeConnection.Stopped("some-handle")).Should(ContainElement(
 				fake_connection.StopSpec{
-					Background: false,
-					Kill:       true,
+					Kill: true,
 				},
 			))
 		})
@@ -59,7 +58,7 @@ var _ = Describe("Container", func() {
 			disaster := errors.New("oh no!")
 
 			BeforeEach(func() {
-				fakeConnection.WhenStopping = func(handle string, background, kill bool) error {
+				fakeConnection.WhenStopping = func(handle string, kill bool) error {
 					return disaster
 				}
 			})
