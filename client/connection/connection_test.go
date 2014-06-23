@@ -2,6 +2,7 @@ package connection_test
 
 import (
 	"bytes"
+	"encoding/json"
 	"io/ioutil"
 	"net/http"
 	"time"
@@ -965,11 +966,15 @@ func verifyProtoBody(expectedBodyMessages ...proto.Message) http.HandlerFunc {
 	return func(resp http.ResponseWriter, req *http.Request) {
 		defer GinkgoRecover()
 
+		decoder := json.NewDecoder(req.Body)
+
 		for _, msg := range expectedBodyMessages {
-			read, err := transport.ReadRequest(req.Body)
+			received := protocol.RequestMessageForType(protocol.TypeForMessage(msg))
+
+			err := decoder.Decode(received)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			Ω(read).Should(Equal(msg))
+			Ω(received).Should(Equal(msg))
 		}
 	}
 }

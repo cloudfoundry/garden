@@ -2,6 +2,7 @@ package connection
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -240,21 +241,23 @@ func (c *connection) Run(handle string, spec warden.ProcessSpec) (uint32, <-chan
 			"handle": handle,
 		},
 		nil,
-		"application/octet-stream",
+		"application/json",
 	)
 	if err != nil {
 		return 0, nil, err
 	}
 
+	decoder := json.NewDecoder(respBody)
+
 	firstResponse := &protocol.ProcessPayload{}
-	err = transport.ReadMessage(respBody, firstResponse)
+	err = decoder.Decode(firstResponse)
 	if err != nil {
 		return 0, nil, err
 	}
 
 	responses := make(chan warden.ProcessStream)
 
-	go c.streamPayloads(respBody, responses)
+	go c.streamPayloads(respBody, decoder, responses)
 
 	return firstResponse.GetProcessId(), responses, nil
 }
@@ -285,9 +288,11 @@ func (c *connection) Attach(handle string, processID uint32) (<-chan warden.Proc
 		return nil, err
 	}
 
+	decoder := json.NewDecoder(respBody)
+
 	responses := make(chan warden.ProcessStream)
 
-	go c.streamPayloads(respBody, responses)
+	go c.streamPayloads(respBody, decoder, responses)
 
 	return responses, nil
 }
@@ -715,14 +720,14 @@ func convertEnvironmentVariables(environmentVariables []warden.EnvironmentVariab
 	return convertedEnvironmentVariables
 }
 
-func (c *connection) streamPayloads(reader io.ReadCloser, stream chan<- warden.ProcessStream) {
-	defer reader.Close()
+func (c *connection) streamPayloads(closer io.Closer, decoder *json.Decoder, stream chan<- warden.ProcessStream) {
+	defer closer.Close()
 	defer close(stream)
 
 	for {
 		payload := &protocol.ProcessPayload{}
 
-		err := transport.ReadMessage(reader, payload)
+		err := decoder.Decode(payload)
 		if err != nil {
 			break
 		}
@@ -774,7 +779,7 @@ func (c *connection) do(
 
 	contentType := ""
 	if req != nil {
-		contentType = "application/octet-stream"
+		contentType = "application/json"
 	}
 
 	response, err := c.doStream(
@@ -790,7 +795,7 @@ func (c *connection) do(
 
 	defer response.Close()
 
-	return transport.ReadMessage(response, res)
+	return json.NewDecoder(response).Decode(res)
 }
 
 func (c *connection) doStream(

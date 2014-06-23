@@ -2,7 +2,7 @@ package warden
 
 import (
 	"bytes"
-	"fmt"
+	"encoding/json"
 
 	"code.google.com/p/gogoprotobuf/proto"
 )
@@ -10,23 +10,21 @@ import (
 func Messages(msgs ...proto.Message) *bytes.Buffer {
 	buf := bytes.NewBuffer([]byte{})
 
+	encoder := json.NewEncoder(buf)
+
 	for _, msg := range msgs {
-		payload, err := proto.Marshal(msg)
+		payload, err := json.Marshal(msg)
 		if err != nil {
 			panic(err.Error())
 		}
 
-		message := &Message{
+		err = encoder.Encode(&Message{
 			Type:    TypeForMessage(msg).Enum(),
 			Payload: payload,
-		}
-
-		messagePayload, err := proto.Marshal(message)
+		})
 		if err != nil {
-			panic("failed to marshal message")
+			panic("failed to encode message: " + err.Error())
 		}
-
-		buf.Write([]byte(fmt.Sprintf("%d\n%s", len(messagePayload), messagePayload)))
 	}
 
 	return buf

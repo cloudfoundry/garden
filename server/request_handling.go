@@ -1,6 +1,7 @@
 package server
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -14,7 +15,7 @@ import (
 	"github.com/cloudfoundry-incubator/garden/warden"
 )
 
-var ErrInvalidContentType = errors.New("content-type must be application/octet-stream")
+var ErrInvalidContentType = errors.New("content-type must be application/json")
 
 func (s *WardenServer) handlePing(w http.ResponseWriter, r *http.Request) {
 	err := s.backend.Ping()
@@ -764,17 +765,17 @@ func (s *WardenServer) writeError(w http.ResponseWriter, err error) {
 }
 
 func (s *WardenServer) writeResponse(w http.ResponseWriter, msg proto.Message) {
-	w.Header().Set("Content-Type", "application/octet-stream")
+	w.Header().Set("Content-Type", "application/json")
 	transport.WriteMessage(w, msg)
 }
 
 func (s *WardenServer) readRequest(msg proto.Message, w http.ResponseWriter, r *http.Request) bool {
-	if r.Header.Get("Content-Type") != "application/octet-stream" {
+	if r.Header.Get("Content-Type") != "application/json" {
 		s.writeError(w, ErrInvalidContentType)
 		return false
 	}
 
-	err := transport.ReadMessage(r.Body, msg)
+	err := json.NewDecoder(r.Body).Decode(msg)
 	if err != nil {
 		s.writeError(w, err)
 		return false
