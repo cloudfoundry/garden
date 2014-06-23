@@ -23,9 +23,9 @@ var _ = Describe("Reading response messages over the wire", func() {
 				&pingResponse,
 			)
 
-			Expect(err).ToNot(HaveOccurred())
+			Ω(err).ShouldNot(HaveOccurred())
 
-			Expect(pingResponse).To(Equal(protocol.PingResponse{}))
+			Ω(pingResponse).Should(Equal(protocol.PingResponse{}))
 		})
 	})
 
@@ -40,7 +40,7 @@ var _ = Describe("Reading response messages over the wire", func() {
 			)
 
 			err := transport.ReadMessage(bogusPayload, &dummyResponse)
-			Expect(err).To(HaveOccurred())
+			Ω(err).Should(HaveOccurred())
 		})
 	})
 
@@ -60,7 +60,7 @@ var _ = Describe("Reading response messages over the wire", func() {
 				&dummyResponse,
 			)
 
-			Expect(err).To(Equal(
+			Ω(err).Should(Equal(
 				&transport.WardenError{
 					Message: "some message",
 					Data:    "some data",
@@ -70,6 +70,7 @@ var _ = Describe("Reading response messages over the wire", func() {
 					},
 				},
 			))
+
 		})
 	})
 
@@ -84,12 +85,13 @@ var _ = Describe("Reading response messages over the wire", func() {
 				&dummyResponse,
 			)
 
-			Expect(err).To(Equal(
+			Ω(err).Should(Equal(
 				&transport.TypeMismatchError{
 					Expected: protocol.TypeForMessage(&dummyResponse),
 					Received: protocol.TypeForMessage(actualResponse),
 				},
 			))
+
 		})
 	})
 })

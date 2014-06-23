@@ -27,7 +27,7 @@ var _ = Describe("THE TIMEBOMB", func() {
 
 			bomb.Strap()
 
-			Expect((<-detonated).Sub(before)).To(BeNumerically(">=", countdown))
+			Ω((<-detonated).Sub(before)).Should(BeNumerically(">=", countdown))
 		})
 
 		It("DOES NOT DETONATE AGAIN", func() {
@@ -46,7 +46,7 @@ var _ = Describe("THE TIMEBOMB", func() {
 
 			bomb.Strap()
 
-			Expect((<-detonated).Sub(before)).To(BeNumerically(">=", countdown))
+			Ω((<-detonated).Sub(before)).Should(BeNumerically(">=", countdown))
 
 			delay := 50 * time.Millisecond
 
@@ -188,7 +188,7 @@ var _ = Describe("THE TIMEBOMB", func() {
 
 					bomb.Unpause()
 
-					Expect((<-detonated).Sub(before)).To(BeNumerically(">=", countdown+delay))
+					Ω((<-detonated).Sub(before)).Should(BeNumerically(">=", countdown+delay))
 				})
 
 				Context("AND THEN PAUSED AGAIN", func() {
@@ -276,7 +276,7 @@ var _ = Describe("THE TIMEBOMB", func() {
 
 							bomb.Unpause()
 
-							Expect((<-detonated).Sub(before)).To(BeNumerically(">=", countdown+delay))
+							Ω((<-detonated).Sub(before)).Should(BeNumerically(">=", countdown+delay))
 						})
 					})
 				})

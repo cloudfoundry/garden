@@ -23,12 +23,13 @@ var _ = Describe("Reading request messages over the wire", func() {
 			)
 
 			request, err := transport.ReadRequest(payload)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(request).To(Equal(
+			Ω(err).ShouldNot(HaveOccurred())
+			Ω(request).Should(Equal(
 				&protocol.StopRequest{
 					Handle: proto.String("some-handle"),
 				},
 			))
+
 		})
 	})
 
@@ -41,7 +42,7 @@ var _ = Describe("Reading request messages over the wire", func() {
 			)
 
 			_, err := transport.ReadRequest(bogusPayload)
-			Expect(err).To(HaveOccurred())
+			Ω(err).Should(HaveOccurred())
 		})
 	})
 })

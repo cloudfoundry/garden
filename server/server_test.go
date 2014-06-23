@@ -21,38 +21,38 @@ var _ = Describe("The Warden server", func() {
 	Context("when passed a socket", func() {
 		It("listens on the given socket path and chmods it to 0777", func() {
 			tmpdir, err := ioutil.TempDir(os.TempDir(), "warden-server-test")
-			Expect(err).ToNot(HaveOccurred())
+			Ω(err).ShouldNot(HaveOccurred())
 
 			socketPath := path.Join(tmpdir, "warden.sock")
 
 			wardenServer := server.New("unix", socketPath, 0, fake_backend.New())
 
 			err = wardenServer.Start()
-			Expect(err).ToNot(HaveOccurred())
+			Ω(err).ShouldNot(HaveOccurred())
 
 			Eventually(ErrorDialing("unix", socketPath)).ShouldNot(HaveOccurred())
 
 			stat, err := os.Stat(socketPath)
-			Expect(err).ToNot(HaveOccurred())
+			Ω(err).ShouldNot(HaveOccurred())
 
-			Expect(int(stat.Mode() & 0777)).To(Equal(0777))
+			Ω(int(stat.Mode() & 0777)).Should(Equal(0777))
 		})
 
 		It("deletes the socket file if it is already there", func() {
 			tmpdir, err := ioutil.TempDir(os.TempDir(), "warden-server-test")
-			Expect(err).ToNot(HaveOccurred())
+			Ω(err).ShouldNot(HaveOccurred())
 
 			socketPath := path.Join(tmpdir, "warden.sock")
 
 			socket, err := os.Create(socketPath)
-			Expect(err).ToNot(HaveOccurred())
+			Ω(err).ShouldNot(HaveOccurred())
 			socket.WriteString("oops")
 			socket.Close()
 
 			wardenServer := server.New("unix", socketPath, 0, fake_backend.New())
 
 			err = wardenServer.Start()
-			Expect(err).ToNot(HaveOccurred())
+			Ω(err).ShouldNot(HaveOccurred())
 		})
 	})
 
@@ -61,7 +61,7 @@ var _ = Describe("The Warden server", func() {
 			wardenServer := server.New("tcp", ":60123", 0, fake_backend.New())
 
 			err := wardenServer.Start()
-			Expect(err).ToNot(HaveOccurred())
+			Ω(err).ShouldNot(HaveOccurred())
 
 			Eventually(ErrorDialing("tcp", ":60123")).ShouldNot(HaveOccurred())
 		})
@@ -69,7 +69,7 @@ var _ = Describe("The Warden server", func() {
 
 	It("starts the backend", func() {
 		tmpdir, err := ioutil.TempDir(os.TempDir(), "warden-server-test")
-		Expect(err).ToNot(HaveOccurred())
+		Ω(err).ShouldNot(HaveOccurred())
 
 		socketPath := path.Join(tmpdir, "warden.sock")
 
@@ -78,14 +78,14 @@ var _ = Describe("The Warden server", func() {
 		wardenServer := server.New("unix", socketPath, 0, fakeBackend)
 
 		err = wardenServer.Start()
-		Expect(err).ToNot(HaveOccurred())
+		Ω(err).ShouldNot(HaveOccurred())
 
-		Expect(fakeBackend.Started).To(BeTrue())
+		Ω(fakeBackend.Started).Should(BeTrue())
 	})
 
 	It("destroys containers that have been idle for their grace time", func() {
 		tmpdir, err := ioutil.TempDir(os.TempDir(), "warden-server-test")
-		Expect(err).ToNot(HaveOccurred())
+		Ω(err).ShouldNot(HaveOccurred())
 
 		socketPath := path.Join(tmpdir, "warden.sock")
 
@@ -95,24 +95,24 @@ var _ = Describe("The Warden server", func() {
 			Handle:    "doomed",
 			GraceTime: 100 * time.Millisecond,
 		})
-		Expect(err).ToNot(HaveOccurred())
+		Ω(err).ShouldNot(HaveOccurred())
 
 		wardenServer := server.New("unix", socketPath, 0, fakeBackend)
 
 		before := time.Now()
 
 		err = wardenServer.Start()
-		Expect(err).ToNot(HaveOccurred())
+		Ω(err).ShouldNot(HaveOccurred())
 
 		_, err = fakeBackend.Lookup("doomed")
-		Expect(err).ToNot(HaveOccurred())
+		Ω(err).ShouldNot(HaveOccurred())
 
 		Eventually(func() error {
 			_, err := fakeBackend.Lookup("doomed")
 			return err
 		}).Should(HaveOccurred())
 
-		Expect(time.Since(before)).To(BeNumerically(">", 100*time.Millisecond))
+		Ω(time.Since(before)).Should(BeNumerically(">", 100*time.Millisecond))
 	})
 
 	Context("when starting the backend fails", func() {
@@ -120,7 +120,7 @@ var _ = Describe("The Warden server", func() {
 
 		It("fails to start", func() {
 			tmpdir, err := ioutil.TempDir(os.TempDir(), "warden-server-test")
-			Expect(err).ToNot(HaveOccurred())
+			Ω(err).ShouldNot(HaveOccurred())
 
 			socketPath := path.Join(tmpdir, "warden.sock")
 
@@ -130,14 +130,14 @@ var _ = Describe("The Warden server", func() {
 			wardenServer := server.New("unix", socketPath, 0, fakeBackend)
 
 			err = wardenServer.Start()
-			Expect(err).To(Equal(disaster))
+			Ω(err).Should(Equal(disaster))
 		})
 	})
 
 	Context("when listening on the socket fails", func() {
 		It("fails to start", func() {
 			tmpfile, err := ioutil.TempFile(os.TempDir(), "warden-server-test")
-			Expect(err).ToNot(HaveOccurred())
+			Ω(err).ShouldNot(HaveOccurred())
 
 			wardenServer := server.New(
 				"unix",
@@ -148,7 +148,7 @@ var _ = Describe("The Warden server", func() {
 			)
 
 			err = wardenServer.Start()
-			Expect(err).To(HaveOccurred())
+			Ω(err).Should(HaveOccurred())
 		})
 	})
 
@@ -163,7 +163,7 @@ var _ = Describe("The Warden server", func() {
 
 		BeforeEach(func() {
 			tmpdir, err := ioutil.TempDir(os.TempDir(), "warden-server-test")
-			Expect(err).ToNot(HaveOccurred())
+			Ω(err).ShouldNot(HaveOccurred())
 
 			socketPath = path.Join(tmpdir, "warden.sock")
 			fakeBackend = fake_backend.New()
@@ -177,7 +177,7 @@ var _ = Describe("The Warden server", func() {
 			wardenServer = server.New("unix", socketPath, 0, serverBackend)
 
 			err := wardenServer.Start()
-			Expect(err).ToNot(HaveOccurred())
+			Ω(err).ShouldNot(HaveOccurred())
 
 			Eventually(ErrorDialing("unix", socketPath)).ShouldNot(HaveOccurred())
 		})
@@ -191,7 +191,7 @@ var _ = Describe("The Warden server", func() {
 		It("stops the backend", func() {
 			wardenServer.Stop()
 
-			Expect(fakeBackend.Stopped).To(BeTrue())
+			Ω(fakeBackend.Stopped).Should(BeTrue())
 		})
 
 		Context("when a Create request is in-flight", func() {
@@ -224,7 +224,7 @@ var _ = Describe("The Warden server", func() {
 
 				wardenServer.Stop()
 
-				Expect(time.Since(before)).To(BeNumerically("~", 500*time.Millisecond, 100*time.Millisecond))
+				Ω(time.Since(before)).Should(BeNumerically("~", 500*time.Millisecond, 100*time.Millisecond))
 
 				Eventually(created).Should(Receive())
 
