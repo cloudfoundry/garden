@@ -26,7 +26,7 @@ func (container *container) Handle() string {
 }
 
 func (container *container) Stop(kill bool) error {
-	return container.connection.Stop(container.handle, false, kill)
+	return container.connection.Stop(container.handle, kill)
 }
 
 func (container *container) Info() (warden.ContainerInfo, error) {
