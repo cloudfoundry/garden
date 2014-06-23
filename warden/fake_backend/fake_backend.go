@@ -19,7 +19,7 @@ type FakeBackend struct {
 	WhenCreating func()
 	CreateError  error
 
-	DestroyError    error
+	destroyError    error
 	ContainersError error
 
 	CreatedContainers   map[string]*FakeContainer
@@ -106,8 +106,8 @@ func (b *FakeBackend) Create(spec warden.ContainerSpec) (warden.Container, error
 }
 
 func (b *FakeBackend) Destroy(handle string) error {
-	if b.DestroyError != nil {
-		return b.DestroyError
+	if b.destroyError != nil {
+		return b.destroyError
 	}
 
 	b.Lock()
@@ -118,6 +118,13 @@ func (b *FakeBackend) Destroy(handle string) error {
 	b.DestroyedContainers = append(b.DestroyedContainers, handle)
 
 	return nil
+}
+
+func (b *FakeBackend) SetDestroyError(err error) {
+	b.Lock()
+	defer b.Unlock()
+
+	b.destroyError = err
 }
 
 func (b *FakeBackend) Containers(properties warden.Properties) ([]warden.Container, error) {

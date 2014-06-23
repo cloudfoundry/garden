@@ -227,7 +227,7 @@ var _ = Describe("When a client connects", func() {
 
 		Context("when destroying the container fails", func() {
 			BeforeEach(func() {
-				serverBackend.DestroyError = errors.New("oh no!")
+				serverBackend.SetDestroyError(errors.New("oh no!"))
 			})
 
 			It("sends a WardenError response", func() {
