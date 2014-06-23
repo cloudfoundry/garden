@@ -227,13 +227,13 @@ var _ = Describe("Container", func() {
 	Describe("LimitDisk", func() {
 		It("sends a limit bandwidth request", func() {
 			err := container.LimitDisk(warden.DiskLimits{
-				ByteLimit: 1,
+				ByteHard: 1,
 			})
 			Ω(err).ShouldNot(HaveOccurred())
 
 			Ω(fakeConnection.LimitedDisk("some-handle")).Should(ContainElement(
 				warden.DiskLimits{
-					ByteLimit: 1,
+					ByteHard: 1,
 				},
 			))
 		})
