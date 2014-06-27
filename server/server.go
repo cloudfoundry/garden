@@ -13,7 +13,7 @@ import (
 	"github.com/cloudfoundry-incubator/garden/routes"
 	"github.com/cloudfoundry-incubator/garden/server/bomberman"
 	"github.com/cloudfoundry-incubator/garden/warden"
-	"github.com/tedsuo/router"
+	"github.com/tedsuo/rata"
 )
 
 type WardenServer struct {
@@ -141,7 +141,7 @@ func (s *WardenServer) handleConnections(listener net.Listener) {
 		routes.Attach:                 http.HandlerFunc(s.handleAttach),
 	}
 
-	mux, err := router.NewRouter(routes.Routes, handlers)
+	mux, err := rata.NewRouter(routes.Routes, handlers)
 	if err != nil {
 		log.Fatalln("failed to initialize router:", err)
 	}
