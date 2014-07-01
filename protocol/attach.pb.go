@@ -2,37 +2,6 @@
 // source: attach.proto
 // DO NOT EDIT!
 
-/*
-Package warden is a generated protocol buffer package.
-
-It is generated from these files:
-	attach.proto
-	capacity.proto
-	create.proto
-	destroy.proto
-	environment_variable.proto
-	error.proto
-	info.proto
-	limit_bandwidth.proto
-	limit_cpu.proto
-	limit_disk.proto
-	limit_memory.proto
-	list.proto
-	message.proto
-	net_in.proto
-	net_out.proto
-	ping.proto
-	process_payload.proto
-	property.proto
-	resource_limits.proto
-	run.proto
-	stop.proto
-	stream_in.proto
-	stream_out.proto
-
-It has these top-level messages:
-	AttachRequest
-*/
 package warden
 
 import proto "code.google.com/p/gogoprotobuf/proto"

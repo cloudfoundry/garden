@@ -207,10 +207,16 @@ func (c *connection) Destroy(handle string) error {
 func (c *connection) Run(handle string, spec warden.ProcessSpec) (uint32, <-chan warden.ProcessStream, error) {
 	reqBody := new(bytes.Buffer)
 
+	var dir *string
+	if spec.Dir != "" {
+		dir = proto.String(spec.Dir)
+	}
+
 	err := transport.WriteMessage(reqBody, &protocol.RunRequest{
 		Handle:     proto.String(handle),
 		Path:       proto.String(spec.Path),
 		Args:       spec.Args,
+		Dir:        dir,
 		Privileged: proto.Bool(spec.Privileged),
 		Rlimits: &protocol.ResourceLimits{
 			As:         spec.Limits.As,

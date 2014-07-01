@@ -20,6 +20,7 @@ type RunRequest struct {
 	Rlimits          *ResourceLimits        `protobuf:"bytes,4,opt,name=rlimits" json:"rlimits,omitempty"`
 	Env              []*EnvironmentVariable `protobuf:"bytes,5,rep,name=env" json:"env,omitempty"`
 	Args             []string               `protobuf:"bytes,6,rep,name=args" json:"args,omitempty"`
+	Dir              *string                `protobuf:"bytes,7,opt,name=dir" json:"dir,omitempty"`
 	XXX_unrecognized []byte                 `json:"-"`
 }
 
@@ -69,6 +70,13 @@ func (m *RunRequest) GetArgs() []string {
 		return m.Args
 	}
 	return nil
+}
+
+func (m *RunRequest) GetDir() string {
+	if m != nil && m.Dir != nil {
+		return *m.Dir
+	}
+	return ""
 }
 
 func init() {
