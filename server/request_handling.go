@@ -557,7 +557,8 @@ func (s *WardenServer) handleRun(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	script := request.GetScript()
+	path := request.GetPath()
+	args := request.GetArgs()
 	privileged := request.GetPrivileged()
 	env := request.GetEnv()
 
@@ -571,7 +572,8 @@ func (s *WardenServer) handleRun(w http.ResponseWriter, r *http.Request) {
 	defer s.bomberman.Unpause(container.Handle())
 
 	ProcessSpec := warden.ProcessSpec{
-		Script:               script,
+		Path:                 path,
+		Args:                 args,
 		Privileged:           privileged,
 		EnvironmentVariables: convertEnvironmentVariables(env),
 	}

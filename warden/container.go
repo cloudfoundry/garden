@@ -34,7 +34,8 @@ type Container interface {
 }
 
 type ProcessSpec struct {
-	Script               string
+	Path                 string
+	Args                 []string
 	Privileged           bool
 	Limits               ResourceLimits
 	EnvironmentVariables []EnvironmentVariable

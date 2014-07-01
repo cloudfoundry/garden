@@ -209,7 +209,8 @@ func (c *connection) Run(handle string, spec warden.ProcessSpec) (uint32, <-chan
 
 	err := transport.WriteMessage(reqBody, &protocol.RunRequest{
 		Handle:     proto.String(handle),
-		Script:     proto.String(spec.Script),
+		Path:       proto.String(spec.Path),
+		Args:       spec.Args,
 		Privileged: proto.Bool(spec.Privileged),
 		Rlimits: &protocol.ResourceLimits{
 			As:         spec.Limits.As,
