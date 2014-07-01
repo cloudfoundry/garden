@@ -559,6 +559,7 @@ func (s *WardenServer) handleRun(w http.ResponseWriter, r *http.Request) {
 
 	path := request.GetPath()
 	args := request.GetArgs()
+	dir := request.GetDir()
 	privileged := request.GetPrivileged()
 	env := request.GetEnv()
 
@@ -574,6 +575,7 @@ func (s *WardenServer) handleRun(w http.ResponseWriter, r *http.Request) {
 	ProcessSpec := warden.ProcessSpec{
 		Path:                 path,
 		Args:                 args,
+		Dir:                  dir,
 		Privileged:           privileged,
 		EnvironmentVariables: convertEnvironmentVariables(env),
 	}

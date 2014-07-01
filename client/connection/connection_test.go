@@ -824,6 +824,7 @@ var _ = Describe("Connection", func() {
 							Handle:     proto.String("foo-handle"),
 							Path:       proto.String("lol"),
 							Args:       []string{"arg1", "arg2"},
+							Dir:        proto.String("/some/dir"),
 							Privileged: proto.Bool(true),
 							Rlimits: &protocol.ResourceLimits{
 								As:         proto.Uint64(1),
@@ -854,6 +855,7 @@ var _ = Describe("Connection", func() {
 				pid, stream, err := connection.Run("foo-handle", warden.ProcessSpec{
 					Path:       "lol",
 					Args:       []string{"arg1", "arg2"},
+					Dir:        "/some/dir",
 					Privileged: true,
 					Limits:     resourceLimits,
 				})
