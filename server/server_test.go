@@ -14,7 +14,7 @@ import (
 	"github.com/cloudfoundry-incubator/garden/client/connection"
 	"github.com/cloudfoundry-incubator/garden/server"
 	"github.com/cloudfoundry-incubator/garden/warden"
-	"github.com/cloudfoundry-incubator/garden/warden/fake_backend"
+	"github.com/cloudfoundry-incubator/garden/warden/fakes"
 )
 
 var _ = Describe("The Warden server", func() {
@@ -25,7 +25,7 @@ var _ = Describe("The Warden server", func() {
 
 			socketPath := path.Join(tmpdir, "warden.sock")
 
-			wardenServer := server.New("unix", socketPath, 0, fake_backend.New())
+			wardenServer := server.New("unix", socketPath, 0, new(fakes.FakeBackend))
 
 			err = wardenServer.Start()
 			Ω(err).ShouldNot(HaveOccurred())
@@ -49,7 +49,7 @@ var _ = Describe("The Warden server", func() {
 			socket.WriteString("oops")
 			socket.Close()
 
-			wardenServer := server.New("unix", socketPath, 0, fake_backend.New())
+			wardenServer := server.New("unix", socketPath, 0, new(fakes.FakeBackend))
 
 			err = wardenServer.Start()
 			Ω(err).ShouldNot(HaveOccurred())
@@ -58,7 +58,7 @@ var _ = Describe("The Warden server", func() {
 
 	Context("when passed a tcp addr", func() {
 		It("listens on the given addr", func() {
-			wardenServer := server.New("tcp", ":60123", 0, fake_backend.New())
+			wardenServer := server.New("tcp", ":60123", 0, new(fakes.FakeBackend))
 
 			err := wardenServer.Start()
 			Ω(err).ShouldNot(HaveOccurred())
@@ -73,14 +73,14 @@ var _ = Describe("The Warden server", func() {
 
 		socketPath := path.Join(tmpdir, "warden.sock")
 
-		fakeBackend := fake_backend.New()
+		fakeBackend := new(fakes.FakeBackend)
 
 		wardenServer := server.New("unix", socketPath, 0, fakeBackend)
 
 		err = wardenServer.Start()
 		Ω(err).ShouldNot(HaveOccurred())
 
-		Ω(fakeBackend.Started).Should(BeTrue())
+		Ω(fakeBackend.StartCallCount()).Should(Equal(1))
 	})
 
 	It("destroys containers that have been idle for their grace time", func() {
@@ -89,13 +89,12 @@ var _ = Describe("The Warden server", func() {
 
 		socketPath := path.Join(tmpdir, "warden.sock")
 
-		fakeBackend := fake_backend.New()
+		fakeBackend := new(fakes.FakeBackend)
 
-		_, err = fakeBackend.Create(warden.ContainerSpec{
-			Handle:    "doomed",
-			GraceTime: 100 * time.Millisecond,
-		})
-		Ω(err).ShouldNot(HaveOccurred())
+		doomedContainer := new(fakes.FakeContainer)
+
+		fakeBackend.ContainersReturns([]warden.Container{doomedContainer}, nil)
+		fakeBackend.GraceTimeReturns(100 * time.Millisecond)
 
 		wardenServer := server.New("unix", socketPath, 0, fakeBackend)
 
@@ -104,13 +103,8 @@ var _ = Describe("The Warden server", func() {
 		err = wardenServer.Start()
 		Ω(err).ShouldNot(HaveOccurred())
 
-		_, err = fakeBackend.Lookup("doomed")
-		Ω(err).ShouldNot(HaveOccurred())
-
-		Eventually(func() error {
-			_, err := fakeBackend.Lookup("doomed")
-			return err
-		}).Should(HaveOccurred())
+		Ω(fakeBackend.DestroyCallCount()).Should(Equal(0))
+		Eventually(fakeBackend.DestroyCallCount).Should(Equal(1))
 
 		Ω(time.Since(before)).Should(BeNumerically(">", 100*time.Millisecond))
 	})
@@ -124,8 +118,8 @@ var _ = Describe("The Warden server", func() {
 
 			socketPath := path.Join(tmpdir, "warden.sock")
 
-			fakeBackend := fake_backend.New()
-			fakeBackend.StartError = disaster
+			fakeBackend := new(fakes.FakeBackend)
+			fakeBackend.StartReturns(disaster)
 
 			wardenServer := server.New("unix", socketPath, 0, fakeBackend)
 
@@ -144,7 +138,7 @@ var _ = Describe("The Warden server", func() {
 				// weird scenario: /foo/X/warden.sock with X being a file
 				path.Join(tmpfile.Name(), "warden.sock"),
 				0,
-				fake_backend.New(),
+				new(fakes.FakeBackend),
 			)
 
 			err = wardenServer.Start()
@@ -156,7 +150,7 @@ var _ = Describe("The Warden server", func() {
 		var socketPath string
 
 		var serverBackend warden.Backend
-		var fakeBackend *fake_backend.FakeBackend
+		var fakeBackend *fakes.FakeBackend
 
 		var wardenServer *server.WardenServer
 		var wardenClient warden.Client
@@ -166,7 +160,7 @@ var _ = Describe("The Warden server", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 
 			socketPath = path.Join(tmpdir, "warden.sock")
-			fakeBackend = fake_backend.New()
+			fakeBackend = new(fakes.FakeBackend)
 
 			serverBackend = fakeBackend
 
@@ -191,7 +185,7 @@ var _ = Describe("The Warden server", func() {
 		It("stops the backend", func() {
 			wardenServer.Stop()
 
-			Ω(fakeBackend.Stopped).Should(BeTrue())
+			Ω(fakeBackend.StopCallCount()).Should(Equal(1))
 		})
 
 		Context("when a Create request is in-flight", func() {
@@ -200,9 +194,10 @@ var _ = Describe("The Warden server", func() {
 			BeforeEach(func() {
 				creating = make(chan struct{})
 
-				fakeBackend.WhenCreating = func() {
+				fakeBackend.CreateStub = func(warden.ContainerSpec) (warden.Container, error) {
 					close(creating)
 					time.Sleep(500 * time.Millisecond)
+					return new(fakes.FakeContainer), nil
 				}
 			})
 

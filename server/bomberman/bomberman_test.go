@@ -8,29 +8,28 @@ import (
 
 	"github.com/cloudfoundry-incubator/garden/server/bomberman"
 	"github.com/cloudfoundry-incubator/garden/warden"
-	"github.com/cloudfoundry-incubator/garden/warden/fake_backend"
+	"github.com/cloudfoundry-incubator/garden/warden/fakes"
 )
 
 var _ = Describe("Bomberman", func() {
 	It("straps a bomb to the given container with the container's grace time as the countdown", func() {
 		detonated := make(chan warden.Container)
 
-		bomberman := bomberman.New(fake_backend.New(), func(container warden.Container) {
+		backend := new(fakes.FakeBackend)
+		backend.GraceTimeReturns(100 * time.Millisecond)
+
+		bomberman := bomberman.New(backend, func(container warden.Container) {
 			detonated <- container
 		})
 
-		container := fake_backend.NewFakeContainer(
-			warden.ContainerSpec{
-				GraceTime: 100 * time.Millisecond,
-				Handle:    "doomed",
-			},
-		)
+		container := new(fakes.FakeContainer)
+		container.HandleReturns("doomed")
 
 		bomberman.Strap(container)
 
 		select {
 		case <-detonated:
-		case <-time.After(container.GraceTime() + 50*time.Millisecond):
+		case <-time.After(backend.GraceTime(container) + 50*time.Millisecond):
 			Fail("did not detonate!")
 		}
 	})
@@ -39,23 +38,22 @@ var _ = Describe("Bomberman", func() {
 		It("never detonates", func() {
 			detonated := make(chan warden.Container)
 
-			bomberman := bomberman.New(fake_backend.New(), func(container warden.Container) {
+			backend := new(fakes.FakeBackend)
+			backend.GraceTimeReturns(0)
+
+			bomberman := bomberman.New(backend, func(container warden.Container) {
 				detonated <- container
 			})
 
-			container := fake_backend.NewFakeContainer(
-				warden.ContainerSpec{
-					GraceTime: 0,
-					Handle:    "doomed",
-				},
-			)
+			container := new(fakes.FakeContainer)
+			container.HandleReturns("doomed")
 
 			bomberman.Strap(container)
 
 			select {
 			case <-detonated:
 				Fail("detonated!")
-			case <-time.After(container.GraceTime() + 50*time.Millisecond):
+			case <-time.After(backend.GraceTime(container) + 50*time.Millisecond):
 			}
 		})
 	})
@@ -64,16 +62,15 @@ var _ = Describe("Bomberman", func() {
 		It("prevents it from detonating", func() {
 			detonated := make(chan warden.Container)
 
-			bomberman := bomberman.New(fake_backend.New(), func(container warden.Container) {
+			backend := new(fakes.FakeBackend)
+			backend.GraceTimeReturns(100 * time.Millisecond)
+
+			bomberman := bomberman.New(backend, func(container warden.Container) {
 				detonated <- container
 			})
 
-			container := fake_backend.NewFakeContainer(
-				warden.ContainerSpec{
-					GraceTime: 100 * time.Millisecond,
-					Handle:    "doomed",
-				},
-			)
+			container := new(fakes.FakeContainer)
+			container.HandleReturns("doomed")
 
 			bomberman.Strap(container)
 			bomberman.Pause("doomed")
@@ -81,13 +78,13 @@ var _ = Describe("Bomberman", func() {
 			select {
 			case <-detonated:
 				Fail("detonated!")
-			case <-time.After(container.GraceTime() + 50*time.Millisecond):
+			case <-time.After(backend.GraceTime(container) + 50*time.Millisecond):
 			}
 		})
 
 		Context("when the handle is invalid", func() {
 			It("doesn't launch any missiles or anything like that", func() {
-				bomberman := bomberman.New(fake_backend.New(), func(container warden.Container) {
+				bomberman := bomberman.New(new(fakes.FakeBackend), func(container warden.Container) {
 					panic("dont call me")
 				})
 
@@ -99,16 +96,15 @@ var _ = Describe("Bomberman", func() {
 			It("causes it to detonate after the countdown", func() {
 				detonated := make(chan warden.Container)
 
-				bomberman := bomberman.New(fake_backend.New(), func(container warden.Container) {
+				backend := new(fakes.FakeBackend)
+				backend.GraceTimeReturns(100 * time.Millisecond)
+
+				bomberman := bomberman.New(backend, func(container warden.Container) {
 					detonated <- container
 				})
 
-				container := fake_backend.NewFakeContainer(
-					warden.ContainerSpec{
-						GraceTime: 100 * time.Millisecond,
-						Handle:    "doomed",
-					},
-				)
+				container := new(fakes.FakeContainer)
+				container.HandleReturns("doomed")
 
 				bomberman.Strap(container)
 				bomberman.Pause("doomed")
@@ -119,14 +115,14 @@ var _ = Describe("Bomberman", func() {
 				select {
 				case <-detonated:
 					Ω(time.Since(before)).Should(BeNumerically(">=", 100*time.Millisecond))
-				case <-time.After(container.GraceTime() + 50*time.Millisecond):
+				case <-time.After(backend.GraceTime(container) + 50*time.Millisecond):
 					Fail("did not detonate!")
 				}
 			})
 
 			Context("when the handle is invalid", func() {
 				It("doesn't launch any missiles or anything like that", func() {
-					bomberman := bomberman.New(fake_backend.New(), func(container warden.Container) {
+					bomberman := bomberman.New(new(fakes.FakeBackend), func(container warden.Container) {
 						panic("dont call me")
 					})
 
@@ -140,16 +136,15 @@ var _ = Describe("Bomberman", func() {
 		It("prevents it from detonating", func() {
 			detonated := make(chan warden.Container)
 
-			bomberman := bomberman.New(fake_backend.New(), func(container warden.Container) {
+			backend := new(fakes.FakeBackend)
+			backend.GraceTimeReturns(100 * time.Millisecond)
+
+			bomberman := bomberman.New(backend, func(container warden.Container) {
 				detonated <- container
 			})
 
-			container := fake_backend.NewFakeContainer(
-				warden.ContainerSpec{
-					GraceTime: 100 * time.Millisecond,
-					Handle:    "doomed",
-				},
-			)
+			container := new(fakes.FakeContainer)
+			container.HandleReturns("doomed")
 
 			bomberman.Strap(container)
 			bomberman.Defuse("doomed")
@@ -157,13 +152,13 @@ var _ = Describe("Bomberman", func() {
 			select {
 			case <-detonated:
 				Fail("detonated!")
-			case <-time.After(container.GraceTime() + 50*time.Millisecond):
+			case <-time.After(backend.GraceTime(container) + 50*time.Millisecond):
 			}
 		})
 
 		Context("when the handle is invalid", func() {
 			It("doesn't launch any missiles or anything like that", func() {
-				bomberman := bomberman.New(fake_backend.New(), func(container warden.Container) {
+				bomberman := bomberman.New(new(fakes.FakeBackend), func(container warden.Container) {
 					panic("dont call me")
 				})
 
