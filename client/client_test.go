@@ -2,21 +2,22 @@ package client_test
 
 import (
 	"errors"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
 	. "github.com/cloudfoundry-incubator/garden/client"
-	"github.com/cloudfoundry-incubator/garden/client/connection/fake_connection"
+	"github.com/cloudfoundry-incubator/garden/client/connection/fakes"
 	"github.com/cloudfoundry-incubator/garden/warden"
 )
 
 var _ = Describe("Client", func() {
 	var client Client
 
-	var fakeConnection *fake_connection.FakeConnection
+	var fakeConnection *fakes.FakeConnection
 
 	BeforeEach(func() {
-		fakeConnection = fake_connection.New()
+		fakeConnection = new(fakes.FakeConnection)
 	})
 
 	JustBeforeEach(func() {
@@ -25,13 +26,14 @@ var _ = Describe("Client", func() {
 
 	Describe("Capacity", func() {
 		BeforeEach(func() {
-			fakeConnection.WhenGettingCapacity = func() (warden.Capacity, error) {
-				return warden.Capacity{
+			fakeConnection.CapacityReturns(
+				warden.Capacity{
 					MemoryInBytes: 1111,
 					DiskInBytes:   2222,
 					MaxContainers: 42,
-				}, nil
-			}
+				},
+				nil,
+			)
 		})
 
 		It("sends a capacity request and returns the capacity", func() {
@@ -45,9 +47,7 @@ var _ = Describe("Client", func() {
 			disaster := errors.New("oh no!")
 
 			BeforeEach(func() {
-				fakeConnection.WhenGettingCapacity = func() (warden.Capacity, error) {
-					return warden.Capacity{}, disaster
-				}
+				fakeConnection.CapacityReturns(warden.Capacity{}, disaster)
 			})
 
 			It("returns the error", func() {
@@ -63,15 +63,14 @@ var _ = Describe("Client", func() {
 				RootFSPath: "/some/roofs",
 			}
 
-			fakeConnection.WhenCreating = func(spec warden.ContainerSpec) (string, error) {
-				return "some-handle", nil
-			}
+			fakeConnection.CreateReturns("some-handle", nil)
 
 			container, err := client.Create(spec)
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(container).ShouldNot(BeNil())
 
-			Ω(fakeConnection.Created()).Should(ContainElement(spec))
+			Ω(fakeConnection.CreateArgsForCall(0)).Should(Equal(spec))
+
 			Ω(container.Handle()).Should(Equal("some-handle"))
 		})
 
@@ -79,9 +78,7 @@ var _ = Describe("Client", func() {
 			disaster := errors.New("oh no!")
 
 			BeforeEach(func() {
-				fakeConnection.WhenCreating = func(spec warden.ContainerSpec) (string, error) {
-					return "", disaster
-				}
+				fakeConnection.CreateReturns("", disaster)
 			})
 
 			It("returns it", func() {
@@ -93,16 +90,14 @@ var _ = Describe("Client", func() {
 
 	Describe("Containers", func() {
 		It("sends a list request and returns all containers", func() {
-			fakeConnection.WhenListing = func(warden.Properties) ([]string, error) {
-				return []string{"handle-a", "handle-b"}, nil
-			}
+			fakeConnection.ListReturns([]string{"handle-a", "handle-b"}, nil)
 
 			props := warden.Properties{"foo": "bar"}
 
 			containers, err := client.Containers(props)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			Ω(fakeConnection.ListedProperties()).Should(ContainElement(props))
+			Ω(fakeConnection.ListArgsForCall(0)).Should(Equal(props))
 
 			Ω(containers).Should(HaveLen(2))
 			Ω(containers[0].Handle()).Should(Equal("handle-a"))
@@ -113,9 +108,7 @@ var _ = Describe("Client", func() {
 			disaster := errors.New("oh no!")
 
 			BeforeEach(func() {
-				fakeConnection.WhenListing = func(warden.Properties) ([]string, error) {
-					return nil, disaster
-				}
+				fakeConnection.ListReturns(nil, disaster)
 			})
 
 			It("returns it", func() {
@@ -130,16 +123,14 @@ var _ = Describe("Client", func() {
 			err := client.Destroy("some-handle")
 			Ω(err).ShouldNot(HaveOccurred())
 
-			Ω(fakeConnection.Destroyed()).Should(ContainElement("some-handle"))
+			Ω(fakeConnection.DestroyArgsForCall(0)).Should(Equal("some-handle"))
 		})
 
 		Context("when there is a connection error", func() {
 			disaster := errors.New("oh no!")
 
 			BeforeEach(func() {
-				fakeConnection.WhenDestroying = func(string) error {
-					return disaster
-				}
+				fakeConnection.DestroyReturns(disaster)
 			})
 
 			It("returns it", func() {
@@ -151,9 +142,7 @@ var _ = Describe("Client", func() {
 
 	Describe("Lookup", func() {
 		It("sends a list request", func() {
-			fakeConnection.WhenListing = func(warden.Properties) ([]string, error) {
-				return []string{"some-handle", "some-other-handle"}, nil
-			}
+			fakeConnection.ListReturns([]string{"some-handle", "some-other-handle"}, nil)
 
 			container, err := client.Lookup("some-handle")
 			Ω(err).ShouldNot(HaveOccurred())
@@ -163,9 +152,7 @@ var _ = Describe("Client", func() {
 
 		Context("when the container is not found", func() {
 			BeforeEach(func() {
-				fakeConnection.WhenListing = func(warden.Properties) ([]string, error) {
-					return []string{"some-other-handle"}, nil
-				}
+				fakeConnection.ListReturns([]string{"some-other-handle"}, nil)
 			})
 
 			It("returns an error", func() {
@@ -179,9 +166,7 @@ var _ = Describe("Client", func() {
 			disaster := errors.New("oh no!")
 
 			BeforeEach(func() {
-				fakeConnection.WhenListing = func(warden.Properties) ([]string, error) {
-					return nil, disaster
-				}
+				fakeConnection.ListReturns(nil, disaster)
 			})
 
 			It("returns it", func() {
