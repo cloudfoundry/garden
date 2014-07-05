@@ -26,41 +26,37 @@ type Container interface {
 	LimitMemory(limits MemoryLimits) error
 	CurrentMemoryLimits() (MemoryLimits, error)
 
-	Run(ProcessSpec) (uint32, <-chan ProcessStream, error)
-	Attach(processID uint32) (<-chan ProcessStream, error)
-
 	NetIn(hostPort, containerPort uint32) (uint32, uint32, error)
 	NetOut(network string, port uint32) error
+
+	Run(ProcessSpec, ProcessIO) (Process, error)
+	Attach(uint32, ProcessIO) (Process, error)
 }
 
 type ProcessSpec struct {
-	Path                 string
-	Args                 []string
-	Dir                  string
-	Privileged           bool
-	Limits               ResourceLimits
-	EnvironmentVariables []EnvironmentVariable
+	Path       string
+	Args       []string
+	Dir        string
+	Env        []string
+	Privileged bool
+	Limits     ResourceLimits
 }
 
-type ProcessStream struct {
-	Source     ProcessStreamSource
-	Data       []byte
-	ExitStatus *uint32
+type ProcessIO struct {
+	Stdin  io.Reader // TODO io.ReadCloser
+	Stdout io.WriteCloser
+	Stderr io.WriteCloser
+}
+
+type Process interface {
+	ID() uint32
+	Wait() (int, error)
 }
 
 type PortMapping struct {
 	HostPort      uint32
 	ContainerPort uint32
 }
-
-type ProcessStreamSource int32
-
-const (
-	ProcessStreamSourceInvalid ProcessStreamSource = iota
-	ProcessStreamSourceStdin
-	ProcessStreamSourceStdout
-	ProcessStreamSourceStderr
-)
 
 type ContainerInfo struct {
 	State         string

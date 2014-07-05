@@ -12,7 +12,7 @@ type FakeContainer struct {
 	HandleStub        func() string
 	handleMutex       sync.RWMutex
 	handleArgsForCall []struct{}
-	handleReturns struct {
+	handleReturns     struct {
 		result1 string
 	}
 	StopStub        func(kill bool) error
@@ -26,7 +26,7 @@ type FakeContainer struct {
 	InfoStub        func() (ContainerInfo, error)
 	infoMutex       sync.RWMutex
 	infoArgsForCall []struct{}
-	infoReturns struct {
+	infoReturns     struct {
 		result1 ContainerInfo
 		result2 error
 	}
@@ -59,7 +59,7 @@ type FakeContainer struct {
 	CurrentBandwidthLimitsStub        func() (BandwidthLimits, error)
 	currentBandwidthLimitsMutex       sync.RWMutex
 	currentBandwidthLimitsArgsForCall []struct{}
-	currentBandwidthLimitsReturns struct {
+	currentBandwidthLimitsReturns     struct {
 		result1 BandwidthLimits
 		result2 error
 	}
@@ -74,7 +74,7 @@ type FakeContainer struct {
 	CurrentCPULimitsStub        func() (CPULimits, error)
 	currentCPULimitsMutex       sync.RWMutex
 	currentCPULimitsArgsForCall []struct{}
-	currentCPULimitsReturns struct {
+	currentCPULimitsReturns     struct {
 		result1 CPULimits
 		result2 error
 	}
@@ -89,7 +89,7 @@ type FakeContainer struct {
 	CurrentDiskLimitsStub        func() (DiskLimits, error)
 	currentDiskLimitsMutex       sync.RWMutex
 	currentDiskLimitsArgsForCall []struct{}
-	currentDiskLimitsReturns struct {
+	currentDiskLimitsReturns     struct {
 		result1 DiskLimits
 		result2 error
 	}
@@ -104,27 +104,8 @@ type FakeContainer struct {
 	CurrentMemoryLimitsStub        func() (MemoryLimits, error)
 	currentMemoryLimitsMutex       sync.RWMutex
 	currentMemoryLimitsArgsForCall []struct{}
-	currentMemoryLimitsReturns struct {
+	currentMemoryLimitsReturns     struct {
 		result1 MemoryLimits
-		result2 error
-	}
-	RunStub        func(ProcessSpec) (uint32, <-chan ProcessStream, error)
-	runMutex       sync.RWMutex
-	runArgsForCall []struct {
-		arg1 ProcessSpec
-	}
-	runReturns struct {
-		result1 uint32
-		result2 <-chan ProcessStream
-		result3 error
-	}
-	AttachStub        func(processID uint32) (<-chan ProcessStream, error)
-	attachMutex       sync.RWMutex
-	attachArgsForCall []struct {
-		processID uint32
-	}
-	attachReturns struct {
-		result1 <-chan ProcessStream
 		result2 error
 	}
 	NetInStub        func(hostPort, containerPort uint32) (uint32, uint32, error)
@@ -146,6 +127,26 @@ type FakeContainer struct {
 	}
 	netOutReturns struct {
 		result1 error
+	}
+	RunStub        func(ProcessSpec, ProcessIO) (Process, error)
+	runMutex       sync.RWMutex
+	runArgsForCall []struct {
+		arg1 ProcessSpec
+		arg2 ProcessIO
+	}
+	runReturns struct {
+		result1 Process
+		result2 error
+	}
+	AttachStub        func(uint32, ProcessIO) (Process, error)
+	attachMutex       sync.RWMutex
+	attachArgsForCall []struct {
+		arg1 uint32
+		arg2 ProcessIO
+	}
+	attachReturns struct {
+		result1 Process
+		result2 error
 	}
 }
 
@@ -511,71 +512,6 @@ func (fake *FakeContainer) CurrentMemoryLimitsReturns(result1 MemoryLimits, resu
 	}{result1, result2}
 }
 
-func (fake *FakeContainer) Run(arg1 ProcessSpec) (uint32, <-chan ProcessStream, error) {
-	fake.runMutex.Lock()
-	defer fake.runMutex.Unlock()
-	fake.runArgsForCall = append(fake.runArgsForCall, struct {
-		arg1 ProcessSpec
-	}{arg1})
-	if fake.RunStub != nil {
-		return fake.RunStub(arg1)
-	} else {
-		return fake.runReturns.result1, fake.runReturns.result2, fake.runReturns.result3
-	}
-}
-
-func (fake *FakeContainer) RunCallCount() int {
-	fake.runMutex.RLock()
-	defer fake.runMutex.RUnlock()
-	return len(fake.runArgsForCall)
-}
-
-func (fake *FakeContainer) RunArgsForCall(i int) ProcessSpec {
-	fake.runMutex.RLock()
-	defer fake.runMutex.RUnlock()
-	return fake.runArgsForCall[i].arg1
-}
-
-func (fake *FakeContainer) RunReturns(result1 uint32, result2 <-chan ProcessStream, result3 error) {
-	fake.runReturns = struct {
-		result1 uint32
-		result2 <-chan ProcessStream
-		result3 error
-	}{result1, result2, result3}
-}
-
-func (fake *FakeContainer) Attach(processID uint32) (<-chan ProcessStream, error) {
-	fake.attachMutex.Lock()
-	defer fake.attachMutex.Unlock()
-	fake.attachArgsForCall = append(fake.attachArgsForCall, struct {
-		processID uint32
-	}{processID})
-	if fake.AttachStub != nil {
-		return fake.AttachStub(processID)
-	} else {
-		return fake.attachReturns.result1, fake.attachReturns.result2
-	}
-}
-
-func (fake *FakeContainer) AttachCallCount() int {
-	fake.attachMutex.RLock()
-	defer fake.attachMutex.RUnlock()
-	return len(fake.attachArgsForCall)
-}
-
-func (fake *FakeContainer) AttachArgsForCall(i int) uint32 {
-	fake.attachMutex.RLock()
-	defer fake.attachMutex.RUnlock()
-	return fake.attachArgsForCall[i].processID
-}
-
-func (fake *FakeContainer) AttachReturns(result1 <-chan ProcessStream, result2 error) {
-	fake.attachReturns = struct {
-		result1 <-chan ProcessStream
-		result2 error
-	}{result1, result2}
-}
-
 func (fake *FakeContainer) NetIn(hostPort uint32, containerPort uint32) (uint32, uint32, error) {
 	fake.netInMutex.Lock()
 	defer fake.netInMutex.Unlock()
@@ -640,6 +576,72 @@ func (fake *FakeContainer) NetOutReturns(result1 error) {
 	fake.netOutReturns = struct {
 		result1 error
 	}{result1}
+}
+
+func (fake *FakeContainer) Run(arg1 ProcessSpec, arg2 ProcessIO) (Process, error) {
+	fake.runMutex.Lock()
+	defer fake.runMutex.Unlock()
+	fake.runArgsForCall = append(fake.runArgsForCall, struct {
+		arg1 ProcessSpec
+		arg2 ProcessIO
+	}{arg1, arg2})
+	if fake.RunStub != nil {
+		return fake.RunStub(arg1, arg2)
+	} else {
+		return fake.runReturns.result1, fake.runReturns.result2
+	}
+}
+
+func (fake *FakeContainer) RunCallCount() int {
+	fake.runMutex.RLock()
+	defer fake.runMutex.RUnlock()
+	return len(fake.runArgsForCall)
+}
+
+func (fake *FakeContainer) RunArgsForCall(i int) (ProcessSpec, ProcessIO) {
+	fake.runMutex.RLock()
+	defer fake.runMutex.RUnlock()
+	return fake.runArgsForCall[i].arg1, fake.runArgsForCall[i].arg2
+}
+
+func (fake *FakeContainer) RunReturns(result1 Process, result2 error) {
+	fake.runReturns = struct {
+		result1 Process
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *FakeContainer) Attach(arg1 uint32, arg2 ProcessIO) (Process, error) {
+	fake.attachMutex.Lock()
+	defer fake.attachMutex.Unlock()
+	fake.attachArgsForCall = append(fake.attachArgsForCall, struct {
+		arg1 uint32
+		arg2 ProcessIO
+	}{arg1, arg2})
+	if fake.AttachStub != nil {
+		return fake.AttachStub(arg1, arg2)
+	} else {
+		return fake.attachReturns.result1, fake.attachReturns.result2
+	}
+}
+
+func (fake *FakeContainer) AttachCallCount() int {
+	fake.attachMutex.RLock()
+	defer fake.attachMutex.RUnlock()
+	return len(fake.attachArgsForCall)
+}
+
+func (fake *FakeContainer) AttachArgsForCall(i int) (uint32, ProcessIO) {
+	fake.attachMutex.RLock()
+	defer fake.attachMutex.RUnlock()
+	return fake.attachArgsForCall[i].arg1, fake.attachArgsForCall[i].arg2
+}
+
+func (fake *FakeContainer) AttachReturns(result1 Process, result2 error) {
+	fake.attachReturns = struct {
+		result1 Process
+		result2 error
+	}{result1, result2}
 }
 
 var _ Container = new(FakeContainer)

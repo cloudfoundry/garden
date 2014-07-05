@@ -3,16 +3,19 @@ package client_test
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"strings"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gbytes"
 
 	. "github.com/cloudfoundry-incubator/garden/client"
 	"github.com/cloudfoundry-incubator/garden/client/connection/fakes"
 	"github.com/cloudfoundry-incubator/garden/warden"
+	wfakes "github.com/cloudfoundry-incubator/garden/warden/fakes"
 )
 
 var _ = Describe("Container", func() {
@@ -378,108 +381,119 @@ var _ = Describe("Container", func() {
 
 	Describe("Run", func() {
 		It("sends a run request and returns the process id and a stream", func() {
-			fakeConnection.RunStub = func(handle string, spec warden.ProcessSpec) (uint32, <-chan warden.ProcessStream, error) {
-				stream := make(chan warden.ProcessStream, 3)
+			fakeConnection.RunStub = func(handle string, spec warden.ProcessSpec, io warden.ProcessIO) (warden.Process, error) {
+				process := new(wfakes.FakeProcess)
 
-				stream <- warden.ProcessStream{
-					Source: warden.ProcessStreamSourceStdout,
-					Data:   []byte("stdout data"),
-				}
+				process.IDReturns(42)
+				process.WaitReturns(123, nil)
 
-				stream <- warden.ProcessStream{
-					Source: warden.ProcessStreamSourceStderr,
-					Data:   []byte("stderr data"),
-				}
+				go func() {
+					defer GinkgoRecover()
 
-				exitStatus := uint32(123)
-				stream <- warden.ProcessStream{
-					ExitStatus: &exitStatus,
-				}
+					_, err := fmt.Fprintf(io.Stdout, "stdout data")
+					Ω(err).ShouldNot(HaveOccurred())
 
-				close(stream)
+					_, err = fmt.Fprintf(io.Stderr, "stderr data")
+					Ω(err).ShouldNot(HaveOccurred())
 
-				return 42, stream, nil
+					err = io.Stdout.Close()
+					Ω(err).ShouldNot(HaveOccurred())
+
+					err = io.Stderr.Close()
+					Ω(err).ShouldNot(HaveOccurred())
+				}()
+
+				return process, nil
 			}
 
 			spec := warden.ProcessSpec{
 				Path: "some-script",
 			}
 
-			pid, stream, err := container.Run(spec)
-			Ω(err).ShouldNot(HaveOccurred())
-			Ω(pid).Should(Equal(uint32(42)))
+			stdout := gbytes.NewBuffer()
+			stderr := gbytes.NewBuffer()
 
-			ranHandle, ranSpec := fakeConnection.RunArgsForCall(0)
+			processIO := warden.ProcessIO{
+				Stdout: stdout,
+				Stderr: stderr,
+			}
+
+			process, err := container.Run(spec, processIO)
+			Ω(err).ShouldNot(HaveOccurred())
+
+			ranHandle, ranSpec, ranIO := fakeConnection.RunArgsForCall(0)
 			Ω(ranHandle).Should(Equal("some-handle"))
 			Ω(ranSpec).Should(Equal(spec))
+			Ω(ranIO).Should(Equal(processIO))
 
-			Ω(<-stream).Should(Equal(warden.ProcessStream{
-				Source: warden.ProcessStreamSourceStdout,
-				Data:   []byte("stdout data"),
-			}))
+			Ω(process.ID()).Should(Equal(uint32(42)))
 
-			Ω(<-stream).Should(Equal(warden.ProcessStream{
-				Source: warden.ProcessStreamSourceStderr,
-				Data:   []byte("stderr data"),
-			}))
+			status, err := process.Wait()
+			Ω(err).ShouldNot(HaveOccurred())
+			Ω(status).Should(Equal(123))
 
-			exitStatus := uint32(123)
-			Ω(<-stream).Should(Equal(warden.ProcessStream{
-				ExitStatus: &exitStatus,
-			}))
+			Eventually(stdout).Should(gbytes.Say("stdout data"))
+			Eventually(stderr).Should(gbytes.Say("stderr data"))
 
-			Ω(stream).Should(BeClosed())
+			Eventually(stdout.Closed).Should(BeTrue())
+			Eventually(stderr.Closed).Should(BeTrue())
 		})
 	})
 
 	Describe("Attach", func() {
 		It("sends an attach request and returns a stream", func() {
-			fakeConnection.AttachStub = func(handle string, processID uint32) (<-chan warden.ProcessStream, error) {
-				stream := make(chan warden.ProcessStream, 3)
+			fakeConnection.AttachStub = func(handle string, processID uint32, io warden.ProcessIO) (warden.Process, error) {
+				process := new(wfakes.FakeProcess)
 
-				stream <- warden.ProcessStream{
-					Source: warden.ProcessStreamSourceStdout,
-					Data:   []byte("stdout data"),
-				}
+				process.IDReturns(42)
+				process.WaitReturns(123, nil)
 
-				stream <- warden.ProcessStream{
-					Source: warden.ProcessStreamSourceStderr,
-					Data:   []byte("stderr data"),
-				}
+				go func() {
+					defer GinkgoRecover()
 
-				exitStatus := uint32(123)
-				stream <- warden.ProcessStream{
-					ExitStatus: &exitStatus,
-				}
+					_, err := fmt.Fprintf(io.Stdout, "stdout data")
+					Ω(err).ShouldNot(HaveOccurred())
 
-				close(stream)
+					_, err = fmt.Fprintf(io.Stderr, "stderr data")
+					Ω(err).ShouldNot(HaveOccurred())
 
-				return stream, nil
+					err = io.Stdout.Close()
+					Ω(err).ShouldNot(HaveOccurred())
+
+					err = io.Stderr.Close()
+					Ω(err).ShouldNot(HaveOccurred())
+				}()
+
+				return process, nil
 			}
 
-			stream, err := container.Attach(42)
+			stdout := gbytes.NewBuffer()
+			stderr := gbytes.NewBuffer()
+
+			processIO := warden.ProcessIO{
+				Stdout: stdout,
+				Stderr: stderr,
+			}
+
+			process, err := container.Attach(42, processIO)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			ranHandle, ranProcess := fakeConnection.AttachArgsForCall(0)
-			Ω(ranHandle).Should(Equal("some-handle"))
-			Ω(ranProcess).Should(Equal(uint32(42)))
+			attachedHandle, attachedID, attachedIO := fakeConnection.AttachArgsForCall(0)
+			Ω(attachedHandle).Should(Equal("some-handle"))
+			Ω(attachedID).Should(Equal(uint32(42)))
+			Ω(attachedIO).Should(Equal(processIO))
 
-			Ω(<-stream).Should(Equal(warden.ProcessStream{
-				Source: warden.ProcessStreamSourceStdout,
-				Data:   []byte("stdout data"),
-			}))
+			Ω(process.ID()).Should(Equal(uint32(42)))
 
-			Ω(<-stream).Should(Equal(warden.ProcessStream{
-				Source: warden.ProcessStreamSourceStderr,
-				Data:   []byte("stderr data"),
-			}))
+			status, err := process.Wait()
+			Ω(err).ShouldNot(HaveOccurred())
+			Ω(status).Should(Equal(123))
 
-			exitStatus := uint32(123)
-			Ω(<-stream).Should(Equal(warden.ProcessStream{
-				ExitStatus: &exitStatus,
-			}))
+			Eventually(stdout).Should(gbytes.Say("stdout data"))
+			Eventually(stderr).Should(gbytes.Say("stderr data"))
 
-			Ω(stream).Should(BeClosed())
+			Eventually(stdout.Closed).Should(BeTrue())
+			Eventually(stderr.Closed).Should(BeTrue())
 		})
 	})
 

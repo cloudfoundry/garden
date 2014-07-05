@@ -4,8 +4,8 @@ package fakes
 import (
 	. "github.com/cloudfoundry-incubator/garden/client/connection"
 
-	"io"
 	"github.com/cloudfoundry-incubator/garden/warden"
+	"io"
 
 	"sync"
 )
@@ -14,13 +14,13 @@ type FakeConnection struct {
 	PingStub        func() error
 	pingMutex       sync.RWMutex
 	pingArgsForCall []struct{}
-	pingReturns struct {
+	pingReturns     struct {
 		result1 error
 	}
 	CapacityStub        func() (warden.Capacity, error)
 	capacityMutex       sync.RWMutex
 	capacityArgsForCall []struct{}
-	capacityReturns struct {
+	capacityReturns     struct {
 		result1 warden.Capacity
 		result2 error
 	}
@@ -164,25 +164,26 @@ type FakeConnection struct {
 		result1 warden.MemoryLimits
 		result2 error
 	}
-	RunStub        func(handle string, spec warden.ProcessSpec) (uint32, <-chan warden.ProcessStream, error)
+	RunStub        func(handle string, spec warden.ProcessSpec, io warden.ProcessIO) (warden.Process, error)
 	runMutex       sync.RWMutex
 	runArgsForCall []struct {
 		handle string
 		spec   warden.ProcessSpec
+		io     warden.ProcessIO
 	}
 	runReturns struct {
-		result1 uint32
-		result2 <-chan warden.ProcessStream
-		result3 error
+		result1 warden.Process
+		result2 error
 	}
-	AttachStub        func(handle string, processID uint32) (<-chan warden.ProcessStream, error)
+	AttachStub        func(handle string, processID uint32, io warden.ProcessIO) (warden.Process, error)
 	attachMutex       sync.RWMutex
 	attachArgsForCall []struct {
 		handle    string
 		processID uint32
+		io        warden.ProcessIO
 	}
 	attachReturns struct {
-		result1 <-chan warden.ProcessStream
+		result1 warden.Process
 		result2 error
 	}
 	NetInStub        func(handle string, hostPort, containerPort uint32) (uint32, uint32, error)
@@ -741,17 +742,18 @@ func (fake *FakeConnection) CurrentMemoryLimitsReturns(result1 warden.MemoryLimi
 	}{result1, result2}
 }
 
-func (fake *FakeConnection) Run(handle string, spec warden.ProcessSpec) (uint32, <-chan warden.ProcessStream, error) {
+func (fake *FakeConnection) Run(handle string, spec warden.ProcessSpec, io warden.ProcessIO) (warden.Process, error) {
 	fake.runMutex.Lock()
 	defer fake.runMutex.Unlock()
 	fake.runArgsForCall = append(fake.runArgsForCall, struct {
 		handle string
 		spec   warden.ProcessSpec
-	}{handle, spec})
+		io     warden.ProcessIO
+	}{handle, spec, io})
 	if fake.RunStub != nil {
-		return fake.RunStub(handle, spec)
+		return fake.RunStub(handle, spec, io)
 	} else {
-		return fake.runReturns.result1, fake.runReturns.result2, fake.runReturns.result3
+		return fake.runReturns.result1, fake.runReturns.result2
 	}
 }
 
@@ -761,29 +763,29 @@ func (fake *FakeConnection) RunCallCount() int {
 	return len(fake.runArgsForCall)
 }
 
-func (fake *FakeConnection) RunArgsForCall(i int) (string, warden.ProcessSpec) {
+func (fake *FakeConnection) RunArgsForCall(i int) (string, warden.ProcessSpec, warden.ProcessIO) {
 	fake.runMutex.RLock()
 	defer fake.runMutex.RUnlock()
-	return fake.runArgsForCall[i].handle, fake.runArgsForCall[i].spec
+	return fake.runArgsForCall[i].handle, fake.runArgsForCall[i].spec, fake.runArgsForCall[i].io
 }
 
-func (fake *FakeConnection) RunReturns(result1 uint32, result2 <-chan warden.ProcessStream, result3 error) {
+func (fake *FakeConnection) RunReturns(result1 warden.Process, result2 error) {
 	fake.runReturns = struct {
-		result1 uint32
-		result2 <-chan warden.ProcessStream
-		result3 error
-	}{result1, result2, result3}
+		result1 warden.Process
+		result2 error
+	}{result1, result2}
 }
 
-func (fake *FakeConnection) Attach(handle string, processID uint32) (<-chan warden.ProcessStream, error) {
+func (fake *FakeConnection) Attach(handle string, processID uint32, io warden.ProcessIO) (warden.Process, error) {
 	fake.attachMutex.Lock()
 	defer fake.attachMutex.Unlock()
 	fake.attachArgsForCall = append(fake.attachArgsForCall, struct {
 		handle    string
 		processID uint32
-	}{handle, processID})
+		io        warden.ProcessIO
+	}{handle, processID, io})
 	if fake.AttachStub != nil {
-		return fake.AttachStub(handle, processID)
+		return fake.AttachStub(handle, processID, io)
 	} else {
 		return fake.attachReturns.result1, fake.attachReturns.result2
 	}
@@ -795,15 +797,15 @@ func (fake *FakeConnection) AttachCallCount() int {
 	return len(fake.attachArgsForCall)
 }
 
-func (fake *FakeConnection) AttachArgsForCall(i int) (string, uint32) {
+func (fake *FakeConnection) AttachArgsForCall(i int) (string, uint32, warden.ProcessIO) {
 	fake.attachMutex.RLock()
 	defer fake.attachMutex.RUnlock()
-	return fake.attachArgsForCall[i].handle, fake.attachArgsForCall[i].processID
+	return fake.attachArgsForCall[i].handle, fake.attachArgsForCall[i].processID, fake.attachArgsForCall[i].io
 }
 
-func (fake *FakeConnection) AttachReturns(result1 <-chan warden.ProcessStream, result2 error) {
+func (fake *FakeConnection) AttachReturns(result1 warden.Process, result2 error) {
 	fake.attachReturns = struct {
-		result1 <-chan warden.ProcessStream
+		result1 warden.Process
 		result2 error
 	}{result1, result2}
 }

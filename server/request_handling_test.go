@@ -3,6 +3,7 @@ package server_test
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -11,6 +12,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gbytes"
 
 	"github.com/cloudfoundry-incubator/garden/client"
 	"github.com/cloudfoundry-incubator/garden/client/connection"
@@ -918,115 +920,107 @@ var _ = Describe("When a client connects", func() {
 		})
 
 		Describe("attaching", func() {
-			exitStatus := uint32(42)
-
-			It("responds with a ProcessPayload for every chunk", func() {
-				streamIn := make(chan warden.ProcessStream, 1)
-
-				fakeContainer.AttachReturns(streamIn, nil)
-
-				stream, err := container.Attach(123)
-				Ω(err).ShouldNot(HaveOccurred())
-
-				Ω(fakeContainer.AttachArgsForCall(0)).Should(Equal(uint32(123)))
-
-				streamIn <- warden.ProcessStream{
-					Source: warden.ProcessStreamSourceStdout,
-					Data:   []byte("process out\n"),
-				}
-
-				var chunk warden.ProcessStream
-				Eventually(stream).Should(Receive(&chunk))
-				Ω(chunk).Should(Equal(warden.ProcessStream{
-					Source: warden.ProcessStreamSourceStdout,
-					Data:   []byte("process out\n"),
-				}))
-
-				streamIn <- warden.ProcessStream{
-					Source: warden.ProcessStreamSourceStderr,
-					Data:   []byte("process err\n"),
-				}
-
-				Eventually(stream).Should(Receive(&chunk))
-				Ω(chunk).Should(Equal(warden.ProcessStream{
-					Source: warden.ProcessStreamSourceStderr,
-					Data:   []byte("process err\n"),
-				}))
-
-				streamIn <- warden.ProcessStream{
-					ExitStatus: &exitStatus,
-				}
-
-				Eventually(stream).Should(Receive(&chunk))
-				Ω(chunk).Should(Equal(warden.ProcessStream{
-					ExitStatus: &exitStatus,
-				}))
-
-				close(streamIn)
-
-				Eventually(stream).Should(BeClosed())
-			})
-
-			Context("when the container has a grace time", func() {
+			Context("when attaching succeeds", func() {
 				BeforeEach(func() {
-					serverBackend.GraceTimeReturns(1 * time.Second)
+					fakeContainer.AttachStub = func(processID uint32, io warden.ProcessIO) (warden.Process, error) {
+						process := new(fakes.FakeProcess)
+
+						process.IDReturns(42)
+						process.WaitReturns(123, nil)
+
+						go func() {
+							defer GinkgoRecover()
+
+							_, err := fmt.Fprintf(io.Stdout, "stdout data")
+							Ω(err).ShouldNot(HaveOccurred())
+
+							_, err = fmt.Fprintf(io.Stderr, "stderr data")
+							Ω(err).ShouldNot(HaveOccurred())
+
+							err = io.Stdout.Close()
+							Ω(err).ShouldNot(HaveOccurred())
+
+							err = io.Stderr.Close()
+							Ω(err).ShouldNot(HaveOccurred())
+						}()
+
+						return process, nil
+					}
 				})
 
-				It("resets as long as it's streaming", func() {
-					streamIn := make(chan warden.ProcessStream, 1)
+				It("responds with a ProcessPayload for every chunk", func() {
+					stdout := gbytes.NewBuffer()
+					stderr := gbytes.NewBuffer()
 
-					fakeContainer.AttachReturns(streamIn, nil)
+					processIO := warden.ProcessIO{
+						Stdout: stdout,
+						Stderr: stderr,
+					}
 
-					stream, err := container.Attach(123)
+					process, err := container.Attach(42, processIO)
 					Ω(err).ShouldNot(HaveOccurred())
 
-					Ω(fakeContainer.AttachArgsForCall(0)).Should(Equal(uint32(123)))
+					pid, _ := fakeContainer.AttachArgsForCall(0)
+					Ω(pid).Should(Equal(uint32(42)))
 
-					streamIn <- warden.ProcessStream{
-						Source: warden.ProcessStreamSourceStdout,
-						Data:   []byte("process out\n"),
-					}
+					Eventually(stdout).Should(gbytes.Say("stdout data"))
+					Eventually(stderr).Should(gbytes.Say("stderr data"))
 
-					Eventually(stream).Should(Receive())
+					Eventually(stdout.Closed).Should(BeTrue())
+					Eventually(stderr.Closed).Should(BeTrue())
 
-					time.Sleep(time.Second)
+					status, err := process.Wait()
+					Ω(err).ShouldNot(HaveOccurred())
+					Ω(status).Should(Equal(123))
+				})
 
-					streamIn <- warden.ProcessStream{
-						Source: warden.ProcessStreamSourceStderr,
-						Data:   []byte("process err\n"),
-					}
+				itResetsGraceTimeWhenHandling(func() {
+					process, err := container.Attach(42, warden.ProcessIO{})
+					Ω(err).ShouldNot(HaveOccurred())
 
-					Eventually(stream).Should(Receive())
-
-					time.Sleep(time.Second)
-
-					streamIn <- warden.ProcessStream{
-						ExitStatus: &exitStatus,
-					}
-
-					Eventually(stream).Should(Receive())
-
-					before := time.Now()
-
-					Eventually(serverBackend.DestroyCallCount, 2*time.Second).Should(Equal(1))
-					Ω(serverBackend.DestroyArgsForCall(0)).Should(Equal(container.Handle()))
-
-					Ω(time.Since(before)).Should(BeNumerically("~", 1*time.Second, 100*time.Millisecond))
+					status, err := process.Wait()
+					Ω(err).ShouldNot(HaveOccurred())
+					Ω(status).Should(Equal(123))
 				})
 			})
 
 			itFailsWhenTheContainerIsNotFound(func() {
-				_, err := container.Attach(123)
+				_, err := container.Attach(123, warden.ProcessIO{})
 				Ω(err).Should(HaveOccurred())
 			})
 
-			Context("when streaming fails", func() {
+			Context("when waiting on the process fails server-side", func() {
+				BeforeEach(func() {
+					fakeContainer.AttachStub = func(id uint32, io warden.ProcessIO) (warden.Process, error) {
+						process := new(fakes.FakeProcess)
+
+						process.IDReturns(42)
+						process.WaitReturns(0, errors.New("oh no!"))
+
+						io.Stdout.Close()
+						io.Stderr.Close()
+
+						return process, nil
+					}
+				})
+
+				It("bubbles the error up", func() {
+					process, err := container.Attach(42, warden.ProcessIO{})
+					Ω(err).ShouldNot(HaveOccurred())
+
+					_, err = process.Wait()
+					Ω(err).Should(HaveOccurred())
+					Ω(err.Error()).Should(ContainSubstring("oh no!"))
+				})
+			})
+
+			Context("when attaching fails", func() {
 				BeforeEach(func() {
 					fakeContainer.AttachReturns(nil, errors.New("oh no!"))
 				})
 
 				It("fails", func() {
-					_, err := container.Attach(123)
+					_, err := container.Attach(123, warden.ProcessIO{})
 					Ω(err).Should(HaveOccurred())
 				})
 			})
@@ -1055,128 +1049,114 @@ var _ = Describe("When a client connects", func() {
 					Sigpending: uint64ptr(14),
 					Stack:      uint64ptr(15),
 				},
-				EnvironmentVariables: []warden.EnvironmentVariable{
-					warden.EnvironmentVariable{
-						Key:   "FLAVOR",
-						Value: "chocolate",
-					},
-					warden.EnvironmentVariable{
-						Key:   "TOPPINGS",
-						Value: "sprinkles",
-					},
+				Env: []string{
+					"FLAVOR=chocolate",
+					"TOPPINGS=sprinkles",
 				},
 			}
 
-			exitStatus := uint32(42)
+			Context("when running succeeds", func() {
+				BeforeEach(func() {
+					fakeContainer.RunStub = func(spec warden.ProcessSpec, io warden.ProcessIO) (warden.Process, error) {
+						process := new(fakes.FakeProcess)
 
-			It("runs the process and streams the output", func() {
-				streamIn := make(chan warden.ProcessStream, 1)
+						process.IDReturns(42)
+						process.WaitReturns(123, nil)
 
-				fakeContainer.RunReturns(123, streamIn, nil)
+						go func() {
+							defer GinkgoRecover()
 
-				pid, stream, err := container.Run(processSpec)
-				Ω(err).ShouldNot(HaveOccurred())
-				Ω(pid).Should(Equal(uint32(123)))
+							_, err := fmt.Fprintf(io.Stdout, "stdout data")
+							Ω(err).ShouldNot(HaveOccurred())
 
-				Ω(fakeContainer.RunArgsForCall(0)).Should(Equal(processSpec))
+							_, err = fmt.Fprintf(io.Stderr, "stderr data")
+							Ω(err).ShouldNot(HaveOccurred())
 
-				streamIn <- warden.ProcessStream{
-					Source: warden.ProcessStreamSourceStdout,
-					Data:   []byte("process out\n"),
-				}
+							err = io.Stdout.Close()
+							Ω(err).ShouldNot(HaveOccurred())
 
-				var chunk warden.ProcessStream
-				Eventually(stream).Should(Receive(&chunk))
-				Ω(chunk).Should(Equal(warden.ProcessStream{
-					Source: warden.ProcessStreamSourceStdout,
-					Data:   []byte("process out\n"),
-				}))
+							err = io.Stderr.Close()
+							Ω(err).ShouldNot(HaveOccurred())
+						}()
 
-				streamIn <- warden.ProcessStream{
-					Source: warden.ProcessStreamSourceStderr,
-					Data:   []byte("process err\n"),
-				}
+						return process, nil
+					}
+				})
 
-				Eventually(stream).Should(Receive(&chunk))
-				Ω(chunk).Should(Equal(warden.ProcessStream{
-					Source: warden.ProcessStreamSourceStderr,
-					Data:   []byte("process err\n"),
-				}))
+				It("runs the process and streams the output", func() {
+					stdout := gbytes.NewBuffer()
+					stderr := gbytes.NewBuffer()
 
-				streamIn <- warden.ProcessStream{
-					ExitStatus: &exitStatus,
-				}
+					processIO := warden.ProcessIO{
+						Stdout: stdout,
+						Stderr: stderr,
+					}
 
-				Eventually(stream).Should(Receive(&chunk))
-				Ω(chunk).Should(Equal(warden.ProcessStream{
-					ExitStatus: &exitStatus,
-				}))
+					process, err := container.Run(processSpec, processIO)
+					Ω(err).ShouldNot(HaveOccurred())
 
-				close(streamIn)
+					ranSpec, _ := fakeContainer.RunArgsForCall(0)
+					Ω(ranSpec).Should(Equal(processSpec))
 
-				Eventually(stream).Should(BeClosed())
+					Eventually(stdout).Should(gbytes.Say("stdout data"))
+					Eventually(stderr).Should(gbytes.Say("stderr data"))
+
+					Eventually(stdout.Closed).Should(BeTrue())
+					Eventually(stderr.Closed).Should(BeTrue())
+
+					status, err := process.Wait()
+					Ω(err).ShouldNot(HaveOccurred())
+					Ω(status).Should(Equal(123))
+				})
+
+				itResetsGraceTimeWhenHandling(func() {
+					process, err := container.Run(processSpec, warden.ProcessIO{})
+					Ω(err).ShouldNot(HaveOccurred())
+
+					status, err := process.Wait()
+					Ω(err).ShouldNot(HaveOccurred())
+					Ω(status).Should(Equal(123))
+				})
+			})
+
+			Context("when waiting on the process fails server-side", func() {
+				BeforeEach(func() {
+					fakeContainer.RunStub = func(spec warden.ProcessSpec, io warden.ProcessIO) (warden.Process, error) {
+						process := new(fakes.FakeProcess)
+
+						process.IDReturns(42)
+						process.WaitReturns(0, errors.New("oh no!"))
+
+						io.Stdout.Close()
+						io.Stderr.Close()
+
+						return process, nil
+					}
+				})
+
+				It("bubbles the error up", func() {
+					process, err := container.Run(processSpec, warden.ProcessIO{})
+					Ω(err).ShouldNot(HaveOccurred())
+
+					_, err = process.Wait()
+					Ω(err).Should(HaveOccurred())
+					Ω(err.Error()).Should(ContainSubstring("oh no!"))
+				})
 			})
 
 			itFailsWhenTheContainerIsNotFound(func() {
-				_, _, err := container.Run(processSpec)
+				_, err := container.Run(processSpec, warden.ProcessIO{})
 				Ω(err).Should(HaveOccurred())
 			})
 
 			Context("when running fails", func() {
 				BeforeEach(func() {
-					fakeContainer.RunReturns(0, nil, errors.New("oh no!"))
+					fakeContainer.RunReturns(nil, errors.New("oh no!"))
 				})
 
 				It("fails", func() {
-					_, _, err := container.Run(processSpec)
+					_, err := container.Run(processSpec, warden.ProcessIO{})
 					Ω(err).Should(HaveOccurred())
-				})
-			})
-
-			Context("when the container has a grace time", func() {
-				BeforeEach(func() {
-					serverBackend.GraceTimeReturns(1 * time.Second)
-				})
-
-				It("resets the container's grace time as long as it's streaming", func() {
-					streamIn := make(chan warden.ProcessStream, 1)
-
-					fakeContainer.RunReturns(123, streamIn, nil)
-
-					pid, stream, err := container.Run(processSpec)
-					Ω(err).ShouldNot(HaveOccurred())
-					Ω(pid).Should(Equal(uint32(123)))
-
-					streamIn <- warden.ProcessStream{
-						Source: warden.ProcessStreamSourceStdout,
-						Data:   []byte("process out\n"),
-					}
-
-					Eventually(stream).Should(Receive())
-
-					time.Sleep(time.Second)
-
-					streamIn <- warden.ProcessStream{
-						Source: warden.ProcessStreamSourceStderr,
-						Data:   []byte("process err\n"),
-					}
-
-					Eventually(stream).Should(Receive())
-
-					time.Sleep(time.Second)
-
-					streamIn <- warden.ProcessStream{
-						ExitStatus: &exitStatus,
-					}
-
-					Eventually(stream).Should(Receive())
-
-					before := time.Now()
-
-					Eventually(serverBackend.DestroyCallCount, 2*time.Second).Should(Equal(1))
-					Ω(serverBackend.DestroyArgsForCall(0)).Should(Equal(container.Handle()))
-
-					Ω(time.Since(before)).Should(BeNumerically("~", 1*time.Second, 100*time.Millisecond))
 				})
 			})
 		})

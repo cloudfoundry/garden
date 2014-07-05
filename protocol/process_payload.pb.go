@@ -54,6 +54,7 @@ type ProcessPayload struct {
 	Source           *ProcessPayload_Source `protobuf:"varint,2,opt,name=source,enum=warden.ProcessPayload_Source" json:"source,omitempty"`
 	Data             *string                `protobuf:"bytes,3,opt,name=data" json:"data,omitempty"`
 	ExitStatus       *uint32                `protobuf:"varint,4,opt,name=exit_status" json:"exit_status,omitempty"`
+	Error            *string                `protobuf:"bytes,5,opt,name=error" json:"error,omitempty"`
 	XXX_unrecognized []byte                 `json:"-"`
 }
 
@@ -87,6 +88,13 @@ func (m *ProcessPayload) GetExitStatus() uint32 {
 		return *m.ExitStatus
 	}
 	return 0
+}
+
+func (m *ProcessPayload) GetError() string {
+	if m != nil && m.Error != nil {
+		return *m.Error
+	}
+	return ""
 }
 
 func init() {

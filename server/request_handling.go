@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"time"
 
@@ -572,37 +573,52 @@ func (s *WardenServer) handleRun(w http.ResponseWriter, r *http.Request) {
 	s.bomberman.Pause(container.Handle())
 	defer s.bomberman.Unpause(container.Handle())
 
-	ProcessSpec := warden.ProcessSpec{
-		Path:                 path,
-		Args:                 args,
-		Dir:                  dir,
-		Privileged:           privileged,
-		EnvironmentVariables: convertEnvironmentVariables(env),
+	processSpec := warden.ProcessSpec{
+		Path:       path,
+		Args:       args,
+		Dir:        dir,
+		Privileged: privileged,
+		Env:        convertEnv(env),
 	}
 
 	if request.Rlimits != nil {
-		ProcessSpec.Limits = resourceLimits(request.Rlimits)
+		processSpec.Limits = resourceLimits(request.Rlimits)
 	}
 
-	processID, stream, err := container.Run(ProcessSpec)
+	stdout := make(chan []byte, 1000)
+	stderr := make(chan []byte, 1000)
+
+	processIO := warden.ProcessIO{
+		Stdout: &chanWriter{stdout},
+		Stderr: &chanWriter{stderr},
+	}
+
+	process, err := container.Run(processSpec, processIO)
 	if err != nil {
 		s.writeError(w, err)
 		return
 	}
 
 	w.WriteHeader(http.StatusCreated)
+	w.Header().Set("Content-Type", "application/json")
 
-	s.writeResponse(w, &protocol.ProcessPayload{
-		ProcessId: proto.Uint32(processID),
+	conn, _, err := w.(http.Hijacker).Hijack()
+	if err != nil {
+		s.writeError(w, err)
+		return
+	}
+
+	defer conn.Close()
+
+	transport.WriteMessage(conn, &protocol.ProcessPayload{
+		ProcessId: proto.Uint32(process.ID()),
 	})
-
-	w.(http.Flusher).Flush()
 
 	// do not block shutdown on run/attach
 	s.handling.Done()
 	defer s.handling.Add(1)
 
-	s.streamProcessToConnection(processID, stream, w)
+	s.streamProcess(conn, process, stdout, stderr)
 }
 
 func (s *WardenServer) handleAttach(w http.ResponseWriter, r *http.Request) {
@@ -625,19 +641,36 @@ func (s *WardenServer) handleAttach(w http.ResponseWriter, r *http.Request) {
 	s.bomberman.Pause(container.Handle())
 	defer s.bomberman.Unpause(container.Handle())
 
-	stream, err := container.Attach(processID)
+	stdout := make(chan []byte, 1000)
+	stderr := make(chan []byte, 1000)
+
+	processIO := warden.ProcessIO{
+		Stdout: &chanWriter{stdout},
+		Stderr: &chanWriter{stderr},
+	}
+
+	process, err := container.Attach(processID, processIO)
 	if err != nil {
 		s.writeError(w, err)
 		return
 	}
 
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+
+	conn, _, err := w.(http.Hijacker).Hijack()
+	if err != nil {
+		s.writeError(w, err)
+		return
+	}
+
+	defer conn.Close()
+
 	// do not block shutdown on run/attach
 	s.handling.Done()
 	defer s.handling.Add(1)
 
-	w.(http.Flusher).Flush()
-
-	s.streamProcessToConnection(processID, stream, w)
+	s.streamProcess(conn, process, stdout, stderr)
 }
 
 func (s *WardenServer) handleInfo(w http.ResponseWriter, r *http.Request) {
@@ -788,53 +821,63 @@ func (s *WardenServer) readRequest(msg proto.Message, w http.ResponseWriter, r *
 	return true
 }
 
-func convertEnvironmentVariables(environmentVariables []*protocol.EnvironmentVariable) []warden.EnvironmentVariable {
-	convertedEnvironmentVariables := []warden.EnvironmentVariable{}
+func convertEnv(env []*protocol.EnvironmentVariable) []string {
+	converted := []string{}
 
-	for _, env := range environmentVariables {
-		convertedEnvironmentVariable := warden.EnvironmentVariable{
-			Key:   env.GetKey(),
-			Value: env.GetValue(),
-		}
-		convertedEnvironmentVariables = append(convertedEnvironmentVariables, convertedEnvironmentVariable)
+	for _, e := range env {
+		converted = append(converted, e.GetKey()+"="+e.GetValue())
 	}
 
-	return convertedEnvironmentVariables
+	return converted
 }
 
-func (s *WardenServer) streamProcessToConnection(processID uint32, stream <-chan warden.ProcessStream, w http.ResponseWriter) {
-	for payload := range stream {
-		if payload.ExitStatus != nil {
-			transport.WriteMessage(w, &protocol.ProcessPayload{
-				ProcessId:  proto.Uint32(processID),
-				ExitStatus: proto.Uint32(*payload.ExitStatus),
+func (s *WardenServer) streamProcess(conn net.Conn, process warden.Process, stdout <-chan []byte, stderr <-chan []byte) {
+	stdoutSource := protocol.ProcessPayload_stdout
+	stderrSource := protocol.ProcessPayload_stderr
+
+	var data []byte
+
+	outOpen := true
+	errOpen := true
+
+	for outOpen || errOpen {
+		select {
+		case data, outOpen = <-stdout:
+			if !outOpen {
+				stdout = nil
+				break
+			}
+
+			transport.WriteMessage(conn, &protocol.ProcessPayload{
+				ProcessId: proto.Uint32(process.ID()),
+				Source:    &stdoutSource,
+				Data:      proto.String(string(data)),
 			})
 
-			w.(http.Flusher).Flush()
+		case data, errOpen = <-stderr:
+			if !errOpen {
+				stderr = nil
+				break
+			}
 
-			break
+			transport.WriteMessage(conn, &protocol.ProcessPayload{
+				ProcessId: proto.Uint32(process.ID()),
+				Source:    &stderrSource,
+				Data:      proto.String(string(data)),
+			})
 		}
+	}
 
-		var payloadSource protocol.ProcessPayload_Source
-
-		switch payload.Source {
-		case warden.ProcessStreamSourceStdout:
-			payloadSource = protocol.ProcessPayload_stdout
-		case warden.ProcessStreamSourceStderr:
-			payloadSource = protocol.ProcessPayload_stderr
-		case warden.ProcessStreamSourceStdin:
-			payloadSource = protocol.ProcessPayload_stdin
-		}
-
-		err := transport.WriteMessage(w, &protocol.ProcessPayload{
-			ProcessId: proto.Uint32(processID),
-			Source:    &payloadSource,
-			Data:      proto.String(string(payload.Data)),
+	status, err := process.Wait()
+	if err != nil {
+		transport.WriteMessage(conn, &protocol.ProcessPayload{
+			ProcessId: proto.Uint32(process.ID()),
+			Error:     proto.String(err.Error()),
 		})
-		if err != nil {
-			break
-		}
-
-		w.(http.Flusher).Flush()
+	} else {
+		transport.WriteMessage(conn, &protocol.ProcessPayload{
+			ProcessId:  proto.Uint32(process.ID()),
+			ExitStatus: proto.Uint32(uint32(status)),
+		})
 	}
 }
