@@ -28,3 +28,12 @@ func (w *stdinWriter) Write(d []byte) (int, error) {
 
 	return len(d), nil
 }
+
+func (w *stdinWriter) Close() error {
+	stdin := protocol.ProcessPayload_stdin
+
+	return transport.WriteMessage(w.conn, &protocol.ProcessPayload{
+		ProcessId: proto.Uint32(w.process.ID()),
+		Source:    &stdin,
+	})
+}

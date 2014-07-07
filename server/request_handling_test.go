@@ -934,6 +934,12 @@ var _ = Describe("When a client connects", func() {
 							_, err := fmt.Fprintf(io.Stdout, "stdout data")
 							Ω(err).ShouldNot(HaveOccurred())
 
+							in, err := ioutil.ReadAll(io.Stdin)
+							Ω(err).ShouldNot(HaveOccurred())
+
+							_, err = fmt.Fprintf(io.Stdout, "mirrored %s", string(in))
+							Ω(err).ShouldNot(HaveOccurred())
+
 							_, err = fmt.Fprintf(io.Stderr, "stderr data")
 							Ω(err).ShouldNot(HaveOccurred())
 
@@ -953,6 +959,7 @@ var _ = Describe("When a client connects", func() {
 					stderr := gbytes.NewBuffer()
 
 					processIO := warden.ProcessIO{
+						Stdin:  bytes.NewBufferString("stdin data"),
 						Stdout: stdout,
 						Stderr: stderr,
 					}
@@ -964,6 +971,7 @@ var _ = Describe("When a client connects", func() {
 					Ω(pid).Should(Equal(uint32(42)))
 
 					Eventually(stdout).Should(gbytes.Say("stdout data"))
+					Eventually(stdout).Should(gbytes.Say("mirrored stdin data"))
 					Eventually(stderr).Should(gbytes.Say("stderr data"))
 
 					Eventually(stdout.Closed).Should(BeTrue())
@@ -975,7 +983,9 @@ var _ = Describe("When a client connects", func() {
 				})
 
 				itResetsGraceTimeWhenHandling(func() {
-					process, err := container.Attach(42, warden.ProcessIO{})
+					process, err := container.Attach(42, warden.ProcessIO{
+						Stdin: bytes.NewBufferString("hello"),
+					})
 					Ω(err).ShouldNot(HaveOccurred())
 
 					status, err := process.Wait()
@@ -1069,6 +1079,12 @@ var _ = Describe("When a client connects", func() {
 							_, err := fmt.Fprintf(io.Stdout, "stdout data")
 							Ω(err).ShouldNot(HaveOccurred())
 
+							in, err := ioutil.ReadAll(io.Stdin)
+							Ω(err).ShouldNot(HaveOccurred())
+
+							_, err = fmt.Fprintf(io.Stdout, "mirrored %s", string(in))
+							Ω(err).ShouldNot(HaveOccurred())
+
 							_, err = fmt.Fprintf(io.Stderr, "stderr data")
 							Ω(err).ShouldNot(HaveOccurred())
 
@@ -1088,6 +1104,7 @@ var _ = Describe("When a client connects", func() {
 					stderr := gbytes.NewBuffer()
 
 					processIO := warden.ProcessIO{
+						Stdin:  bytes.NewBufferString("stdin data"),
 						Stdout: stdout,
 						Stderr: stderr,
 					}
@@ -1099,6 +1116,7 @@ var _ = Describe("When a client connects", func() {
 					Ω(ranSpec).Should(Equal(processSpec))
 
 					Eventually(stdout).Should(gbytes.Say("stdout data"))
+					Eventually(stdout).Should(gbytes.Say("mirrored stdin data"))
 					Eventually(stderr).Should(gbytes.Say("stderr data"))
 
 					Eventually(stdout.Closed).Should(BeTrue())
@@ -1110,7 +1128,9 @@ var _ = Describe("When a client connects", func() {
 				})
 
 				itResetsGraceTimeWhenHandling(func() {
-					process, err := container.Run(processSpec, warden.ProcessIO{})
+					process, err := container.Run(processSpec, warden.ProcessIO{
+						Stdin: bytes.NewBufferString("hello"),
+					})
 					Ω(err).ShouldNot(HaveOccurred())
 
 					status, err := process.Wait()

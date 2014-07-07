@@ -588,7 +588,10 @@ func (s *WardenServer) handleRun(w http.ResponseWriter, r *http.Request) {
 	stdout := make(chan []byte, 1000)
 	stderr := make(chan []byte, 1000)
 
+	stdinR, stdinW := io.Pipe()
+
 	processIO := warden.ProcessIO{
+		Stdin:  stdinR,
 		Stdout: &chanWriter{stdout},
 		Stderr: &chanWriter{stderr},
 	}
@@ -602,7 +605,7 @@ func (s *WardenServer) handleRun(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 	w.Header().Set("Content-Type", "application/json")
 
-	conn, _, err := w.(http.Hijacker).Hijack()
+	conn, br, err := w.(http.Hijacker).Hijack()
 	if err != nil {
 		s.writeError(w, err)
 		return
@@ -618,7 +621,31 @@ func (s *WardenServer) handleRun(w http.ResponseWriter, r *http.Request) {
 	s.handling.Done()
 	defer s.handling.Add(1)
 
+	go s.streamInput(json.NewDecoder(br), stdinW)
+
 	s.streamProcess(conn, process, stdout, stderr)
+}
+
+func (s *WardenServer) streamInput(decoder *json.Decoder, in io.WriteCloser) {
+	for {
+		var payload protocol.ProcessPayload
+		err := decoder.Decode(&payload)
+		if err != nil {
+			break
+		}
+
+		if payload.Data == nil {
+			err := in.Close()
+			if err != nil {
+				break
+			}
+		} else {
+			_, err := in.Write([]byte(payload.GetData()))
+			if err != nil {
+				break
+			}
+		}
+	}
 }
 
 func (s *WardenServer) handleAttach(w http.ResponseWriter, r *http.Request) {
@@ -644,7 +671,10 @@ func (s *WardenServer) handleAttach(w http.ResponseWriter, r *http.Request) {
 	stdout := make(chan []byte, 1000)
 	stderr := make(chan []byte, 1000)
 
+	stdinR, stdinW := io.Pipe()
+
 	processIO := warden.ProcessIO{
+		Stdin:  stdinR,
 		Stdout: &chanWriter{stdout},
 		Stderr: &chanWriter{stderr},
 	}
@@ -658,7 +688,7 @@ func (s *WardenServer) handleAttach(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
 
-	conn, _, err := w.(http.Hijacker).Hijack()
+	conn, br, err := w.(http.Hijacker).Hijack()
 	if err != nil {
 		s.writeError(w, err)
 		return
@@ -669,6 +699,8 @@ func (s *WardenServer) handleAttach(w http.ResponseWriter, r *http.Request) {
 	// do not block shutdown on run/attach
 	s.handling.Done()
 	defer s.handling.Add(1)
+
+	go s.streamInput(json.NewDecoder(br), stdinW)
 
 	s.streamProcess(conn, process, stdout, stderr)
 }

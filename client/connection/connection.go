@@ -745,7 +745,10 @@ func (c *connection) streamPayloads(conn net.Conn, decoder *json.Decoder, proces
 			conn:    conn,
 		}
 
-		go io.Copy(writer, processIO.Stdin)
+		go func() {
+			io.Copy(writer, processIO.Stdin)
+			writer.Close()
+		}()
 	}
 
 	for {
