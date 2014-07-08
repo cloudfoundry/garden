@@ -43,7 +43,7 @@ type ProcessSpec struct {
 }
 
 type ProcessIO struct {
-	Stdin  io.Reader // TODO io.ReadCloser
+	Stdin  io.Reader
 	Stdout io.WriteCloser
 	Stderr io.WriteCloser
 }
