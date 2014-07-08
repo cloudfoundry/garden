@@ -598,10 +598,6 @@ func (s *WardenServer) handleRun(w http.ResponseWriter, r *http.Request) {
 
 	w.(http.Flusher).Flush()
 
-	// do not block shutdown on run/attach
-	s.handling.Done()
-	defer s.handling.Add(1)
-
 	s.streamProcessToConnection(processID, stream, w)
 }
 
@@ -630,10 +626,6 @@ func (s *WardenServer) handleAttach(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, err)
 		return
 	}
-
-	// do not block shutdown on run/attach
-	s.handling.Done()
-	defer s.handling.Add(1)
 
 	w.(http.Flusher).Flush()
 
@@ -803,38 +795,43 @@ func convertEnvironmentVariables(environmentVariables []*protocol.EnvironmentVar
 }
 
 func (s *WardenServer) streamProcessToConnection(processID uint32, stream <-chan warden.ProcessStream, w http.ResponseWriter) {
-	for payload := range stream {
-		if payload.ExitStatus != nil {
-			transport.WriteMessage(w, &protocol.ProcessPayload{
-				ProcessId:  proto.Uint32(processID),
-				ExitStatus: proto.Uint32(*payload.ExitStatus),
+	for {
+		select {
+		case <-s.stopping:
+			return
+		case payload := <-stream:
+			if payload.ExitStatus != nil {
+				transport.WriteMessage(w, &protocol.ProcessPayload{
+					ProcessId:  proto.Uint32(processID),
+					ExitStatus: proto.Uint32(*payload.ExitStatus),
+				})
+
+				w.(http.Flusher).Flush()
+
+				return
+			}
+
+			var payloadSource protocol.ProcessPayload_Source
+
+			switch payload.Source {
+			case warden.ProcessStreamSourceStdout:
+				payloadSource = protocol.ProcessPayload_stdout
+			case warden.ProcessStreamSourceStderr:
+				payloadSource = protocol.ProcessPayload_stderr
+			case warden.ProcessStreamSourceStdin:
+				payloadSource = protocol.ProcessPayload_stdin
+			}
+
+			err := transport.WriteMessage(w, &protocol.ProcessPayload{
+				ProcessId: proto.Uint32(processID),
+				Source:    &payloadSource,
+				Data:      proto.String(string(payload.Data)),
 			})
+			if err != nil {
+				return
+			}
 
 			w.(http.Flusher).Flush()
-
-			break
 		}
-
-		var payloadSource protocol.ProcessPayload_Source
-
-		switch payload.Source {
-		case warden.ProcessStreamSourceStdout:
-			payloadSource = protocol.ProcessPayload_stdout
-		case warden.ProcessStreamSourceStderr:
-			payloadSource = protocol.ProcessPayload_stderr
-		case warden.ProcessStreamSourceStdin:
-			payloadSource = protocol.ProcessPayload_stdin
-		}
-
-		err := transport.WriteMessage(w, &protocol.ProcessPayload{
-			ProcessId: proto.Uint32(processID),
-			Source:    &payloadSource,
-			Data:      proto.String(string(payload.Data)),
-		})
-		if err != nil {
-			break
-		}
-
-		w.(http.Flusher).Flush()
 	}
 }
