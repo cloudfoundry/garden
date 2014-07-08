@@ -26,8 +26,7 @@ type WardenServer struct {
 	listener net.Listener
 	handling *sync.WaitGroup
 
-	setStopping chan bool
-	stopping    chan bool
+	stopping chan bool
 
 	bomberman *bomberman.Bomberman
 }
@@ -52,8 +51,7 @@ func New(
 		containerGraceTime: containerGraceTime,
 		backend:            backend,
 
-		setStopping: make(chan bool),
-		stopping:    make(chan bool),
+		stopping: make(chan bool),
 
 		handling: new(sync.WaitGroup),
 	}
@@ -92,28 +90,16 @@ func (s *WardenServer) Start() error {
 		s.bomberman.Strap(container)
 	}
 
-	go s.trackStopping()
 	go s.handleConnections(listener)
 
 	return nil
 }
 
 func (s *WardenServer) Stop() {
-	s.setStopping <- true
+	close(s.stopping)
 	s.listener.Close()
 	s.handling.Wait()
 	s.backend.Stop()
-}
-
-func (s *WardenServer) trackStopping() {
-	stopping := false
-
-	for {
-		select {
-		case stopping = <-s.setStopping:
-		case s.stopping <- stopping:
-		}
-	}
 }
 
 func (s *WardenServer) handleConnections(listener net.Listener) {
@@ -153,15 +139,13 @@ func (s *WardenServer) handleConnections(listener net.Listener) {
 		}),
 
 		ConnState: func(conn net.Conn, state http.ConnState) {
-			if state == http.StateNew {
-				return
-			}
-
 			if state == http.StateActive {
 				s.handling.Add(1)
 
-				if <-s.stopping {
+				select {
+				case <-s.stopping:
 					conn.Close()
+				default:
 				}
 			}
 		},

@@ -196,13 +196,15 @@ var _ = Describe("The Warden server", func() {
 
 		Context("when a Create request is in-flight", func() {
 			var creating chan struct{}
+			var finishCreating chan struct{}
 
 			BeforeEach(func() {
 				creating = make(chan struct{})
+				finishCreating = make(chan struct{})
 
 				fakeBackend.WhenCreating = func() {
 					close(creating)
-					time.Sleep(500 * time.Millisecond)
+					<-finishCreating
 				}
 			})
 
@@ -220,16 +222,42 @@ var _ = Describe("The Warden server", func() {
 
 				Eventually(creating).Should(BeClosed())
 
-				before := time.Now()
+				stopExited := make(chan struct{})
+				go func() {
+					wardenServer.Stop()
+					close(stopExited)
+				}()
 
-				wardenServer.Stop()
+				Consistently(stopExited).ShouldNot(BeClosed())
 
-				Ω(time.Since(before)).Should(BeNumerically("~", 500*time.Millisecond, 100*time.Millisecond))
+				close(finishCreating)
 
+				Eventually(stopExited).Should(BeClosed())
 				Eventually(created).Should(Receive())
 
 				err := wardenClient.Ping()
 				Ω(err).Should(HaveOccurred())
+			})
+		})
+
+		Context("when a Run request is in-flight", func() {
+			It("does not wait for the request to complete", func(done Done) {
+				fakeContainer := &fake_backend.FakeContainer{}
+				fakeBackend.CreateResult = fakeContainer
+
+				clientContainer, err := wardenClient.Create(warden.ContainerSpec{})
+				if err != nil {
+					return
+				}
+
+				clientContainer.Run(warden.ProcessSpec{
+					Path: "some-path",
+					Args: []string{"arg1", "arg2"},
+				})
+
+				wardenServer.Stop()
+
+				close(done)
 			})
 		})
 	})
