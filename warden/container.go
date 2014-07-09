@@ -146,11 +146,6 @@ type CPULimits struct {
 	LimitInShares uint64
 }
 
-type EnvironmentVariable struct {
-	Key   string
-	Value string
-}
-
 type ResourceLimits struct {
 	As         *uint64
 	Core       *uint64
