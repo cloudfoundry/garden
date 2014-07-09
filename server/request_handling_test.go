@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"sync"
 	"time"
 
 	. "github.com/onsi/ginkgo"
@@ -923,12 +924,11 @@ var _ = Describe("When a client connects", func() {
 			Context("when attaching succeeds", func() {
 				BeforeEach(func() {
 					fakeContainer.AttachStub = func(processID uint32, io warden.ProcessIO) (warden.Process, error) {
-						process := new(fakes.FakeProcess)
-
-						process.IDReturns(42)
-						process.WaitReturns(123, nil)
+						writing := new(sync.WaitGroup)
+						writing.Add(1)
 
 						go func() {
+							defer writing.Done()
 							defer GinkgoRecover()
 
 							_, err := fmt.Fprintf(io.Stdout, "stdout data")
@@ -942,13 +942,16 @@ var _ = Describe("When a client connects", func() {
 
 							_, err = fmt.Fprintf(io.Stderr, "stderr data")
 							Ω(err).ShouldNot(HaveOccurred())
-
-							err = io.Stdout.Close()
-							Ω(err).ShouldNot(HaveOccurred())
-
-							err = io.Stderr.Close()
-							Ω(err).ShouldNot(HaveOccurred())
 						}()
+
+						process := new(fakes.FakeProcess)
+
+						process.IDReturns(42)
+
+						process.WaitStub = func() (int, error) {
+							writing.Wait()
+							return 123, nil
+						}
 
 						return process, nil
 					}
@@ -973,9 +976,6 @@ var _ = Describe("When a client connects", func() {
 					Eventually(stdout).Should(gbytes.Say("stdout data"))
 					Eventually(stdout).Should(gbytes.Say("mirrored stdin data"))
 					Eventually(stderr).Should(gbytes.Say("stderr data"))
-
-					Eventually(stdout.Closed).Should(BeTrue())
-					Eventually(stderr.Closed).Should(BeTrue())
 
 					status, err := process.Wait()
 					Ω(err).ShouldNot(HaveOccurred())
@@ -1006,9 +1006,6 @@ var _ = Describe("When a client connects", func() {
 
 						process.IDReturns(42)
 						process.WaitReturns(0, errors.New("oh no!"))
-
-						io.Stdout.Close()
-						io.Stderr.Close()
 
 						return process, nil
 					}
@@ -1068,12 +1065,11 @@ var _ = Describe("When a client connects", func() {
 			Context("when running succeeds", func() {
 				BeforeEach(func() {
 					fakeContainer.RunStub = func(spec warden.ProcessSpec, io warden.ProcessIO) (warden.Process, error) {
-						process := new(fakes.FakeProcess)
-
-						process.IDReturns(42)
-						process.WaitReturns(123, nil)
+						writing := new(sync.WaitGroup)
+						writing.Add(1)
 
 						go func() {
+							defer writing.Done()
 							defer GinkgoRecover()
 
 							_, err := fmt.Fprintf(io.Stdout, "stdout data")
@@ -1087,13 +1083,16 @@ var _ = Describe("When a client connects", func() {
 
 							_, err = fmt.Fprintf(io.Stderr, "stderr data")
 							Ω(err).ShouldNot(HaveOccurred())
-
-							err = io.Stdout.Close()
-							Ω(err).ShouldNot(HaveOccurred())
-
-							err = io.Stderr.Close()
-							Ω(err).ShouldNot(HaveOccurred())
 						}()
+
+						process := new(fakes.FakeProcess)
+
+						process.IDReturns(42)
+
+						process.WaitStub = func() (int, error) {
+							writing.Wait()
+							return 123, nil
+						}
 
 						return process, nil
 					}
@@ -1119,9 +1118,6 @@ var _ = Describe("When a client connects", func() {
 					Eventually(stdout).Should(gbytes.Say("mirrored stdin data"))
 					Eventually(stderr).Should(gbytes.Say("stderr data"))
 
-					Eventually(stdout.Closed).Should(BeTrue())
-					Eventually(stderr.Closed).Should(BeTrue())
-
 					status, err := process.Wait()
 					Ω(err).ShouldNot(HaveOccurred())
 					Ω(status).Should(Equal(123))
@@ -1146,9 +1142,6 @@ var _ = Describe("When a client connects", func() {
 
 						process.IDReturns(42)
 						process.WaitReturns(0, errors.New("oh no!"))
-
-						io.Stdout.Close()
-						io.Stderr.Close()
 
 						return process, nil
 					}

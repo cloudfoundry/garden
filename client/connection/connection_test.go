@@ -907,9 +907,6 @@ var _ = Describe("Connection", func() {
 				Eventually(stdout).Should(gbytes.Say("roundtripped stdin data"))
 				Eventually(stderr).Should(gbytes.Say("stderr data"))
 
-				Eventually(stdout.Closed).Should(BeTrue())
-				Eventually(stderr.Closed).Should(BeTrue())
-
 				status, err := process.Wait()
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(status).Should(Equal(3))
@@ -1047,9 +1044,6 @@ var _ = Describe("Connection", func() {
 				Eventually(stdout).Should(gbytes.Say("stdout data"))
 				Eventually(stderr).Should(gbytes.Say("stderr data"))
 				Eventually(stdout).Should(gbytes.Say("roundtripped stdin data"))
-
-				Eventually(stdout.Closed).Should(BeTrue())
-				Eventually(stderr.Closed).Should(BeTrue())
 
 				status, err := process.Wait()
 				Ω(err).ShouldNot(HaveOccurred())

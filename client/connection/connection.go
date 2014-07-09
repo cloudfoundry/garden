@@ -767,15 +767,6 @@ func (c *connection) streamPayloads(conn net.Conn, decoder *json.Decoder, proces
 
 		if payload.ExitStatus != nil {
 			process.exited(int(payload.GetExitStatus()), nil)
-
-			if processIO.Stdout != nil {
-				processIO.Stdout.Close()
-			}
-
-			if processIO.Stderr != nil {
-				processIO.Stderr.Close()
-			}
-
 			break
 		}
 

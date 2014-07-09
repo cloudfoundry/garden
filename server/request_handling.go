@@ -867,49 +867,49 @@ func (s *WardenServer) streamProcess(conn net.Conn, process warden.Process, stdo
 	stdoutSource := protocol.ProcessPayload_stdout
 	stderrSource := protocol.ProcessPayload_stderr
 
-	var data []byte
+	statusCh := make(chan int, 1)
+	errCh := make(chan error, 1)
 
-	outOpen := true
-	errOpen := true
+	go func() {
+		status, err := process.Wait()
+		if err != nil {
+			errCh <- err
+		} else {
+			statusCh <- status
+		}
+	}()
 
-	for outOpen || errOpen {
+	for {
 		select {
-		case data, outOpen = <-stdout:
-			if !outOpen {
-				stdout = nil
-				break
-			}
-
+		case data := <-stdout:
 			transport.WriteMessage(conn, &protocol.ProcessPayload{
 				ProcessId: proto.Uint32(process.ID()),
 				Source:    &stdoutSource,
 				Data:      proto.String(string(data)),
 			})
 
-		case data, errOpen = <-stderr:
-			if !errOpen {
-				stderr = nil
-				break
-			}
-
+		case data := <-stderr:
 			transport.WriteMessage(conn, &protocol.ProcessPayload{
 				ProcessId: proto.Uint32(process.ID()),
 				Source:    &stderrSource,
 				Data:      proto.String(string(data)),
 			})
-		}
-	}
 
-	status, err := process.Wait()
-	if err != nil {
-		transport.WriteMessage(conn, &protocol.ProcessPayload{
-			ProcessId: proto.Uint32(process.ID()),
-			Error:     proto.String(err.Error()),
-		})
-	} else {
-		transport.WriteMessage(conn, &protocol.ProcessPayload{
-			ProcessId:  proto.Uint32(process.ID()),
-			ExitStatus: proto.Uint32(uint32(status)),
-		})
+		case status := <-statusCh:
+			transport.WriteMessage(conn, &protocol.ProcessPayload{
+				ProcessId:  proto.Uint32(process.ID()),
+				ExitStatus: proto.Uint32(uint32(status)),
+			})
+
+			return
+
+		case err := <-errCh:
+			transport.WriteMessage(conn, &protocol.ProcessPayload{
+				ProcessId: proto.Uint32(process.ID()),
+				Error:     proto.String(err.Error()),
+			})
+
+			return
+		}
 	}
 }

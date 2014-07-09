@@ -44,8 +44,8 @@ type ProcessSpec struct {
 
 type ProcessIO struct {
 	Stdin  io.Reader
-	Stdout io.WriteCloser
-	Stderr io.WriteCloser
+	Stdout io.Writer
+	Stderr io.Writer
 }
 
 type Process interface {

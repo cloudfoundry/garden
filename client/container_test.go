@@ -395,12 +395,6 @@ var _ = Describe("Container", func() {
 
 					_, err = fmt.Fprintf(io.Stderr, "stderr data")
 					Ω(err).ShouldNot(HaveOccurred())
-
-					err = io.Stdout.Close()
-					Ω(err).ShouldNot(HaveOccurred())
-
-					err = io.Stderr.Close()
-					Ω(err).ShouldNot(HaveOccurred())
 				}()
 
 				return process, nil
@@ -434,9 +428,6 @@ var _ = Describe("Container", func() {
 
 			Eventually(stdout).Should(gbytes.Say("stdout data"))
 			Eventually(stderr).Should(gbytes.Say("stderr data"))
-
-			Eventually(stdout.Closed).Should(BeTrue())
-			Eventually(stderr.Closed).Should(BeTrue())
 		})
 	})
 
@@ -455,12 +446,6 @@ var _ = Describe("Container", func() {
 					Ω(err).ShouldNot(HaveOccurred())
 
 					_, err = fmt.Fprintf(io.Stderr, "stderr data")
-					Ω(err).ShouldNot(HaveOccurred())
-
-					err = io.Stdout.Close()
-					Ω(err).ShouldNot(HaveOccurred())
-
-					err = io.Stderr.Close()
 					Ω(err).ShouldNot(HaveOccurred())
 				}()
 
@@ -491,9 +476,6 @@ var _ = Describe("Container", func() {
 
 			Eventually(stdout).Should(gbytes.Say("stdout data"))
 			Eventually(stderr).Should(gbytes.Say("stderr data"))
-
-			Eventually(stdout.Closed).Should(BeTrue())
-			Eventually(stderr.Closed).Should(BeTrue())
 		})
 	})
 
