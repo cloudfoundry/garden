@@ -96,7 +96,13 @@ func (s *WardenServer) Start() error {
 }
 
 func (s *WardenServer) Stop() {
-	close(s.stopping)
+	select {
+	case <-s.stopping:
+		return
+	default:
+		close(s.stopping)
+	}
+
 	s.listener.Close()
 	s.handling.Wait()
 	s.backend.Stop()
