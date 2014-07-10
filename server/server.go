@@ -17,6 +17,7 @@ import (
 )
 
 type WardenServer struct {
+	server        http.Server
 	listenNetwork string
 	listenAddr    string
 
@@ -29,6 +30,9 @@ type WardenServer struct {
 	stopping chan bool
 
 	bomberman *bomberman.Bomberman
+
+	conns map[net.Conn]net.Conn
+	mu    sync.Mutex
 }
 
 type UnhandledRequestError struct {
@@ -44,7 +48,7 @@ func New(
 	containerGraceTime time.Duration,
 	backend warden.Backend,
 ) *WardenServer {
-	return &WardenServer{
+	s := &WardenServer{
 		listenNetwork: listenNetwork,
 		listenAddr:    listenAddr,
 
@@ -54,7 +58,70 @@ func New(
 		stopping: make(chan bool),
 
 		handling: new(sync.WaitGroup),
+		conns:    make(map[net.Conn]net.Conn),
 	}
+
+	handlers := map[string]http.Handler{
+		routes.Ping:                   http.HandlerFunc(s.handlePing),
+		routes.Capacity:               http.HandlerFunc(s.handleCapacity),
+		routes.Create:                 http.HandlerFunc(s.handleCreate),
+		routes.Destroy:                http.HandlerFunc(s.handleDestroy),
+		routes.List:                   http.HandlerFunc(s.handleList),
+		routes.Stop:                   http.HandlerFunc(s.handleStop),
+		routes.StreamIn:               http.HandlerFunc(s.handleStreamIn),
+		routes.StreamOut:              http.HandlerFunc(s.handleStreamOut),
+		routes.LimitBandwidth:         http.HandlerFunc(s.handleLimitBandwidth),
+		routes.CurrentBandwidthLimits: http.HandlerFunc(s.handleCurrentBandwidthLimits),
+		routes.LimitCPU:               http.HandlerFunc(s.handleLimitCPU),
+		routes.CurrentCPULimits:       http.HandlerFunc(s.handleCurrentCPULimits),
+		routes.LimitDisk:              http.HandlerFunc(s.handleLimitDisk),
+		routes.CurrentDiskLimits:      http.HandlerFunc(s.handleCurrentDiskLimits),
+		routes.LimitMemory:            http.HandlerFunc(s.handleLimitMemory),
+		routes.CurrentMemoryLimits:    http.HandlerFunc(s.handleCurrentMemoryLimits),
+		routes.NetIn:                  http.HandlerFunc(s.handleNetIn),
+		routes.NetOut:                 http.HandlerFunc(s.handleNetOut),
+		routes.Info:                   http.HandlerFunc(s.handleInfo),
+		routes.Run:                    http.HandlerFunc(s.handleRun),
+		routes.Attach:                 http.HandlerFunc(s.handleAttach),
+	}
+
+	mux, err := rata.NewRouter(routes.Routes, handlers)
+	if err != nil {
+		log.Fatalln("failed to initialize router:", err)
+	}
+
+	s.server = http.Server{
+		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			mux.ServeHTTP(w, r)
+		}),
+
+		ConnState: func(conn net.Conn, state http.ConnState) {
+			switch state {
+			case http.StateNew:
+				s.handling.Add(1)
+			case http.StateActive:
+				s.mu.Lock()
+				delete(s.conns, conn)
+				s.mu.Unlock()
+			case http.StateIdle:
+				select {
+				case <-s.stopping:
+					conn.Close()
+				default:
+					s.mu.Lock()
+					s.conns[conn] = conn
+					s.mu.Unlock()
+				}
+			case http.StateHijacked, http.StateClosed:
+				s.mu.Lock()
+				delete(s.conns, conn)
+				s.mu.Unlock()
+				s.handling.Done()
+			}
+		},
+	}
+
+	return s
 }
 
 func (s *WardenServer) Start() error {
@@ -90,68 +157,33 @@ func (s *WardenServer) Start() error {
 		s.bomberman.Strap(container)
 	}
 
-	go s.handleConnections(listener)
+	go s.server.Serve(listener)
 
 	return nil
 }
 
 func (s *WardenServer) Stop() {
 	close(s.stopping)
+
 	s.listener.Close()
+
+	s.mu.Lock()
+	conns := s.conns
+	s.conns = make(map[net.Conn]net.Conn)
+	s.mu.Unlock()
+
+	for _, c := range conns {
+		log.Println("closing idle connection:", c.RemoteAddr())
+		c.Close()
+	}
+
+	log.Println("waiting for active connections to complete")
 	s.handling.Wait()
+
+	log.Println("waiting for backend to stop")
 	s.backend.Stop()
-}
 
-func (s *WardenServer) handleConnections(listener net.Listener) {
-	handlers := map[string]http.Handler{
-		routes.Ping:                   http.HandlerFunc(s.handlePing),
-		routes.Capacity:               http.HandlerFunc(s.handleCapacity),
-		routes.Create:                 http.HandlerFunc(s.handleCreate),
-		routes.Destroy:                http.HandlerFunc(s.handleDestroy),
-		routes.List:                   http.HandlerFunc(s.handleList),
-		routes.Stop:                   http.HandlerFunc(s.handleStop),
-		routes.StreamIn:               http.HandlerFunc(s.handleStreamIn),
-		routes.StreamOut:              http.HandlerFunc(s.handleStreamOut),
-		routes.LimitBandwidth:         http.HandlerFunc(s.handleLimitBandwidth),
-		routes.CurrentBandwidthLimits: http.HandlerFunc(s.handleCurrentBandwidthLimits),
-		routes.LimitCPU:               http.HandlerFunc(s.handleLimitCPU),
-		routes.CurrentCPULimits:       http.HandlerFunc(s.handleCurrentCPULimits),
-		routes.LimitDisk:              http.HandlerFunc(s.handleLimitDisk),
-		routes.CurrentDiskLimits:      http.HandlerFunc(s.handleCurrentDiskLimits),
-		routes.LimitMemory:            http.HandlerFunc(s.handleLimitMemory),
-		routes.CurrentMemoryLimits:    http.HandlerFunc(s.handleCurrentMemoryLimits),
-		routes.NetIn:                  http.HandlerFunc(s.handleNetIn),
-		routes.NetOut:                 http.HandlerFunc(s.handleNetOut),
-		routes.Info:                   http.HandlerFunc(s.handleInfo),
-		routes.Run:                    http.HandlerFunc(s.handleRun),
-		routes.Attach:                 http.HandlerFunc(s.handleAttach),
-	}
-
-	mux, err := rata.NewRouter(routes.Routes, handlers)
-	if err != nil {
-		log.Fatalln("failed to initialize router:", err)
-	}
-
-	server := http.Server{
-		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			mux.ServeHTTP(w, r)
-			s.handling.Done()
-		}),
-
-		ConnState: func(conn net.Conn, state http.ConnState) {
-			if state == http.StateActive {
-				s.handling.Add(1)
-
-				select {
-				case <-s.stopping:
-					conn.Close()
-				default:
-				}
-			}
-		},
-	}
-
-	server.Serve(listener)
+	log.Println("garden server stopped")
 }
 
 func (s *WardenServer) removeExistingSocket() error {
