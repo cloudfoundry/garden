@@ -188,11 +188,6 @@ var _ = Describe("The Warden server", func() {
 			Eventually(ErrorDialing("unix", socketPath)).Should(HaveOccurred())
 		})
 
-		It("doesn't mind calling stop twice", func() {
-			wardenServer.Stop()
-			wardenServer.Stop()
-		})
-
 		It("stops the backend", func() {
 			wardenServer.Stop()
 
