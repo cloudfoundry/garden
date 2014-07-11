@@ -563,6 +563,7 @@ func (s *WardenServer) handleRun(w http.ResponseWriter, r *http.Request) {
 	dir := request.GetDir()
 	privileged := request.GetPrivileged()
 	env := request.GetEnv()
+	tty := request.GetTty()
 
 	container, err := s.backend.Lookup(handle)
 	if err != nil {
@@ -579,6 +580,7 @@ func (s *WardenServer) handleRun(w http.ResponseWriter, r *http.Request) {
 		Dir:        dir,
 		Privileged: privileged,
 		Env:        convertEnv(env),
+		TTY:        tty,
 	}
 
 	if request.Rlimits != nil {

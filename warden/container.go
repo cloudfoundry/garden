@@ -40,6 +40,7 @@ type ProcessSpec struct {
 	Env        []string
 	Privileged bool
 	Limits     ResourceLimits
+	TTY        bool
 }
 
 type ProcessIO struct {

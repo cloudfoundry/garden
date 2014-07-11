@@ -55,6 +55,7 @@ type ProcessPayload struct {
 	Data             *string                `protobuf:"bytes,3,opt,name=data" json:"data,omitempty"`
 	ExitStatus       *uint32                `protobuf:"varint,4,opt,name=exit_status" json:"exit_status,omitempty"`
 	Error            *string                `protobuf:"bytes,5,opt,name=error" json:"error,omitempty"`
+	Tty              *bool                  `protobuf:"varint,6,opt,name=tty" json:"tty,omitempty"`
 	XXX_unrecognized []byte                 `json:"-"`
 }
 
@@ -95,6 +96,13 @@ func (m *ProcessPayload) GetError() string {
 		return *m.Error
 	}
 	return ""
+}
+
+func (m *ProcessPayload) GetTty() bool {
+	if m != nil && m.Tty != nil {
+		return *m.Tty
+	}
+	return false
 }
 
 func init() {

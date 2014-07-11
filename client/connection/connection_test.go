@@ -828,6 +828,7 @@ var _ = Describe("Connection", func() {
 							Args:       []string{"arg1", "arg2"},
 							Dir:        proto.String("/some/dir"),
 							Privileged: proto.Bool(true),
+							Tty:        proto.Bool(true),
 							Rlimits: &protocol.ResourceLimits{
 								As:         proto.Uint64(1),
 								Core:       proto.Uint64(2),
@@ -893,6 +894,7 @@ var _ = Describe("Connection", func() {
 					Args:       []string{"arg1", "arg2"},
 					Dir:        "/some/dir",
 					Privileged: true,
+					TTY:        true,
 					Limits:     resourceLimits,
 				}, warden.ProcessIO{
 					Stdin:  bytes.NewBufferString("stdin data"),

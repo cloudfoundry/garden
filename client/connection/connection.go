@@ -225,6 +225,7 @@ func (c *connection) Run(handle string, spec warden.ProcessSpec, processIO warde
 		Args:       spec.Args,
 		Dir:        dir,
 		Privileged: proto.Bool(spec.Privileged),
+		Tty:        proto.Bool(spec.TTY),
 		Rlimits: &protocol.ResourceLimits{
 			As:         spec.Limits.As,
 			Core:       spec.Limits.Core,
