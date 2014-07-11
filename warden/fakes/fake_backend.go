@@ -5,30 +5,30 @@ import (
 	"sync"
 	"time"
 
-	. "github.com/cloudfoundry-incubator/garden/warden"
+	"github.com/cloudfoundry-incubator/garden/warden"
 )
 
 type FakeBackend struct {
 	PingStub        func() error
 	pingMutex       sync.RWMutex
 	pingArgsForCall []struct{}
-	pingReturns     struct {
+	pingReturns struct {
 		result1 error
 	}
-	CapacityStub        func() (Capacity, error)
+	CapacityStub        func() (warden.Capacity, error)
 	capacityMutex       sync.RWMutex
 	capacityArgsForCall []struct{}
-	capacityReturns     struct {
-		result1 Capacity
+	capacityReturns struct {
+		result1 warden.Capacity
 		result2 error
 	}
-	CreateStub        func(ContainerSpec) (Container, error)
+	CreateStub        func(warden.ContainerSpec) (warden.Container, error)
 	createMutex       sync.RWMutex
 	createArgsForCall []struct {
-		arg1 ContainerSpec
+		arg1 warden.ContainerSpec
 	}
 	createReturns struct {
-		result1 Container
+		result1 warden.Container
 		result2 error
 	}
 	DestroyStub        func(handle string) error
@@ -39,37 +39,37 @@ type FakeBackend struct {
 	destroyReturns struct {
 		result1 error
 	}
-	ContainersStub        func(Properties) ([]Container, error)
+	ContainersStub        func(warden.Properties) ([]warden.Container, error)
 	containersMutex       sync.RWMutex
 	containersArgsForCall []struct {
-		arg1 Properties
+		arg1 warden.Properties
 	}
 	containersReturns struct {
-		result1 []Container
+		result1 []warden.Container
 		result2 error
 	}
-	LookupStub        func(handle string) (Container, error)
+	LookupStub        func(handle string) (warden.Container, error)
 	lookupMutex       sync.RWMutex
 	lookupArgsForCall []struct {
 		handle string
 	}
 	lookupReturns struct {
-		result1 Container
+		result1 warden.Container
 		result2 error
 	}
 	StartStub        func() error
 	startMutex       sync.RWMutex
 	startArgsForCall []struct{}
-	startReturns     struct {
+	startReturns struct {
 		result1 error
 	}
-	StopStub             func()
-	stopMutex            sync.RWMutex
-	stopArgsForCall      []struct{}
-	GraceTimeStub        func(Container) time.Duration
+	StopStub        func()
+	stopMutex       sync.RWMutex
+	stopArgsForCall []struct{}
+	GraceTimeStub        func(warden.Container) time.Duration
 	graceTimeMutex       sync.RWMutex
 	graceTimeArgsForCall []struct {
-		arg1 Container
+		arg1 warden.Container
 	}
 	graceTimeReturns struct {
 		result1 time.Duration
@@ -99,7 +99,7 @@ func (fake *FakeBackend) PingReturns(result1 error) {
 	}{result1}
 }
 
-func (fake *FakeBackend) Capacity() (Capacity, error) {
+func (fake *FakeBackend) Capacity() (warden.Capacity, error) {
 	fake.capacityMutex.Lock()
 	defer fake.capacityMutex.Unlock()
 	fake.capacityArgsForCall = append(fake.capacityArgsForCall, struct{}{})
@@ -116,18 +116,18 @@ func (fake *FakeBackend) CapacityCallCount() int {
 	return len(fake.capacityArgsForCall)
 }
 
-func (fake *FakeBackend) CapacityReturns(result1 Capacity, result2 error) {
+func (fake *FakeBackend) CapacityReturns(result1 warden.Capacity, result2 error) {
 	fake.capacityReturns = struct {
-		result1 Capacity
+		result1 warden.Capacity
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *FakeBackend) Create(arg1 ContainerSpec) (Container, error) {
+func (fake *FakeBackend) Create(arg1 warden.ContainerSpec) (warden.Container, error) {
 	fake.createMutex.Lock()
 	defer fake.createMutex.Unlock()
 	fake.createArgsForCall = append(fake.createArgsForCall, struct {
-		arg1 ContainerSpec
+		arg1 warden.ContainerSpec
 	}{arg1})
 	if fake.CreateStub != nil {
 		return fake.CreateStub(arg1)
@@ -142,15 +142,15 @@ func (fake *FakeBackend) CreateCallCount() int {
 	return len(fake.createArgsForCall)
 }
 
-func (fake *FakeBackend) CreateArgsForCall(i int) ContainerSpec {
+func (fake *FakeBackend) CreateArgsForCall(i int) warden.ContainerSpec {
 	fake.createMutex.RLock()
 	defer fake.createMutex.RUnlock()
 	return fake.createArgsForCall[i].arg1
 }
 
-func (fake *FakeBackend) CreateReturns(result1 Container, result2 error) {
+func (fake *FakeBackend) CreateReturns(result1 warden.Container, result2 error) {
 	fake.createReturns = struct {
-		result1 Container
+		result1 warden.Container
 		result2 error
 	}{result1, result2}
 }
@@ -186,11 +186,11 @@ func (fake *FakeBackend) DestroyReturns(result1 error) {
 	}{result1}
 }
 
-func (fake *FakeBackend) Containers(arg1 Properties) ([]Container, error) {
+func (fake *FakeBackend) Containers(arg1 warden.Properties) ([]warden.Container, error) {
 	fake.containersMutex.Lock()
 	defer fake.containersMutex.Unlock()
 	fake.containersArgsForCall = append(fake.containersArgsForCall, struct {
-		arg1 Properties
+		arg1 warden.Properties
 	}{arg1})
 	if fake.ContainersStub != nil {
 		return fake.ContainersStub(arg1)
@@ -205,20 +205,20 @@ func (fake *FakeBackend) ContainersCallCount() int {
 	return len(fake.containersArgsForCall)
 }
 
-func (fake *FakeBackend) ContainersArgsForCall(i int) Properties {
+func (fake *FakeBackend) ContainersArgsForCall(i int) warden.Properties {
 	fake.containersMutex.RLock()
 	defer fake.containersMutex.RUnlock()
 	return fake.containersArgsForCall[i].arg1
 }
 
-func (fake *FakeBackend) ContainersReturns(result1 []Container, result2 error) {
+func (fake *FakeBackend) ContainersReturns(result1 []warden.Container, result2 error) {
 	fake.containersReturns = struct {
-		result1 []Container
+		result1 []warden.Container
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *FakeBackend) Lookup(handle string) (Container, error) {
+func (fake *FakeBackend) Lookup(handle string) (warden.Container, error) {
 	fake.lookupMutex.Lock()
 	defer fake.lookupMutex.Unlock()
 	fake.lookupArgsForCall = append(fake.lookupArgsForCall, struct {
@@ -243,9 +243,9 @@ func (fake *FakeBackend) LookupArgsForCall(i int) string {
 	return fake.lookupArgsForCall[i].handle
 }
 
-func (fake *FakeBackend) LookupReturns(result1 Container, result2 error) {
+func (fake *FakeBackend) LookupReturns(result1 warden.Container, result2 error) {
 	fake.lookupReturns = struct {
-		result1 Container
+		result1 warden.Container
 		result2 error
 	}{result1, result2}
 }
@@ -288,11 +288,11 @@ func (fake *FakeBackend) StopCallCount() int {
 	return len(fake.stopArgsForCall)
 }
 
-func (fake *FakeBackend) GraceTime(arg1 Container) time.Duration {
+func (fake *FakeBackend) GraceTime(arg1 warden.Container) time.Duration {
 	fake.graceTimeMutex.Lock()
 	defer fake.graceTimeMutex.Unlock()
 	fake.graceTimeArgsForCall = append(fake.graceTimeArgsForCall, struct {
-		arg1 Container
+		arg1 warden.Container
 	}{arg1})
 	if fake.GraceTimeStub != nil {
 		return fake.GraceTimeStub(arg1)
@@ -307,7 +307,7 @@ func (fake *FakeBackend) GraceTimeCallCount() int {
 	return len(fake.graceTimeArgsForCall)
 }
 
-func (fake *FakeBackend) GraceTimeArgsForCall(i int) Container {
+func (fake *FakeBackend) GraceTimeArgsForCall(i int) warden.Container {
 	fake.graceTimeMutex.RLock()
 	defer fake.graceTimeMutex.RUnlock()
 	return fake.graceTimeArgsForCall[i].arg1
@@ -319,4 +319,4 @@ func (fake *FakeBackend) GraceTimeReturns(result1 time.Duration) {
 	}{result1}
 }
 
-var _ Backend = new(FakeBackend)
+var _ warden.Backend = new(FakeBackend)
