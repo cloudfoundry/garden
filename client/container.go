@@ -93,30 +93,12 @@ func (container *container) CurrentMemoryLimits() (warden.MemoryLimits, error) {
 	return container.connection.CurrentMemoryLimits(container.handle)
 }
 
-func (container *container) Run(spec warden.ProcessSpec) (uint32, <-chan warden.ProcessStream, error) {
-	pid, stream, err := container.connection.Run(container.handle, spec)
-	if err != nil {
-		return 0, nil, err
-	}
-
-	outStream := make(chan warden.ProcessStream)
-
-	go container.streamPayloads(outStream, stream)
-
-	return pid, outStream, nil
+func (container *container) Run(spec warden.ProcessSpec, io warden.ProcessIO) (warden.Process, error) {
+	return container.connection.Run(container.handle, spec, io)
 }
 
-func (container *container) Attach(processID uint32) (<-chan warden.ProcessStream, error) {
-	stream, err := container.connection.Attach(container.handle, processID)
-	if err != nil {
-		return nil, err
-	}
-
-	outStream := make(chan warden.ProcessStream)
-
-	go container.streamPayloads(outStream, stream)
-
-	return outStream, nil
+func (container *container) Attach(processID uint32, io warden.ProcessIO) (warden.Process, error) {
+	return container.connection.Attach(container.handle, processID, io)
 }
 
 func (container *container) NetIn(hostPort, containerPort uint32) (uint32, uint32, error) {
@@ -125,12 +107,4 @@ func (container *container) NetIn(hostPort, containerPort uint32) (uint32, uint3
 
 func (container *container) NetOut(network string, port uint32) error {
 	return container.connection.NetOut(container.handle, network, port)
-}
-
-func (container *container) streamPayloads(out chan<- warden.ProcessStream, in <-chan warden.ProcessStream) {
-	for chunk := range in {
-		out <- chunk
-	}
-
-	close(out)
 }

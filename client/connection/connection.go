@@ -1,6 +1,7 @@
 package connection
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
 	"errors"
@@ -8,7 +9,9 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/http/httputil"
 	"net/url"
+	"strings"
 	"time"
 
 	"code.google.com/p/goprotobuf/proto"
@@ -48,18 +51,20 @@ type Connection interface {
 	CurrentDiskLimits(handle string) (warden.DiskLimits, error)
 	CurrentMemoryLimits(handle string) (warden.MemoryLimits, error)
 
-	Run(handle string, spec warden.ProcessSpec) (uint32, <-chan warden.ProcessStream, error)
-	Attach(handle string, processID uint32) (<-chan warden.ProcessStream, error)
+	Run(handle string, spec warden.ProcessSpec, io warden.ProcessIO) (warden.Process, error)
+	Attach(handle string, processID uint32, io warden.ProcessIO) (warden.Process, error)
 
 	NetIn(handle string, hostPort, containerPort uint32) (uint32, uint32, error)
 	NetOut(handle string, network string, port uint32) error
 }
 
 type connection struct {
+	req *rata.RequestGenerator
+
+	dialer func(string, string) (net.Conn, error)
+
 	httpClient        *http.Client
 	noKeepaliveClient *http.Client
-
-	req *rata.RequestGenerator
 }
 
 type WardenError struct {
@@ -79,6 +84,8 @@ func New(network, address string) Connection {
 
 	return &connection{
 		req: rata.NewRequestGenerator("http://warden", routes.Routes),
+
+		dialer: dialer,
 
 		httpClient: &http.Client{
 			Transport: &http.Transport{
@@ -204,7 +211,7 @@ func (c *connection) Destroy(handle string) error {
 	)
 }
 
-func (c *connection) Run(handle string, spec warden.ProcessSpec) (uint32, <-chan warden.ProcessStream, error) {
+func (c *connection) Run(handle string, spec warden.ProcessSpec, processIO warden.ProcessIO) (warden.Process, error) {
 	reqBody := new(bytes.Buffer)
 
 	var dir *string
@@ -235,13 +242,13 @@ func (c *connection) Run(handle string, spec warden.ProcessSpec) (uint32, <-chan
 			Sigpending: spec.Limits.Sigpending,
 			Stack:      spec.Limits.Stack,
 		},
-		Env: convertEnvironmentVariables(spec.EnvironmentVariables),
+		Env: convertEnvironmentVariables(spec.Env),
 	})
 	if err != nil {
-		return 0, nil, err
+		return nil, err
 	}
 
-	respBody, err := c.doStream(
+	conn, br, err := c.doHijack(
 		routes.Run,
 		reqBody,
 		rata.Params{
@@ -251,25 +258,25 @@ func (c *connection) Run(handle string, spec warden.ProcessSpec) (uint32, <-chan
 		"application/json",
 	)
 	if err != nil {
-		return 0, nil, err
+		return nil, err
 	}
 
-	decoder := json.NewDecoder(respBody)
+	decoder := json.NewDecoder(br)
 
 	firstResponse := &protocol.ProcessPayload{}
 	err = decoder.Decode(firstResponse)
 	if err != nil {
-		return 0, nil, err
+		return nil, err
 	}
 
-	responses := make(chan warden.ProcessStream)
+	p := newProcess(firstResponse.GetProcessId())
 
-	go c.streamPayloads(respBody, decoder, responses)
+	go c.streamPayloads(conn, decoder, processIO, p)
 
-	return firstResponse.GetProcessId(), responses, nil
+	return p, nil
 }
 
-func (c *connection) Attach(handle string, processID uint32) (<-chan warden.ProcessStream, error) {
+func (c *connection) Attach(handle string, processID uint32, processIO warden.ProcessIO) (warden.Process, error) {
 	reqBody := new(bytes.Buffer)
 
 	err := transport.WriteMessage(reqBody, &protocol.AttachRequest{
@@ -280,7 +287,7 @@ func (c *connection) Attach(handle string, processID uint32) (<-chan warden.Proc
 		return nil, err
 	}
 
-	respBody, err := c.doStream(
+	conn, br, err := c.doHijack(
 		routes.Attach,
 		reqBody,
 		rata.Params{
@@ -295,13 +302,13 @@ func (c *connection) Attach(handle string, processID uint32) (<-chan warden.Proc
 		return nil, err
 	}
 
-	decoder := json.NewDecoder(respBody)
+	decoder := json.NewDecoder(br)
 
-	responses := make(chan warden.ProcessStream)
+	p := newProcess(processID)
 
-	go c.streamPayloads(respBody, decoder, responses)
+	go c.streamPayloads(conn, decoder, processIO, p)
 
-	return responses, nil
+	return p, nil
 }
 
 func (c *connection) NetIn(handle string, hostPort, containerPort uint32) (uint32, uint32, error) {
@@ -709,13 +716,15 @@ func (c *connection) Info(handle string) (warden.ContainerInfo, error) {
 	}, nil
 }
 
-func convertEnvironmentVariables(environmentVariables []warden.EnvironmentVariable) []*protocol.EnvironmentVariable {
+func convertEnvironmentVariables(environmentVariables []string) []*protocol.EnvironmentVariable {
 	convertedEnvironmentVariables := []*protocol.EnvironmentVariable{}
 
 	for _, env := range environmentVariables {
+		segs := strings.SplitN(env, "=", 2)
+
 		convertedEnvironmentVariable := &protocol.EnvironmentVariable{
-			Key:   proto.String(env.Key),
-			Value: proto.String(env.Value),
+			Key:   proto.String(segs[0]),
+			Value: proto.String(segs[1]),
 		}
 
 		convertedEnvironmentVariables = append(
@@ -727,39 +736,48 @@ func convertEnvironmentVariables(environmentVariables []warden.EnvironmentVariab
 	return convertedEnvironmentVariables
 }
 
-func (c *connection) streamPayloads(closer io.Closer, decoder *json.Decoder, stream chan<- warden.ProcessStream) {
-	defer closer.Close()
-	defer close(stream)
+func (c *connection) streamPayloads(conn net.Conn, decoder *json.Decoder, processIO warden.ProcessIO, process *process) {
+	defer conn.Close()
+
+	if processIO.Stdin != nil {
+		writer := &stdinWriter{
+			process: process,
+			conn:    conn,
+		}
+
+		go func() {
+			io.Copy(writer, processIO.Stdin)
+			writer.Close()
+		}()
+	}
 
 	for {
 		payload := &protocol.ProcessPayload{}
 
 		err := decoder.Decode(payload)
 		if err != nil {
+			process.exited(0, err)
+			break
+		}
+
+		if payload.Error != nil {
+			process.exited(0, fmt.Errorf("process error: %s", payload.GetError()))
 			break
 		}
 
 		if payload.ExitStatus != nil {
-			stream <- warden.ProcessStream{
-				ExitStatus: payload.ExitStatus,
-			}
-
+			process.exited(int(payload.GetExitStatus()), nil)
 			break
-		} else {
-			var source warden.ProcessStreamSource
+		}
 
-			switch payload.GetSource() {
-			case protocol.ProcessPayload_stdin:
-				source = warden.ProcessStreamSourceStdin
-			case protocol.ProcessPayload_stdout:
-				source = warden.ProcessStreamSourceStdout
-			case protocol.ProcessPayload_stderr:
-				source = warden.ProcessStreamSourceStderr
+		switch payload.GetSource() {
+		case protocol.ProcessPayload_stdout:
+			if processIO.Stdout != nil {
+				processIO.Stdout.Write([]byte(payload.GetData()))
 			}
-
-			stream <- warden.ProcessStream{
-				Source: source,
-				Data:   []byte(payload.GetData()),
+		case protocol.ProcessPayload_stderr:
+			if processIO.Stderr != nil {
+				processIO.Stderr.Write([]byte(payload.GetData()))
 			}
 		}
 	}
@@ -832,8 +850,50 @@ func (c *connection) doStream(
 
 	if httpResp.StatusCode < 200 || httpResp.StatusCode > 299 {
 		httpResp.Body.Close()
-		return nil, errors.New(httpResp.Status)
+		return nil, fmt.Errorf("bad response: %s", httpResp.Status)
 	}
 
 	return httpResp.Body, nil
+}
+
+func (c *connection) doHijack(
+	handler string,
+	body io.Reader,
+	params rata.Params,
+	query url.Values,
+	contentType string,
+) (net.Conn, *bufio.Reader, error) {
+	request, err := c.req.CreateRequest(handler, params, body)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if contentType != "" {
+		request.Header.Set("Content-Type", contentType)
+	}
+
+	if query != nil {
+		request.URL.RawQuery = query.Encode()
+	}
+
+	conn, err := c.dialer("tcp", "warden") // net/addr don't matter here
+	if err != nil {
+		return nil, nil, err
+	}
+
+	client := httputil.NewClientConn(conn, nil)
+
+	httpResp, err := client.Do(request)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if httpResp.StatusCode < 200 || httpResp.StatusCode > 299 {
+		httpResp.Body.Close()
+		return nil, nil, fmt.Errorf("bad response: %s", httpResp.Status)
+	}
+
+	conn, br := client.Hijack()
+
+	return conn, br, nil
 }

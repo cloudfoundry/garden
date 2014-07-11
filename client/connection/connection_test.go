@@ -10,6 +10,7 @@ import (
 	"code.google.com/p/gogoprotobuf/proto"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/ghttp"
 
 	. "github.com/cloudfoundry-incubator/garden/client/connection"
@@ -812,15 +813,16 @@ var _ = Describe("Connection", func() {
 	})
 
 	Describe("Running", func() {
+		stdin := protocol.ProcessPayload_stdin
 		stdout := protocol.ProcessPayload_stdout
 		stderr := protocol.ProcessPayload_stderr
 
-		Context("when running one process", func() {
+		Context("when streaming succeeds to completion", func() {
 			BeforeEach(func() {
 				server.AppendHandlers(
 					ghttp.CombineHandlers(
 						ghttp.VerifyRequest("POST", "/containers/foo-handle/processes"),
-						verifyProtoBody(&protocol.RunRequest{
+						ghttp.VerifyJSONRepresenting(&protocol.RunRequest{
 							Handle:     proto.String("foo-handle"),
 							Path:       proto.String("lol"),
 							Args:       []string{"arg1", "arg2"},
@@ -844,128 +846,270 @@ var _ = Describe("Connection", func() {
 								Stack:      proto.Uint64(16),
 							},
 						}),
-						ghttp.RespondWith(200, marshalProto(
-							&protocol.ProcessPayload{ProcessId: proto.Uint32(42)},
-							&protocol.ProcessPayload{ProcessId: proto.Uint32(42), Source: &stdout, Data: proto.String("1")},
-							&protocol.ProcessPayload{ProcessId: proto.Uint32(42), Source: &stderr, Data: proto.String("2")},
-							&protocol.ProcessPayload{ProcessId: proto.Uint32(42), ExitStatus: proto.Uint32(3)}))))
+						func(w http.ResponseWriter, r *http.Request) {
+							w.WriteHeader(http.StatusOK)
+
+							conn, br, err := w.(http.Hijacker).Hijack()
+							Ω(err).ShouldNot(HaveOccurred())
+
+							defer conn.Close()
+
+							decoder := json.NewDecoder(br)
+
+							transport.WriteMessage(conn, &protocol.ProcessPayload{ProcessId: proto.Uint32(42)})
+
+							transport.WriteMessage(conn, &protocol.ProcessPayload{ProcessId: proto.Uint32(42), Source: &stdout, Data: proto.String("stdout data")})
+
+							transport.WriteMessage(conn, &protocol.ProcessPayload{ProcessId: proto.Uint32(42), Source: &stderr, Data: proto.String("stderr data")})
+
+							var payload protocol.ProcessPayload
+							err = decoder.Decode(&payload)
+							Ω(err).ShouldNot(HaveOccurred())
+
+							Ω(payload).Should(Equal(protocol.ProcessPayload{
+								ProcessId: proto.Uint32(42),
+								Source:    &stdin,
+								Data:      proto.String("stdin data"),
+							}))
+
+							transport.WriteMessage(conn, &protocol.ProcessPayload{
+								ProcessId: proto.Uint32(42),
+								Source:    &stdout,
+								Data:      proto.String("roundtripped " + payload.GetData()),
+							})
+
+							transport.WriteMessage(conn, &protocol.ProcessPayload{ProcessId: proto.Uint32(42), ExitStatus: proto.Uint32(3)})
+						},
+					),
+				)
 			})
 
-			It("should start the process and stream output", func(done Done) {
-				pid, stream, err := connection.Run("foo-handle", warden.ProcessSpec{
+			It("streams the data, closes the destinations, and notifies of exit", func() {
+				stdout := gbytes.NewBuffer()
+				stderr := gbytes.NewBuffer()
+
+				process, err := connection.Run("foo-handle", warden.ProcessSpec{
 					Path:       "lol",
 					Args:       []string{"arg1", "arg2"},
 					Dir:        "/some/dir",
 					Privileged: true,
 					Limits:     resourceLimits,
+				}, warden.ProcessIO{
+					Stdin:  bytes.NewBufferString("stdin data"),
+					Stdout: stdout,
+					Stderr: stderr,
 				})
 
 				Ω(err).ShouldNot(HaveOccurred())
-				Ω(pid).Should(BeNumerically("==", 42))
+				Ω(process.ID()).Should(Equal(uint32(42)))
 
-				response1 := <-stream
-				Ω(response1.Source).Should(Equal(warden.ProcessStreamSourceStdout))
-				Ω(string(response1.Data)).Should(Equal("1"))
+				Eventually(stdout).Should(gbytes.Say("stdout data"))
+				Eventually(stdout).Should(gbytes.Say("roundtripped stdin data"))
+				Eventually(stderr).Should(gbytes.Say("stderr data"))
 
-				response2 := <-stream
-				Ω(response2.Source).Should(Equal(warden.ProcessStreamSourceStderr))
-				Ω(string(response2.Data)).Should(Equal("2"))
-
-				response3 := <-stream
-				Ω(response3.ExitStatus).ShouldNot(BeNil())
-				Ω(*response3.ExitStatus).Should(BeNumerically("==", 3))
-
-				Eventually(stream).Should(BeClosed())
-
-				close(done)
+				status, err := process.Wait()
+				Ω(err).ShouldNot(HaveOccurred())
+				Ω(status).Should(Equal(3))
 			})
 		})
 
-		Context("spawning multiple processes", func() {
+		Context("when the connection breaks before an exit status is received", func() {
 			BeforeEach(func() {
 				server.AppendHandlers(
 					ghttp.CombineHandlers(
 						ghttp.VerifyRequest("POST", "/containers/foo-handle/processes"),
-						verifyProtoBody(&protocol.RunRequest{
-							Handle:     proto.String("foo-handle"),
-							Path:       proto.String("echo"),
-							Args:       []string{"hi"},
-							Privileged: proto.Bool(false),
-							Rlimits:    &protocol.ResourceLimits{},
-						}),
-						ghttp.RespondWith(200, marshalProto(
-							&protocol.ProcessPayload{ProcessId: proto.Uint32(42)},
-							&protocol.ProcessPayload{ProcessId: proto.Uint32(42)}))),
-					ghttp.CombineHandlers(
-						ghttp.VerifyRequest("POST", "/containers/foo-handle/processes"),
-						verifyProtoBody(&protocol.RunRequest{
-							Handle:     proto.String("foo-handle"),
-							Path:       proto.String("echo"),
-							Args:       []string{"bye"},
-							Privileged: proto.Bool(false),
-							Rlimits:    &protocol.ResourceLimits{},
-						}),
-						ghttp.RespondWith(200, marshalProto(
-							&protocol.ProcessPayload{ProcessId: proto.Uint32(43)}))))
+						func(w http.ResponseWriter, r *http.Request) {
+							w.WriteHeader(http.StatusOK)
+
+							conn, _, err := w.(http.Hijacker).Hijack()
+							Ω(err).ShouldNot(HaveOccurred())
+
+							defer conn.Close()
+
+							transport.WriteMessage(conn, &protocol.ProcessPayload{ProcessId: proto.Uint32(42)})
+
+							transport.WriteMessage(conn, &protocol.ProcessPayload{ProcessId: proto.Uint32(42), Source: &stdout, Data: proto.String("stdout data")})
+
+							transport.WriteMessage(conn, &protocol.ProcessPayload{ProcessId: proto.Uint32(42), Source: &stderr, Data: proto.String("stderr data")})
+						},
+					),
+				)
 			})
 
-			It("should be able to spawn multiple processes sequentially", func() {
-				pid, _, err := connection.Run("foo-handle", warden.ProcessSpec{
-					Path: "echo",
-					Args: []string{"hi"},
+			Describe("waiting on the process", func() {
+				It("returns an error", func() {
+					process, err := connection.Run("foo-handle", warden.ProcessSpec{
+						Path: "lol",
+						Args: []string{"arg1", "arg2"},
+						Dir:  "/some/dir",
+					}, warden.ProcessIO{})
+
+					Ω(err).ShouldNot(HaveOccurred())
+
+					_, err = process.Wait()
+					Ω(err).Should(HaveOccurred())
 				})
-				Ω(err).ShouldNot(HaveOccurred())
-				Ω(pid).Should(BeNumerically("==", 42))
+			})
+		})
 
-				Ω(server.ReceivedRequests()).Should(HaveLen(1))
+		Context("when the connection returns an error payload", func() {
+			BeforeEach(func() {
+				server.AppendHandlers(
+					ghttp.CombineHandlers(
+						ghttp.VerifyRequest("POST", "/containers/foo-handle/processes"),
+						ghttp.RespondWith(200, marshalProto(
+							&protocol.ProcessPayload{ProcessId: proto.Uint32(42)},
+							&protocol.ProcessPayload{ProcessId: proto.Uint32(42), Source: &stdout, Data: proto.String("stdout data")},
+							&protocol.ProcessPayload{ProcessId: proto.Uint32(42), Source: &stderr, Data: proto.String("stderr data")},
+							&protocol.ProcessPayload{ProcessId: proto.Uint32(42), Error: proto.String("oh no!")})),
+					),
+				)
+			})
 
-				time.Sleep(1 * time.Second)
+			Describe("waiting on the process", func() {
+				It("returns an error", func() {
+					process, err := connection.Run("foo-handle", warden.ProcessSpec{
+						Path: "lol",
+						Args: []string{"arg1", "arg2"},
+						Dir:  "/some/dir",
+					}, warden.ProcessIO{})
 
-				pid, _, err = connection.Run("foo-handle", warden.ProcessSpec{
-					Path: "echo",
-					Args: []string{"bye"},
+					Ω(err).ShouldNot(HaveOccurred())
+
+					_, err = process.Wait()
+					Ω(err).Should(HaveOccurred())
+					Ω(err.Error()).Should(ContainSubstring("oh no!"))
 				})
-				Ω(err).ShouldNot(HaveOccurred())
-				Ω(pid).Should(BeNumerically("==", 43))
-
-				Ω(server.ReceivedRequests()).Should(HaveLen(2))
 			})
 		})
 	})
 
 	Describe("Attaching", func() {
-		BeforeEach(func() {
-			stdout := protocol.ProcessPayload_stdout
-			stderr := protocol.ProcessPayload_stderr
+		stdin := protocol.ProcessPayload_stdin
+		stdout := protocol.ProcessPayload_stdout
+		stderr := protocol.ProcessPayload_stderr
 
-			server.AppendHandlers(
-				ghttp.CombineHandlers(
-					ghttp.VerifyRequest("GET", "/containers/foo-handle/processes/42"),
-					ghttp.RespondWith(200, marshalProto(
-						&protocol.ProcessPayload{ProcessId: proto.Uint32(42), Source: &stdout, Data: proto.String("1")},
-						&protocol.ProcessPayload{ProcessId: proto.Uint32(42), Source: &stderr, Data: proto.String("2")},
-						&protocol.ProcessPayload{ProcessId: proto.Uint32(42), ExitStatus: proto.Uint32(3)}))))
+		Context("when streaming succeeds to completion", func() {
+			BeforeEach(func() {
+				server.AppendHandlers(
+					ghttp.CombineHandlers(
+						ghttp.VerifyRequest("GET", "/containers/foo-handle/processes/42"),
+						func(w http.ResponseWriter, r *http.Request) {
+							w.WriteHeader(http.StatusOK)
+
+							conn, br, err := w.(http.Hijacker).Hijack()
+							Ω(err).ShouldNot(HaveOccurred())
+
+							defer conn.Close()
+
+							transport.WriteMessage(conn, &protocol.ProcessPayload{ProcessId: proto.Uint32(42), Source: &stdout, Data: proto.String("stdout data")})
+
+							transport.WriteMessage(conn, &protocol.ProcessPayload{ProcessId: proto.Uint32(42), Source: &stderr, Data: proto.String("stderr data")})
+
+							var payload protocol.ProcessPayload
+							err = json.NewDecoder(br).Decode(&payload)
+							Ω(err).ShouldNot(HaveOccurred())
+
+							Ω(payload).Should(Equal(protocol.ProcessPayload{
+								ProcessId: proto.Uint32(42),
+								Source:    &stdin,
+								Data:      proto.String("stdin data"),
+							}))
+
+							transport.WriteMessage(conn, &protocol.ProcessPayload{
+								ProcessId: proto.Uint32(42),
+								Source:    &stdout,
+								Data:      proto.String("roundtripped " + payload.GetData()),
+							})
+
+							transport.WriteMessage(conn, &protocol.ProcessPayload{ProcessId: proto.Uint32(42), ExitStatus: proto.Uint32(3)})
+						},
+					),
+				)
+			})
+
+			It("should stream", func() {
+				stdout := gbytes.NewBuffer()
+				stderr := gbytes.NewBuffer()
+
+				process, err := connection.Attach("foo-handle", 42, warden.ProcessIO{
+					Stdin:  bytes.NewBufferString("stdin data"),
+					Stdout: stdout,
+					Stderr: stderr,
+				})
+
+				Ω(err).ShouldNot(HaveOccurred())
+				Ω(process.ID()).Should(Equal(uint32(42)))
+
+				Eventually(stdout).Should(gbytes.Say("stdout data"))
+				Eventually(stderr).Should(gbytes.Say("stderr data"))
+				Eventually(stdout).Should(gbytes.Say("roundtripped stdin data"))
+
+				status, err := process.Wait()
+				Ω(err).ShouldNot(HaveOccurred())
+				Ω(status).Should(Equal(3))
+			})
 		})
 
-		It("should stream", func(done Done) {
-			stream, err := connection.Attach("foo-handle", 42)
-			Ω(err).ShouldNot(HaveOccurred())
+		Context("when the connection returns an error payload", func() {
+			BeforeEach(func() {
+				server.AppendHandlers(
+					ghttp.CombineHandlers(
+						ghttp.VerifyRequest("GET", "/containers/foo-handle/processes/42"),
+						ghttp.RespondWith(200, marshalProto(
+							&protocol.ProcessPayload{ProcessId: proto.Uint32(42), Source: &stdout, Data: proto.String("stdout data")},
+							&protocol.ProcessPayload{ProcessId: proto.Uint32(42), Source: &stderr, Data: proto.String("stderr data")},
+							&protocol.ProcessPayload{ProcessId: proto.Uint32(42), Error: proto.String("oh no!")})),
+					),
+				)
+			})
 
-			response1 := <-stream
-			Ω(response1.Source).Should(Equal(warden.ProcessStreamSourceStdout))
-			Ω(string(response1.Data)).Should(Equal("1"))
+			Describe("waiting on the process", func() {
+				It("returns an error", func() {
+					process, err := connection.Attach("foo-handle", 42, warden.ProcessIO{})
 
-			response2 := <-stream
-			Ω(response2.Source).Should(Equal(warden.ProcessStreamSourceStderr))
-			Ω(string(response2.Data)).Should(Equal("2"))
+					Ω(err).ShouldNot(HaveOccurred())
+					Ω(process.ID()).Should(Equal(uint32(42)))
 
-			response3 := <-stream
-			Ω(response3.ExitStatus).ShouldNot(BeNil())
-			Ω(*response3.ExitStatus).Should(BeNumerically("==", 3))
+					_, err = process.Wait()
+					Ω(err).Should(HaveOccurred())
+					Ω(err.Error()).Should(ContainSubstring("oh no!"))
+				})
+			})
+		})
 
-			Eventually(stream).Should(BeClosed())
+		Context("when the connection breaks before an exit status is received", func() {
+			BeforeEach(func() {
+				server.AppendHandlers(
+					ghttp.CombineHandlers(
+						ghttp.VerifyRequest("GET", "/containers/foo-handle/processes/42"),
+						func(w http.ResponseWriter, r *http.Request) {
+							w.WriteHeader(http.StatusOK)
 
-			close(done)
+							conn, _, err := w.(http.Hijacker).Hijack()
+							Ω(err).ShouldNot(HaveOccurred())
+
+							defer conn.Close()
+
+							transport.WriteMessage(conn, &protocol.ProcessPayload{ProcessId: proto.Uint32(42), Source: &stdout, Data: proto.String("stdout data")})
+
+							transport.WriteMessage(conn, &protocol.ProcessPayload{ProcessId: proto.Uint32(42), Source: &stderr, Data: proto.String("stderr data")})
+						},
+					),
+				)
+			})
+
+			Describe("waiting on the process", func() {
+				It("returns an error", func() {
+					process, err := connection.Attach("foo-handle", 42, warden.ProcessIO{})
+
+					Ω(err).ShouldNot(HaveOccurred())
+					Ω(process.ID()).Should(Equal(uint32(42)))
+
+					_, err = process.Wait()
+					Ω(err).Should(HaveOccurred())
+				})
+			})
 		})
 	})
 })
