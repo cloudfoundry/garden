@@ -1136,6 +1136,35 @@ var _ = Describe("When a client connects", func() {
 				})
 			})
 
+			Context("when the process's window size is set", func() {
+				var fakeProcess *fakes.FakeProcess
+
+				BeforeEach(func() {
+					fakeProcess = new(fakes.FakeProcess)
+					fakeProcess.IDReturns(42)
+					fakeProcess.WaitStub = func() (int, error) {
+						select {}
+						return 0, nil
+					}
+
+					fakeContainer.RunReturns(fakeProcess, nil)
+				})
+
+				It("is eventually set in the backend", func() {
+					process, err := container.Run(processSpec, warden.ProcessIO{})
+					Ω(err).ShouldNot(HaveOccurred())
+
+					err = process.SetWindowSize(80, 24)
+					Ω(err).ShouldNot(HaveOccurred())
+
+					Eventually(fakeProcess.SetWindowSizeCallCount).Should(Equal(1))
+
+					setCols, setRows := fakeProcess.SetWindowSizeArgsForCall(0)
+					Ω(setCols).Should(Equal(80))
+					Ω(setRows).Should(Equal(24))
+				})
+			})
+
 			Context("when waiting on the process fails server-side", func() {
 				BeforeEach(func() {
 					fakeContainer.RunStub = func(spec warden.ProcessSpec, io warden.ProcessIO) (warden.Process, error) {

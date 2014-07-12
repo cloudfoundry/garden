@@ -3,7 +3,7 @@ package fakes
 
 import (
 	"sync"
-	. "github.com/cloudfoundry-incubator/garden/warden"
+	"github.com/cloudfoundry-incubator/garden/warden"
 )
 
 type FakeProcess struct {
@@ -19,6 +19,15 @@ type FakeProcess struct {
 	waitReturns struct {
 		result1 int
 		result2 error
+	}
+	SetWindowSizeStub        func(cols, rows int) error
+	setWindowSizeMutex       sync.RWMutex
+	setWindowSizeArgsForCall []struct {
+		cols int
+		rows int
+	}
+	setWindowSizeReturns struct {
+		result1 error
 	}
 }
 
@@ -69,4 +78,36 @@ func (fake *FakeProcess) WaitReturns(result1 int, result2 error) {
 	}{result1, result2}
 }
 
-var _ Process = new(FakeProcess)
+func (fake *FakeProcess) SetWindowSize(cols int, rows int) error {
+	fake.setWindowSizeMutex.Lock()
+	defer fake.setWindowSizeMutex.Unlock()
+	fake.setWindowSizeArgsForCall = append(fake.setWindowSizeArgsForCall, struct {
+		cols int
+		rows int
+	}{cols, rows})
+	if fake.SetWindowSizeStub != nil {
+		return fake.SetWindowSizeStub(cols, rows)
+	} else {
+		return fake.setWindowSizeReturns.result1
+	}
+}
+
+func (fake *FakeProcess) SetWindowSizeCallCount() int {
+	fake.setWindowSizeMutex.RLock()
+	defer fake.setWindowSizeMutex.RUnlock()
+	return len(fake.setWindowSizeArgsForCall)
+}
+
+func (fake *FakeProcess) SetWindowSizeArgsForCall(i int) (int, int) {
+	fake.setWindowSizeMutex.RLock()
+	defer fake.setWindowSizeMutex.RUnlock()
+	return fake.setWindowSizeArgsForCall[i].cols, fake.setWindowSizeArgsForCall[i].rows
+}
+
+func (fake *FakeProcess) SetWindowSizeReturns(result1 error) {
+	fake.setWindowSizeReturns = struct {
+		result1 error
+	}{result1}
+}
+
+var _ warden.Process = new(FakeProcess)
