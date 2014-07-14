@@ -52,6 +52,7 @@ type ProcessIO struct {
 type Process interface {
 	ID() uint32
 	Wait() (int, error)
+	SetWindowSize(cols, rows int) error
 }
 
 type PortMapping struct {

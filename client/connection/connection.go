@@ -270,9 +270,9 @@ func (c *connection) Run(handle string, spec warden.ProcessSpec, processIO warde
 		return nil, err
 	}
 
-	p := newProcess(firstResponse.GetProcessId())
+	p := newProcess(firstResponse.GetProcessId(), conn)
 
-	go c.streamPayloads(conn, decoder, processIO, p)
+	go p.streamPayloads(decoder, processIO)
 
 	return p, nil
 }
@@ -305,9 +305,9 @@ func (c *connection) Attach(handle string, processID uint32, processIO warden.Pr
 
 	decoder := json.NewDecoder(br)
 
-	p := newProcess(processID)
+	p := newProcess(processID, conn)
 
-	go c.streamPayloads(conn, decoder, processIO, p)
+	go p.streamPayloads(decoder, processIO)
 
 	return p, nil
 }
@@ -735,53 +735,6 @@ func convertEnvironmentVariables(environmentVariables []string) []*protocol.Envi
 	}
 
 	return convertedEnvironmentVariables
-}
-
-func (c *connection) streamPayloads(conn net.Conn, decoder *json.Decoder, processIO warden.ProcessIO, process *process) {
-	defer conn.Close()
-
-	if processIO.Stdin != nil {
-		writer := &stdinWriter{
-			process: process,
-			conn:    conn,
-		}
-
-		go func() {
-			io.Copy(writer, processIO.Stdin)
-			writer.Close()
-		}()
-	}
-
-	for {
-		payload := &protocol.ProcessPayload{}
-
-		err := decoder.Decode(payload)
-		if err != nil {
-			process.exited(0, err)
-			break
-		}
-
-		if payload.Error != nil {
-			process.exited(0, fmt.Errorf("process error: %s", payload.GetError()))
-			break
-		}
-
-		if payload.ExitStatus != nil {
-			process.exited(int(payload.GetExitStatus()), nil)
-			break
-		}
-
-		switch payload.GetSource() {
-		case protocol.ProcessPayload_stdout:
-			if processIO.Stdout != nil {
-				processIO.Stdout.Write([]byte(payload.GetData()))
-			}
-		case protocol.ProcessPayload_stderr:
-			if processIO.Stderr != nil {
-				processIO.Stderr.Write([]byte(payload.GetData()))
-			}
-		}
-	}
 }
 
 func (c *connection) do(
