@@ -7,6 +7,7 @@ import (
 	"code.google.com/p/goprotobuf/proto"
 	protocol "github.com/cloudfoundry-incubator/garden/protocol"
 	"github.com/cloudfoundry-incubator/garden/transport"
+	"github.com/cloudfoundry-incubator/garden/warden"
 )
 
 var stdin = protocol.ProcessPayload_stdin
@@ -33,13 +34,19 @@ func (s *processStream) CloseStdin() error {
 	})
 }
 
-func (s *processStream) SetWindowSize(columns int, rows int) error {
+func (s *processStream) SetTTY(spec warden.TTYSpec) error {
+	tty := &protocol.TTY{}
+
+	if spec.WindowSize != nil {
+		tty.WindowSize = &protocol.TTY_WindowSize{
+			Columns: proto.Uint32(uint32(spec.WindowSize.Columns)),
+			Rows:    proto.Uint32(uint32(spec.WindowSize.Rows)),
+		}
+	}
+
 	return s.sendPayload(&protocol.ProcessPayload{
 		ProcessId: proto.Uint32(s.id),
-		WindowSize: &protocol.ProcessPayload_WindowSize{
-			Columns: proto.Uint32(uint32(columns)),
-			Rows:    proto.Uint32(uint32(rows)),
-		},
+		Tty:       tty,
 	})
 }
 

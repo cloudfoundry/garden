@@ -21,7 +21,7 @@ type RunRequest struct {
 	Env              []*EnvironmentVariable `protobuf:"bytes,5,rep,name=env" json:"env,omitempty"`
 	Args             []string               `protobuf:"bytes,6,rep,name=args" json:"args,omitempty"`
 	Dir              *string                `protobuf:"bytes,7,opt,name=dir" json:"dir,omitempty"`
-	Tty              *bool                  `protobuf:"varint,8,opt,name=tty,def=0" json:"tty,omitempty"`
+	Tty              *TTY                   `protobuf:"bytes,8,opt,name=tty" json:"tty,omitempty"`
 	XXX_unrecognized []byte                 `json:"-"`
 }
 
@@ -30,7 +30,6 @@ func (m *RunRequest) String() string { return proto.CompactTextString(m) }
 func (*RunRequest) ProtoMessage()    {}
 
 const Default_RunRequest_Privileged bool = false
-const Default_RunRequest_Tty bool = false
 
 func (m *RunRequest) GetHandle() string {
 	if m != nil && m.Handle != nil {
@@ -81,11 +80,11 @@ func (m *RunRequest) GetDir() string {
 	return ""
 }
 
-func (m *RunRequest) GetTty() bool {
-	if m != nil && m.Tty != nil {
-		return *m.Tty
+func (m *RunRequest) GetTty() *TTY {
+	if m != nil {
+		return m.Tty
 	}
-	return Default_RunRequest_Tty
+	return nil
 }
 
 func init() {

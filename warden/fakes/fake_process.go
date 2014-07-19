@@ -20,13 +20,12 @@ type FakeProcess struct {
 		result1 int
 		result2 error
 	}
-	SetWindowSizeStub        func(cols, rows int) error
-	setWindowSizeMutex       sync.RWMutex
-	setWindowSizeArgsForCall []struct {
-		cols int
-		rows int
+	SetTTYStub        func(warden.TTYSpec) error
+	setTTYMutex       sync.RWMutex
+	setTTYArgsForCall []struct {
+		arg1 warden.TTYSpec
 	}
-	setWindowSizeReturns struct {
+	setTTYReturns struct {
 		result1 error
 	}
 }
@@ -49,6 +48,7 @@ func (fake *FakeProcess) IDCallCount() int {
 }
 
 func (fake *FakeProcess) IDReturns(result1 uint32) {
+	fake.IDStub = nil
 	fake.iDReturns = struct {
 		result1 uint32
 	}{result1}
@@ -72,40 +72,41 @@ func (fake *FakeProcess) WaitCallCount() int {
 }
 
 func (fake *FakeProcess) WaitReturns(result1 int, result2 error) {
+	fake.WaitStub = nil
 	fake.waitReturns = struct {
 		result1 int
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *FakeProcess) SetWindowSize(cols int, rows int) error {
-	fake.setWindowSizeMutex.Lock()
-	defer fake.setWindowSizeMutex.Unlock()
-	fake.setWindowSizeArgsForCall = append(fake.setWindowSizeArgsForCall, struct {
-		cols int
-		rows int
-	}{cols, rows})
-	if fake.SetWindowSizeStub != nil {
-		return fake.SetWindowSizeStub(cols, rows)
+func (fake *FakeProcess) SetTTY(arg1 warden.TTYSpec) error {
+	fake.setTTYMutex.Lock()
+	defer fake.setTTYMutex.Unlock()
+	fake.setTTYArgsForCall = append(fake.setTTYArgsForCall, struct {
+		arg1 warden.TTYSpec
+	}{arg1})
+	if fake.SetTTYStub != nil {
+		return fake.SetTTYStub(arg1)
 	} else {
-		return fake.setWindowSizeReturns.result1
+		return fake.setTTYReturns.result1
 	}
 }
 
-func (fake *FakeProcess) SetWindowSizeCallCount() int {
-	fake.setWindowSizeMutex.RLock()
-	defer fake.setWindowSizeMutex.RUnlock()
-	return len(fake.setWindowSizeArgsForCall)
+func (fake *FakeProcess) SetTTYCallCount() int {
+	fake.setTTYMutex.RLock()
+	defer fake.setTTYMutex.RUnlock()
+	return len(fake.setTTYArgsForCall)
 }
 
-func (fake *FakeProcess) SetWindowSizeArgsForCall(i int) (int, int) {
-	fake.setWindowSizeMutex.RLock()
-	defer fake.setWindowSizeMutex.RUnlock()
-	return fake.setWindowSizeArgsForCall[i].cols, fake.setWindowSizeArgsForCall[i].rows
+func (fake *FakeProcess) SetTTYArgsForCall(i int) warden.TTYSpec {
+	fake.setTTYMutex.RLock()
+	defer fake.setTTYMutex.RUnlock()
+	return fake.setTTYArgsForCall[i].arg1
 }
 
-func (fake *FakeProcess) SetWindowSizeReturns(result1 error) {
-	fake.setWindowSizeReturns = struct {
+func (fake *FakeProcess) SetTTYReturns(result1 error) {
+	fake.SetTTYStub = nil
+	fake.setTTYReturns = struct {
 		result1 error
 	}{result1}
 }
