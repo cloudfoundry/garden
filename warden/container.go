@@ -34,13 +34,24 @@ type Container interface {
 }
 
 type ProcessSpec struct {
-	Path       string
-	Args       []string
-	Dir        string
-	Env        []string
+	Path string
+	Args []string
+	Env  []string
+	Dir  string
+
 	Privileged bool
-	Limits     ResourceLimits
-	TTY        bool
+
+	Limits ResourceLimits
+	TTY    *TTYSpec
+}
+
+type TTYSpec struct {
+	WindowSize *WindowSize
+}
+
+type WindowSize struct {
+	Columns int
+	Rows    int
 }
 
 type ProcessIO struct {
@@ -52,7 +63,7 @@ type ProcessIO struct {
 type Process interface {
 	ID() uint32
 	Wait() (int, error)
-	SetWindowSize(cols, rows int) error
+	SetTTY(TTYSpec) error
 }
 
 type PortMapping struct {

@@ -50,13 +50,13 @@ func (x *ProcessPayload_Source) UnmarshalJSON(data []byte) error {
 }
 
 type ProcessPayload struct {
-	ProcessId        *uint32                    `protobuf:"varint,1,req,name=process_id" json:"process_id,omitempty"`
-	Source           *ProcessPayload_Source     `protobuf:"varint,2,opt,name=source,enum=warden.ProcessPayload_Source" json:"source,omitempty"`
-	Data             *string                    `protobuf:"bytes,3,opt,name=data" json:"data,omitempty"`
-	ExitStatus       *uint32                    `protobuf:"varint,4,opt,name=exit_status" json:"exit_status,omitempty"`
-	Error            *string                    `protobuf:"bytes,5,opt,name=error" json:"error,omitempty"`
-	WindowSize       *ProcessPayload_WindowSize `protobuf:"bytes,6,opt,name=window_size" json:"window_size,omitempty"`
-	XXX_unrecognized []byte                     `json:"-"`
+	ProcessId        *uint32                `protobuf:"varint,1,req,name=process_id" json:"process_id,omitempty"`
+	Source           *ProcessPayload_Source `protobuf:"varint,2,opt,name=source,enum=warden.ProcessPayload_Source" json:"source,omitempty"`
+	Data             *string                `protobuf:"bytes,3,opt,name=data" json:"data,omitempty"`
+	ExitStatus       *uint32                `protobuf:"varint,4,opt,name=exit_status" json:"exit_status,omitempty"`
+	Error            *string                `protobuf:"bytes,5,opt,name=error" json:"error,omitempty"`
+	Tty              *TTY                   `protobuf:"bytes,6,opt,name=tty" json:"tty,omitempty"`
+	XXX_unrecognized []byte                 `json:"-"`
 }
 
 func (m *ProcessPayload) Reset()         { *m = ProcessPayload{} }
@@ -98,35 +98,11 @@ func (m *ProcessPayload) GetError() string {
 	return ""
 }
 
-func (m *ProcessPayload) GetWindowSize() *ProcessPayload_WindowSize {
+func (m *ProcessPayload) GetTty() *TTY {
 	if m != nil {
-		return m.WindowSize
+		return m.Tty
 	}
 	return nil
-}
-
-type ProcessPayload_WindowSize struct {
-	Columns          *uint32 `protobuf:"varint,1,req,name=columns" json:"columns,omitempty"`
-	Rows             *uint32 `protobuf:"varint,2,req,name=rows" json:"rows,omitempty"`
-	XXX_unrecognized []byte  `json:"-"`
-}
-
-func (m *ProcessPayload_WindowSize) Reset()         { *m = ProcessPayload_WindowSize{} }
-func (m *ProcessPayload_WindowSize) String() string { return proto.CompactTextString(m) }
-func (*ProcessPayload_WindowSize) ProtoMessage()    {}
-
-func (m *ProcessPayload_WindowSize) GetColumns() uint32 {
-	if m != nil && m.Columns != nil {
-		return *m.Columns
-	}
-	return 0
-}
-
-func (m *ProcessPayload_WindowSize) GetRows() uint32 {
-	if m != nil && m.Rows != nil {
-		return *m.Rows
-	}
-	return 0
 }
 
 func init() {

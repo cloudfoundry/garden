@@ -581,7 +581,7 @@ func (s *WardenServer) handleRun(w http.ResponseWriter, r *http.Request) {
 		Dir:        dir,
 		Privileged: privileged,
 		Env:        convertEnv(env),
-		TTY:        tty,
+		TTY:        ttySpecFrom(tty),
 	}
 
 	if request.Rlimits != nil {
@@ -634,9 +634,8 @@ func (s *WardenServer) streamInput(decoder *json.Decoder, in io.WriteCloser, pro
 		}
 
 		switch {
-		case payload.WindowSize != nil:
-			size := payload.GetWindowSize()
-			process.SetWindowSize(int(size.GetColumns()), int(size.GetRows()))
+		case payload.Tty != nil:
+			process.SetTTY(*ttySpecFrom(payload.GetTty()))
 
 		case payload.Source != nil:
 			if payload.Data == nil {
@@ -920,4 +919,21 @@ func (s *WardenServer) streamProcess(conn net.Conn, process warden.Process, stdo
 			return
 		}
 	}
+}
+
+func ttySpecFrom(tty *protocol.TTY) *warden.TTYSpec {
+	var ttySpec *warden.TTYSpec
+	if tty != nil {
+		ttySpec = &warden.TTYSpec{}
+
+		windowSize := tty.GetWindowSize()
+		if windowSize != nil {
+			ttySpec.WindowSize = &warden.WindowSize{
+				Columns: int(windowSize.GetColumns()),
+				Rows:    int(windowSize.GetRows()),
+			}
+		}
+	}
+
+	return ttySpec
 }

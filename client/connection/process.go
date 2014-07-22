@@ -51,8 +51,8 @@ func (p *process) Wait() (int, error) {
 	return p.exitStatus, p.exitErr
 }
 
-func (p *process) SetWindowSize(columns int, rows int) error {
-	return p.stream.SetWindowSize(columns, rows)
+func (p *process) SetTTY(tty warden.TTYSpec) error {
+	return p.stream.SetTTY(tty)
 }
 
 func (p *process) exited(exitStatus int, err error) {
