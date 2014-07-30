@@ -15,6 +15,7 @@ import (
 	protocol "github.com/cloudfoundry-incubator/garden/protocol"
 	"github.com/cloudfoundry-incubator/garden/transport"
 	"github.com/cloudfoundry-incubator/garden/warden"
+	"github.com/pivotal-golang/lager"
 )
 
 var ErrInvalidContentType = errors.New("content-type must be application/json")
@@ -188,9 +189,14 @@ func (s *WardenServer) handleStreamOut(w http.ResponseWriter, r *http.Request) {
 
 	srcPath := r.URL.Query().Get("source")
 
+	hLog := s.logger.Session("stream-out", lager.Data{
+		"handle": handle,
+		"source": srcPath,
+	})
+
 	container, err := s.backend.Lookup(handle)
 	if err != nil {
-		s.writeError(w, err)
+		s.writeError(w, err, hLog)
 		return
 	}
 
@@ -199,13 +205,23 @@ func (s *WardenServer) handleStreamOut(w http.ResponseWriter, r *http.Request) {
 
 	reader, err := container.StreamOut(srcPath)
 	if err != nil {
-		s.writeError(w, err)
+		s.writeError(w, err, hLog)
 		return
 	}
 
-	_, err = io.Copy(w, reader)
+	n, err := io.Copy(w, reader)
 	if err != nil {
-		s.writeError(w, err)
+		hLog.Error("failed-to-copy-fully", err)
+
+		err := reader.Close()
+		if err != nil {
+			hLog.Error("failed-to-close", err)
+		}
+
+		if n == 0 {
+			s.writeError(w, err)
+		}
+
 		return
 	}
 }
@@ -831,7 +847,11 @@ func resourceLimits(limits *protocol.ResourceLimits) warden.ResourceLimits {
 	}
 }
 
-func (s *WardenServer) writeError(w http.ResponseWriter, err error) {
+func (s *WardenServer) writeError(w http.ResponseWriter, err error, logger ...lager.Logger) {
+	if len(logger) > 0 {
+		logger[0].Error("failed", err)
+	}
+
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusInternalServerError)
 	w.Write([]byte(err.Error()))

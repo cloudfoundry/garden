@@ -10,6 +10,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
+	"github.com/pivotal-golang/lager/lagertest"
 
 	"github.com/cloudfoundry-incubator/garden/client"
 	"github.com/cloudfoundry-incubator/garden/client/connection"
@@ -19,6 +20,12 @@ import (
 )
 
 var _ = Describe("The Warden server", func() {
+	var logger *lagertest.TestLogger
+
+	BeforeEach(func() {
+		logger = lagertest.NewTestLogger("test")
+	})
+
 	Context("when passed a socket", func() {
 		It("listens on the given socket path and chmods it to 0777", func() {
 			tmpdir, err := ioutil.TempDir(os.TempDir(), "warden-server-test")
@@ -26,7 +33,7 @@ var _ = Describe("The Warden server", func() {
 
 			socketPath := path.Join(tmpdir, "warden.sock")
 
-			wardenServer := server.New("unix", socketPath, 0, new(fakes.FakeBackend))
+			wardenServer := server.New("unix", socketPath, 0, new(fakes.FakeBackend), logger)
 
 			err = wardenServer.Start()
 			Ω(err).ShouldNot(HaveOccurred())
@@ -50,7 +57,7 @@ var _ = Describe("The Warden server", func() {
 			socket.WriteString("oops")
 			socket.Close()
 
-			wardenServer := server.New("unix", socketPath, 0, new(fakes.FakeBackend))
+			wardenServer := server.New("unix", socketPath, 0, new(fakes.FakeBackend), logger)
 
 			err = wardenServer.Start()
 			Ω(err).ShouldNot(HaveOccurred())
@@ -59,7 +66,7 @@ var _ = Describe("The Warden server", func() {
 
 	Context("when passed a tcp addr", func() {
 		It("listens on the given addr", func() {
-			wardenServer := server.New("tcp", ":60123", 0, new(fakes.FakeBackend))
+			wardenServer := server.New("tcp", ":60123", 0, new(fakes.FakeBackend), logger)
 
 			err := wardenServer.Start()
 			Ω(err).ShouldNot(HaveOccurred())
@@ -76,7 +83,7 @@ var _ = Describe("The Warden server", func() {
 
 		fakeBackend := new(fakes.FakeBackend)
 
-		wardenServer := server.New("unix", socketPath, 0, fakeBackend)
+		wardenServer := server.New("unix", socketPath, 0, fakeBackend, logger)
 
 		err = wardenServer.Start()
 		Ω(err).ShouldNot(HaveOccurred())
@@ -97,7 +104,7 @@ var _ = Describe("The Warden server", func() {
 		fakeBackend.ContainersReturns([]warden.Container{doomedContainer}, nil)
 		fakeBackend.GraceTimeReturns(100 * time.Millisecond)
 
-		wardenServer := server.New("unix", socketPath, 0, fakeBackend)
+		wardenServer := server.New("unix", socketPath, 0, fakeBackend, logger)
 
 		before := time.Now()
 
@@ -122,7 +129,7 @@ var _ = Describe("The Warden server", func() {
 			fakeBackend := new(fakes.FakeBackend)
 			fakeBackend.StartReturns(disaster)
 
-			wardenServer := server.New("unix", socketPath, 0, fakeBackend)
+			wardenServer := server.New("unix", socketPath, 0, fakeBackend, logger)
 
 			err = wardenServer.Start()
 			Ω(err).Should(Equal(disaster))
@@ -140,6 +147,7 @@ var _ = Describe("The Warden server", func() {
 				path.Join(tmpfile.Name(), "warden.sock"),
 				0,
 				new(fakes.FakeBackend),
+				logger,
 			)
 
 			err = wardenServer.Start()
@@ -169,7 +177,7 @@ var _ = Describe("The Warden server", func() {
 		})
 
 		JustBeforeEach(func() {
-			wardenServer = server.New("unix", socketPath, 0, serverBackend)
+			wardenServer = server.New("unix", socketPath, 0, serverBackend, logger)
 
 			err := wardenServer.Start()
 			Ω(err).ShouldNot(HaveOccurred())

@@ -13,10 +13,13 @@ import (
 	"github.com/cloudfoundry-incubator/garden/routes"
 	"github.com/cloudfoundry-incubator/garden/server/bomberman"
 	"github.com/cloudfoundry-incubator/garden/warden"
+	"github.com/pivotal-golang/lager"
 	"github.com/tedsuo/rata"
 )
 
 type WardenServer struct {
+	logger lager.Logger
+
 	server        http.Server
 	listenNetwork string
 	listenAddr    string
@@ -47,8 +50,11 @@ func New(
 	listenNetwork, listenAddr string,
 	containerGraceTime time.Duration,
 	backend warden.Backend,
+	logger lager.Logger,
 ) *WardenServer {
 	s := &WardenServer{
+		logger: logger,
+
 		listenNetwork: listenNetwork,
 		listenAddr:    listenAddr,
 

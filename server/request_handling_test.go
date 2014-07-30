@@ -14,6 +14,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
+	"github.com/pivotal-golang/lager/lagertest"
 
 	"github.com/cloudfoundry-incubator/garden/client"
 	"github.com/cloudfoundry-incubator/garden/client/connection"
@@ -29,10 +30,14 @@ var _ = Describe("When a client connects", func() {
 
 	var serverContainerGraceTime time.Duration
 
+	var logger *lagertest.TestLogger
+
 	var wardenServer *server.WardenServer
 	var wardenClient warden.Client
 
 	BeforeEach(func() {
+		logger = lagertest.NewTestLogger("test")
+
 		tmpdir, err := ioutil.TempDir(os.TempDir(), "warden-server-test")
 		Ω(err).ShouldNot(HaveOccurred())
 
@@ -45,6 +50,7 @@ var _ = Describe("When a client connects", func() {
 			socketPath,
 			serverContainerGraceTime,
 			serverBackend,
+			logger,
 		)
 
 		err = wardenServer.Start()
@@ -418,11 +424,16 @@ var _ = Describe("When a client connects", func() {
 		})
 
 		Describe("streaming out", func() {
+			var streamOut *closeChecker
+
+			BeforeEach(func() {
+				streamOut = &closeChecker{
+					Reader: bytes.NewBuffer([]byte("hello-world!")),
+				}
+			})
+
 			JustBeforeEach(func() {
-				fakeContainer.StreamOutReturns(
-					ioutil.NopCloser(bytes.NewBuffer([]byte("hello-world!"))),
-					nil,
-				)
+				fakeContainer.StreamOutReturns(streamOut, nil)
 			})
 
 			It("streams the bits out and succeeds", func() {
@@ -436,6 +447,30 @@ var _ = Describe("When a client connects", func() {
 				Ω(string(streamedContent)).Should(Equal("hello-world!"))
 
 				Ω(fakeContainer.StreamOutArgsForCall(0)).Should(Equal("/src/path"))
+			})
+
+			Context("when the connection dies as we're streaming", func() {
+				BeforeEach(func() {
+					// data big enough to not be entirely buffered
+					datalake := ""
+					for i := 0; i < 10240; i++ {
+						datalake += "hadoop"
+					}
+
+					streamOut = &closeChecker{
+						Reader: bytes.NewBuffer([]byte(datalake)),
+					}
+				})
+
+				It("closes the backend's stream", func() {
+					reader, err := container.StreamOut("/src/path")
+					Ω(err).ShouldNot(HaveOccurred())
+
+					err = reader.Close()
+					Ω(err).ShouldNot(HaveOccurred())
+
+					Eventually(streamOut.Closed).Should(BeTrue())
+				})
 			})
 
 			itResetsGraceTimeWhenHandling(func() {
@@ -1215,3 +1250,23 @@ var _ = Describe("When a client connects", func() {
 		})
 	})
 })
+
+type closeChecker struct {
+	io.Reader
+
+	closed bool
+	sync.Mutex
+}
+
+func (checker *closeChecker) Close() error {
+	checker.Lock()
+	checker.closed = true
+	checker.Unlock()
+	return nil
+}
+
+func (checker *closeChecker) Closed() bool {
+	checker.Lock()
+	defer checker.Unlock()
+	return checker.closed
+}
