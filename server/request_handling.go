@@ -21,8 +21,11 @@ import (
 var ErrInvalidContentType = errors.New("content-type must be application/json")
 
 func (s *WardenServer) handlePing(w http.ResponseWriter, r *http.Request) {
+	hLog := s.logger.Session("ping")
+
 	err := s.backend.Ping()
 	if err != nil {
+		hLog.Error("failed", err)
 		w.WriteHeader(http.StatusServiceUnavailable)
 		return
 	}
@@ -31,9 +34,11 @@ func (s *WardenServer) handlePing(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *WardenServer) handleCapacity(w http.ResponseWriter, r *http.Request) {
+	hLog := s.logger.Session("capacity")
+
 	capacity, err := s.backend.Capacity()
 	if err != nil {
-		s.writeError(w, err)
+		s.writeError(w, err, hLog)
 		return
 	}
 
@@ -49,6 +54,10 @@ func (s *WardenServer) handleCreate(w http.ResponseWriter, r *http.Request) {
 	if !s.readRequest(&request, w, r) {
 		return
 	}
+
+	hLog := s.logger.Session("create", lager.Data{
+		"request": request,
+	})
 
 	bindMounts := []warden.BindMount{}
 
@@ -75,6 +84,8 @@ func (s *WardenServer) handleCreate(w http.ResponseWriter, r *http.Request) {
 		graceTime = time.Duration(request.GetGraceTime()) * time.Second
 	}
 
+	hLog.Debug("creating")
+
 	container, err := s.backend.Create(warden.ContainerSpec{
 		Handle:     request.GetHandle(),
 		GraceTime:  graceTime,
@@ -83,11 +94,12 @@ func (s *WardenServer) handleCreate(w http.ResponseWriter, r *http.Request) {
 		BindMounts: bindMounts,
 		Properties: properties,
 	})
-
 	if err != nil {
-		s.writeError(w, err)
+		s.writeError(w, err, hLog)
 		return
 	}
+
+	hLog.Info("created")
 
 	s.bomberman.Strap(container)
 
@@ -104,9 +116,13 @@ func (s *WardenServer) handleList(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	hLog := s.logger.Session("list", lager.Data{
+		"properties": properties,
+	})
+
 	containers, err := s.backend.Containers(properties)
 	if err != nil {
-		s.writeError(w, err)
+		s.writeError(w, err, hLog)
 		return
 	}
 
@@ -122,11 +138,19 @@ func (s *WardenServer) handleList(w http.ResponseWriter, r *http.Request) {
 func (s *WardenServer) handleDestroy(w http.ResponseWriter, r *http.Request) {
 	handle := r.FormValue(":handle")
 
+	hLog := s.logger.Session("destroy", lager.Data{
+		"handle": handle,
+	})
+
+	hLog.Debug("destroying")
+
 	err := s.backend.Destroy(handle)
 	if err != nil {
-		s.writeError(w, err)
+		s.writeError(w, err, hLog)
 		return
 	}
+
+	hLog.Info("destroyed")
 
 	s.bomberman.Defuse(handle)
 
@@ -135,6 +159,10 @@ func (s *WardenServer) handleDestroy(w http.ResponseWriter, r *http.Request) {
 
 func (s *WardenServer) handleStop(w http.ResponseWriter, r *http.Request) {
 	handle := r.FormValue(":handle")
+
+	hLog := s.logger.Session("stop", lager.Data{
+		"handle": handle,
+	})
 
 	var request protocol.StopRequest
 	if !s.readRequest(&request, w, r) {
@@ -145,18 +173,22 @@ func (s *WardenServer) handleStop(w http.ResponseWriter, r *http.Request) {
 
 	container, err := s.backend.Lookup(handle)
 	if err != nil {
-		s.writeError(w, err)
+		s.writeError(w, err, hLog)
 		return
 	}
 
 	s.bomberman.Pause(container.Handle())
 	defer s.bomberman.Unpause(container.Handle())
 
+	hLog.Debug("stopping")
+
 	err = container.Stop(kill)
 	if err != nil {
-		s.writeError(w, err)
+		s.writeError(w, err, hLog)
 		return
 	}
+
+	hLog.Info("stopped")
 
 	s.writeResponse(w, &protocol.StopResponse{})
 }
@@ -166,20 +198,29 @@ func (s *WardenServer) handleStreamIn(w http.ResponseWriter, r *http.Request) {
 
 	dstPath := r.URL.Query().Get("destination")
 
+	hLog := s.logger.Session("stream-in", lager.Data{
+		"handle":      handle,
+		"destination": dstPath,
+	})
+
 	container, err := s.backend.Lookup(handle)
 	if err != nil {
-		s.writeError(w, err)
+		s.writeError(w, err, hLog)
 		return
 	}
 
 	s.bomberman.Pause(container.Handle())
 	defer s.bomberman.Unpause(container.Handle())
 
+	hLog.Debug("streaming-in")
+
 	err = container.StreamIn(dstPath, r.Body)
 	if err != nil {
-		s.writeError(w, err)
+		s.writeError(w, err, hLog)
 		return
 	}
+
+	hLog.Info("streamed-in")
 
 	s.writeResponse(w, &protocol.StreamInResponse{})
 }
@@ -203,6 +244,8 @@ func (s *WardenServer) handleStreamOut(w http.ResponseWriter, r *http.Request) {
 	s.bomberman.Pause(container.Handle())
 	defer s.bomberman.Unpause(container.Handle())
 
+	hLog.Debug("streaming-out")
+
 	reader, err := container.StreamOut(srcPath)
 	if err != nil {
 		s.writeError(w, err, hLog)
@@ -211,18 +254,18 @@ func (s *WardenServer) handleStreamOut(w http.ResponseWriter, r *http.Request) {
 
 	n, err := io.Copy(w, reader)
 	if err != nil {
-		hLog.Error("failed-to-copy-fully", err)
-
 		if err := reader.Close(); err != nil {
 			hLog.Error("failed-to-close", err)
 		}
 
 		if n == 0 {
-			s.writeError(w, err)
+			s.writeError(w, err, hLog)
 		}
 
 		return
 	}
+
+	hLog.Info("streamed-out")
 }
 
 func (s *WardenServer) handleLimitBandwidth(w http.ResponseWriter, r *http.Request) {
@@ -233,29 +276,43 @@ func (s *WardenServer) handleLimitBandwidth(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
+	hLog := s.logger.Session("limit-bandwidth", lager.Data{
+		"handle": handle,
+	})
+
 	container, err := s.backend.Lookup(handle)
 	if err != nil {
-		s.writeError(w, err)
+		s.writeError(w, err, hLog)
 		return
 	}
 
 	s.bomberman.Pause(container.Handle())
 	defer s.bomberman.Unpause(container.Handle())
 
-	err = container.LimitBandwidth(warden.BandwidthLimits{
+	requestedLimits := warden.BandwidthLimits{
 		RateInBytesPerSecond:      request.GetRate(),
 		BurstRateInBytesPerSecond: request.GetBurst(),
+	}
+
+	hLog.Debug("limiting", lager.Data{
+		"requested-limits": requestedLimits,
 	})
+
+	err = container.LimitBandwidth(requestedLimits)
 	if err != nil {
-		s.writeError(w, err)
+		s.writeError(w, err, hLog)
 		return
 	}
 
 	limits, err := container.CurrentBandwidthLimits()
 	if err != nil {
-		s.writeError(w, err)
+		s.writeError(w, err, hLog)
 		return
 	}
+
+	hLog.Info("limited", lager.Data{
+		"resulting-limits": limits,
+	})
 
 	s.writeResponse(w, &protocol.LimitBandwidthResponse{
 		Rate:  proto.Uint64(limits.RateInBytesPerSecond),
@@ -266,20 +323,30 @@ func (s *WardenServer) handleLimitBandwidth(w http.ResponseWriter, r *http.Reque
 func (s *WardenServer) handleCurrentBandwidthLimits(w http.ResponseWriter, r *http.Request) {
 	handle := r.FormValue(":handle")
 
+	hLog := s.logger.Session("current-bandwidth-limits", lager.Data{
+		"handle": handle,
+	})
+
 	container, err := s.backend.Lookup(handle)
 	if err != nil {
-		s.writeError(w, err)
+		s.writeError(w, err, hLog)
 		return
 	}
 
 	s.bomberman.Pause(container.Handle())
 	defer s.bomberman.Unpause(container.Handle())
 
+	hLog.Debug("getting")
+
 	limits, err := container.CurrentBandwidthLimits()
 	if err != nil {
-		s.writeError(w, err)
+		s.writeError(w, err, hLog)
 		return
 	}
+
+	hLog.Info("got", lager.Data{
+		"limits": limits,
+	})
 
 	s.writeResponse(w, &protocol.LimitBandwidthResponse{
 		Rate:  proto.Uint64(limits.RateInBytesPerSecond),
@@ -290,6 +357,10 @@ func (s *WardenServer) handleCurrentBandwidthLimits(w http.ResponseWriter, r *ht
 func (s *WardenServer) handleLimitMemory(w http.ResponseWriter, r *http.Request) {
 	handle := r.FormValue(":handle")
 
+	hLog := s.logger.Session("limit-memory", lager.Data{
+		"handle": handle,
+	})
+
 	var request protocol.LimitMemoryRequest
 	if !s.readRequest(&request, w, r) {
 		return
@@ -299,29 +370,39 @@ func (s *WardenServer) handleLimitMemory(w http.ResponseWriter, r *http.Request)
 
 	container, err := s.backend.Lookup(handle)
 	if err != nil {
-		s.writeError(w, err)
+		s.writeError(w, err, hLog)
 		return
 	}
 
 	s.bomberman.Pause(container.Handle())
 	defer s.bomberman.Unpause(container.Handle())
 
+	requestedLimits := warden.MemoryLimits{
+		LimitInBytes: limitInBytes,
+	}
+
 	if request.LimitInBytes != nil {
-		err = container.LimitMemory(warden.MemoryLimits{
-			LimitInBytes: limitInBytes,
+		hLog.Debug("limiting", lager.Data{
+			"requested-limits": requestedLimits,
 		})
 
+		err = container.LimitMemory(requestedLimits)
+
 		if err != nil {
-			s.writeError(w, err)
+			s.writeError(w, err, hLog)
 			return
 		}
 	}
 
 	limits, err := container.CurrentMemoryLimits()
 	if err != nil {
-		s.writeError(w, err)
+		s.writeError(w, err, hLog)
 		return
 	}
+
+	hLog.Info("limited", lager.Data{
+		"resulting-limits": limits,
+	})
 
 	s.writeResponse(w, &protocol.LimitMemoryResponse{
 		LimitInBytes: proto.Uint64(limits.LimitInBytes),
@@ -331,20 +412,30 @@ func (s *WardenServer) handleLimitMemory(w http.ResponseWriter, r *http.Request)
 func (s *WardenServer) handleCurrentMemoryLimits(w http.ResponseWriter, r *http.Request) {
 	handle := r.FormValue(":handle")
 
+	hLog := s.logger.Session("current-memory-limits", lager.Data{
+		"handle": handle,
+	})
+
 	container, err := s.backend.Lookup(handle)
 	if err != nil {
-		s.writeError(w, err)
+		s.writeError(w, err, hLog)
 		return
 	}
 
 	s.bomberman.Pause(container.Handle())
 	defer s.bomberman.Unpause(container.Handle())
 
+	hLog.Debug("getting")
+
 	limits, err := container.CurrentMemoryLimits()
 	if err != nil {
-		s.writeError(w, err)
+		s.writeError(w, err, hLog)
 		return
 	}
+
+	hLog.Info("got", lager.Data{
+		"limits": limits,
+	})
 
 	s.writeResponse(w, &protocol.LimitMemoryResponse{
 		LimitInBytes: proto.Uint64(limits.LimitInBytes),
@@ -353,6 +444,10 @@ func (s *WardenServer) handleCurrentMemoryLimits(w http.ResponseWriter, r *http.
 
 func (s *WardenServer) handleLimitDisk(w http.ResponseWriter, r *http.Request) {
 	handle := r.FormValue(":handle")
+
+	hLog := s.logger.Session("limit-disk", lager.Data{
+		"handle": handle,
+	})
 
 	var request protocol.LimitDiskRequest
 	if !s.readRequest(&request, w, r) {
@@ -376,33 +471,43 @@ func (s *WardenServer) handleLimitDisk(w http.ResponseWriter, r *http.Request) {
 
 	container, err := s.backend.Lookup(handle)
 	if err != nil {
-		s.writeError(w, err)
+		s.writeError(w, err, hLog)
 		return
 	}
 
 	s.bomberman.Pause(container.Handle())
 	defer s.bomberman.Unpause(container.Handle())
 
+	requestedLimits := warden.DiskLimits{
+		BlockSoft: blockSoft,
+		BlockHard: blockHard,
+		InodeSoft: inodeSoft,
+		InodeHard: inodeHard,
+		ByteSoft:  byteSoft,
+		ByteHard:  byteHard,
+	}
+
 	if settingLimit {
-		err = container.LimitDisk(warden.DiskLimits{
-			BlockSoft: blockSoft,
-			BlockHard: blockHard,
-			InodeSoft: inodeSoft,
-			InodeHard: inodeHard,
-			ByteSoft:  byteSoft,
-			ByteHard:  byteHard,
+		hLog.Debug("limiting", lager.Data{
+			"requested-limits": requestedLimits,
 		})
+
+		err = container.LimitDisk(requestedLimits)
 		if err != nil {
-			s.writeError(w, err)
+			s.writeError(w, err, hLog)
 			return
 		}
 	}
 
 	limits, err := container.CurrentDiskLimits()
 	if err != nil {
-		s.writeError(w, err)
+		s.writeError(w, err, hLog)
 		return
 	}
+
+	hLog.Info("limited", lager.Data{
+		"resulting-limits": limits,
+	})
 
 	s.writeResponse(w, &protocol.LimitDiskResponse{
 		BlockSoft: proto.Uint64(limits.BlockSoft),
@@ -417,20 +522,30 @@ func (s *WardenServer) handleLimitDisk(w http.ResponseWriter, r *http.Request) {
 func (s *WardenServer) handleCurrentDiskLimits(w http.ResponseWriter, r *http.Request) {
 	handle := r.FormValue(":handle")
 
+	hLog := s.logger.Session("current-disk-limits", lager.Data{
+		"handle": handle,
+	})
+
 	container, err := s.backend.Lookup(handle)
 	if err != nil {
-		s.writeError(w, err)
+		s.writeError(w, err, hLog)
 		return
 	}
 
 	s.bomberman.Pause(container.Handle())
 	defer s.bomberman.Unpause(container.Handle())
 
+	hLog.Debug("getting")
+
 	limits, err := container.CurrentDiskLimits()
 	if err != nil {
-		s.writeError(w, err)
+		s.writeError(w, err, hLog)
 		return
 	}
+
+	hLog.Info("got", lager.Data{
+		"limits": limits,
+	})
 
 	s.writeResponse(w, &protocol.LimitDiskResponse{
 		BlockSoft: proto.Uint64(limits.BlockSoft),
@@ -445,6 +560,10 @@ func (s *WardenServer) handleCurrentDiskLimits(w http.ResponseWriter, r *http.Re
 func (s *WardenServer) handleLimitCPU(w http.ResponseWriter, r *http.Request) {
 	handle := r.FormValue(":handle")
 
+	hLog := s.logger.Session("limit-cpu", lager.Data{
+		"handle": handle,
+	})
+
 	var request protocol.LimitCpuRequest
 	if !s.readRequest(&request, w, r) {
 		return
@@ -454,28 +573,38 @@ func (s *WardenServer) handleLimitCPU(w http.ResponseWriter, r *http.Request) {
 
 	container, err := s.backend.Lookup(handle)
 	if err != nil {
-		s.writeError(w, err)
+		s.writeError(w, err, hLog)
 		return
 	}
 
 	s.bomberman.Pause(container.Handle())
 	defer s.bomberman.Unpause(container.Handle())
 
+	requestedLimits := warden.CPULimits{
+		LimitInShares: limitInShares,
+	}
+
 	if request.LimitInShares != nil {
-		err = container.LimitCPU(warden.CPULimits{
-			LimitInShares: limitInShares,
+		hLog.Debug("limiting", lager.Data{
+			"requested-limits": requestedLimits,
 		})
+
+		err = container.LimitCPU(requestedLimits)
 		if err != nil {
-			s.writeError(w, err)
+			s.writeError(w, err, hLog)
 			return
 		}
 	}
 
 	limits, err := container.CurrentCPULimits()
 	if err != nil {
-		s.writeError(w, err)
+		s.writeError(w, err, hLog)
 		return
 	}
+
+	hLog.Info("limited", lager.Data{
+		"resulting-limits": limits,
+	})
 
 	s.writeResponse(w, &protocol.LimitCpuResponse{
 		LimitInShares: proto.Uint64(limits.LimitInShares),
@@ -485,20 +614,30 @@ func (s *WardenServer) handleLimitCPU(w http.ResponseWriter, r *http.Request) {
 func (s *WardenServer) handleCurrentCPULimits(w http.ResponseWriter, r *http.Request) {
 	handle := r.FormValue(":handle")
 
+	hLog := s.logger.Session("current-cpu-limits", lager.Data{
+		"handle": handle,
+	})
+
 	container, err := s.backend.Lookup(handle)
 	if err != nil {
-		s.writeError(w, err)
+		s.writeError(w, err, hLog)
 		return
 	}
 
 	s.bomberman.Pause(container.Handle())
 	defer s.bomberman.Unpause(container.Handle())
 
+	hLog.Debug("getting")
+
 	limits, err := container.CurrentCPULimits()
 	if err != nil {
-		s.writeError(w, err)
+		s.writeError(w, err, hLog)
 		return
 	}
+
+	hLog.Info("got", lager.Data{
+		"limits": limits,
+	})
 
 	s.writeResponse(w, &protocol.LimitCpuResponse{
 		LimitInShares: proto.Uint64(limits.LimitInShares),
@@ -507,6 +646,10 @@ func (s *WardenServer) handleCurrentCPULimits(w http.ResponseWriter, r *http.Req
 
 func (s *WardenServer) handleNetIn(w http.ResponseWriter, r *http.Request) {
 	handle := r.FormValue(":handle")
+
+	hLog := s.logger.Session("net-in", lager.Data{
+		"handle": handle,
+	})
 
 	var request protocol.NetInRequest
 	if !s.readRequest(&request, w, r) {
@@ -518,18 +661,28 @@ func (s *WardenServer) handleNetIn(w http.ResponseWriter, r *http.Request) {
 
 	container, err := s.backend.Lookup(handle)
 	if err != nil {
-		s.writeError(w, err)
+		s.writeError(w, err, hLog)
 		return
 	}
 
 	s.bomberman.Pause(container.Handle())
 	defer s.bomberman.Unpause(container.Handle())
 
+	hLog.Debug("port-mapping", lager.Data{
+		"host-port":      hostPort,
+		"container-port": containerPort,
+	})
+
 	hostPort, containerPort, err = container.NetIn(hostPort, containerPort)
 	if err != nil {
-		s.writeError(w, err)
+		s.writeError(w, err, hLog)
 		return
 	}
+
+	hLog.Info("port-mapped", lager.Data{
+		"host-port":      hostPort,
+		"container-port": containerPort,
+	})
 
 	s.writeResponse(w, &protocol.NetInResponse{
 		HostPort:      proto.Uint32(hostPort),
@@ -539,6 +692,10 @@ func (s *WardenServer) handleNetIn(w http.ResponseWriter, r *http.Request) {
 
 func (s *WardenServer) handleNetOut(w http.ResponseWriter, r *http.Request) {
 	handle := r.FormValue(":handle")
+
+	hLog := s.logger.Session("net-out", lager.Data{
+		"handle": handle,
+	})
 
 	var request protocol.NetOutRequest
 	if !s.readRequest(&request, w, r) {
@@ -550,24 +707,38 @@ func (s *WardenServer) handleNetOut(w http.ResponseWriter, r *http.Request) {
 
 	container, err := s.backend.Lookup(handle)
 	if err != nil {
-		s.writeError(w, err)
+		s.writeError(w, err, hLog)
 		return
 	}
 
 	s.bomberman.Pause(container.Handle())
 	defer s.bomberman.Unpause(container.Handle())
 
+	hLog.Debug("allowing-out", lager.Data{
+		"network": network,
+		"port":    port,
+	})
+
 	err = container.NetOut(network, port)
 	if err != nil {
-		s.writeError(w, err)
+		s.writeError(w, err, hLog)
 		return
 	}
+
+	hLog.Info("allowed", lager.Data{
+		"network": network,
+		"port":    port,
+	})
 
 	s.writeResponse(w, &protocol.NetOutResponse{})
 }
 
 func (s *WardenServer) handleRun(w http.ResponseWriter, r *http.Request) {
 	handle := r.FormValue(":handle")
+
+	hLog := s.logger.Session("run", lager.Data{
+		"handle": handle,
+	})
 
 	var request protocol.RunRequest
 	if !s.readRequest(&request, w, r) {
@@ -583,7 +754,7 @@ func (s *WardenServer) handleRun(w http.ResponseWriter, r *http.Request) {
 
 	container, err := s.backend.Lookup(handle)
 	if err != nil {
-		s.writeError(w, err)
+		s.writeError(w, err, hLog)
 		return
 	}
 
@@ -603,6 +774,10 @@ func (s *WardenServer) handleRun(w http.ResponseWriter, r *http.Request) {
 		processSpec.Limits = resourceLimits(request.Rlimits)
 	}
 
+	hLog.Debug("running", lager.Data{
+		"spec": processSpec,
+	})
+
 	stdout := make(chan []byte, 1000)
 	stderr := make(chan []byte, 1000)
 
@@ -616,16 +791,21 @@ func (s *WardenServer) handleRun(w http.ResponseWriter, r *http.Request) {
 
 	process, err := container.Run(processSpec, processIO)
 	if err != nil {
-		s.writeError(w, err)
+		s.writeError(w, err, hLog)
 		return
 	}
+
+	hLog.Info("spawned", lager.Data{
+		"spec": processSpec,
+		"id":   process.ID(),
+	})
 
 	w.WriteHeader(http.StatusCreated)
 	w.Header().Set("Content-Type", "application/json")
 
 	conn, br, err := w.(http.Hijacker).Hijack()
 	if err != nil {
-		s.writeError(w, err)
+		s.writeError(w, err, hLog)
 		return
 	}
 
@@ -637,38 +817,7 @@ func (s *WardenServer) handleRun(w http.ResponseWriter, r *http.Request) {
 
 	go s.streamInput(json.NewDecoder(br), stdinW, process)
 
-	s.streamProcess(conn, process, stdout, stderr)
-}
-
-func (s *WardenServer) streamInput(decoder *json.Decoder, in io.WriteCloser, process warden.Process) {
-	for {
-		var payload protocol.ProcessPayload
-		err := decoder.Decode(&payload)
-		if err != nil {
-			return
-		}
-
-		switch {
-		case payload.Tty != nil:
-			process.SetTTY(*ttySpecFrom(payload.GetTty()))
-
-		case payload.Source != nil:
-			if payload.Data == nil {
-				err := in.Close()
-				if err != nil {
-					return
-				}
-			} else {
-				_, err := in.Write([]byte(payload.GetData()))
-				if err != nil {
-					return
-				}
-			}
-		default:
-			log.Println("received unknown process payload:", payload)
-			return
-		}
-	}
+	s.streamProcess(hLog, conn, process, stdout, stderr)
 }
 
 func (s *WardenServer) handleAttach(w http.ResponseWriter, r *http.Request) {
@@ -676,15 +825,19 @@ func (s *WardenServer) handleAttach(w http.ResponseWriter, r *http.Request) {
 
 	var processID uint32
 
+	hLog := s.logger.Session("attach", lager.Data{
+		"handle": handle,
+	})
+
 	_, err := fmt.Sscanf(r.FormValue(":pid"), "%d", &processID)
 	if err != nil {
-		s.writeError(w, err)
+		s.writeError(w, err, hLog)
 		return
 	}
 
 	container, err := s.backend.Lookup(handle)
 	if err != nil {
-		s.writeError(w, err)
+		s.writeError(w, err, hLog)
 		return
 	}
 
@@ -702,18 +855,26 @@ func (s *WardenServer) handleAttach(w http.ResponseWriter, r *http.Request) {
 		Stderr: &chanWriter{stderr},
 	}
 
+	hLog.Debug("attaching", lager.Data{
+		"id": processID,
+	})
+
 	process, err := container.Attach(processID, processIO)
 	if err != nil {
-		s.writeError(w, err)
+		s.writeError(w, err, hLog)
 		return
 	}
+
+	hLog.Info("attached", lager.Data{
+		"id": process.ID(),
+	})
 
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
 
 	conn, br, err := w.(http.Hijacker).Hijack()
 	if err != nil {
-		s.writeError(w, err)
+		s.writeError(w, err, hLog)
 		return
 	}
 
@@ -721,26 +882,34 @@ func (s *WardenServer) handleAttach(w http.ResponseWriter, r *http.Request) {
 
 	go s.streamInput(json.NewDecoder(br), stdinW, process)
 
-	s.streamProcess(conn, process, stdout, stderr)
+	s.streamProcess(hLog, conn, process, stdout, stderr)
 }
 
 func (s *WardenServer) handleInfo(w http.ResponseWriter, r *http.Request) {
 	handle := r.FormValue(":handle")
 
+	hLog := s.logger.Session("info", lager.Data{
+		"handle": handle,
+	})
+
 	container, err := s.backend.Lookup(handle)
 	if err != nil {
-		s.writeError(w, err)
+		s.writeError(w, err, hLog)
 		return
 	}
 
 	s.bomberman.Pause(container.Handle())
 	defer s.bomberman.Unpause(container.Handle())
 
+	hLog.Debug("getting-info")
+
 	info, err := container.Info()
 	if err != nil {
-		s.writeError(w, err)
+		s.writeError(w, err, hLog)
 		return
 	}
+
+	hLog.Info("got-info")
 
 	properties := []*protocol.Property{}
 	for key, val := range info.Properties {
@@ -846,10 +1015,8 @@ func resourceLimits(limits *protocol.ResourceLimits) warden.ResourceLimits {
 	}
 }
 
-func (s *WardenServer) writeError(w http.ResponseWriter, err error, logger ...lager.Logger) {
-	if len(logger) > 0 {
-		logger[0].Error("failed", err)
-	}
+func (s *WardenServer) writeError(w http.ResponseWriter, err error, logger lager.Logger) {
+	logger.Error("failed", err)
 
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusInternalServerError)
@@ -863,13 +1030,13 @@ func (s *WardenServer) writeResponse(w http.ResponseWriter, msg proto.Message) {
 
 func (s *WardenServer) readRequest(msg proto.Message, w http.ResponseWriter, r *http.Request) bool {
 	if r.Header.Get("Content-Type") != "application/json" {
-		s.writeError(w, ErrInvalidContentType)
+		s.writeError(w, ErrInvalidContentType, s.logger)
 		return false
 	}
 
 	err := json.NewDecoder(r.Body).Decode(msg)
 	if err != nil {
-		s.writeError(w, err)
+		s.writeError(w, err, s.logger)
 		return false
 	}
 
@@ -886,7 +1053,38 @@ func convertEnv(env []*protocol.EnvironmentVariable) []string {
 	return converted
 }
 
-func (s *WardenServer) streamProcess(conn net.Conn, process warden.Process, stdout <-chan []byte, stderr <-chan []byte) {
+func (s *WardenServer) streamInput(decoder *json.Decoder, in io.WriteCloser, process warden.Process) {
+	for {
+		var payload protocol.ProcessPayload
+		err := decoder.Decode(&payload)
+		if err != nil {
+			return
+		}
+
+		switch {
+		case payload.Tty != nil:
+			process.SetTTY(*ttySpecFrom(payload.GetTty()))
+
+		case payload.Source != nil:
+			if payload.Data == nil {
+				err := in.Close()
+				if err != nil {
+					return
+				}
+			} else {
+				_, err := in.Write([]byte(payload.GetData()))
+				if err != nil {
+					return
+				}
+			}
+		default:
+			log.Println("received unknown process payload:", payload)
+			return
+		}
+	}
+}
+
+func (s *WardenServer) streamProcess(logger lager.Logger, conn net.Conn, process warden.Process, stdout <-chan []byte, stderr <-chan []byte) {
 	stdoutSource := protocol.ProcessPayload_stdout
 	stderrSource := protocol.ProcessPayload_stderr
 
@@ -896,8 +1094,17 @@ func (s *WardenServer) streamProcess(conn net.Conn, process warden.Process, stdo
 	go func() {
 		status, err := process.Wait()
 		if err != nil {
+			logger.Error("wait-failed", err, lager.Data{
+				"id": process.ID(),
+			})
+
 			errCh <- err
 		} else {
+			logger.Info("exited", lager.Data{
+				"status": status,
+				"id":     process.ID(),
+			})
+
 			statusCh <- status
 		}
 	}()
@@ -935,6 +1142,10 @@ func (s *WardenServer) streamProcess(conn net.Conn, process warden.Process, stdo
 			return
 
 		case <-s.stopping:
+			logger.Debug("detaching", lager.Data{
+				"id": process.ID(),
+			})
+
 			return
 		}
 	}
