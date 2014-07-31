@@ -213,8 +213,7 @@ func (s *WardenServer) handleStreamOut(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		hLog.Error("failed-to-copy-fully", err)
 
-		err := reader.Close()
-		if err != nil {
+		if err := reader.Close(); err != nil {
 			hLog.Error("failed-to-close", err)
 		}
 

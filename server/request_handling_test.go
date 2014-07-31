@@ -424,12 +424,10 @@ var _ = Describe("When a client connects", func() {
 		})
 
 		Describe("streaming out", func() {
-			var streamOut *closeChecker
+			var streamOut io.ReadCloser
 
 			BeforeEach(func() {
-				streamOut = &closeChecker{
-					Reader: bytes.NewBuffer([]byte("hello-world!")),
-				}
+				streamOut = ioutil.NopCloser(bytes.NewBuffer([]byte("hello-world!")))
 			})
 
 			JustBeforeEach(func() {
@@ -450,16 +448,12 @@ var _ = Describe("When a client connects", func() {
 			})
 
 			Context("when the connection dies as we're streaming", func() {
-				BeforeEach(func() {
-					// data big enough to not be entirely buffered
-					datalake := ""
-					for i := 0; i < 10240; i++ {
-						datalake += "hadoop"
-					}
+				var closer *closeChecker
 
-					streamOut = &closeChecker{
-						Reader: bytes.NewBuffer([]byte(datalake)),
-					}
+				BeforeEach(func() {
+					closer = &closeChecker{}
+
+					streamOut = closer
 				})
 
 				It("closes the backend's stream", func() {
@@ -469,7 +463,7 @@ var _ = Describe("When a client connects", func() {
 					err = reader.Close()
 					Ω(err).ShouldNot(HaveOccurred())
 
-					Eventually(streamOut.Closed).Should(BeTrue())
+					Eventually(closer.Closed).Should(BeTrue())
 				})
 			})
 
@@ -1252,10 +1246,13 @@ var _ = Describe("When a client connects", func() {
 })
 
 type closeChecker struct {
-	io.Reader
-
 	closed bool
 	sync.Mutex
+}
+
+func (checker *closeChecker) Read(b []byte) (int, error) {
+	b[0] = 'x'
+	return 1, nil
 }
 
 func (checker *closeChecker) Close() error {
