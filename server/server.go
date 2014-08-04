@@ -52,7 +52,7 @@ func New(
 	logger lager.Logger,
 ) *WardenServer {
 	s := &WardenServer{
-		logger: logger,
+		logger: logger.Session("garden-server"),
 
 		listenNetwork: listenNetwork,
 		listenAddr:    listenAddr,
