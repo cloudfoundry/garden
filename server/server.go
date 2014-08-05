@@ -190,19 +190,7 @@ func (s *WardenServer) Stop() {
 	}
 
 	s.logger.Info("waiting-for-connections-to-close")
-	waitChan := make(chan struct{})
-
-	go func() {
-		s.handling.Wait()
-		waitChan <- struct{}{}
-	}()
-
-	select {
-	case <-waitChan:
-		s.logger.Info("all-connections-completed")
-	case <-time.After(5 * time.Second):
-		s.logger.Info("waiting-for-connections-to-close-timout")
-	}
+	s.handling.Wait()
 
 	s.logger.Info("stopping-backend")
 	s.backend.Stop()
