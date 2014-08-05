@@ -95,6 +95,8 @@ func New(
 		logger.Fatal("failed-to-initialize-rata", err)
 	}
 
+	conLogger := logger.Session("connection")
+
 	s.server = http.Server{
 		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			mux.ServeHTTP(w, r)
@@ -103,6 +105,7 @@ func New(
 		ConnState: func(conn net.Conn, state http.ConnState) {
 			switch state {
 			case http.StateNew:
+				conLogger.Info("open", lager.Data{"local_addr": conn.LocalAddr(), "remote_addr": conn.RemoteAddr()})
 				s.handling.Add(1)
 			case http.StateActive:
 				s.mu.Lock()
@@ -121,6 +124,7 @@ func New(
 				s.mu.Lock()
 				delete(s.conns, conn)
 				s.mu.Unlock()
+				conLogger.Info("closed", lager.Data{"local_addr": conn.LocalAddr(), "remote_addr": conn.RemoteAddr()})
 				s.handling.Done()
 			}
 		},
@@ -185,8 +189,20 @@ func (s *WardenServer) Stop() {
 		c.Close()
 	}
 
-	s.logger.Info("waiting-for-connections")
-	s.handling.Wait()
+	s.logger.Info("waiting-for-connections-to-close")
+	waitChan := make(chan struct{})
+
+	go func() {
+		s.handling.Wait()
+		waitChan <- struct{}{}
+	}()
+
+	select {
+	case <-waitChan:
+		s.logger.Info("all-connections-completed")
+	case <-time.After(5 * time.Second):
+		s.logger.Info("waiting-for-connections-to-close-timout")
+	}
 
 	s.logger.Info("stopping-backend")
 	s.backend.Stop()
