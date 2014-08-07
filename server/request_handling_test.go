@@ -1215,9 +1215,10 @@ var _ = Describe("When a client connects", func() {
 					wardenServer.Stop()
 					isRunning = false
 
+					_, processIO := fakeContainer.RunArgsForCall(0)
+
 					readExited := make(chan struct{})
 					go func() {
-						_, processIO := fakeContainer.RunArgsForCall(0)
 						ioutil.ReadAll(processIO.Stdin)
 						close(readExited)
 					}()
