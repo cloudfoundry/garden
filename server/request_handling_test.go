@@ -34,6 +34,7 @@ var _ = Describe("When a client connects", func() {
 
 	var wardenServer *server.WardenServer
 	var wardenClient warden.Client
+	var isRunning bool
 
 	BeforeEach(func() {
 		logger = lagertest.NewTestLogger("test")
@@ -56,9 +57,17 @@ var _ = Describe("When a client connects", func() {
 		err = wardenServer.Start()
 		Ω(err).ShouldNot(HaveOccurred())
 
+		isRunning = true
+
 		Eventually(ErrorDialing("unix", socketPath)).ShouldNot(HaveOccurred())
 
 		wardenClient = client.New(connection.New("unix", socketPath))
+	})
+
+	AfterEach(func() {
+		if isRunning {
+			wardenServer.Stop()
+		}
 	})
 
 	Context("and the client sends a PingRequest", func() {
@@ -80,6 +89,7 @@ var _ = Describe("When a client connects", func() {
 
 		Context("when the server is not up", func() {
 			BeforeEach(func() {
+				isRunning = false
 				wardenServer.Stop()
 			})
 
