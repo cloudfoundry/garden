@@ -810,6 +810,7 @@ func (s *WardenServer) handleRun(w http.ResponseWriter, r *http.Request) {
 	}
 
 	defer conn.Close()
+
 	transport.WriteMessage(conn, &protocol.ProcessPayload{
 		ProcessId: proto.Uint32(process.ID()),
 	})
@@ -1054,11 +1055,12 @@ func convertEnv(env []*protocol.EnvironmentVariable) []string {
 	return converted
 }
 
-func (s *WardenServer) streamInput(decoder *json.Decoder, in io.WriteCloser, process warden.Process) {
+func (s *WardenServer) streamInput(decoder *json.Decoder, in *io.PipeWriter, process warden.Process) {
 	for {
 		var payload protocol.ProcessPayload
 		err := decoder.Decode(&payload)
 		if err != nil {
+			in.CloseWithError(errors.New("Connection closed"))
 			return
 		}
 

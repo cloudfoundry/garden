@@ -72,8 +72,12 @@ func (p *process) streamPayloads(decoder *json.Decoder, processIO warden.Process
 		writer := &stdinWriter{p.stream}
 
 		go func() {
-			io.Copy(writer, processIO.Stdin)
-			writer.Close()
+			_, err := io.Copy(writer, processIO.Stdin)
+			if err == nil {
+				writer.Close()
+			} else {
+				p.stream.Close()
+			}
 		}()
 	}
 

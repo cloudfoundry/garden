@@ -1219,11 +1219,13 @@ var _ = Describe("When a client connects", func() {
 
 					readExited := make(chan struct{})
 					go func() {
-						ioutil.ReadAll(processIO.Stdin)
+						_, err = ioutil.ReadAll(processIO.Stdin)
 						close(readExited)
 					}()
 
-					Consistently(readExited).ShouldNot(BeClosed())
+					Eventually(readExited).Should(BeClosed())
+					Ω(err).Should(HaveOccurred())
+					Ω(err).ShouldNot(Equal(io.EOF))
 				})
 			})
 
@@ -1280,17 +1282,6 @@ var _ = Describe("When a client connects", func() {
 					_, err = process.Wait()
 					Ω(err).Should(HaveOccurred())
 					Ω(err.Error()).Should(ContainSubstring("oh no!"))
-				})
-
-				It("closes the process's stdin", func(done Done) {
-					_, err := container.Run(processSpec, warden.ProcessIO{})
-					Ω(err).ShouldNot(HaveOccurred())
-
-					_, processIO := fakeContainer.RunArgsForCall(0)
-					_, err = processIO.Stdin.Read([]byte{})
-					Ω(err).Should(Equal(io.EOF))
-
-					close(done)
 				})
 			})
 

@@ -3,6 +3,8 @@ package connection_test
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"time"
@@ -1131,6 +1133,55 @@ var _ = Describe("Connection", func() {
 				status, err := process.Wait()
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(status).Should(Equal(3))
+			})
+		})
+
+		Context("when an error occurs while reading the given stdin stream", func() {
+			It("does not send an EOF to close the process's stdin", func() {
+				finishedReq := make(chan struct{})
+
+				server.AppendHandlers(
+					ghttp.CombineHandlers(
+						ghttp.VerifyRequest("GET", "/containers/foo-handle/processes/42"),
+						func(w http.ResponseWriter, r *http.Request) {
+							w.WriteHeader(http.StatusOK)
+
+							conn, br, err := w.(http.Hijacker).Hijack()
+							Ω(err).ShouldNot(HaveOccurred())
+
+							defer conn.Close()
+							decoder := json.NewDecoder(br)
+
+							var payload protocol.ProcessPayload
+							err = decoder.Decode(&payload)
+							Ω(err).ShouldNot(HaveOccurred())
+
+							Ω(payload).Should(Equal(protocol.ProcessPayload{
+								ProcessId: proto.Uint32(42),
+								Source:    &stdin,
+								Data:      proto.String("stdin data"),
+							}))
+
+							var payload2 protocol.ProcessPayload
+							err = decoder.Decode(&payload2)
+							Ω(err).Should(HaveOccurred())
+
+							close(finishedReq)
+						},
+					),
+				)
+
+				stdinR, stdinW := io.Pipe()
+
+				_, err := connection.Attach("foo-handle", 42, warden.ProcessIO{
+					Stdin: stdinR,
+				})
+				Ω(err).ShouldNot(HaveOccurred())
+
+				stdinW.Write([]byte("stdin data"))
+				stdinW.CloseWithError(errors.New("connection broke"))
+
+				Eventually(finishedReq).Should(BeClosed())
 			})
 		})
 
