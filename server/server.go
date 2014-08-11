@@ -35,6 +35,9 @@ type WardenServer struct {
 
 	conns map[net.Conn]net.Conn
 	mu    sync.Mutex
+
+	destroys  map[string]struct{}
+	destroysL *sync.Mutex
 }
 
 type UnhandledRequestError struct {
@@ -64,6 +67,9 @@ func New(
 
 		handling: new(sync.WaitGroup),
 		conns:    make(map[net.Conn]net.Conn),
+
+		destroys:  make(map[string]struct{}),
+		destroysL: new(sync.Mutex),
 	}
 
 	handlers := map[string]http.Handler{

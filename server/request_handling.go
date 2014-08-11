@@ -18,6 +18,7 @@ import (
 )
 
 var ErrInvalidContentType = errors.New("content-type must be application/json")
+var ErrConcurrentDestroy = errors.New("container already being destroyed")
 
 func (s *WardenServer) handlePing(w http.ResponseWriter, r *http.Request) {
 	hLog := s.logger.Session("ping")
@@ -141,6 +142,20 @@ func (s *WardenServer) handleDestroy(w http.ResponseWriter, r *http.Request) {
 		"handle": handle,
 	})
 
+	s.destroysL.Lock()
+
+	_, alreadyDestroying := s.destroys[handle]
+	if !alreadyDestroying {
+		s.destroys[handle] = struct{}{}
+	}
+
+	s.destroysL.Unlock()
+
+	if alreadyDestroying {
+		s.writeError(w, ErrConcurrentDestroy, hLog)
+		return
+	}
+
 	hLog.Debug("destroying")
 
 	err := s.backend.Destroy(handle)
@@ -152,6 +167,12 @@ func (s *WardenServer) handleDestroy(w http.ResponseWriter, r *http.Request) {
 	hLog.Info("destroyed")
 
 	s.bomberman.Defuse(handle)
+
+	if !alreadyDestroying {
+		s.destroysL.Lock()
+		delete(s.destroys, handle)
+		s.destroysL.Unlock()
+	}
 
 	s.writeResponse(w, &protocol.DestroyResponse{})
 }

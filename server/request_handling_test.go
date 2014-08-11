@@ -246,6 +246,31 @@ var _ = Describe("When a client connects", func() {
 			Ω(serverBackend.DestroyArgsForCall(0)).Should(Equal("some-handle"))
 		})
 
+		Context("concurrent with other destroy requests", func() {
+			var destroying chan struct{}
+
+			BeforeEach(func() {
+				destroying = make(chan struct{})
+
+				serverBackend.DestroyStub = func(string) error {
+					close(destroying)
+					time.Sleep(time.Second)
+					return nil
+				}
+			})
+
+			It("only destroys once", func() {
+				go wardenClient.Destroy("some-handle")
+
+				<-destroying
+
+				err := wardenClient.Destroy("some-handle")
+				Ω(err).Should(HaveOccurred())
+
+				Ω(serverBackend.DestroyCallCount()).Should(Equal(1))
+			})
+		})
+
 		Context("when destroying the container fails", func() {
 			BeforeEach(func() {
 				serverBackend.DestroyReturns(errors.New("oh no!"))
