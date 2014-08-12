@@ -78,8 +78,8 @@ type FakeBackend struct {
 
 func (fake *FakeBackend) Ping() error {
 	fake.pingMutex.Lock()
-	defer fake.pingMutex.Unlock()
 	fake.pingArgsForCall = append(fake.pingArgsForCall, struct{}{})
+	fake.pingMutex.Unlock()
 	if fake.PingStub != nil {
 		return fake.PingStub()
 	} else {
@@ -94,6 +94,7 @@ func (fake *FakeBackend) PingCallCount() int {
 }
 
 func (fake *FakeBackend) PingReturns(result1 error) {
+	fake.PingStub = nil
 	fake.pingReturns = struct {
 		result1 error
 	}{result1}
@@ -101,8 +102,8 @@ func (fake *FakeBackend) PingReturns(result1 error) {
 
 func (fake *FakeBackend) Capacity() (warden.Capacity, error) {
 	fake.capacityMutex.Lock()
-	defer fake.capacityMutex.Unlock()
 	fake.capacityArgsForCall = append(fake.capacityArgsForCall, struct{}{})
+	fake.capacityMutex.Unlock()
 	if fake.CapacityStub != nil {
 		return fake.CapacityStub()
 	} else {
@@ -117,6 +118,7 @@ func (fake *FakeBackend) CapacityCallCount() int {
 }
 
 func (fake *FakeBackend) CapacityReturns(result1 warden.Capacity, result2 error) {
+	fake.CapacityStub = nil
 	fake.capacityReturns = struct {
 		result1 warden.Capacity
 		result2 error
@@ -125,10 +127,10 @@ func (fake *FakeBackend) CapacityReturns(result1 warden.Capacity, result2 error)
 
 func (fake *FakeBackend) Create(arg1 warden.ContainerSpec) (warden.Container, error) {
 	fake.createMutex.Lock()
-	defer fake.createMutex.Unlock()
 	fake.createArgsForCall = append(fake.createArgsForCall, struct {
 		arg1 warden.ContainerSpec
 	}{arg1})
+	fake.createMutex.Unlock()
 	if fake.CreateStub != nil {
 		return fake.CreateStub(arg1)
 	} else {
@@ -149,6 +151,7 @@ func (fake *FakeBackend) CreateArgsForCall(i int) warden.ContainerSpec {
 }
 
 func (fake *FakeBackend) CreateReturns(result1 warden.Container, result2 error) {
+	fake.CreateStub = nil
 	fake.createReturns = struct {
 		result1 warden.Container
 		result2 error
@@ -157,10 +160,10 @@ func (fake *FakeBackend) CreateReturns(result1 warden.Container, result2 error) 
 
 func (fake *FakeBackend) Destroy(handle string) error {
 	fake.destroyMutex.Lock()
-	defer fake.destroyMutex.Unlock()
 	fake.destroyArgsForCall = append(fake.destroyArgsForCall, struct {
 		handle string
 	}{handle})
+	fake.destroyMutex.Unlock()
 	if fake.DestroyStub != nil {
 		return fake.DestroyStub(handle)
 	} else {
@@ -181,6 +184,7 @@ func (fake *FakeBackend) DestroyArgsForCall(i int) string {
 }
 
 func (fake *FakeBackend) DestroyReturns(result1 error) {
+	fake.DestroyStub = nil
 	fake.destroyReturns = struct {
 		result1 error
 	}{result1}
@@ -188,10 +192,10 @@ func (fake *FakeBackend) DestroyReturns(result1 error) {
 
 func (fake *FakeBackend) Containers(arg1 warden.Properties) ([]warden.Container, error) {
 	fake.containersMutex.Lock()
-	defer fake.containersMutex.Unlock()
 	fake.containersArgsForCall = append(fake.containersArgsForCall, struct {
 		arg1 warden.Properties
 	}{arg1})
+	fake.containersMutex.Unlock()
 	if fake.ContainersStub != nil {
 		return fake.ContainersStub(arg1)
 	} else {
@@ -212,6 +216,7 @@ func (fake *FakeBackend) ContainersArgsForCall(i int) warden.Properties {
 }
 
 func (fake *FakeBackend) ContainersReturns(result1 []warden.Container, result2 error) {
+	fake.ContainersStub = nil
 	fake.containersReturns = struct {
 		result1 []warden.Container
 		result2 error
@@ -220,10 +225,10 @@ func (fake *FakeBackend) ContainersReturns(result1 []warden.Container, result2 e
 
 func (fake *FakeBackend) Lookup(handle string) (warden.Container, error) {
 	fake.lookupMutex.Lock()
-	defer fake.lookupMutex.Unlock()
 	fake.lookupArgsForCall = append(fake.lookupArgsForCall, struct {
 		handle string
 	}{handle})
+	fake.lookupMutex.Unlock()
 	if fake.LookupStub != nil {
 		return fake.LookupStub(handle)
 	} else {
@@ -244,6 +249,7 @@ func (fake *FakeBackend) LookupArgsForCall(i int) string {
 }
 
 func (fake *FakeBackend) LookupReturns(result1 warden.Container, result2 error) {
+	fake.LookupStub = nil
 	fake.lookupReturns = struct {
 		result1 warden.Container
 		result2 error
@@ -252,8 +258,8 @@ func (fake *FakeBackend) LookupReturns(result1 warden.Container, result2 error) 
 
 func (fake *FakeBackend) Start() error {
 	fake.startMutex.Lock()
-	defer fake.startMutex.Unlock()
 	fake.startArgsForCall = append(fake.startArgsForCall, struct{}{})
+	fake.startMutex.Unlock()
 	if fake.StartStub != nil {
 		return fake.StartStub()
 	} else {
@@ -268,6 +274,7 @@ func (fake *FakeBackend) StartCallCount() int {
 }
 
 func (fake *FakeBackend) StartReturns(result1 error) {
+	fake.StartStub = nil
 	fake.startReturns = struct {
 		result1 error
 	}{result1}
@@ -275,8 +282,8 @@ func (fake *FakeBackend) StartReturns(result1 error) {
 
 func (fake *FakeBackend) Stop() {
 	fake.stopMutex.Lock()
-	defer fake.stopMutex.Unlock()
 	fake.stopArgsForCall = append(fake.stopArgsForCall, struct{}{})
+	fake.stopMutex.Unlock()
 	if fake.StopStub != nil {
 		fake.StopStub()
 	}
@@ -290,10 +297,10 @@ func (fake *FakeBackend) StopCallCount() int {
 
 func (fake *FakeBackend) GraceTime(arg1 warden.Container) time.Duration {
 	fake.graceTimeMutex.Lock()
-	defer fake.graceTimeMutex.Unlock()
 	fake.graceTimeArgsForCall = append(fake.graceTimeArgsForCall, struct {
 		arg1 warden.Container
 	}{arg1})
+	fake.graceTimeMutex.Unlock()
 	if fake.GraceTimeStub != nil {
 		return fake.GraceTimeStub(arg1)
 	} else {
@@ -314,6 +321,7 @@ func (fake *FakeBackend) GraceTimeArgsForCall(i int) warden.Container {
 }
 
 func (fake *FakeBackend) GraceTimeReturns(result1 time.Duration) {
+	fake.GraceTimeStub = nil
 	fake.graceTimeReturns = struct {
 		result1 time.Duration
 	}{result1}
