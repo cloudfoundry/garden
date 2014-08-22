@@ -84,7 +84,7 @@ type CreateRequest struct {
 	Network          *string                    `protobuf:"bytes,4,opt,name=network" json:"network,omitempty"`
 	Rootfs           *string                    `protobuf:"bytes,5,opt,name=rootfs" json:"rootfs,omitempty"`
 	Properties       []*Property                `protobuf:"bytes,6,rep,name=properties" json:"properties,omitempty"`
-	EnvVariables     []string                   `protobuf:"bytes,7,rep,name=env_variables" json:"env_variables,omitempty"`
+	Env              []*EnvironmentVariable     `protobuf:"bytes,7,rep,name=env" json:"env,omitempty"`
 	XXX_unrecognized []byte                     `json:"-"`
 }
 
@@ -134,9 +134,9 @@ func (m *CreateRequest) GetProperties() []*Property {
 	return nil
 }
 
-func (m *CreateRequest) GetEnvVariables() []string {
+func (m *CreateRequest) GetEnv() []*EnvironmentVariable {
 	if m != nil {
-		return m.EnvVariables
+		return m.Env
 	}
 	return nil
 }

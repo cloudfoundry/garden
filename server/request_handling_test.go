@@ -166,6 +166,7 @@ var _ = Describe("When a client connects", func() {
 					"prop-a": "val-a",
 					"prop-b": "val-b",
 				},
+				Env: []string{"env1=env1Value", "env2=env2Value"},
 			})
 			Ω(err).ShouldNot(HaveOccurred())
 
@@ -186,6 +187,7 @@ var _ = Describe("When a client connects", func() {
 					"prop-a": "val-a",
 					"prop-b": "val-b",
 				},
+				Env: []string{"env1=env1Value", "env2=env2Value"},
 			}))
 		})
 

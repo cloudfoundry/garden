@@ -140,6 +140,10 @@ func (c *connection) Create(spec warden.ContainerSpec) (string, error) {
 		req.Network = proto.String(spec.Network)
 	}
 
+	if spec.Env != nil {
+		req.Env = convertEnvironmentVariables(spec.Env)
+	}
+
 	for _, bm := range spec.BindMounts {
 		var mode protocol.CreateRequest_BindMount_Mode
 		var origin protocol.CreateRequest_BindMount_Origin

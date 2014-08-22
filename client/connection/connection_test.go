@@ -181,6 +181,12 @@ var _ = Describe("Connection", func() {
 								Value: proto.String("bar"),
 							},
 						},
+						Env: []*protocol.EnvironmentVariable{
+							{
+								Key:   proto.String("env1"),
+								Value: proto.String("env1Value1"),
+							},
+						},
 					}),
 					ghttp.RespondWith(200, marshalProto(&protocol.CreateResponse{
 						Handle: proto.String("foohandle"),
@@ -210,6 +216,7 @@ var _ = Describe("Connection", func() {
 				Properties: map[string]string{
 					"foo": "bar",
 				},
+				Env: []string{"env1=env1Value1"},
 			})
 
 			Ω(err).ShouldNot(HaveOccurred())

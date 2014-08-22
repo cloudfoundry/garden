@@ -93,6 +93,7 @@ func (s *WardenServer) handleCreate(w http.ResponseWriter, r *http.Request) {
 		Network:    request.GetNetwork(),
 		BindMounts: bindMounts,
 		Properties: properties,
+		Env:        convertEnv(request.GetEnv()),
 	})
 	if err != nil {
 		s.writeError(w, err, hLog)
