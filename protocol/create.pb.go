@@ -5,12 +5,10 @@
 package warden
 
 import proto "code.google.com/p/gogoprotobuf/proto"
-import json "encoding/json"
 import math "math"
 
-// Reference proto, json, and math imports to suppress error if they are not otherwise used.
+// Reference imports to suppress errors if they are not otherwise used.
 var _ = proto.Marshal
-var _ = &json.SyntaxError{}
 var _ = math.Inf
 
 type CreateRequest_BindMount_Mode int32
@@ -86,6 +84,7 @@ type CreateRequest struct {
 	Network          *string                    `protobuf:"bytes,4,opt,name=network" json:"network,omitempty"`
 	Rootfs           *string                    `protobuf:"bytes,5,opt,name=rootfs" json:"rootfs,omitempty"`
 	Properties       []*Property                `protobuf:"bytes,6,rep,name=properties" json:"properties,omitempty"`
+	EnvVariables     []string                   `protobuf:"bytes,7,rep,name=env_variables" json:"env_variables,omitempty"`
 	XXX_unrecognized []byte                     `json:"-"`
 }
 
@@ -131,6 +130,13 @@ func (m *CreateRequest) GetRootfs() string {
 func (m *CreateRequest) GetProperties() []*Property {
 	if m != nil {
 		return m.Properties
+	}
+	return nil
+}
+
+func (m *CreateRequest) GetEnvVariables() []string {
+	if m != nil {
+		return m.EnvVariables
 	}
 	return nil
 }

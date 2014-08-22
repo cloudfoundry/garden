@@ -16,12 +16,13 @@ type Client interface {
 }
 
 type ContainerSpec struct {
-	Handle     string
-	GraceTime  time.Duration
-	RootFSPath string
-	BindMounts []BindMount
-	Network    string
-	Properties Properties
+	Handle       string
+	GraceTime    time.Duration
+	RootFSPath   string
+	BindMounts   []BindMount
+	Network      string
+	Properties   Properties
+	EnvVariables []string
 }
 
 type BindMount struct {
