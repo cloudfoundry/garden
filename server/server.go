@@ -29,6 +29,7 @@ type WardenServer struct {
 	listener net.Listener
 	handling *sync.WaitGroup
 
+	started  bool
 	stopping chan bool
 
 	bomberman *bomberman.Bomberman
@@ -140,6 +141,8 @@ func New(
 }
 
 func (s *WardenServer) Start() error {
+	s.started = true
+
 	err := s.removeExistingSocket()
 	if err != nil {
 		return err
@@ -178,6 +181,10 @@ func (s *WardenServer) Start() error {
 }
 
 func (s *WardenServer) Stop() {
+	if !s.started {
+		return
+	}
+
 	close(s.stopping)
 
 	s.listener.Close()
