@@ -1111,9 +1111,6 @@ func (s *WardenServer) streamInput(decoder *json.Decoder, in *io.PipeWriter, pro
 }
 
 func (s *WardenServer) streamProcess(logger lager.Logger, conn net.Conn, process warden.Process, stdout <-chan []byte, stderr <-chan []byte, stdinPipe *io.PipeWriter) {
-	stdoutSource := protocol.ProcessPayload_stdout
-	stderrSource := protocol.ProcessPayload_stderr
-
 	statusCh := make(chan int, 1)
 	errCh := make(chan error, 1)
 
@@ -1135,6 +1132,9 @@ func (s *WardenServer) streamProcess(logger lager.Logger, conn net.Conn, process
 		}
 	}()
 
+	stdoutSource := protocol.ProcessPayload_stdout
+	stderrSource := protocol.ProcessPayload_stderr
+
 	for {
 		select {
 		case data := <-stdout:
@@ -1152,6 +1152,8 @@ func (s *WardenServer) streamProcess(logger lager.Logger, conn net.Conn, process
 			})
 
 		case status := <-statusCh:
+			flushProcess(conn, process, stdout, stderr)
+
 			transport.WriteMessage(conn, &protocol.ProcessPayload{
 				ProcessId:  proto.Uint32(process.ID()),
 				ExitStatus: proto.Uint32(uint32(status)),
@@ -1161,6 +1163,8 @@ func (s *WardenServer) streamProcess(logger lager.Logger, conn net.Conn, process
 			return
 
 		case err := <-errCh:
+			flushProcess(conn, process, stdout, stderr)
+
 			transport.WriteMessage(conn, &protocol.ProcessPayload{
 				ProcessId: proto.Uint32(process.ID()),
 				Error:     proto.String(err.Error()),
@@ -1174,6 +1178,32 @@ func (s *WardenServer) streamProcess(logger lager.Logger, conn net.Conn, process
 				"id": process.ID(),
 			})
 
+			return
+		}
+	}
+}
+
+func flushProcess(conn net.Conn, process warden.Process, stdout <-chan []byte, stderr <-chan []byte) {
+	stdoutSource := protocol.ProcessPayload_stdout
+	stderrSource := protocol.ProcessPayload_stderr
+
+	for {
+		select {
+		case data := <-stdout:
+			transport.WriteMessage(conn, &protocol.ProcessPayload{
+				ProcessId: proto.Uint32(process.ID()),
+				Source:    &stdoutSource,
+				Data:      proto.String(string(data)),
+			})
+
+		case data := <-stderr:
+			transport.WriteMessage(conn, &protocol.ProcessPayload{
+				ProcessId: proto.Uint32(process.ID()),
+				Source:    &stderrSource,
+				Data:      proto.String(string(data)),
+			})
+
+		default:
 			return
 		}
 	}
