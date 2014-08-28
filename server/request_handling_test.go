@@ -282,6 +282,22 @@ var _ = Describe("When a client connects", func() {
 				err := wardenClient.Destroy("some-handle")
 				Ω(err).Should(HaveOccurred())
 			})
+
+			Context("and destroying is attempted again", func() {
+				BeforeEach(func() {
+					err := wardenClient.Destroy("some-handle")
+					Ω(err).Should(HaveOccurred())
+
+					serverBackend.DestroyReturns(nil)
+				})
+
+				It("tries to destroy again", func() {
+					err := wardenClient.Destroy("some-handle")
+					Ω(err).ShouldNot(HaveOccurred())
+
+					Ω(serverBackend.DestroyArgsForCall(0)).Should(Equal("some-handle"))
+				})
+			})
 		})
 	})
 

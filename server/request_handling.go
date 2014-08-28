@@ -160,6 +160,13 @@ func (s *WardenServer) handleDestroy(w http.ResponseWriter, r *http.Request) {
 	hLog.Debug("destroying")
 
 	err := s.backend.Destroy(handle)
+
+	if !alreadyDestroying {
+		s.destroysL.Lock()
+		delete(s.destroys, handle)
+		s.destroysL.Unlock()
+	}
+
 	if err != nil {
 		s.writeError(w, err, hLog)
 		return
@@ -168,12 +175,6 @@ func (s *WardenServer) handleDestroy(w http.ResponseWriter, r *http.Request) {
 	hLog.Info("destroyed")
 
 	s.bomberman.Defuse(handle)
-
-	if !alreadyDestroying {
-		s.destroysL.Lock()
-		delete(s.destroys, handle)
-		s.destroysL.Unlock()
-	}
 
 	s.writeResponse(w, &protocol.DestroyResponse{})
 }
