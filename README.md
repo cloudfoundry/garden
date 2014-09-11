@@ -23,6 +23,31 @@ Warden in Go, because why not.
 * [Tracker](https://www.pivotaltracker.com/s/projects/962374)
 * [Warden](https://github.com/cloudfoundry/warden)
 
+# REST API
+
+Garden provides a Google protocol buffer interface which is also surfaced as a REST API.
+
+For example, if Garden is deployed to localhost and configured to listen on port 7777, the following commands may be used to kick its tyres:
+```sh
+# list containers (should be empty)
+curl http://127.0.0.1:7777/containers
+
+# create a container
+curl -H "Content-Type: application/json" \
+  -XPOST http://127.0.0.1:7777/containers \
+  -d '{"rootfs":"docker:///busybox"}'
+
+# list containers (should list the handle returned above)
+curl http://127.0.0.1:7777/containers
+
+# spawn a process
+#
+# curl will choke here as the protocol is hijacked, but...it probably worked.
+curl -H "Content-Type: application/json" \
+  -XPOST http://127.0.0.1:7777/containers/${handle}/processes \
+  -d '{"path":"sleep","args":["10"]}'
+```
+
 # Testing
 
 ## Pre-requisites
