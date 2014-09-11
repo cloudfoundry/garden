@@ -27,7 +27,7 @@ Warden in Go, because why not.
 
 Garden provides a Google protocol buffer interface which is also surfaced as a REST API.
 
-For example, if Garden is deployed to localhost and configured to listen on port 7777, the following commands may be used to kick its tyres:
+For example, if [Garden Linux](https://github.com/cloudfoundry-incubator/garden-linux) is deployed to `localhost` and configured to listen on port `7777`, the following commands may be used to kick its tyres:
 ```sh
 # list containers (should be empty)
 curl http://127.0.0.1:7777/containers
