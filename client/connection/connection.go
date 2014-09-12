@@ -15,7 +15,7 @@ import (
 	"strings"
 	"time"
 
-	"code.google.com/p/goprotobuf/proto"
+	"code.google.com/p/gogoprotobuf/proto"
 	protocol "github.com/cloudfoundry-incubator/garden/protocol"
 	"github.com/cloudfoundry-incubator/garden/routes"
 	"github.com/cloudfoundry-incubator/garden/transport"

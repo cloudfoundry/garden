@@ -4,7 +4,7 @@ import (
 	"net"
 	"sync"
 
-	"code.google.com/p/goprotobuf/proto"
+	"code.google.com/p/gogoprotobuf/proto"
 	protocol "github.com/cloudfoundry-incubator/garden/protocol"
 	"github.com/cloudfoundry-incubator/garden/transport"
 	"github.com/cloudfoundry-incubator/garden/warden"

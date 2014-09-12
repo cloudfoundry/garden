@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"io"
 
-	"code.google.com/p/goprotobuf/proto"
+	"code.google.com/p/gogoprotobuf/proto"
 )
 
 func WriteMessage(writer io.Writer, req proto.Message) error {
