@@ -16,7 +16,7 @@
                                            \__._| |_.__/
 ```
 
-Warden in Go, because why not.
+Warden in Go, because why not!
 
 * [![Build Status](https://travis-ci.org/cloudfoundry-incubator/garden.png?branch=master)](https://travis-ci.org/cloudfoundry-incubator/garden)
 * [![Coverage Status](https://coveralls.io/repos/cloudfoundry-incubator/garden/badge.png?branch=HEAD)](https://coveralls.io/r/cloudfoundry-incubator/garden?branch=HEAD)
