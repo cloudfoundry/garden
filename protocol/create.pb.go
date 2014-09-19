@@ -2,7 +2,7 @@
 // source: create.proto
 // DO NOT EDIT!
 
-package warden
+package garden
 
 import proto "code.google.com/p/gogoprotobuf/proto"
 import math "math"
@@ -144,8 +144,8 @@ func (m *CreateRequest) GetEnv() []*EnvironmentVariable {
 type CreateRequest_BindMount struct {
 	SrcPath          *string                         `protobuf:"bytes,1,req,name=src_path" json:"src_path,omitempty"`
 	DstPath          *string                         `protobuf:"bytes,2,req,name=dst_path" json:"dst_path,omitempty"`
-	Mode             *CreateRequest_BindMount_Mode   `protobuf:"varint,3,req,name=mode,enum=warden.CreateRequest_BindMount_Mode" json:"mode,omitempty"`
-	Origin           *CreateRequest_BindMount_Origin `protobuf:"varint,4,opt,name=origin,enum=warden.CreateRequest_BindMount_Origin" json:"origin,omitempty"`
+	Mode             *CreateRequest_BindMount_Mode   `protobuf:"varint,3,req,name=mode,enum=garden.CreateRequest_BindMount_Mode" json:"mode,omitempty"`
+	Origin           *CreateRequest_BindMount_Origin `protobuf:"varint,4,opt,name=origin,enum=garden.CreateRequest_BindMount_Origin" json:"origin,omitempty"`
 	XXX_unrecognized []byte                          `json:"-"`
 }
 
@@ -198,6 +198,6 @@ func (m *CreateResponse) GetHandle() string {
 }
 
 func init() {
-	proto.RegisterEnum("warden.CreateRequest_BindMount_Mode", CreateRequest_BindMount_Mode_name, CreateRequest_BindMount_Mode_value)
-	proto.RegisterEnum("warden.CreateRequest_BindMount_Origin", CreateRequest_BindMount_Origin_name, CreateRequest_BindMount_Origin_value)
+	proto.RegisterEnum("garden.CreateRequest_BindMount_Mode", CreateRequest_BindMount_Mode_name, CreateRequest_BindMount_Mode_value)
+	proto.RegisterEnum("garden.CreateRequest_BindMount_Origin", CreateRequest_BindMount_Origin_name, CreateRequest_BindMount_Origin_value)
 }

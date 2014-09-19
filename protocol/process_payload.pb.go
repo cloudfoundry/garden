@@ -2,7 +2,7 @@
 // source: process_payload.proto
 // DO NOT EDIT!
 
-package warden
+package garden
 
 import proto "code.google.com/p/gogoprotobuf/proto"
 import math "math"
@@ -49,7 +49,7 @@ func (x *ProcessPayload_Source) UnmarshalJSON(data []byte) error {
 
 type ProcessPayload struct {
 	ProcessId        *uint32                `protobuf:"varint,1,req,name=process_id" json:"process_id,omitempty"`
-	Source           *ProcessPayload_Source `protobuf:"varint,2,opt,name=source,enum=warden.ProcessPayload_Source" json:"source,omitempty"`
+	Source           *ProcessPayload_Source `protobuf:"varint,2,opt,name=source,enum=garden.ProcessPayload_Source" json:"source,omitempty"`
 	Data             *string                `protobuf:"bytes,3,opt,name=data" json:"data,omitempty"`
 	ExitStatus       *uint32                `protobuf:"varint,4,opt,name=exit_status" json:"exit_status,omitempty"`
 	Error            *string                `protobuf:"bytes,5,opt,name=error" json:"error,omitempty"`
@@ -104,5 +104,5 @@ func (m *ProcessPayload) GetTty() *TTY {
 }
 
 func init() {
-	proto.RegisterEnum("warden.ProcessPayload_Source", ProcessPayload_Source_name, ProcessPayload_Source_value)
+	proto.RegisterEnum("garden.ProcessPayload_Source", ProcessPayload_Source_name, ProcessPayload_Source_value)
 }
