@@ -4,18 +4,13 @@
 set -e -x
 
 FIRST_GOPATH=`echo $GOPATH | cut -d':' -f1`
+
+mkdir -p $FIRST_GOPATH/bin
 export PATH=$FIRST_GOPATH/bin:$PATH
 
+go get -t -v ./...
 go get code.google.com/p/go.tools/cmd/cover
 go get github.com/dustin/goveralls
-
-WORKSPACE=$PWD/Godeps/_workspace
-
-export GOPATH=$WORKSPACE:$GOPATH
-export PATH=$WORKSPACE/bin:$PATH
-
-go get -t -u -v ./... || true
-
 go install github.com/onsi/ginkgo/ginkgo
 
 ginkgo -cover -race -r -skipMeasurements -randomizeAllSpecs "$@"
