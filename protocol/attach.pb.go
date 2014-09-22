@@ -3,7 +3,7 @@
 // DO NOT EDIT!
 
 /*
-Package warden is a generated protocol buffer package.
+Package garden is a generated protocol buffer package.
 
 It is generated from these files:
 	attach.proto
@@ -34,7 +34,7 @@ It is generated from these files:
 It has these top-level messages:
 	AttachRequest
 */
-package warden
+package garden
 
 import proto "code.google.com/p/gogoprotobuf/proto"
 import math "math"

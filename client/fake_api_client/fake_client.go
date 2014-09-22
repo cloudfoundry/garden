@@ -1,13 +1,13 @@
-package fake_warden_client
+package fake_api_client
 
 import (
+	"github.com/cloudfoundry-incubator/garden/api"
 	"github.com/cloudfoundry-incubator/garden/client"
 	"github.com/cloudfoundry-incubator/garden/client/connection/fakes"
-	"github.com/cloudfoundry-incubator/garden/warden"
 )
 
 type FakeClient struct {
-	warden.Client
+	api.Client
 
 	Connection *fakes.FakeConnection
 }

@@ -7,8 +7,8 @@ import (
 	"net"
 	"sync"
 
+	"github.com/cloudfoundry-incubator/garden/api"
 	protocol "github.com/cloudfoundry-incubator/garden/protocol"
-	"github.com/cloudfoundry-incubator/garden/warden"
 )
 
 type process struct {
@@ -51,7 +51,7 @@ func (p *process) Wait() (int, error) {
 	return p.exitStatus, p.exitErr
 }
 
-func (p *process) SetTTY(tty warden.TTYSpec) error {
+func (p *process) SetTTY(tty api.TTYSpec) error {
 	return p.stream.SetTTY(tty)
 }
 
@@ -65,7 +65,7 @@ func (p *process) exited(exitStatus int, err error) {
 	p.doneL.Broadcast()
 }
 
-func (p *process) streamPayloads(decoder *json.Decoder, processIO warden.ProcessIO) {
+func (p *process) streamPayloads(decoder *json.Decoder, processIO api.ProcessIO) {
 	defer p.stream.Close()
 
 	if processIO.Stdin != nil {

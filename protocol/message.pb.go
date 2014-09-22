@@ -2,7 +2,7 @@
 // source: message.proto
 // DO NOT EDIT!
 
-package warden
+package garden
 
 import proto "code.google.com/p/gogoprotobuf/proto"
 import math "math"
@@ -96,7 +96,7 @@ func (x *Message_Type) UnmarshalJSON(data []byte) error {
 }
 
 type Message struct {
-	Type             *Message_Type `protobuf:"varint,1,req,name=type,enum=warden.Message_Type" json:"type,omitempty"`
+	Type             *Message_Type `protobuf:"varint,1,req,name=type,enum=garden.Message_Type" json:"type,omitempty"`
 	Payload          []byte        `protobuf:"bytes,2,req,name=payload" json:"payload,omitempty"`
 	XXX_unrecognized []byte        `json:"-"`
 }
@@ -120,5 +120,5 @@ func (m *Message) GetPayload() []byte {
 }
 
 func init() {
-	proto.RegisterEnum("warden.Message_Type", Message_Type_name, Message_Type_value)
+	proto.RegisterEnum("garden.Message_Type", Message_Type_name, Message_Type_value)
 }

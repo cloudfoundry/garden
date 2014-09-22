@@ -4,12 +4,12 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/cloudfoundry-incubator/garden/api"
 	"github.com/cloudfoundry-incubator/garden/client/connection"
-	"github.com/cloudfoundry-incubator/garden/warden"
 )
 
 type Client interface {
-	warden.Client
+	api.Client
 }
 
 var ErrContainerNotFound = errors.New("container not found")
@@ -28,11 +28,11 @@ func (client *client) Ping() error {
 	return client.connection.Ping()
 }
 
-func (client *client) Capacity() (warden.Capacity, error) {
+func (client *client) Capacity() (api.Capacity, error) {
 	return client.connection.Capacity()
 }
 
-func (client *client) Create(spec warden.ContainerSpec) (warden.Container, error) {
+func (client *client) Create(spec api.ContainerSpec) (api.Container, error) {
 	handle, err := client.connection.Create(spec)
 	if err != nil {
 		return nil, err
@@ -41,13 +41,13 @@ func (client *client) Create(spec warden.ContainerSpec) (warden.Container, error
 	return newContainer(handle, client.connection), nil
 }
 
-func (client *client) Containers(properties warden.Properties) ([]warden.Container, error) {
+func (client *client) Containers(properties api.Properties) ([]api.Container, error) {
 	handles, err := client.connection.List(properties)
 	if err != nil {
 		return nil, err
 	}
 
-	containers := []warden.Container{}
+	containers := []api.Container{}
 	for _, handle := range handles {
 		containers = append(containers, newContainer(handle, client.connection))
 	}
@@ -59,7 +59,7 @@ func (client *client) Destroy(handle string) error {
 	return client.connection.Destroy(handle)
 }
 
-func (client *client) Lookup(handle string) (warden.Container, error) {
+func (client *client) Lookup(handle string) (api.Container, error) {
 	handles, err := client.connection.List(nil)
 	if err != nil {
 		return nil, err

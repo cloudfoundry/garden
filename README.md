@@ -84,11 +84,7 @@ Get garden and its dependencies:
 $ go get github.com/cloudfoundry-incubator/garden
 ```
 
-Build the protocol (if you've changed it):
-```
-$ go get code.google.com/p/gogoprotobuf/{proto,protoc-gen-gogo,gogoproto}
-$ make
-```
+and in this directory, re-build the protocol (if you've changed it) see [below](#building-the-protocol).
 
 Install ginkgo (used to test garden):
 ```
@@ -98,4 +94,17 @@ $ go install github.com/onsi/ginkgo/ginkgo
 Run the tests (skipping performance measurements):
 ```
 $ ginkgo -r
+```
+
+# Building the protocol
+
+## Pre-requisite
+
+* [protoc](https://developers.google.com/protocol-buffers/docs/downloads);
+    download the archive, unpack it into a directory with no spaces in the full path; and build according to INSTALL.txt.
+
+To build the protocol:
+```
+$ go get code.google.com/p/gogoprotobuf/{proto,protoc-gen-gogo,gogoproto}
+$ make protocol
 ```

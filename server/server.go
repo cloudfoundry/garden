@@ -9,14 +9,14 @@ import (
 	"time"
 
 	"code.google.com/p/gogoprotobuf/proto"
+	"github.com/cloudfoundry-incubator/garden/api"
 	"github.com/cloudfoundry-incubator/garden/routes"
 	"github.com/cloudfoundry-incubator/garden/server/bomberman"
-	"github.com/cloudfoundry-incubator/garden/warden"
 	"github.com/pivotal-golang/lager"
 	"github.com/tedsuo/rata"
 )
 
-type WardenServer struct {
+type GardenServer struct {
 	logger lager.Logger
 
 	server        http.Server
@@ -24,7 +24,7 @@ type WardenServer struct {
 	listenAddr    string
 
 	containerGraceTime time.Duration
-	backend            warden.Backend
+	backend            api.Backend
 
 	listener net.Listener
 	handling *sync.WaitGroup
@@ -52,10 +52,10 @@ func (e UnhandledRequestError) Error() string {
 func New(
 	listenNetwork, listenAddr string,
 	containerGraceTime time.Duration,
-	backend warden.Backend,
+	backend api.Backend,
 	logger lager.Logger,
-) *WardenServer {
-	s := &WardenServer{
+) *GardenServer {
+	s := &GardenServer{
 		logger: logger.Session("garden-server"),
 
 		listenNetwork: listenNetwork,
@@ -140,7 +140,7 @@ func New(
 	return s
 }
 
-func (s *WardenServer) Start() error {
+func (s *GardenServer) Start() error {
 	s.started = true
 
 	err := s.removeExistingSocket()
@@ -180,7 +180,7 @@ func (s *WardenServer) Start() error {
 	return nil
 }
 
-func (s *WardenServer) Stop() {
+func (s *GardenServer) Stop() {
 	if !s.started {
 		return
 	}
@@ -211,7 +211,7 @@ func (s *WardenServer) Stop() {
 	s.logger.Info("stopped")
 }
 
-func (s *WardenServer) removeExistingSocket() error {
+func (s *GardenServer) removeExistingSocket() error {
 	if s.listenNetwork != "unix" {
 		return nil
 	}
@@ -229,7 +229,7 @@ func (s *WardenServer) removeExistingSocket() error {
 	return nil
 }
 
-func (s *WardenServer) reapContainer(container warden.Container) {
+func (s *GardenServer) reapContainer(container api.Container) {
 	s.logger.Info("reaping", lager.Data{
 		"handle":     container.Handle(),
 		"grace-time": s.backend.GraceTime(container).String(),

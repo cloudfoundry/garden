@@ -3,8 +3,8 @@ package client
 import (
 	"io"
 
+	"github.com/cloudfoundry-incubator/garden/api"
 	"github.com/cloudfoundry-incubator/garden/client/connection"
-	"github.com/cloudfoundry-incubator/garden/warden"
 )
 
 type container struct {
@@ -13,7 +13,7 @@ type container struct {
 	connection connection.Connection
 }
 
-func newContainer(handle string, connection connection.Connection) warden.Container {
+func newContainer(handle string, connection connection.Connection) api.Container {
 	return &container{
 		handle: handle,
 
@@ -29,7 +29,7 @@ func (container *container) Stop(kill bool) error {
 	return container.connection.Stop(container.handle, kill)
 }
 
-func (container *container) Info() (warden.ContainerInfo, error) {
+func (container *container) Info() (api.ContainerInfo, error) {
 	return container.connection.Info(container.handle)
 }
 
@@ -41,7 +41,7 @@ func (container *container) StreamOut(srcPath string) (io.ReadCloser, error) {
 	return container.connection.StreamOut(container.handle, srcPath)
 }
 
-func (container *container) LimitBandwidth(limits warden.BandwidthLimits) error {
+func (container *container) LimitBandwidth(limits api.BandwidthLimits) error {
 	_, err := container.connection.LimitBandwidth(container.handle, limits)
 	if err != nil {
 		return err
@@ -50,11 +50,11 @@ func (container *container) LimitBandwidth(limits warden.BandwidthLimits) error 
 	return nil
 }
 
-func (container *container) CurrentBandwidthLimits() (warden.BandwidthLimits, error) {
+func (container *container) CurrentBandwidthLimits() (api.BandwidthLimits, error) {
 	return container.connection.CurrentBandwidthLimits(container.handle)
 }
 
-func (container *container) LimitCPU(limits warden.CPULimits) error {
+func (container *container) LimitCPU(limits api.CPULimits) error {
 	_, err := container.connection.LimitCPU(container.handle, limits)
 	if err != nil {
 		return err
@@ -63,11 +63,11 @@ func (container *container) LimitCPU(limits warden.CPULimits) error {
 	return nil
 }
 
-func (container *container) CurrentCPULimits() (warden.CPULimits, error) {
+func (container *container) CurrentCPULimits() (api.CPULimits, error) {
 	return container.connection.CurrentCPULimits(container.handle)
 }
 
-func (container *container) LimitDisk(limits warden.DiskLimits) error {
+func (container *container) LimitDisk(limits api.DiskLimits) error {
 	_, err := container.connection.LimitDisk(container.handle, limits)
 	if err != nil {
 		return err
@@ -76,11 +76,11 @@ func (container *container) LimitDisk(limits warden.DiskLimits) error {
 	return nil
 }
 
-func (container *container) CurrentDiskLimits() (warden.DiskLimits, error) {
+func (container *container) CurrentDiskLimits() (api.DiskLimits, error) {
 	return container.connection.CurrentDiskLimits(container.handle)
 }
 
-func (container *container) LimitMemory(limits warden.MemoryLimits) error {
+func (container *container) LimitMemory(limits api.MemoryLimits) error {
 	_, err := container.connection.LimitMemory(container.handle, limits)
 	if err != nil {
 		return err
@@ -89,15 +89,15 @@ func (container *container) LimitMemory(limits warden.MemoryLimits) error {
 	return nil
 }
 
-func (container *container) CurrentMemoryLimits() (warden.MemoryLimits, error) {
+func (container *container) CurrentMemoryLimits() (api.MemoryLimits, error) {
 	return container.connection.CurrentMemoryLimits(container.handle)
 }
 
-func (container *container) Run(spec warden.ProcessSpec, io warden.ProcessIO) (warden.Process, error) {
+func (container *container) Run(spec api.ProcessSpec, io api.ProcessIO) (api.Process, error) {
 	return container.connection.Run(container.handle, spec, io)
 }
 
-func (container *container) Attach(processID uint32, io warden.ProcessIO) (warden.Process, error) {
+func (container *container) Attach(processID uint32, io api.ProcessIO) (api.Process, error) {
 	return container.connection.Attach(container.handle, processID, io)
 }
 

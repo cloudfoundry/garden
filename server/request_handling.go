@@ -11,16 +11,16 @@ import (
 
 	"code.google.com/p/gogoprotobuf/proto"
 
+	"github.com/cloudfoundry-incubator/garden/api"
 	protocol "github.com/cloudfoundry-incubator/garden/protocol"
 	"github.com/cloudfoundry-incubator/garden/transport"
-	"github.com/cloudfoundry-incubator/garden/warden"
 	"github.com/pivotal-golang/lager"
 )
 
 var ErrInvalidContentType = errors.New("content-type must be application/json")
 var ErrConcurrentDestroy = errors.New("container already being destroyed")
 
-func (s *WardenServer) handlePing(w http.ResponseWriter, r *http.Request) {
+func (s *GardenServer) handlePing(w http.ResponseWriter, r *http.Request) {
 	hLog := s.logger.Session("ping")
 
 	err := s.backend.Ping()
@@ -33,7 +33,7 @@ func (s *WardenServer) handlePing(w http.ResponseWriter, r *http.Request) {
 	s.writeResponse(w, &protocol.PingResponse{})
 }
 
-func (s *WardenServer) handleCapacity(w http.ResponseWriter, r *http.Request) {
+func (s *GardenServer) handleCapacity(w http.ResponseWriter, r *http.Request) {
 	hLog := s.logger.Session("capacity")
 
 	capacity, err := s.backend.Capacity()
@@ -49,7 +49,7 @@ func (s *WardenServer) handleCapacity(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (s *WardenServer) handleCreate(w http.ResponseWriter, r *http.Request) {
+func (s *GardenServer) handleCreate(w http.ResponseWriter, r *http.Request) {
 	var request protocol.CreateRequest
 	if !s.readRequest(&request, w, r) {
 		return
@@ -59,14 +59,14 @@ func (s *WardenServer) handleCreate(w http.ResponseWriter, r *http.Request) {
 		"request": request,
 	})
 
-	bindMounts := []warden.BindMount{}
+	bindMounts := []api.BindMount{}
 
 	for _, bm := range request.GetBindMounts() {
-		bindMount := warden.BindMount{
+		bindMount := api.BindMount{
 			SrcPath: bm.GetSrcPath(),
 			DstPath: bm.GetDstPath(),
-			Mode:    warden.BindMountMode(bm.GetMode()),
-			Origin:  warden.BindMountOrigin(bm.GetOrigin()),
+			Mode:    api.BindMountMode(bm.GetMode()),
+			Origin:  api.BindMountOrigin(bm.GetOrigin()),
 		}
 
 		bindMounts = append(bindMounts, bindMount)
@@ -86,7 +86,7 @@ func (s *WardenServer) handleCreate(w http.ResponseWriter, r *http.Request) {
 
 	hLog.Debug("creating")
 
-	container, err := s.backend.Create(warden.ContainerSpec{
+	container, err := s.backend.Create(api.ContainerSpec{
 		Handle:     request.GetHandle(),
 		GraceTime:  graceTime,
 		RootFSPath: request.GetRootfs(),
@@ -109,8 +109,8 @@ func (s *WardenServer) handleCreate(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (s *WardenServer) handleList(w http.ResponseWriter, r *http.Request) {
-	properties := warden.Properties{}
+func (s *GardenServer) handleList(w http.ResponseWriter, r *http.Request) {
+	properties := api.Properties{}
 	for name, vals := range r.URL.Query() {
 		if len(vals) > 0 {
 			properties[name] = vals[0]
@@ -136,7 +136,7 @@ func (s *WardenServer) handleList(w http.ResponseWriter, r *http.Request) {
 	s.writeResponse(w, &protocol.ListResponse{Handles: handles})
 }
 
-func (s *WardenServer) handleDestroy(w http.ResponseWriter, r *http.Request) {
+func (s *GardenServer) handleDestroy(w http.ResponseWriter, r *http.Request) {
 	handle := r.FormValue(":handle")
 
 	hLog := s.logger.Session("destroy", lager.Data{
@@ -179,7 +179,7 @@ func (s *WardenServer) handleDestroy(w http.ResponseWriter, r *http.Request) {
 	s.writeResponse(w, &protocol.DestroyResponse{})
 }
 
-func (s *WardenServer) handleStop(w http.ResponseWriter, r *http.Request) {
+func (s *GardenServer) handleStop(w http.ResponseWriter, r *http.Request) {
 	handle := r.FormValue(":handle")
 
 	hLog := s.logger.Session("stop", lager.Data{
@@ -215,7 +215,7 @@ func (s *WardenServer) handleStop(w http.ResponseWriter, r *http.Request) {
 	s.writeResponse(w, &protocol.StopResponse{})
 }
 
-func (s *WardenServer) handleStreamIn(w http.ResponseWriter, r *http.Request) {
+func (s *GardenServer) handleStreamIn(w http.ResponseWriter, r *http.Request) {
 	handle := r.FormValue(":handle")
 
 	dstPath := r.URL.Query().Get("destination")
@@ -247,7 +247,7 @@ func (s *WardenServer) handleStreamIn(w http.ResponseWriter, r *http.Request) {
 	s.writeResponse(w, &protocol.StreamInResponse{})
 }
 
-func (s *WardenServer) handleStreamOut(w http.ResponseWriter, r *http.Request) {
+func (s *GardenServer) handleStreamOut(w http.ResponseWriter, r *http.Request) {
 	handle := r.FormValue(":handle")
 
 	srcPath := r.URL.Query().Get("source")
@@ -290,7 +290,7 @@ func (s *WardenServer) handleStreamOut(w http.ResponseWriter, r *http.Request) {
 	hLog.Info("streamed-out")
 }
 
-func (s *WardenServer) handleLimitBandwidth(w http.ResponseWriter, r *http.Request) {
+func (s *GardenServer) handleLimitBandwidth(w http.ResponseWriter, r *http.Request) {
 	handle := r.FormValue(":handle")
 
 	var request protocol.LimitBandwidthRequest
@@ -311,7 +311,7 @@ func (s *WardenServer) handleLimitBandwidth(w http.ResponseWriter, r *http.Reque
 	s.bomberman.Pause(container.Handle())
 	defer s.bomberman.Unpause(container.Handle())
 
-	requestedLimits := warden.BandwidthLimits{
+	requestedLimits := api.BandwidthLimits{
 		RateInBytesPerSecond:      request.GetRate(),
 		BurstRateInBytesPerSecond: request.GetBurst(),
 	}
@@ -342,7 +342,7 @@ func (s *WardenServer) handleLimitBandwidth(w http.ResponseWriter, r *http.Reque
 	})
 }
 
-func (s *WardenServer) handleCurrentBandwidthLimits(w http.ResponseWriter, r *http.Request) {
+func (s *GardenServer) handleCurrentBandwidthLimits(w http.ResponseWriter, r *http.Request) {
 	handle := r.FormValue(":handle")
 
 	hLog := s.logger.Session("current-bandwidth-limits", lager.Data{
@@ -376,7 +376,7 @@ func (s *WardenServer) handleCurrentBandwidthLimits(w http.ResponseWriter, r *ht
 	})
 }
 
-func (s *WardenServer) handleLimitMemory(w http.ResponseWriter, r *http.Request) {
+func (s *GardenServer) handleLimitMemory(w http.ResponseWriter, r *http.Request) {
 	handle := r.FormValue(":handle")
 
 	hLog := s.logger.Session("limit-memory", lager.Data{
@@ -399,7 +399,7 @@ func (s *WardenServer) handleLimitMemory(w http.ResponseWriter, r *http.Request)
 	s.bomberman.Pause(container.Handle())
 	defer s.bomberman.Unpause(container.Handle())
 
-	requestedLimits := warden.MemoryLimits{
+	requestedLimits := api.MemoryLimits{
 		LimitInBytes: limitInBytes,
 	}
 
@@ -431,7 +431,7 @@ func (s *WardenServer) handleLimitMemory(w http.ResponseWriter, r *http.Request)
 	})
 }
 
-func (s *WardenServer) handleCurrentMemoryLimits(w http.ResponseWriter, r *http.Request) {
+func (s *GardenServer) handleCurrentMemoryLimits(w http.ResponseWriter, r *http.Request) {
 	handle := r.FormValue(":handle")
 
 	hLog := s.logger.Session("current-memory-limits", lager.Data{
@@ -464,7 +464,7 @@ func (s *WardenServer) handleCurrentMemoryLimits(w http.ResponseWriter, r *http.
 	})
 }
 
-func (s *WardenServer) handleLimitDisk(w http.ResponseWriter, r *http.Request) {
+func (s *GardenServer) handleLimitDisk(w http.ResponseWriter, r *http.Request) {
 	handle := r.FormValue(":handle")
 
 	hLog := s.logger.Session("limit-disk", lager.Data{
@@ -500,7 +500,7 @@ func (s *WardenServer) handleLimitDisk(w http.ResponseWriter, r *http.Request) {
 	s.bomberman.Pause(container.Handle())
 	defer s.bomberman.Unpause(container.Handle())
 
-	requestedLimits := warden.DiskLimits{
+	requestedLimits := api.DiskLimits{
 		BlockSoft: blockSoft,
 		BlockHard: blockHard,
 		InodeSoft: inodeSoft,
@@ -541,7 +541,7 @@ func (s *WardenServer) handleLimitDisk(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (s *WardenServer) handleCurrentDiskLimits(w http.ResponseWriter, r *http.Request) {
+func (s *GardenServer) handleCurrentDiskLimits(w http.ResponseWriter, r *http.Request) {
 	handle := r.FormValue(":handle")
 
 	hLog := s.logger.Session("current-disk-limits", lager.Data{
@@ -579,7 +579,7 @@ func (s *WardenServer) handleCurrentDiskLimits(w http.ResponseWriter, r *http.Re
 	})
 }
 
-func (s *WardenServer) handleLimitCPU(w http.ResponseWriter, r *http.Request) {
+func (s *GardenServer) handleLimitCPU(w http.ResponseWriter, r *http.Request) {
 	handle := r.FormValue(":handle")
 
 	hLog := s.logger.Session("limit-cpu", lager.Data{
@@ -602,7 +602,7 @@ func (s *WardenServer) handleLimitCPU(w http.ResponseWriter, r *http.Request) {
 	s.bomberman.Pause(container.Handle())
 	defer s.bomberman.Unpause(container.Handle())
 
-	requestedLimits := warden.CPULimits{
+	requestedLimits := api.CPULimits{
 		LimitInShares: limitInShares,
 	}
 
@@ -633,7 +633,7 @@ func (s *WardenServer) handleLimitCPU(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (s *WardenServer) handleCurrentCPULimits(w http.ResponseWriter, r *http.Request) {
+func (s *GardenServer) handleCurrentCPULimits(w http.ResponseWriter, r *http.Request) {
 	handle := r.FormValue(":handle")
 
 	hLog := s.logger.Session("current-cpu-limits", lager.Data{
@@ -666,7 +666,7 @@ func (s *WardenServer) handleCurrentCPULimits(w http.ResponseWriter, r *http.Req
 	})
 }
 
-func (s *WardenServer) handleNetIn(w http.ResponseWriter, r *http.Request) {
+func (s *GardenServer) handleNetIn(w http.ResponseWriter, r *http.Request) {
 	handle := r.FormValue(":handle")
 
 	hLog := s.logger.Session("net-in", lager.Data{
@@ -712,7 +712,7 @@ func (s *WardenServer) handleNetIn(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (s *WardenServer) handleNetOut(w http.ResponseWriter, r *http.Request) {
+func (s *GardenServer) handleNetOut(w http.ResponseWriter, r *http.Request) {
 	handle := r.FormValue(":handle")
 
 	hLog := s.logger.Session("net-out", lager.Data{
@@ -755,7 +755,7 @@ func (s *WardenServer) handleNetOut(w http.ResponseWriter, r *http.Request) {
 	s.writeResponse(w, &protocol.NetOutResponse{})
 }
 
-func (s *WardenServer) handleRun(w http.ResponseWriter, r *http.Request) {
+func (s *GardenServer) handleRun(w http.ResponseWriter, r *http.Request) {
 	handle := r.FormValue(":handle")
 
 	hLog := s.logger.Session("run", lager.Data{
@@ -783,7 +783,7 @@ func (s *WardenServer) handleRun(w http.ResponseWriter, r *http.Request) {
 	s.bomberman.Pause(container.Handle())
 	defer s.bomberman.Unpause(container.Handle())
 
-	processSpec := warden.ProcessSpec{
+	processSpec := api.ProcessSpec{
 		Path:       path,
 		Args:       args,
 		Dir:        dir,
@@ -805,7 +805,7 @@ func (s *WardenServer) handleRun(w http.ResponseWriter, r *http.Request) {
 
 	stdinR, stdinW := io.Pipe()
 
-	processIO := warden.ProcessIO{
+	processIO := api.ProcessIO{
 		Stdin:  stdinR,
 		Stdout: &chanWriter{stdout},
 		Stderr: &chanWriter{stderr},
@@ -843,7 +843,7 @@ func (s *WardenServer) handleRun(w http.ResponseWriter, r *http.Request) {
 	s.streamProcess(hLog, conn, process, stdout, stderr, stdinW)
 }
 
-func (s *WardenServer) handleAttach(w http.ResponseWriter, r *http.Request) {
+func (s *GardenServer) handleAttach(w http.ResponseWriter, r *http.Request) {
 	handle := r.FormValue(":handle")
 
 	var processID uint32
@@ -872,7 +872,7 @@ func (s *WardenServer) handleAttach(w http.ResponseWriter, r *http.Request) {
 
 	stdinR, stdinW := io.Pipe()
 
-	processIO := warden.ProcessIO{
+	processIO := api.ProcessIO{
 		Stdin:  stdinR,
 		Stdout: &chanWriter{stdout},
 		Stderr: &chanWriter{stderr},
@@ -910,7 +910,7 @@ func (s *WardenServer) handleAttach(w http.ResponseWriter, r *http.Request) {
 	s.streamProcess(hLog, conn, process, stdout, stderr, stdinW)
 }
 
-func (s *WardenServer) handleInfo(w http.ResponseWriter, r *http.Request) {
+func (s *GardenServer) handleInfo(w http.ResponseWriter, r *http.Request) {
 	handle := r.FormValue(":handle")
 
 	hLog := s.logger.Session("info", lager.Data{
@@ -1020,8 +1020,8 @@ func (s *WardenServer) handleInfo(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func resourceLimits(limits *protocol.ResourceLimits) warden.ResourceLimits {
-	return warden.ResourceLimits{
+func resourceLimits(limits *protocol.ResourceLimits) api.ResourceLimits {
+	return api.ResourceLimits{
 		As:         limits.As,
 		Core:       limits.Core,
 		Cpu:        limits.Cpu,
@@ -1040,7 +1040,7 @@ func resourceLimits(limits *protocol.ResourceLimits) warden.ResourceLimits {
 	}
 }
 
-func (s *WardenServer) writeError(w http.ResponseWriter, err error, logger lager.Logger) {
+func (s *GardenServer) writeError(w http.ResponseWriter, err error, logger lager.Logger) {
 	logger.Error("failed", err)
 
 	w.Header().Set("Content-Type", "text/plain")
@@ -1048,12 +1048,12 @@ func (s *WardenServer) writeError(w http.ResponseWriter, err error, logger lager
 	w.Write([]byte(err.Error()))
 }
 
-func (s *WardenServer) writeResponse(w http.ResponseWriter, msg proto.Message) {
+func (s *GardenServer) writeResponse(w http.ResponseWriter, msg proto.Message) {
 	w.Header().Set("Content-Type", "application/json")
 	transport.WriteMessage(w, msg)
 }
 
-func (s *WardenServer) readRequest(msg proto.Message, w http.ResponseWriter, r *http.Request) bool {
+func (s *GardenServer) readRequest(msg proto.Message, w http.ResponseWriter, r *http.Request) bool {
 	if r.Header.Get("Content-Type") != "application/json" {
 		s.writeError(w, ErrInvalidContentType, s.logger)
 		return false
@@ -1078,7 +1078,7 @@ func convertEnv(env []*protocol.EnvironmentVariable) []string {
 	return converted
 }
 
-func (s *WardenServer) streamInput(decoder *json.Decoder, in *io.PipeWriter, process warden.Process) {
+func (s *GardenServer) streamInput(decoder *json.Decoder, in *io.PipeWriter, process api.Process) {
 	for {
 		var payload protocol.ProcessPayload
 		err := decoder.Decode(&payload)
@@ -1110,7 +1110,7 @@ func (s *WardenServer) streamInput(decoder *json.Decoder, in *io.PipeWriter, pro
 	}
 }
 
-func (s *WardenServer) streamProcess(logger lager.Logger, conn net.Conn, process warden.Process, stdout <-chan []byte, stderr <-chan []byte, stdinPipe *io.PipeWriter) {
+func (s *GardenServer) streamProcess(logger lager.Logger, conn net.Conn, process api.Process, stdout <-chan []byte, stderr <-chan []byte, stdinPipe *io.PipeWriter) {
 	statusCh := make(chan int, 1)
 	errCh := make(chan error, 1)
 
@@ -1183,7 +1183,7 @@ func (s *WardenServer) streamProcess(logger lager.Logger, conn net.Conn, process
 	}
 }
 
-func flushProcess(conn net.Conn, process warden.Process, stdout <-chan []byte, stderr <-chan []byte) {
+func flushProcess(conn net.Conn, process api.Process, stdout <-chan []byte, stderr <-chan []byte) {
 	stdoutSource := protocol.ProcessPayload_stdout
 	stderrSource := protocol.ProcessPayload_stderr
 
@@ -1209,14 +1209,14 @@ func flushProcess(conn net.Conn, process warden.Process, stdout <-chan []byte, s
 	}
 }
 
-func ttySpecFrom(tty *protocol.TTY) *warden.TTYSpec {
-	var ttySpec *warden.TTYSpec
+func ttySpecFrom(tty *protocol.TTY) *api.TTYSpec {
+	var ttySpec *api.TTYSpec
 	if tty != nil {
-		ttySpec = &warden.TTYSpec{}
+		ttySpec = &api.TTYSpec{}
 
 		windowSize := tty.GetWindowSize()
 		if windowSize != nil {
-			ttySpec.WindowSize = &warden.WindowSize{
+			ttySpec.WindowSize = &api.WindowSize{
 				Columns: int(windowSize.GetColumns()),
 				Rows:    int(windowSize.GetRows()),
 			}

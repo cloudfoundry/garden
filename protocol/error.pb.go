@@ -2,7 +2,7 @@
 // source: error.proto
 // DO NOT EDIT!
 
-package warden
+package garden
 
 import proto "code.google.com/p/gogoprotobuf/proto"
 import math "math"

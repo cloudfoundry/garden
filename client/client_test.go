@@ -6,9 +6,9 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
+	"github.com/cloudfoundry-incubator/garden/api"
 	. "github.com/cloudfoundry-incubator/garden/client"
 	"github.com/cloudfoundry-incubator/garden/client/connection/fakes"
-	"github.com/cloudfoundry-incubator/garden/warden"
 )
 
 var _ = Describe("Client", func() {
@@ -27,7 +27,7 @@ var _ = Describe("Client", func() {
 	Describe("Capacity", func() {
 		BeforeEach(func() {
 			fakeConnection.CapacityReturns(
-				warden.Capacity{
+				api.Capacity{
 					MemoryInBytes: 1111,
 					DiskInBytes:   2222,
 					MaxContainers: 42,
@@ -47,7 +47,7 @@ var _ = Describe("Client", func() {
 			disaster := errors.New("oh no!")
 
 			BeforeEach(func() {
-				fakeConnection.CapacityReturns(warden.Capacity{}, disaster)
+				fakeConnection.CapacityReturns(api.Capacity{}, disaster)
 			})
 
 			It("returns the error", func() {
@@ -59,7 +59,7 @@ var _ = Describe("Client", func() {
 
 	Describe("Create", func() {
 		It("sends a create request and returns a container", func() {
-			spec := warden.ContainerSpec{
+			spec := api.ContainerSpec{
 				RootFSPath: "/some/roofs",
 			}
 
@@ -82,7 +82,7 @@ var _ = Describe("Client", func() {
 			})
 
 			It("returns it", func() {
-				_, err := client.Create(warden.ContainerSpec{})
+				_, err := client.Create(api.ContainerSpec{})
 				Ω(err).Should(Equal(disaster))
 			})
 		})
@@ -92,7 +92,7 @@ var _ = Describe("Client", func() {
 		It("sends a list request and returns all containers", func() {
 			fakeConnection.ListReturns([]string{"handle-a", "handle-b"}, nil)
 
-			props := warden.Properties{"foo": "bar"}
+			props := api.Properties{"foo": "bar"}
 
 			containers, err := client.Containers(props)
 			Ω(err).ShouldNot(HaveOccurred())
