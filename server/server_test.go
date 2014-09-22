@@ -19,7 +19,7 @@ import (
 	"github.com/cloudfoundry-incubator/garden/server"
 )
 
-var _ = Describe("The Warden server", func() {
+var _ = Describe("The Garden server", func() {
 	var logger *lagertest.TestLogger
 
 	BeforeEach(func() {
@@ -161,7 +161,7 @@ var _ = Describe("The Warden server", func() {
 		var serverBackend api.Backend
 		var fakeBackend *fakes.FakeBackend
 
-		var apiServer *server.WardenServer
+		var apiServer *server.GardenServer
 		var apiClient api.Client
 
 		BeforeEach(func() {

@@ -32,7 +32,7 @@ var _ = Describe("When a client connects", func() {
 
 	var logger *lagertest.TestLogger
 
-	var apiServer *server.WardenServer
+	var apiServer *server.GardenServer
 	var apiClient api.Client
 	var isRunning bool
 
@@ -278,7 +278,7 @@ var _ = Describe("When a client connects", func() {
 				serverBackend.DestroyReturns(errors.New("oh no!"))
 			})
 
-			It("sends a WardenError response", func() {
+			It("sends a GardenError response", func() {
 				err := apiClient.Destroy("some-handle")
 				Ω(err).Should(HaveOccurred())
 			})

@@ -68,13 +68,13 @@ type connection struct {
 	noKeepaliveClient *http.Client
 }
 
-type WardenError struct {
+type GardenError struct {
 	Message   string
 	Data      string
 	Backtrace []string
 }
 
-func (e *WardenError) Error() string {
+func (e *GardenError) Error() string {
 	return e.Message
 }
 
