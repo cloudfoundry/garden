@@ -5,9 +5,9 @@ import (
 	"sync"
 
 	"code.google.com/p/gogoprotobuf/proto"
+	"github.com/cloudfoundry-incubator/garden/api"
 	protocol "github.com/cloudfoundry-incubator/garden/protocol"
 	"github.com/cloudfoundry-incubator/garden/transport"
-	"github.com/cloudfoundry-incubator/garden/warden"
 )
 
 var stdin = protocol.ProcessPayload_stdin
@@ -34,7 +34,7 @@ func (s *processStream) CloseStdin() error {
 	})
 }
 
-func (s *processStream) SetTTY(spec warden.TTYSpec) error {
+func (s *processStream) SetTTY(spec api.TTYSpec) error {
 	tty := &protocol.TTY{}
 
 	if spec.WindowSize != nil {

@@ -11,9 +11,9 @@ import (
 
 	"code.google.com/p/gogoprotobuf/proto"
 
+	"github.com/cloudfoundry-incubator/garden/api"
 	protocol "github.com/cloudfoundry-incubator/garden/protocol"
 	"github.com/cloudfoundry-incubator/garden/transport"
-	"github.com/cloudfoundry-incubator/garden/warden"
 	"github.com/pivotal-golang/lager"
 )
 
@@ -59,14 +59,14 @@ func (s *WardenServer) handleCreate(w http.ResponseWriter, r *http.Request) {
 		"request": request,
 	})
 
-	bindMounts := []warden.BindMount{}
+	bindMounts := []api.BindMount{}
 
 	for _, bm := range request.GetBindMounts() {
-		bindMount := warden.BindMount{
+		bindMount := api.BindMount{
 			SrcPath: bm.GetSrcPath(),
 			DstPath: bm.GetDstPath(),
-			Mode:    warden.BindMountMode(bm.GetMode()),
-			Origin:  warden.BindMountOrigin(bm.GetOrigin()),
+			Mode:    api.BindMountMode(bm.GetMode()),
+			Origin:  api.BindMountOrigin(bm.GetOrigin()),
 		}
 
 		bindMounts = append(bindMounts, bindMount)
@@ -86,7 +86,7 @@ func (s *WardenServer) handleCreate(w http.ResponseWriter, r *http.Request) {
 
 	hLog.Debug("creating")
 
-	container, err := s.backend.Create(warden.ContainerSpec{
+	container, err := s.backend.Create(api.ContainerSpec{
 		Handle:     request.GetHandle(),
 		GraceTime:  graceTime,
 		RootFSPath: request.GetRootfs(),
@@ -110,7 +110,7 @@ func (s *WardenServer) handleCreate(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *WardenServer) handleList(w http.ResponseWriter, r *http.Request) {
-	properties := warden.Properties{}
+	properties := api.Properties{}
 	for name, vals := range r.URL.Query() {
 		if len(vals) > 0 {
 			properties[name] = vals[0]
@@ -311,7 +311,7 @@ func (s *WardenServer) handleLimitBandwidth(w http.ResponseWriter, r *http.Reque
 	s.bomberman.Pause(container.Handle())
 	defer s.bomberman.Unpause(container.Handle())
 
-	requestedLimits := warden.BandwidthLimits{
+	requestedLimits := api.BandwidthLimits{
 		RateInBytesPerSecond:      request.GetRate(),
 		BurstRateInBytesPerSecond: request.GetBurst(),
 	}
@@ -399,7 +399,7 @@ func (s *WardenServer) handleLimitMemory(w http.ResponseWriter, r *http.Request)
 	s.bomberman.Pause(container.Handle())
 	defer s.bomberman.Unpause(container.Handle())
 
-	requestedLimits := warden.MemoryLimits{
+	requestedLimits := api.MemoryLimits{
 		LimitInBytes: limitInBytes,
 	}
 
@@ -500,7 +500,7 @@ func (s *WardenServer) handleLimitDisk(w http.ResponseWriter, r *http.Request) {
 	s.bomberman.Pause(container.Handle())
 	defer s.bomberman.Unpause(container.Handle())
 
-	requestedLimits := warden.DiskLimits{
+	requestedLimits := api.DiskLimits{
 		BlockSoft: blockSoft,
 		BlockHard: blockHard,
 		InodeSoft: inodeSoft,
@@ -602,7 +602,7 @@ func (s *WardenServer) handleLimitCPU(w http.ResponseWriter, r *http.Request) {
 	s.bomberman.Pause(container.Handle())
 	defer s.bomberman.Unpause(container.Handle())
 
-	requestedLimits := warden.CPULimits{
+	requestedLimits := api.CPULimits{
 		LimitInShares: limitInShares,
 	}
 
@@ -783,7 +783,7 @@ func (s *WardenServer) handleRun(w http.ResponseWriter, r *http.Request) {
 	s.bomberman.Pause(container.Handle())
 	defer s.bomberman.Unpause(container.Handle())
 
-	processSpec := warden.ProcessSpec{
+	processSpec := api.ProcessSpec{
 		Path:       path,
 		Args:       args,
 		Dir:        dir,
@@ -805,7 +805,7 @@ func (s *WardenServer) handleRun(w http.ResponseWriter, r *http.Request) {
 
 	stdinR, stdinW := io.Pipe()
 
-	processIO := warden.ProcessIO{
+	processIO := api.ProcessIO{
 		Stdin:  stdinR,
 		Stdout: &chanWriter{stdout},
 		Stderr: &chanWriter{stderr},
@@ -872,7 +872,7 @@ func (s *WardenServer) handleAttach(w http.ResponseWriter, r *http.Request) {
 
 	stdinR, stdinW := io.Pipe()
 
-	processIO := warden.ProcessIO{
+	processIO := api.ProcessIO{
 		Stdin:  stdinR,
 		Stdout: &chanWriter{stdout},
 		Stderr: &chanWriter{stderr},
@@ -1020,8 +1020,8 @@ func (s *WardenServer) handleInfo(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func resourceLimits(limits *protocol.ResourceLimits) warden.ResourceLimits {
-	return warden.ResourceLimits{
+func resourceLimits(limits *protocol.ResourceLimits) api.ResourceLimits {
+	return api.ResourceLimits{
 		As:         limits.As,
 		Core:       limits.Core,
 		Cpu:        limits.Cpu,
@@ -1078,7 +1078,7 @@ func convertEnv(env []*protocol.EnvironmentVariable) []string {
 	return converted
 }
 
-func (s *WardenServer) streamInput(decoder *json.Decoder, in *io.PipeWriter, process warden.Process) {
+func (s *WardenServer) streamInput(decoder *json.Decoder, in *io.PipeWriter, process api.Process) {
 	for {
 		var payload protocol.ProcessPayload
 		err := decoder.Decode(&payload)
@@ -1110,7 +1110,7 @@ func (s *WardenServer) streamInput(decoder *json.Decoder, in *io.PipeWriter, pro
 	}
 }
 
-func (s *WardenServer) streamProcess(logger lager.Logger, conn net.Conn, process warden.Process, stdout <-chan []byte, stderr <-chan []byte, stdinPipe *io.PipeWriter) {
+func (s *WardenServer) streamProcess(logger lager.Logger, conn net.Conn, process api.Process, stdout <-chan []byte, stderr <-chan []byte, stdinPipe *io.PipeWriter) {
 	statusCh := make(chan int, 1)
 	errCh := make(chan error, 1)
 
@@ -1183,7 +1183,7 @@ func (s *WardenServer) streamProcess(logger lager.Logger, conn net.Conn, process
 	}
 }
 
-func flushProcess(conn net.Conn, process warden.Process, stdout <-chan []byte, stderr <-chan []byte) {
+func flushProcess(conn net.Conn, process api.Process, stdout <-chan []byte, stderr <-chan []byte) {
 	stdoutSource := protocol.ProcessPayload_stdout
 	stderrSource := protocol.ProcessPayload_stderr
 
@@ -1209,14 +1209,14 @@ func flushProcess(conn net.Conn, process warden.Process, stdout <-chan []byte, s
 	}
 }
 
-func ttySpecFrom(tty *protocol.TTY) *warden.TTYSpec {
-	var ttySpec *warden.TTYSpec
+func ttySpecFrom(tty *protocol.TTY) *api.TTYSpec {
+	var ttySpec *api.TTYSpec
 	if tty != nil {
-		ttySpec = &warden.TTYSpec{}
+		ttySpec = &api.TTYSpec{}
 
 		windowSize := tty.GetWindowSize()
 		if windowSize != nil {
-			ttySpec.WindowSize = &warden.WindowSize{
+			ttySpec.WindowSize = &api.WindowSize{
 				Columns: int(windowSize.GetColumns()),
 				Rows:    int(windowSize.GetRows()),
 			}

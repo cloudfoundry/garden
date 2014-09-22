@@ -9,9 +9,9 @@ import (
 	"time"
 
 	"code.google.com/p/gogoprotobuf/proto"
+	"github.com/cloudfoundry-incubator/garden/api"
 	"github.com/cloudfoundry-incubator/garden/routes"
 	"github.com/cloudfoundry-incubator/garden/server/bomberman"
-	"github.com/cloudfoundry-incubator/garden/warden"
 	"github.com/pivotal-golang/lager"
 	"github.com/tedsuo/rata"
 )
@@ -24,7 +24,7 @@ type WardenServer struct {
 	listenAddr    string
 
 	containerGraceTime time.Duration
-	backend            warden.Backend
+	backend            api.Backend
 
 	listener net.Listener
 	handling *sync.WaitGroup
@@ -52,7 +52,7 @@ func (e UnhandledRequestError) Error() string {
 func New(
 	listenNetwork, listenAddr string,
 	containerGraceTime time.Duration,
-	backend warden.Backend,
+	backend api.Backend,
 	logger lager.Logger,
 ) *WardenServer {
 	s := &WardenServer{
@@ -229,7 +229,7 @@ func (s *WardenServer) removeExistingSocket() error {
 	return nil
 }
 
-func (s *WardenServer) reapContainer(container warden.Container) {
+func (s *WardenServer) reapContainer(container api.Container) {
 	s.logger.Info("reaping", lager.Data{
 		"handle":     container.Handle(),
 		"grace-time": s.backend.GraceTime(container).String(),

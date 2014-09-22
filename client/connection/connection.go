@@ -16,10 +16,10 @@ import (
 	"time"
 
 	"code.google.com/p/gogoprotobuf/proto"
+	"github.com/cloudfoundry-incubator/garden/api"
 	protocol "github.com/cloudfoundry-incubator/garden/protocol"
 	"github.com/cloudfoundry-incubator/garden/routes"
 	"github.com/cloudfoundry-incubator/garden/transport"
-	"github.com/cloudfoundry-incubator/garden/warden"
 	"github.com/tedsuo/rata"
 )
 
@@ -29,31 +29,31 @@ var ErrInvalidMessage = errors.New("invalid message payload")
 type Connection interface {
 	Ping() error
 
-	Capacity() (warden.Capacity, error)
+	Capacity() (api.Capacity, error)
 
-	Create(spec warden.ContainerSpec) (string, error)
-	List(properties warden.Properties) ([]string, error)
+	Create(spec api.ContainerSpec) (string, error)
+	List(properties api.Properties) ([]string, error)
 	Destroy(handle string) error
 
 	Stop(handle string, kill bool) error
 
-	Info(handle string) (warden.ContainerInfo, error)
+	Info(handle string) (api.ContainerInfo, error)
 
 	StreamIn(handle string, dstPath string, reader io.Reader) error
 	StreamOut(handle string, srcPath string) (io.ReadCloser, error)
 
-	LimitBandwidth(handle string, limits warden.BandwidthLimits) (warden.BandwidthLimits, error)
-	LimitCPU(handle string, limits warden.CPULimits) (warden.CPULimits, error)
-	LimitDisk(handle string, limits warden.DiskLimits) (warden.DiskLimits, error)
-	LimitMemory(handle string, limit warden.MemoryLimits) (warden.MemoryLimits, error)
+	LimitBandwidth(handle string, limits api.BandwidthLimits) (api.BandwidthLimits, error)
+	LimitCPU(handle string, limits api.CPULimits) (api.CPULimits, error)
+	LimitDisk(handle string, limits api.DiskLimits) (api.DiskLimits, error)
+	LimitMemory(handle string, limit api.MemoryLimits) (api.MemoryLimits, error)
 
-	CurrentBandwidthLimits(handle string) (warden.BandwidthLimits, error)
-	CurrentCPULimits(handle string) (warden.CPULimits, error)
-	CurrentDiskLimits(handle string) (warden.DiskLimits, error)
-	CurrentMemoryLimits(handle string) (warden.MemoryLimits, error)
+	CurrentBandwidthLimits(handle string) (api.BandwidthLimits, error)
+	CurrentCPULimits(handle string) (api.CPULimits, error)
+	CurrentDiskLimits(handle string) (api.DiskLimits, error)
+	CurrentMemoryLimits(handle string) (api.MemoryLimits, error)
 
-	Run(handle string, spec warden.ProcessSpec, io warden.ProcessIO) (warden.Process, error)
-	Attach(handle string, processID uint32, io warden.ProcessIO) (warden.Process, error)
+	Run(handle string, spec api.ProcessSpec, io api.ProcessIO) (api.Process, error)
+	Attach(handle string, processID uint32, io api.ProcessIO) (api.Process, error)
 
 	NetIn(handle string, hostPort, containerPort uint32) (uint32, uint32, error)
 	NetOut(handle string, network string, port uint32) error
@@ -84,7 +84,7 @@ func New(network, address string) Connection {
 	}
 
 	return &connection{
-		req: rata.NewRequestGenerator("http://warden", routes.Routes),
+		req: rata.NewRequestGenerator("http://api", routes.Routes),
 
 		dialer: dialer,
 
@@ -106,22 +106,22 @@ func (c *connection) Ping() error {
 	return c.do(routes.Ping, nil, &protocol.PingResponse{}, nil, nil)
 }
 
-func (c *connection) Capacity() (warden.Capacity, error) {
+func (c *connection) Capacity() (api.Capacity, error) {
 	capacity := &protocol.CapacityResponse{}
 
 	err := c.do(routes.Capacity, nil, capacity, nil, nil)
 	if err != nil {
-		return warden.Capacity{}, err
+		return api.Capacity{}, err
 	}
 
-	return warden.Capacity{
+	return api.Capacity{
 		MemoryInBytes: capacity.GetMemoryInBytes(),
 		DiskInBytes:   capacity.GetDiskInBytes(),
 		MaxContainers: capacity.GetMaxContainers(),
 	}, nil
 }
 
-func (c *connection) Create(spec warden.ContainerSpec) (string, error) {
+func (c *connection) Create(spec api.ContainerSpec) (string, error) {
 	req := &protocol.CreateRequest{}
 
 	if spec.Handle != "" {
@@ -149,16 +149,16 @@ func (c *connection) Create(spec warden.ContainerSpec) (string, error) {
 		var origin protocol.CreateRequest_BindMount_Origin
 
 		switch bm.Mode {
-		case warden.BindMountModeRO:
+		case api.BindMountModeRO:
 			mode = protocol.CreateRequest_BindMount_RO
-		case warden.BindMountModeRW:
+		case api.BindMountModeRW:
 			mode = protocol.CreateRequest_BindMount_RW
 		}
 
 		switch bm.Origin {
-		case warden.BindMountOriginHost:
+		case api.BindMountOriginHost:
 			origin = protocol.CreateRequest_BindMount_Host
-		case warden.BindMountOriginContainer:
+		case api.BindMountOriginContainer:
 			origin = protocol.CreateRequest_BindMount_Container
 		}
 
@@ -216,7 +216,7 @@ func (c *connection) Destroy(handle string) error {
 	)
 }
 
-func (c *connection) Run(handle string, spec warden.ProcessSpec, processIO warden.ProcessIO) (warden.Process, error) {
+func (c *connection) Run(handle string, spec api.ProcessSpec, processIO api.ProcessIO) (api.Process, error) {
 	reqBody := new(bytes.Buffer)
 
 	var dir *string
@@ -294,7 +294,7 @@ func (c *connection) Run(handle string, spec warden.ProcessSpec, processIO warde
 	return p, nil
 }
 
-func (c *connection) Attach(handle string, processID uint32, processIO warden.ProcessIO) (warden.Process, error) {
+func (c *connection) Attach(handle string, processID uint32, processIO api.ProcessIO) (api.Process, error) {
 	reqBody := new(bytes.Buffer)
 
 	err := transport.WriteMessage(reqBody, &protocol.AttachRequest{
@@ -369,7 +369,7 @@ func (c *connection) NetOut(handle string, network string, port uint32) error {
 	)
 }
 
-func (c *connection) LimitBandwidth(handle string, limits warden.BandwidthLimits) (warden.BandwidthLimits, error) {
+func (c *connection) LimitBandwidth(handle string, limits api.BandwidthLimits) (api.BandwidthLimits, error) {
 	res := &protocol.LimitBandwidthResponse{}
 
 	err := c.do(
@@ -387,16 +387,16 @@ func (c *connection) LimitBandwidth(handle string, limits warden.BandwidthLimits
 	)
 
 	if err != nil {
-		return warden.BandwidthLimits{}, err
+		return api.BandwidthLimits{}, err
 	}
 
-	return warden.BandwidthLimits{
+	return api.BandwidthLimits{
 		RateInBytesPerSecond:      res.GetRate(),
 		BurstRateInBytesPerSecond: res.GetBurst(),
 	}, nil
 }
 
-func (c *connection) CurrentBandwidthLimits(handle string) (warden.BandwidthLimits, error) {
+func (c *connection) CurrentBandwidthLimits(handle string) (api.BandwidthLimits, error) {
 	res := &protocol.LimitBandwidthResponse{}
 
 	err := c.do(
@@ -410,16 +410,16 @@ func (c *connection) CurrentBandwidthLimits(handle string) (warden.BandwidthLimi
 	)
 
 	if err != nil {
-		return warden.BandwidthLimits{}, err
+		return api.BandwidthLimits{}, err
 	}
 
-	return warden.BandwidthLimits{
+	return api.BandwidthLimits{
 		RateInBytesPerSecond:      res.GetRate(),
 		BurstRateInBytesPerSecond: res.GetBurst(),
 	}, nil
 }
 
-func (c *connection) LimitCPU(handle string, limits warden.CPULimits) (warden.CPULimits, error) {
+func (c *connection) LimitCPU(handle string, limits api.CPULimits) (api.CPULimits, error) {
 	res := &protocol.LimitCpuResponse{}
 
 	err := c.do(
@@ -436,15 +436,15 @@ func (c *connection) LimitCPU(handle string, limits warden.CPULimits) (warden.CP
 	)
 
 	if err != nil {
-		return warden.CPULimits{}, err
+		return api.CPULimits{}, err
 	}
 
-	return warden.CPULimits{
+	return api.CPULimits{
 		LimitInShares: res.GetLimitInShares(),
 	}, nil
 }
 
-func (c *connection) CurrentCPULimits(handle string) (warden.CPULimits, error) {
+func (c *connection) CurrentCPULimits(handle string) (api.CPULimits, error) {
 	res := &protocol.LimitCpuResponse{}
 
 	err := c.do(
@@ -458,15 +458,15 @@ func (c *connection) CurrentCPULimits(handle string) (warden.CPULimits, error) {
 	)
 
 	if err != nil {
-		return warden.CPULimits{}, err
+		return api.CPULimits{}, err
 	}
 
-	return warden.CPULimits{
+	return api.CPULimits{
 		LimitInShares: res.GetLimitInShares(),
 	}, nil
 }
 
-func (c *connection) LimitDisk(handle string, limits warden.DiskLimits) (warden.DiskLimits, error) {
+func (c *connection) LimitDisk(handle string, limits api.DiskLimits) (api.DiskLimits, error) {
 	res := &protocol.LimitDiskResponse{}
 
 	err := c.do(
@@ -491,10 +491,10 @@ func (c *connection) LimitDisk(handle string, limits warden.DiskLimits) (warden.
 	)
 
 	if err != nil {
-		return warden.DiskLimits{}, err
+		return api.DiskLimits{}, err
 	}
 
-	return warden.DiskLimits{
+	return api.DiskLimits{
 		BlockSoft: res.GetBlockSoft(),
 		BlockHard: res.GetBlockHard(),
 
@@ -506,7 +506,7 @@ func (c *connection) LimitDisk(handle string, limits warden.DiskLimits) (warden.
 	}, nil
 }
 
-func (c *connection) CurrentDiskLimits(handle string) (warden.DiskLimits, error) {
+func (c *connection) CurrentDiskLimits(handle string) (api.DiskLimits, error) {
 	res := &protocol.LimitDiskResponse{}
 
 	err := c.do(
@@ -520,10 +520,10 @@ func (c *connection) CurrentDiskLimits(handle string) (warden.DiskLimits, error)
 	)
 
 	if err != nil {
-		return warden.DiskLimits{}, err
+		return api.DiskLimits{}, err
 	}
 
-	return warden.DiskLimits{
+	return api.DiskLimits{
 		BlockSoft: res.GetBlockSoft(),
 		BlockHard: res.GetBlockHard(),
 
@@ -535,7 +535,7 @@ func (c *connection) CurrentDiskLimits(handle string) (warden.DiskLimits, error)
 	}, nil
 }
 
-func (c *connection) LimitMemory(handle string, limits warden.MemoryLimits) (warden.MemoryLimits, error) {
+func (c *connection) LimitMemory(handle string, limits api.MemoryLimits) (api.MemoryLimits, error) {
 	res := &protocol.LimitMemoryResponse{}
 
 	err := c.do(
@@ -552,15 +552,15 @@ func (c *connection) LimitMemory(handle string, limits warden.MemoryLimits) (war
 	)
 
 	if err != nil {
-		return warden.MemoryLimits{}, err
+		return api.MemoryLimits{}, err
 	}
 
-	return warden.MemoryLimits{
+	return api.MemoryLimits{
 		LimitInBytes: res.GetLimitInBytes(),
 	}, nil
 }
 
-func (c *connection) CurrentMemoryLimits(handle string) (warden.MemoryLimits, error) {
+func (c *connection) CurrentMemoryLimits(handle string) (api.MemoryLimits, error) {
 	res := &protocol.LimitMemoryResponse{}
 
 	err := c.do(
@@ -574,10 +574,10 @@ func (c *connection) CurrentMemoryLimits(handle string) (warden.MemoryLimits, er
 	)
 
 	if err != nil {
-		return warden.MemoryLimits{}, err
+		return api.MemoryLimits{}, err
 	}
 
-	return warden.MemoryLimits{
+	return api.MemoryLimits{
 		LimitInBytes: res.GetLimitInBytes(),
 	}, nil
 }
@@ -615,7 +615,7 @@ func (c *connection) StreamOut(handle string, srcPath string) (io.ReadCloser, er
 	)
 }
 
-func (c *connection) List(filterProperties warden.Properties) ([]string, error) {
+func (c *connection) List(filterProperties api.Properties) ([]string, error) {
 	values := url.Values{}
 	for name, val := range filterProperties {
 		values[name] = []string{val}
@@ -637,12 +637,12 @@ func (c *connection) List(filterProperties warden.Properties) ([]string, error) 
 	return res.GetHandles(), nil
 }
 
-func (c *connection) Info(handle string) (warden.ContainerInfo, error) {
+func (c *connection) Info(handle string) (api.ContainerInfo, error) {
 	res := &protocol.InfoResponse{}
 
 	err := c.do(routes.Info, nil, res, rata.Params{"handle": handle}, nil)
 	if err != nil {
-		return warden.ContainerInfo{}, err
+		return api.ContainerInfo{}, err
 	}
 
 	processIDs := []uint32{}
@@ -650,14 +650,14 @@ func (c *connection) Info(handle string) (warden.ContainerInfo, error) {
 		processIDs = append(processIDs, uint32(pid))
 	}
 
-	properties := warden.Properties{}
+	properties := api.Properties{}
 	for _, prop := range res.GetProperties() {
 		properties[prop.GetKey()] = prop.GetValue()
 	}
 
-	mappedPorts := []warden.PortMapping{}
+	mappedPorts := []api.PortMapping{}
 	for _, mapping := range res.GetMappedPorts() {
-		mappedPorts = append(mappedPorts, warden.PortMapping{
+		mappedPorts = append(mappedPorts, api.PortMapping{
 			HostPort:      mapping.GetHostPort(),
 			ContainerPort: mapping.GetContainerPort(),
 		})
@@ -668,7 +668,7 @@ func (c *connection) Info(handle string) (warden.ContainerInfo, error) {
 	diskStat := res.GetDiskStat()
 	memoryStat := res.GetMemoryStat()
 
-	return warden.ContainerInfo{
+	return api.ContainerInfo{
 		State:  res.GetState(),
 		Events: res.GetEvents(),
 
@@ -681,25 +681,25 @@ func (c *connection) Info(handle string) (warden.ContainerInfo, error) {
 
 		Properties: properties,
 
-		BandwidthStat: warden.ContainerBandwidthStat{
+		BandwidthStat: api.ContainerBandwidthStat{
 			InRate:   bandwidthStat.GetInRate(),
 			InBurst:  bandwidthStat.GetInBurst(),
 			OutRate:  bandwidthStat.GetOutRate(),
 			OutBurst: bandwidthStat.GetOutBurst(),
 		},
 
-		CPUStat: warden.ContainerCPUStat{
+		CPUStat: api.ContainerCPUStat{
 			Usage:  cpuStat.GetUsage(),
 			User:   cpuStat.GetUser(),
 			System: cpuStat.GetSystem(),
 		},
 
-		DiskStat: warden.ContainerDiskStat{
+		DiskStat: api.ContainerDiskStat{
 			BytesUsed:  diskStat.GetBytesUsed(),
 			InodesUsed: diskStat.GetInodesUsed(),
 		},
 
-		MemoryStat: warden.ContainerMemoryStat{
+		MemoryStat: api.ContainerMemoryStat{
 			Cache:                   memoryStat.GetCache(),
 			Rss:                     memoryStat.GetRss(),
 			MappedFile:              memoryStat.GetMappedFile(),
@@ -851,7 +851,7 @@ func (c *connection) doHijack(
 		request.URL.RawQuery = query.Encode()
 	}
 
-	conn, err := c.dialer("tcp", "warden") // net/addr don't matter here
+	conn, err := c.dialer("tcp", "api") // net/addr don't matter here
 	if err != nil {
 		return nil, nil, err
 	}

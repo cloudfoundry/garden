@@ -15,16 +15,16 @@ import (
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/ghttp"
 
+	"github.com/cloudfoundry-incubator/garden/api"
 	. "github.com/cloudfoundry-incubator/garden/client/connection"
 	protocol "github.com/cloudfoundry-incubator/garden/protocol"
 	"github.com/cloudfoundry-incubator/garden/transport"
-	"github.com/cloudfoundry-incubator/garden/warden"
 )
 
 var _ = Describe("Connection", func() {
 	var (
 		connection     Connection
-		resourceLimits warden.ResourceLimits
+		resourceLimits api.ResourceLimits
 		server         *ghttp.Server
 	)
 
@@ -37,7 +37,7 @@ var _ = Describe("Connection", func() {
 	})
 
 	BeforeEach(func() {
-		rlimits := &warden.ResourceLimits{
+		rlimits := &api.ResourceLimits{
 			As:         proto.Uint64(1),
 			Core:       proto.Uint64(2),
 			Cpu:        proto.Uint64(4),
@@ -55,7 +55,7 @@ var _ = Describe("Connection", func() {
 			Stack:      proto.Uint64(16),
 		}
 
-		resourceLimits = warden.ResourceLimits{
+		resourceLimits = api.ResourceLimits{
 			As:         rlimits.As,
 			Core:       rlimits.Core,
 			Cpu:        rlimits.Cpu,
@@ -194,23 +194,23 @@ var _ = Describe("Connection", func() {
 		})
 
 		It("should create a container", func() {
-			handle, err := connection.Create(warden.ContainerSpec{
+			handle, err := connection.Create(api.ContainerSpec{
 				Handle:     "some-handle",
 				GraceTime:  10 * time.Second,
 				RootFSPath: "some-rootfs-path",
 				Network:    "some-network",
-				BindMounts: []warden.BindMount{
+				BindMounts: []api.BindMount{
 					{
 						SrcPath: "/src-a",
 						DstPath: "/dst-a",
-						Mode:    warden.BindMountModeRO,
-						Origin:  warden.BindMountOriginHost,
+						Mode:    api.BindMountModeRO,
+						Origin:  api.BindMountOriginHost,
 					},
 					{
 						SrcPath: "/src-b",
 						DstPath: "/dst-b",
-						Mode:    warden.BindMountModeRW,
-						Origin:  warden.BindMountOriginContainer,
+						Mode:    api.BindMountModeRW,
+						Origin:  api.BindMountOriginContainer,
 					},
 				},
 				Properties: map[string]string{
@@ -274,7 +274,7 @@ var _ = Describe("Connection", func() {
 			})
 
 			It("should limit memory", func() {
-				newLimits, err := connection.LimitMemory("foo", warden.MemoryLimits{
+				newLimits, err := connection.LimitMemory("foo", api.MemoryLimits{
 					LimitInBytes: 42,
 				})
 
@@ -321,7 +321,7 @@ var _ = Describe("Connection", func() {
 			})
 
 			It("should limit CPU", func() {
-				newLimits, err := connection.LimitCPU("foo", warden.CPULimits{
+				newLimits, err := connection.LimitCPU("foo", api.CPULimits{
 					LimitInShares: 42,
 				})
 
@@ -371,7 +371,7 @@ var _ = Describe("Connection", func() {
 			})
 
 			It("should limit Bandwidth", func() {
-				newLimits, err := connection.LimitBandwidth("foo", warden.BandwidthLimits{
+				newLimits, err := connection.LimitBandwidth("foo", api.BandwidthLimits{
 					RateInBytesPerSecond:      42,
 					BurstRateInBytesPerSecond: 43,
 				})
@@ -436,7 +436,7 @@ var _ = Describe("Connection", func() {
 			})
 
 			It("should limit disk", func() {
-				newLimits, err := connection.LimitDisk("foo", warden.DiskLimits{
+				newLimits, err := connection.LimitDisk("foo", api.DiskLimits{
 					BlockSoft: 42,
 					BlockHard: 42,
 
@@ -448,7 +448,7 @@ var _ = Describe("Connection", func() {
 				})
 
 				Ω(err).ShouldNot(HaveOccurred())
-				Ω(newLimits).Should(Equal(warden.DiskLimits{
+				Ω(newLimits).Should(Equal(api.DiskLimits{
 					BlockSoft: 3,
 					BlockHard: 4,
 					InodeSoft: 7,
@@ -480,7 +480,7 @@ var _ = Describe("Connection", func() {
 				limits, err := connection.CurrentDiskLimits("foo")
 				Ω(err).ShouldNot(HaveOccurred())
 
-				Ω(limits).Should(Equal(warden.DiskLimits{
+				Ω(limits).Should(Equal(api.DiskLimits{
 					BlockSoft: 3,
 					BlockHard: 4,
 					InodeSoft: 7,
@@ -646,11 +646,11 @@ var _ = Describe("Connection", func() {
 			Ω(info.ContainerPath).Should(Equal("container-path"))
 			Ω(info.ProcessIDs).Should(Equal([]uint32{1, 2}))
 
-			Ω(info.Properties).Should(Equal(warden.Properties{
+			Ω(info.Properties).Should(Equal(api.Properties{
 				"prop-key": "prop-value",
 			}))
 
-			Ω(info.MemoryStat).Should(Equal(warden.ContainerMemoryStat{
+			Ω(info.MemoryStat).Should(Equal(api.ContainerMemoryStat{
 				Cache:                   1,
 				Rss:                     2,
 				MappedFile:              3,
@@ -681,25 +681,25 @@ var _ = Describe("Connection", func() {
 				TotalUnevictable:        28,
 			}))
 
-			Ω(info.CPUStat).Should(Equal(warden.ContainerCPUStat{
+			Ω(info.CPUStat).Should(Equal(api.ContainerCPUStat{
 				Usage:  1,
 				User:   2,
 				System: 3,
 			}))
 
-			Ω(info.DiskStat).Should(Equal(warden.ContainerDiskStat{
+			Ω(info.DiskStat).Should(Equal(api.ContainerDiskStat{
 				BytesUsed:  1,
 				InodesUsed: 2,
 			}))
 
-			Ω(info.BandwidthStat).Should(Equal(warden.ContainerBandwidthStat{
+			Ω(info.BandwidthStat).Should(Equal(api.ContainerBandwidthStat{
 				InRate:   1,
 				InBurst:  2,
 				OutRate:  3,
 				OutBurst: 4,
 			}))
 
-			Ω(info.MappedPorts).Should(Equal([]warden.PortMapping{
+			Ω(info.MappedPorts).Should(Equal([]api.PortMapping{
 				{HostPort: 1234, ContainerPort: 5678},
 				{HostPort: 1235, ContainerPort: 5679},
 			}))
@@ -722,7 +722,7 @@ var _ = Describe("Connection", func() {
 				)
 			})
 
-			It("tells warden to stream, and then streams the content as a series of chunks", func() {
+			It("tells api to stream, and then streams the content as a series of chunks", func() {
 				buffer := bytes.NewBufferString("chunk-1chunk-2")
 
 				err := connection.StreamIn("foo-handle", "/bar", buffer)
@@ -786,7 +786,7 @@ var _ = Describe("Connection", func() {
 				)
 			})
 
-			It("asks warden for the given file, then reads its content", func() {
+			It("asks api for the given file, then reads its content", func() {
 				reader, err := connection.StreamOut("foo-handle", "/bar")
 				Ω(err).ShouldNot(HaveOccurred())
 
@@ -810,7 +810,7 @@ var _ = Describe("Connection", func() {
 				)
 			})
 
-			It("asks warden for the given file, then reads its content", func() {
+			It("asks api for the given file, then reads its content", func() {
 				reader, err := connection.StreamOut("foo-handle", "/bar")
 				Ω(err).ShouldNot(HaveOccurred())
 
@@ -897,13 +897,13 @@ var _ = Describe("Connection", func() {
 				stdout := gbytes.NewBuffer()
 				stderr := gbytes.NewBuffer()
 
-				process, err := connection.Run("foo-handle", warden.ProcessSpec{
+				process, err := connection.Run("foo-handle", api.ProcessSpec{
 					Path:       "lol",
 					Args:       []string{"arg1", "arg2"},
 					Dir:        "/some/dir",
 					Privileged: true,
 					Limits:     resourceLimits,
-				}, warden.ProcessIO{
+				}, api.ProcessIO{
 					Stdin:  bytes.NewBufferString("stdin data"),
 					Stdout: stdout,
 					Stderr: stderr,
@@ -973,16 +973,16 @@ var _ = Describe("Connection", func() {
 			})
 
 			It("sends the appropriate protocol message", func() {
-				process, err := connection.Run("foo-handle", warden.ProcessSpec{
+				process, err := connection.Run("foo-handle", api.ProcessSpec{
 					Path: "lol",
 					Args: []string{"arg1", "arg2"},
-					TTY: &warden.TTYSpec{
-						WindowSize: &warden.WindowSize{
+					TTY: &api.TTYSpec{
+						WindowSize: &api.WindowSize{
 							Columns: 100,
 							Rows:    200,
 						},
 					},
-				}, warden.ProcessIO{
+				}, api.ProcessIO{
 					Stdin:  bytes.NewBufferString("stdin data"),
 					Stdout: gbytes.NewBuffer(),
 					Stderr: gbytes.NewBuffer(),
@@ -991,8 +991,8 @@ var _ = Describe("Connection", func() {
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(process.ID()).Should(Equal(uint32(42)))
 
-				err = process.SetTTY(warden.TTYSpec{
-					WindowSize: &warden.WindowSize{
+				err = process.SetTTY(api.TTYSpec{
+					WindowSize: &api.WindowSize{
 						Columns: 80,
 						Rows:    24,
 					},
@@ -1030,11 +1030,11 @@ var _ = Describe("Connection", func() {
 
 			Describe("waiting on the process", func() {
 				It("returns an error", func() {
-					process, err := connection.Run("foo-handle", warden.ProcessSpec{
+					process, err := connection.Run("foo-handle", api.ProcessSpec{
 						Path: "lol",
 						Args: []string{"arg1", "arg2"},
 						Dir:  "/some/dir",
-					}, warden.ProcessIO{})
+					}, api.ProcessIO{})
 
 					Ω(err).ShouldNot(HaveOccurred())
 
@@ -1060,11 +1060,11 @@ var _ = Describe("Connection", func() {
 
 			Describe("waiting on the process", func() {
 				It("returns an error", func() {
-					process, err := connection.Run("foo-handle", warden.ProcessSpec{
+					process, err := connection.Run("foo-handle", api.ProcessSpec{
 						Path: "lol",
 						Args: []string{"arg1", "arg2"},
 						Dir:  "/some/dir",
-					}, warden.ProcessIO{})
+					}, api.ProcessIO{})
 
 					Ω(err).ShouldNot(HaveOccurred())
 
@@ -1124,7 +1124,7 @@ var _ = Describe("Connection", func() {
 				stdout := gbytes.NewBuffer()
 				stderr := gbytes.NewBuffer()
 
-				process, err := connection.Attach("foo-handle", 42, warden.ProcessIO{
+				process, err := connection.Attach("foo-handle", 42, api.ProcessIO{
 					Stdin:  bytes.NewBufferString("stdin data"),
 					Stdout: stdout,
 					Stderr: stderr,
@@ -1180,7 +1180,7 @@ var _ = Describe("Connection", func() {
 
 				stdinR, stdinW := io.Pipe()
 
-				_, err := connection.Attach("foo-handle", 42, warden.ProcessIO{
+				_, err := connection.Attach("foo-handle", 42, api.ProcessIO{
 					Stdin: stdinR,
 				})
 				Ω(err).ShouldNot(HaveOccurred())
@@ -1207,7 +1207,7 @@ var _ = Describe("Connection", func() {
 
 			Describe("waiting on the process", func() {
 				It("returns an error", func() {
-					process, err := connection.Attach("foo-handle", 42, warden.ProcessIO{})
+					process, err := connection.Attach("foo-handle", 42, api.ProcessIO{})
 
 					Ω(err).ShouldNot(HaveOccurred())
 					Ω(process.ID()).Should(Equal(uint32(42)))
@@ -1242,7 +1242,7 @@ var _ = Describe("Connection", func() {
 
 			Describe("waiting on the process", func() {
 				It("returns an error", func() {
-					process, err := connection.Attach("foo-handle", 42, warden.ProcessIO{})
+					process, err := connection.Attach("foo-handle", 42, api.ProcessIO{})
 
 					Ω(err).ShouldNot(HaveOccurred())
 					Ω(process.ID()).Should(Equal(uint32(42)))
