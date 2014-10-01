@@ -758,7 +758,7 @@ var _ = Describe("Connection", func() {
 						ghttp.VerifyRequest("PUT", "/containers/foo-handle/files", "destination=%2Fbar"),
 						ghttp.RespondWith(http.StatusInternalServerError, "no."),
 						func(w http.ResponseWriter, r *http.Request) {
-							server.HTTPTestServer.CloseClientConnections()
+							server.CloseClientConnections()
 						},
 					),
 				)
