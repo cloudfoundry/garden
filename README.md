@@ -23,6 +23,12 @@ Warden in Go, because why not.
 * [Tracker](https://www.pivotaltracker.com/s/projects/962374)
 * [Warden](https://github.com/cloudfoundry/warden)
 
+# Backends
+
+Garden provides a platform-neutral API for containerization. Backends implement support for various specific platforms. So far, the list of backends is as follows:
+
+ - [Garden Linux](https://github.com/cloudfoundry-incubator/garden-linux/) - Linux Backend
+
 # REST API
 
 Garden provides a Google protocol buffer interface which is also surfaced as a REST API.
