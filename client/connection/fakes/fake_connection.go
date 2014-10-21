@@ -2,25 +2,24 @@
 package fakes
 
 import (
-	. "github.com/cloudfoundry-incubator/garden/client/connection"
+	"io"
+	"sync"
 
 	"github.com/cloudfoundry-incubator/garden/api"
-	"io"
-
-	"sync"
+	"github.com/cloudfoundry-incubator/garden/client/connection"
 )
 
 type FakeConnection struct {
 	PingStub        func() error
 	pingMutex       sync.RWMutex
 	pingArgsForCall []struct{}
-	pingReturns     struct {
+	pingReturns struct {
 		result1 error
 	}
 	CapacityStub        func() (api.Capacity, error)
 	capacityMutex       sync.RWMutex
 	capacityArgsForCall []struct{}
-	capacityReturns     struct {
+	capacityReturns struct {
 		result1 api.Capacity
 		result2 error
 	}
@@ -208,12 +207,41 @@ type FakeConnection struct {
 	netOutReturns struct {
 		result1 error
 	}
+	GetPropertyStub        func(handle string, name string) (string, error)
+	getPropertyMutex       sync.RWMutex
+	getPropertyArgsForCall []struct {
+		handle string
+		name   string
+	}
+	getPropertyReturns struct {
+		result1 string
+		result2 error
+	}
+	SetPropertyStub        func(handle string, name string, value string) error
+	setPropertyMutex       sync.RWMutex
+	setPropertyArgsForCall []struct {
+		handle string
+		name   string
+		value  string
+	}
+	setPropertyReturns struct {
+		result1 error
+	}
+	RemovePropertyStub        func(handle string, name string) error
+	removePropertyMutex       sync.RWMutex
+	removePropertyArgsForCall []struct {
+		handle string
+		name   string
+	}
+	removePropertyReturns struct {
+		result1 error
+	}
 }
 
 func (fake *FakeConnection) Ping() error {
 	fake.pingMutex.Lock()
-	defer fake.pingMutex.Unlock()
 	fake.pingArgsForCall = append(fake.pingArgsForCall, struct{}{})
+	fake.pingMutex.Unlock()
 	if fake.PingStub != nil {
 		return fake.PingStub()
 	} else {
@@ -228,6 +256,7 @@ func (fake *FakeConnection) PingCallCount() int {
 }
 
 func (fake *FakeConnection) PingReturns(result1 error) {
+	fake.PingStub = nil
 	fake.pingReturns = struct {
 		result1 error
 	}{result1}
@@ -235,8 +264,8 @@ func (fake *FakeConnection) PingReturns(result1 error) {
 
 func (fake *FakeConnection) Capacity() (api.Capacity, error) {
 	fake.capacityMutex.Lock()
-	defer fake.capacityMutex.Unlock()
 	fake.capacityArgsForCall = append(fake.capacityArgsForCall, struct{}{})
+	fake.capacityMutex.Unlock()
 	if fake.CapacityStub != nil {
 		return fake.CapacityStub()
 	} else {
@@ -251,6 +280,7 @@ func (fake *FakeConnection) CapacityCallCount() int {
 }
 
 func (fake *FakeConnection) CapacityReturns(result1 api.Capacity, result2 error) {
+	fake.CapacityStub = nil
 	fake.capacityReturns = struct {
 		result1 api.Capacity
 		result2 error
@@ -259,10 +289,10 @@ func (fake *FakeConnection) CapacityReturns(result1 api.Capacity, result2 error)
 
 func (fake *FakeConnection) Create(spec api.ContainerSpec) (string, error) {
 	fake.createMutex.Lock()
-	defer fake.createMutex.Unlock()
 	fake.createArgsForCall = append(fake.createArgsForCall, struct {
 		spec api.ContainerSpec
 	}{spec})
+	fake.createMutex.Unlock()
 	if fake.CreateStub != nil {
 		return fake.CreateStub(spec)
 	} else {
@@ -283,6 +313,7 @@ func (fake *FakeConnection) CreateArgsForCall(i int) api.ContainerSpec {
 }
 
 func (fake *FakeConnection) CreateReturns(result1 string, result2 error) {
+	fake.CreateStub = nil
 	fake.createReturns = struct {
 		result1 string
 		result2 error
@@ -291,10 +322,10 @@ func (fake *FakeConnection) CreateReturns(result1 string, result2 error) {
 
 func (fake *FakeConnection) List(properties api.Properties) ([]string, error) {
 	fake.listMutex.Lock()
-	defer fake.listMutex.Unlock()
 	fake.listArgsForCall = append(fake.listArgsForCall, struct {
 		properties api.Properties
 	}{properties})
+	fake.listMutex.Unlock()
 	if fake.ListStub != nil {
 		return fake.ListStub(properties)
 	} else {
@@ -315,6 +346,7 @@ func (fake *FakeConnection) ListArgsForCall(i int) api.Properties {
 }
 
 func (fake *FakeConnection) ListReturns(result1 []string, result2 error) {
+	fake.ListStub = nil
 	fake.listReturns = struct {
 		result1 []string
 		result2 error
@@ -323,10 +355,10 @@ func (fake *FakeConnection) ListReturns(result1 []string, result2 error) {
 
 func (fake *FakeConnection) Destroy(handle string) error {
 	fake.destroyMutex.Lock()
-	defer fake.destroyMutex.Unlock()
 	fake.destroyArgsForCall = append(fake.destroyArgsForCall, struct {
 		handle string
 	}{handle})
+	fake.destroyMutex.Unlock()
 	if fake.DestroyStub != nil {
 		return fake.DestroyStub(handle)
 	} else {
@@ -347,6 +379,7 @@ func (fake *FakeConnection) DestroyArgsForCall(i int) string {
 }
 
 func (fake *FakeConnection) DestroyReturns(result1 error) {
+	fake.DestroyStub = nil
 	fake.destroyReturns = struct {
 		result1 error
 	}{result1}
@@ -354,11 +387,11 @@ func (fake *FakeConnection) DestroyReturns(result1 error) {
 
 func (fake *FakeConnection) Stop(handle string, kill bool) error {
 	fake.stopMutex.Lock()
-	defer fake.stopMutex.Unlock()
 	fake.stopArgsForCall = append(fake.stopArgsForCall, struct {
 		handle string
 		kill   bool
 	}{handle, kill})
+	fake.stopMutex.Unlock()
 	if fake.StopStub != nil {
 		return fake.StopStub(handle, kill)
 	} else {
@@ -379,6 +412,7 @@ func (fake *FakeConnection) StopArgsForCall(i int) (string, bool) {
 }
 
 func (fake *FakeConnection) StopReturns(result1 error) {
+	fake.StopStub = nil
 	fake.stopReturns = struct {
 		result1 error
 	}{result1}
@@ -386,10 +420,10 @@ func (fake *FakeConnection) StopReturns(result1 error) {
 
 func (fake *FakeConnection) Info(handle string) (api.ContainerInfo, error) {
 	fake.infoMutex.Lock()
-	defer fake.infoMutex.Unlock()
 	fake.infoArgsForCall = append(fake.infoArgsForCall, struct {
 		handle string
 	}{handle})
+	fake.infoMutex.Unlock()
 	if fake.InfoStub != nil {
 		return fake.InfoStub(handle)
 	} else {
@@ -410,6 +444,7 @@ func (fake *FakeConnection) InfoArgsForCall(i int) string {
 }
 
 func (fake *FakeConnection) InfoReturns(result1 api.ContainerInfo, result2 error) {
+	fake.InfoStub = nil
 	fake.infoReturns = struct {
 		result1 api.ContainerInfo
 		result2 error
@@ -418,12 +453,12 @@ func (fake *FakeConnection) InfoReturns(result1 api.ContainerInfo, result2 error
 
 func (fake *FakeConnection) StreamIn(handle string, dstPath string, reader io.Reader) error {
 	fake.streamInMutex.Lock()
-	defer fake.streamInMutex.Unlock()
 	fake.streamInArgsForCall = append(fake.streamInArgsForCall, struct {
 		handle  string
 		dstPath string
 		reader  io.Reader
 	}{handle, dstPath, reader})
+	fake.streamInMutex.Unlock()
 	if fake.StreamInStub != nil {
 		return fake.StreamInStub(handle, dstPath, reader)
 	} else {
@@ -444,6 +479,7 @@ func (fake *FakeConnection) StreamInArgsForCall(i int) (string, string, io.Reade
 }
 
 func (fake *FakeConnection) StreamInReturns(result1 error) {
+	fake.StreamInStub = nil
 	fake.streamInReturns = struct {
 		result1 error
 	}{result1}
@@ -451,11 +487,11 @@ func (fake *FakeConnection) StreamInReturns(result1 error) {
 
 func (fake *FakeConnection) StreamOut(handle string, srcPath string) (io.ReadCloser, error) {
 	fake.streamOutMutex.Lock()
-	defer fake.streamOutMutex.Unlock()
 	fake.streamOutArgsForCall = append(fake.streamOutArgsForCall, struct {
 		handle  string
 		srcPath string
 	}{handle, srcPath})
+	fake.streamOutMutex.Unlock()
 	if fake.StreamOutStub != nil {
 		return fake.StreamOutStub(handle, srcPath)
 	} else {
@@ -476,6 +512,7 @@ func (fake *FakeConnection) StreamOutArgsForCall(i int) (string, string) {
 }
 
 func (fake *FakeConnection) StreamOutReturns(result1 io.ReadCloser, result2 error) {
+	fake.StreamOutStub = nil
 	fake.streamOutReturns = struct {
 		result1 io.ReadCloser
 		result2 error
@@ -484,11 +521,11 @@ func (fake *FakeConnection) StreamOutReturns(result1 io.ReadCloser, result2 erro
 
 func (fake *FakeConnection) LimitBandwidth(handle string, limits api.BandwidthLimits) (api.BandwidthLimits, error) {
 	fake.limitBandwidthMutex.Lock()
-	defer fake.limitBandwidthMutex.Unlock()
 	fake.limitBandwidthArgsForCall = append(fake.limitBandwidthArgsForCall, struct {
 		handle string
 		limits api.BandwidthLimits
 	}{handle, limits})
+	fake.limitBandwidthMutex.Unlock()
 	if fake.LimitBandwidthStub != nil {
 		return fake.LimitBandwidthStub(handle, limits)
 	} else {
@@ -509,6 +546,7 @@ func (fake *FakeConnection) LimitBandwidthArgsForCall(i int) (string, api.Bandwi
 }
 
 func (fake *FakeConnection) LimitBandwidthReturns(result1 api.BandwidthLimits, result2 error) {
+	fake.LimitBandwidthStub = nil
 	fake.limitBandwidthReturns = struct {
 		result1 api.BandwidthLimits
 		result2 error
@@ -517,11 +555,11 @@ func (fake *FakeConnection) LimitBandwidthReturns(result1 api.BandwidthLimits, r
 
 func (fake *FakeConnection) LimitCPU(handle string, limits api.CPULimits) (api.CPULimits, error) {
 	fake.limitCPUMutex.Lock()
-	defer fake.limitCPUMutex.Unlock()
 	fake.limitCPUArgsForCall = append(fake.limitCPUArgsForCall, struct {
 		handle string
 		limits api.CPULimits
 	}{handle, limits})
+	fake.limitCPUMutex.Unlock()
 	if fake.LimitCPUStub != nil {
 		return fake.LimitCPUStub(handle, limits)
 	} else {
@@ -542,6 +580,7 @@ func (fake *FakeConnection) LimitCPUArgsForCall(i int) (string, api.CPULimits) {
 }
 
 func (fake *FakeConnection) LimitCPUReturns(result1 api.CPULimits, result2 error) {
+	fake.LimitCPUStub = nil
 	fake.limitCPUReturns = struct {
 		result1 api.CPULimits
 		result2 error
@@ -550,11 +589,11 @@ func (fake *FakeConnection) LimitCPUReturns(result1 api.CPULimits, result2 error
 
 func (fake *FakeConnection) LimitDisk(handle string, limits api.DiskLimits) (api.DiskLimits, error) {
 	fake.limitDiskMutex.Lock()
-	defer fake.limitDiskMutex.Unlock()
 	fake.limitDiskArgsForCall = append(fake.limitDiskArgsForCall, struct {
 		handle string
 		limits api.DiskLimits
 	}{handle, limits})
+	fake.limitDiskMutex.Unlock()
 	if fake.LimitDiskStub != nil {
 		return fake.LimitDiskStub(handle, limits)
 	} else {
@@ -575,6 +614,7 @@ func (fake *FakeConnection) LimitDiskArgsForCall(i int) (string, api.DiskLimits)
 }
 
 func (fake *FakeConnection) LimitDiskReturns(result1 api.DiskLimits, result2 error) {
+	fake.LimitDiskStub = nil
 	fake.limitDiskReturns = struct {
 		result1 api.DiskLimits
 		result2 error
@@ -583,11 +623,11 @@ func (fake *FakeConnection) LimitDiskReturns(result1 api.DiskLimits, result2 err
 
 func (fake *FakeConnection) LimitMemory(handle string, limit api.MemoryLimits) (api.MemoryLimits, error) {
 	fake.limitMemoryMutex.Lock()
-	defer fake.limitMemoryMutex.Unlock()
 	fake.limitMemoryArgsForCall = append(fake.limitMemoryArgsForCall, struct {
 		handle string
 		limit  api.MemoryLimits
 	}{handle, limit})
+	fake.limitMemoryMutex.Unlock()
 	if fake.LimitMemoryStub != nil {
 		return fake.LimitMemoryStub(handle, limit)
 	} else {
@@ -608,6 +648,7 @@ func (fake *FakeConnection) LimitMemoryArgsForCall(i int) (string, api.MemoryLim
 }
 
 func (fake *FakeConnection) LimitMemoryReturns(result1 api.MemoryLimits, result2 error) {
+	fake.LimitMemoryStub = nil
 	fake.limitMemoryReturns = struct {
 		result1 api.MemoryLimits
 		result2 error
@@ -616,10 +657,10 @@ func (fake *FakeConnection) LimitMemoryReturns(result1 api.MemoryLimits, result2
 
 func (fake *FakeConnection) CurrentBandwidthLimits(handle string) (api.BandwidthLimits, error) {
 	fake.currentBandwidthLimitsMutex.Lock()
-	defer fake.currentBandwidthLimitsMutex.Unlock()
 	fake.currentBandwidthLimitsArgsForCall = append(fake.currentBandwidthLimitsArgsForCall, struct {
 		handle string
 	}{handle})
+	fake.currentBandwidthLimitsMutex.Unlock()
 	if fake.CurrentBandwidthLimitsStub != nil {
 		return fake.CurrentBandwidthLimitsStub(handle)
 	} else {
@@ -640,6 +681,7 @@ func (fake *FakeConnection) CurrentBandwidthLimitsArgsForCall(i int) string {
 }
 
 func (fake *FakeConnection) CurrentBandwidthLimitsReturns(result1 api.BandwidthLimits, result2 error) {
+	fake.CurrentBandwidthLimitsStub = nil
 	fake.currentBandwidthLimitsReturns = struct {
 		result1 api.BandwidthLimits
 		result2 error
@@ -648,10 +690,10 @@ func (fake *FakeConnection) CurrentBandwidthLimitsReturns(result1 api.BandwidthL
 
 func (fake *FakeConnection) CurrentCPULimits(handle string) (api.CPULimits, error) {
 	fake.currentCPULimitsMutex.Lock()
-	defer fake.currentCPULimitsMutex.Unlock()
 	fake.currentCPULimitsArgsForCall = append(fake.currentCPULimitsArgsForCall, struct {
 		handle string
 	}{handle})
+	fake.currentCPULimitsMutex.Unlock()
 	if fake.CurrentCPULimitsStub != nil {
 		return fake.CurrentCPULimitsStub(handle)
 	} else {
@@ -672,6 +714,7 @@ func (fake *FakeConnection) CurrentCPULimitsArgsForCall(i int) string {
 }
 
 func (fake *FakeConnection) CurrentCPULimitsReturns(result1 api.CPULimits, result2 error) {
+	fake.CurrentCPULimitsStub = nil
 	fake.currentCPULimitsReturns = struct {
 		result1 api.CPULimits
 		result2 error
@@ -680,10 +723,10 @@ func (fake *FakeConnection) CurrentCPULimitsReturns(result1 api.CPULimits, resul
 
 func (fake *FakeConnection) CurrentDiskLimits(handle string) (api.DiskLimits, error) {
 	fake.currentDiskLimitsMutex.Lock()
-	defer fake.currentDiskLimitsMutex.Unlock()
 	fake.currentDiskLimitsArgsForCall = append(fake.currentDiskLimitsArgsForCall, struct {
 		handle string
 	}{handle})
+	fake.currentDiskLimitsMutex.Unlock()
 	if fake.CurrentDiskLimitsStub != nil {
 		return fake.CurrentDiskLimitsStub(handle)
 	} else {
@@ -704,6 +747,7 @@ func (fake *FakeConnection) CurrentDiskLimitsArgsForCall(i int) string {
 }
 
 func (fake *FakeConnection) CurrentDiskLimitsReturns(result1 api.DiskLimits, result2 error) {
+	fake.CurrentDiskLimitsStub = nil
 	fake.currentDiskLimitsReturns = struct {
 		result1 api.DiskLimits
 		result2 error
@@ -712,10 +756,10 @@ func (fake *FakeConnection) CurrentDiskLimitsReturns(result1 api.DiskLimits, res
 
 func (fake *FakeConnection) CurrentMemoryLimits(handle string) (api.MemoryLimits, error) {
 	fake.currentMemoryLimitsMutex.Lock()
-	defer fake.currentMemoryLimitsMutex.Unlock()
 	fake.currentMemoryLimitsArgsForCall = append(fake.currentMemoryLimitsArgsForCall, struct {
 		handle string
 	}{handle})
+	fake.currentMemoryLimitsMutex.Unlock()
 	if fake.CurrentMemoryLimitsStub != nil {
 		return fake.CurrentMemoryLimitsStub(handle)
 	} else {
@@ -736,6 +780,7 @@ func (fake *FakeConnection) CurrentMemoryLimitsArgsForCall(i int) string {
 }
 
 func (fake *FakeConnection) CurrentMemoryLimitsReturns(result1 api.MemoryLimits, result2 error) {
+	fake.CurrentMemoryLimitsStub = nil
 	fake.currentMemoryLimitsReturns = struct {
 		result1 api.MemoryLimits
 		result2 error
@@ -744,12 +789,12 @@ func (fake *FakeConnection) CurrentMemoryLimitsReturns(result1 api.MemoryLimits,
 
 func (fake *FakeConnection) Run(handle string, spec api.ProcessSpec, io api.ProcessIO) (api.Process, error) {
 	fake.runMutex.Lock()
-	defer fake.runMutex.Unlock()
 	fake.runArgsForCall = append(fake.runArgsForCall, struct {
 		handle string
 		spec   api.ProcessSpec
 		io     api.ProcessIO
 	}{handle, spec, io})
+	fake.runMutex.Unlock()
 	if fake.RunStub != nil {
 		return fake.RunStub(handle, spec, io)
 	} else {
@@ -770,6 +815,7 @@ func (fake *FakeConnection) RunArgsForCall(i int) (string, api.ProcessSpec, api.
 }
 
 func (fake *FakeConnection) RunReturns(result1 api.Process, result2 error) {
+	fake.RunStub = nil
 	fake.runReturns = struct {
 		result1 api.Process
 		result2 error
@@ -778,12 +824,12 @@ func (fake *FakeConnection) RunReturns(result1 api.Process, result2 error) {
 
 func (fake *FakeConnection) Attach(handle string, processID uint32, io api.ProcessIO) (api.Process, error) {
 	fake.attachMutex.Lock()
-	defer fake.attachMutex.Unlock()
 	fake.attachArgsForCall = append(fake.attachArgsForCall, struct {
 		handle    string
 		processID uint32
 		io        api.ProcessIO
 	}{handle, processID, io})
+	fake.attachMutex.Unlock()
 	if fake.AttachStub != nil {
 		return fake.AttachStub(handle, processID, io)
 	} else {
@@ -804,6 +850,7 @@ func (fake *FakeConnection) AttachArgsForCall(i int) (string, uint32, api.Proces
 }
 
 func (fake *FakeConnection) AttachReturns(result1 api.Process, result2 error) {
+	fake.AttachStub = nil
 	fake.attachReturns = struct {
 		result1 api.Process
 		result2 error
@@ -812,12 +859,12 @@ func (fake *FakeConnection) AttachReturns(result1 api.Process, result2 error) {
 
 func (fake *FakeConnection) NetIn(handle string, hostPort uint32, containerPort uint32) (uint32, uint32, error) {
 	fake.netInMutex.Lock()
-	defer fake.netInMutex.Unlock()
 	fake.netInArgsForCall = append(fake.netInArgsForCall, struct {
 		handle        string
 		hostPort      uint32
 		containerPort uint32
 	}{handle, hostPort, containerPort})
+	fake.netInMutex.Unlock()
 	if fake.NetInStub != nil {
 		return fake.NetInStub(handle, hostPort, containerPort)
 	} else {
@@ -838,6 +885,7 @@ func (fake *FakeConnection) NetInArgsForCall(i int) (string, uint32, uint32) {
 }
 
 func (fake *FakeConnection) NetInReturns(result1 uint32, result2 uint32, result3 error) {
+	fake.NetInStub = nil
 	fake.netInReturns = struct {
 		result1 uint32
 		result2 uint32
@@ -847,12 +895,12 @@ func (fake *FakeConnection) NetInReturns(result1 uint32, result2 uint32, result3
 
 func (fake *FakeConnection) NetOut(handle string, network string, port uint32) error {
 	fake.netOutMutex.Lock()
-	defer fake.netOutMutex.Unlock()
 	fake.netOutArgsForCall = append(fake.netOutArgsForCall, struct {
 		handle  string
 		network string
 		port    uint32
 	}{handle, network, port})
+	fake.netOutMutex.Unlock()
 	if fake.NetOutStub != nil {
 		return fake.NetOutStub(handle, network, port)
 	} else {
@@ -873,9 +921,111 @@ func (fake *FakeConnection) NetOutArgsForCall(i int) (string, string, uint32) {
 }
 
 func (fake *FakeConnection) NetOutReturns(result1 error) {
+	fake.NetOutStub = nil
 	fake.netOutReturns = struct {
 		result1 error
 	}{result1}
 }
 
-var _ Connection = new(FakeConnection)
+func (fake *FakeConnection) GetProperty(handle string, name string) (string, error) {
+	fake.getPropertyMutex.Lock()
+	fake.getPropertyArgsForCall = append(fake.getPropertyArgsForCall, struct {
+		handle string
+		name   string
+	}{handle, name})
+	fake.getPropertyMutex.Unlock()
+	if fake.GetPropertyStub != nil {
+		return fake.GetPropertyStub(handle, name)
+	} else {
+		return fake.getPropertyReturns.result1, fake.getPropertyReturns.result2
+	}
+}
+
+func (fake *FakeConnection) GetPropertyCallCount() int {
+	fake.getPropertyMutex.RLock()
+	defer fake.getPropertyMutex.RUnlock()
+	return len(fake.getPropertyArgsForCall)
+}
+
+func (fake *FakeConnection) GetPropertyArgsForCall(i int) (string, string) {
+	fake.getPropertyMutex.RLock()
+	defer fake.getPropertyMutex.RUnlock()
+	return fake.getPropertyArgsForCall[i].handle, fake.getPropertyArgsForCall[i].name
+}
+
+func (fake *FakeConnection) GetPropertyReturns(result1 string, result2 error) {
+	fake.GetPropertyStub = nil
+	fake.getPropertyReturns = struct {
+		result1 string
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *FakeConnection) SetProperty(handle string, name string, value string) error {
+	fake.setPropertyMutex.Lock()
+	fake.setPropertyArgsForCall = append(fake.setPropertyArgsForCall, struct {
+		handle string
+		name   string
+		value  string
+	}{handle, name, value})
+	fake.setPropertyMutex.Unlock()
+	if fake.SetPropertyStub != nil {
+		return fake.SetPropertyStub(handle, name, value)
+	} else {
+		return fake.setPropertyReturns.result1
+	}
+}
+
+func (fake *FakeConnection) SetPropertyCallCount() int {
+	fake.setPropertyMutex.RLock()
+	defer fake.setPropertyMutex.RUnlock()
+	return len(fake.setPropertyArgsForCall)
+}
+
+func (fake *FakeConnection) SetPropertyArgsForCall(i int) (string, string, string) {
+	fake.setPropertyMutex.RLock()
+	defer fake.setPropertyMutex.RUnlock()
+	return fake.setPropertyArgsForCall[i].handle, fake.setPropertyArgsForCall[i].name, fake.setPropertyArgsForCall[i].value
+}
+
+func (fake *FakeConnection) SetPropertyReturns(result1 error) {
+	fake.SetPropertyStub = nil
+	fake.setPropertyReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *FakeConnection) RemoveProperty(handle string, name string) error {
+	fake.removePropertyMutex.Lock()
+	fake.removePropertyArgsForCall = append(fake.removePropertyArgsForCall, struct {
+		handle string
+		name   string
+	}{handle, name})
+	fake.removePropertyMutex.Unlock()
+	if fake.RemovePropertyStub != nil {
+		return fake.RemovePropertyStub(handle, name)
+	} else {
+		return fake.removePropertyReturns.result1
+	}
+}
+
+func (fake *FakeConnection) RemovePropertyCallCount() int {
+	fake.removePropertyMutex.RLock()
+	defer fake.removePropertyMutex.RUnlock()
+	return len(fake.removePropertyArgsForCall)
+}
+
+func (fake *FakeConnection) RemovePropertyArgsForCall(i int) (string, string) {
+	fake.removePropertyMutex.RLock()
+	defer fake.removePropertyMutex.RUnlock()
+	return fake.removePropertyArgsForCall[i].handle, fake.removePropertyArgsForCall[i].name
+}
+
+func (fake *FakeConnection) RemovePropertyReturns(result1 error) {
+	fake.RemovePropertyStub = nil
+	fake.removePropertyReturns = struct {
+		result1 error
+	}{result1}
+}
+
+var _ connection.Connection = new(FakeConnection)

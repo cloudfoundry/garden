@@ -12,6 +12,7 @@ It is generated from these files:
 	destroy.proto
 	environment_variable.proto
 	error.proto
+	get_property.proto
 	info.proto
 	limit_bandwidth.proto
 	limit_cpu.proto
@@ -24,8 +25,10 @@ It is generated from these files:
 	ping.proto
 	process_payload.proto
 	property.proto
+	remove_property.proto
 	resource_limits.proto
 	run.proto
+	set_property.proto
 	stop.proto
 	stream_in.proto
 	stream_out.proto

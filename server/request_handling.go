@@ -755,6 +755,132 @@ func (s *GardenServer) handleNetOut(w http.ResponseWriter, r *http.Request) {
 	s.writeResponse(w, &protocol.NetOutResponse{})
 }
 
+func (s *GardenServer) handleGetProperty(w http.ResponseWriter, r *http.Request) {
+	handle := r.FormValue(":handle")
+
+	hLog := s.logger.Session("get-property", lager.Data{
+		"handle": handle,
+	})
+
+	var request protocol.GetPropertyRequest
+	if !s.readRequest(&request, w, r) {
+		return
+	}
+
+	key := request.GetKey()
+
+	container, err := s.backend.Lookup(handle)
+	if err != nil {
+		s.writeError(w, err, hLog)
+		return
+	}
+
+	s.bomberman.Pause(container.Handle())
+	defer s.bomberman.Unpause(container.Handle())
+
+	hLog.Debug("get-property", lager.Data{
+		"key": key,
+	})
+
+	value, err := container.GetProperty(key)
+	if err != nil {
+		s.writeError(w, err, hLog)
+		return
+	}
+
+	hLog.Info("got-property", lager.Data{
+		"key":   key,
+		"value": value,
+	})
+
+	s.writeResponse(w, &protocol.GetPropertyResponse{
+		Value: proto.String(value),
+	})
+}
+
+func (s *GardenServer) handleSetProperty(w http.ResponseWriter, r *http.Request) {
+	handle := r.FormValue(":handle")
+	key := r.FormValue(":key")
+
+	hLog := s.logger.Session("set-property", lager.Data{
+		"handle": handle,
+	})
+
+	var request protocol.SetPropertyRequest
+	if !s.readRequest(&request, w, r) {
+		return
+	}
+
+	value := request.GetValue()
+
+	container, err := s.backend.Lookup(handle)
+	if err != nil {
+		s.writeError(w, err, hLog)
+		return
+	}
+
+	s.bomberman.Pause(container.Handle())
+	defer s.bomberman.Unpause(container.Handle())
+
+	hLog.Debug("set-property", lager.Data{
+		"key":   key,
+		"value": value,
+	})
+
+	err = container.SetProperty(key, value)
+	if err != nil {
+		s.writeError(w, err, hLog)
+		return
+	}
+
+	hLog.Info("set-property-complete", lager.Data{
+		"key":   key,
+		"value": value,
+	})
+
+	s.writeResponse(w, &protocol.SetPropertyResponse{})
+}
+
+func (s *GardenServer) handleRemoveProperty(w http.ResponseWriter, r *http.Request) {
+	handle := r.FormValue(":handle")
+
+	hLog := s.logger.Session("remove-property", lager.Data{
+		"handle": handle,
+	})
+
+	var request protocol.RemovePropertyRequest
+	if !s.readRequest(&request, w, r) {
+		return
+	}
+
+	key := request.GetKey()
+
+	container, err := s.backend.Lookup(handle)
+	if err != nil {
+		s.writeError(w, err, hLog)
+		return
+	}
+
+	s.bomberman.Pause(container.Handle())
+	defer s.bomberman.Unpause(container.Handle())
+
+	hLog.Debug("remove-property", lager.Data{
+		"key": key,
+	})
+
+	err = container.RemoveProperty(key)
+	if err != nil {
+		s.writeError(w, err, hLog)
+		return
+	}
+
+	hLog.Info("removed-property", lager.Data{
+		"key": key,
+	})
+
+	s.writeResponse(w, &protocol.RemovePropertyResponse{})
+}
+
 func (s *GardenServer) handleRun(w http.ResponseWriter, r *http.Request) {
 	handle := r.FormValue(":handle")
 

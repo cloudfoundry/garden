@@ -492,25 +492,6 @@ var _ = Describe("Connection", func() {
 		})
 	})
 
-	Describe("NetOut", func() {
-		BeforeEach(func() {
-			server.AppendHandlers(
-				ghttp.CombineHandlers(
-					ghttp.VerifyRequest("POST", "/containers/foo-handle/net/out"),
-					verifyProtoBody(&protocol.NetOutRequest{
-						Handle:  proto.String("foo-handle"),
-						Network: proto.String("foo-network"),
-						Port:    proto.Uint32(42),
-					}),
-					ghttp.RespondWith(200, marshalProto(&protocol.NetOutResponse{}))))
-		})
-
-		It("should return the allocated ports", func() {
-			err := connection.NetOut("foo-handle", "foo-network", 42)
-			Ω(err).ShouldNot(HaveOccurred())
-		})
-	})
-
 	Describe("NetIn", func() {
 		BeforeEach(func() {
 			server.AppendHandlers(
@@ -532,6 +513,25 @@ var _ = Describe("Connection", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(hostPort).Should(Equal(uint32(1234)))
 			Ω(containerPort).Should(Equal(uint32(1235)))
+		})
+	})
+
+	Describe("NetOut", func() {
+		BeforeEach(func() {
+			server.AppendHandlers(
+				ghttp.CombineHandlers(
+					ghttp.VerifyRequest("POST", "/containers/foo-handle/net/out"),
+					verifyProtoBody(&protocol.NetOutRequest{
+						Handle:  proto.String("foo-handle"),
+						Network: proto.String("foo-network"),
+						Port:    proto.Uint32(42),
+					}),
+					ghttp.RespondWith(200, marshalProto(&protocol.NetOutResponse{}))))
+		})
+
+		It("should return the allocated ports", func() {
+			err := connection.NetOut("foo-handle", "foo-network", 42)
+			Ω(err).ShouldNot(HaveOccurred())
 		})
 	})
 

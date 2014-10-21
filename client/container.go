@@ -108,3 +108,15 @@ func (container *container) NetIn(hostPort, containerPort uint32) (uint32, uint3
 func (container *container) NetOut(network string, port uint32) error {
 	return container.connection.NetOut(container.handle, network, port)
 }
+
+func (container *container) GetProperty(name string) (string, error) {
+	return container.connection.GetProperty(container.handle, name)
+}
+
+func (container *container) SetProperty(name string, value string) error {
+	return container.connection.SetProperty(container.handle, name, value)
+}
+
+func (container *container) RemoveProperty(name string) error {
+	return container.connection.RemoveProperty(container.handle, name)
+}

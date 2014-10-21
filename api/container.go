@@ -31,6 +31,10 @@ type Container interface {
 
 	Run(ProcessSpec, ProcessIO) (Process, error)
 	Attach(uint32, ProcessIO) (Process, error)
+
+	GetProperty(name string) (string, error)
+	SetProperty(name string, value string) error
+	RemoveProperty(name string) error
 }
 
 type ProcessSpec struct {

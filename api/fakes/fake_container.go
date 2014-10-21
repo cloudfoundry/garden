@@ -12,7 +12,7 @@ type FakeContainer struct {
 	HandleStub        func() string
 	handleMutex       sync.RWMutex
 	handleArgsForCall []struct{}
-	handleReturns     struct {
+	handleReturns struct {
 		result1 string
 	}
 	StopStub        func(kill bool) error
@@ -26,7 +26,7 @@ type FakeContainer struct {
 	InfoStub        func() (api.ContainerInfo, error)
 	infoMutex       sync.RWMutex
 	infoArgsForCall []struct{}
-	infoReturns     struct {
+	infoReturns struct {
 		result1 api.ContainerInfo
 		result2 error
 	}
@@ -59,7 +59,7 @@ type FakeContainer struct {
 	CurrentBandwidthLimitsStub        func() (api.BandwidthLimits, error)
 	currentBandwidthLimitsMutex       sync.RWMutex
 	currentBandwidthLimitsArgsForCall []struct{}
-	currentBandwidthLimitsReturns     struct {
+	currentBandwidthLimitsReturns struct {
 		result1 api.BandwidthLimits
 		result2 error
 	}
@@ -74,7 +74,7 @@ type FakeContainer struct {
 	CurrentCPULimitsStub        func() (api.CPULimits, error)
 	currentCPULimitsMutex       sync.RWMutex
 	currentCPULimitsArgsForCall []struct{}
-	currentCPULimitsReturns     struct {
+	currentCPULimitsReturns struct {
 		result1 api.CPULimits
 		result2 error
 	}
@@ -89,7 +89,7 @@ type FakeContainer struct {
 	CurrentDiskLimitsStub        func() (api.DiskLimits, error)
 	currentDiskLimitsMutex       sync.RWMutex
 	currentDiskLimitsArgsForCall []struct{}
-	currentDiskLimitsReturns     struct {
+	currentDiskLimitsReturns struct {
 		result1 api.DiskLimits
 		result2 error
 	}
@@ -104,7 +104,7 @@ type FakeContainer struct {
 	CurrentMemoryLimitsStub        func() (api.MemoryLimits, error)
 	currentMemoryLimitsMutex       sync.RWMutex
 	currentMemoryLimitsArgsForCall []struct{}
-	currentMemoryLimitsReturns     struct {
+	currentMemoryLimitsReturns struct {
 		result1 api.MemoryLimits
 		result2 error
 	}
@@ -147,6 +147,32 @@ type FakeContainer struct {
 	attachReturns struct {
 		result1 api.Process
 		result2 error
+	}
+	GetPropertyStub        func(name string) (string, error)
+	getPropertyMutex       sync.RWMutex
+	getPropertyArgsForCall []struct {
+		name string
+	}
+	getPropertyReturns struct {
+		result1 string
+		result2 error
+	}
+	SetPropertyStub        func(name string, value string) error
+	setPropertyMutex       sync.RWMutex
+	setPropertyArgsForCall []struct {
+		name  string
+		value string
+	}
+	setPropertyReturns struct {
+		result1 error
+	}
+	RemovePropertyStub        func(name string) error
+	removePropertyMutex       sync.RWMutex
+	removePropertyArgsForCall []struct {
+		name string
+	}
+	removePropertyReturns struct {
+		result1 error
 	}
 }
 
@@ -659,6 +685,104 @@ func (fake *FakeContainer) AttachReturns(result1 api.Process, result2 error) {
 		result1 api.Process
 		result2 error
 	}{result1, result2}
+}
+
+func (fake *FakeContainer) GetProperty(name string) (string, error) {
+	fake.getPropertyMutex.Lock()
+	fake.getPropertyArgsForCall = append(fake.getPropertyArgsForCall, struct {
+		name string
+	}{name})
+	fake.getPropertyMutex.Unlock()
+	if fake.GetPropertyStub != nil {
+		return fake.GetPropertyStub(name)
+	} else {
+		return fake.getPropertyReturns.result1, fake.getPropertyReturns.result2
+	}
+}
+
+func (fake *FakeContainer) GetPropertyCallCount() int {
+	fake.getPropertyMutex.RLock()
+	defer fake.getPropertyMutex.RUnlock()
+	return len(fake.getPropertyArgsForCall)
+}
+
+func (fake *FakeContainer) GetPropertyArgsForCall(i int) string {
+	fake.getPropertyMutex.RLock()
+	defer fake.getPropertyMutex.RUnlock()
+	return fake.getPropertyArgsForCall[i].name
+}
+
+func (fake *FakeContainer) GetPropertyReturns(result1 string, result2 error) {
+	fake.GetPropertyStub = nil
+	fake.getPropertyReturns = struct {
+		result1 string
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *FakeContainer) SetProperty(name string, value string) error {
+	fake.setPropertyMutex.Lock()
+	fake.setPropertyArgsForCall = append(fake.setPropertyArgsForCall, struct {
+		name  string
+		value string
+	}{name, value})
+	fake.setPropertyMutex.Unlock()
+	if fake.SetPropertyStub != nil {
+		return fake.SetPropertyStub(name, value)
+	} else {
+		return fake.setPropertyReturns.result1
+	}
+}
+
+func (fake *FakeContainer) SetPropertyCallCount() int {
+	fake.setPropertyMutex.RLock()
+	defer fake.setPropertyMutex.RUnlock()
+	return len(fake.setPropertyArgsForCall)
+}
+
+func (fake *FakeContainer) SetPropertyArgsForCall(i int) (string, string) {
+	fake.setPropertyMutex.RLock()
+	defer fake.setPropertyMutex.RUnlock()
+	return fake.setPropertyArgsForCall[i].name, fake.setPropertyArgsForCall[i].value
+}
+
+func (fake *FakeContainer) SetPropertyReturns(result1 error) {
+	fake.SetPropertyStub = nil
+	fake.setPropertyReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *FakeContainer) RemoveProperty(name string) error {
+	fake.removePropertyMutex.Lock()
+	fake.removePropertyArgsForCall = append(fake.removePropertyArgsForCall, struct {
+		name string
+	}{name})
+	fake.removePropertyMutex.Unlock()
+	if fake.RemovePropertyStub != nil {
+		return fake.RemovePropertyStub(name)
+	} else {
+		return fake.removePropertyReturns.result1
+	}
+}
+
+func (fake *FakeContainer) RemovePropertyCallCount() int {
+	fake.removePropertyMutex.RLock()
+	defer fake.removePropertyMutex.RUnlock()
+	return len(fake.removePropertyArgsForCall)
+}
+
+func (fake *FakeContainer) RemovePropertyArgsForCall(i int) string {
+	fake.removePropertyMutex.RLock()
+	defer fake.removePropertyMutex.RUnlock()
+	return fake.removePropertyArgsForCall[i].name
+}
+
+func (fake *FakeContainer) RemovePropertyReturns(result1 error) {
+	fake.RemovePropertyStub = nil
+	fake.removePropertyReturns = struct {
+		result1 error
+	}{result1}
 }
 
 var _ api.Container = new(FakeContainer)

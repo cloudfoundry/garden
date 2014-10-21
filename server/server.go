@@ -95,6 +95,9 @@ func New(
 		routes.Info:                   http.HandlerFunc(s.handleInfo),
 		routes.Run:                    http.HandlerFunc(s.handleRun),
 		routes.Attach:                 http.HandlerFunc(s.handleAttach),
+		routes.GetProperty:            http.HandlerFunc(s.handleGetProperty),
+		routes.SetProperty:            http.HandlerFunc(s.handleSetProperty),
+		routes.RemoveProperty:         http.HandlerFunc(s.handleRemoveProperty),
 	}
 
 	mux, err := rata.NewRouter(routes.Routes, handlers)

@@ -57,6 +57,10 @@ type Connection interface {
 
 	NetIn(handle string, hostPort, containerPort uint32) (uint32, uint32, error)
 	NetOut(handle string, network string, port uint32) error
+
+	GetProperty(handle string, name string) (string, error)
+	SetProperty(handle string, name string, value string) error
+	RemoveProperty(handle string, name string) error
 }
 
 type connection struct {
@@ -367,6 +371,79 @@ func (c *connection) NetOut(handle string, network string, port uint32) error {
 		},
 		nil,
 	)
+}
+
+func (c *connection) GetProperty(handle string, name string) (string, error) {
+	res := &protocol.GetPropertyResponse{}
+
+	err := c.do(
+		routes.GetProperty,
+		&protocol.GetPropertyRequest{
+			Handle: proto.String(handle),
+			Key:    proto.String(name),
+		},
+		res,
+		rata.Params{
+			"handle": handle,
+			"key":    name,
+		},
+		nil,
+	)
+
+	if err != nil {
+		return "", err
+	}
+
+	return res.GetValue(), nil
+}
+
+func (c *connection) SetProperty(handle string, name string, value string) error {
+	res := &protocol.SetPropertyResponse{}
+
+	err := c.do(
+		routes.SetProperty,
+		&protocol.SetPropertyRequest{
+			Handle: proto.String(handle),
+			Key:    proto.String(name),
+			Value:  proto.String(value),
+		},
+		res,
+		rata.Params{
+			"handle": handle,
+			"key":    name,
+		},
+		nil,
+	)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c *connection) RemoveProperty(handle string, name string) error {
+	res := &protocol.RemovePropertyResponse{}
+
+	err := c.do(
+		routes.RemoveProperty,
+		&protocol.RemovePropertyRequest{
+			Handle: proto.String(handle),
+			Key:    proto.String(name),
+		},
+		res,
+		rata.Params{
+			"handle": handle,
+			"key":    name,
+		},
+		nil,
+	)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (c *connection) LimitBandwidth(handle string, limits api.BandwidthLimits) (api.BandwidthLimits, error) {

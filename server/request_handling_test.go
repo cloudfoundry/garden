@@ -443,6 +443,129 @@ var _ = Describe("When a client connects", func() {
 			)
 		})
 
+		Describe("properties", func() {
+			Describe("getting", func() {
+				Context("when getting the property succeeds", func() {
+					BeforeEach(func() {
+						fakeContainer.GetPropertyReturns("some-property-value", nil)
+					})
+
+					It("returns the property from the container", func() {
+						value, err := container.GetProperty("some-property")
+						Ω(err).ShouldNot(HaveOccurred())
+
+						Ω(value).Should(Equal("some-property-value"))
+
+						Ω(fakeContainer.GetPropertyCallCount()).Should(Equal(1))
+
+						name := fakeContainer.GetPropertyArgsForCall(0)
+						Ω(name).Should(Equal("some-property"))
+					})
+
+					itResetsGraceTimeWhenHandling(func() {
+						_, err := container.GetProperty("some-property")
+						Ω(err).ShouldNot(HaveOccurred())
+					})
+
+					itFailsWhenTheContainerIsNotFound(func() {
+						_, err := container.GetProperty("some-property")
+						Ω(err).Should(HaveOccurred())
+					})
+				})
+
+				Context("when getting the property fails", func() {
+					BeforeEach(func() {
+						fakeContainer.GetPropertyReturns("", errors.New("oh no!"))
+					})
+
+					It("returns an error", func() {
+						value, err := container.GetProperty("some-property")
+						Ω(err).Should(HaveOccurred())
+						Ω(value).Should(BeZero())
+					})
+				})
+			})
+
+			Describe("setting", func() {
+				Context("when setting the property succeeds", func() {
+					BeforeEach(func() {
+						fakeContainer.SetPropertyReturns(nil)
+					})
+
+					It("sets the property on the container", func() {
+						err := container.SetProperty("some-property", "some-value")
+						Ω(err).ShouldNot(HaveOccurred())
+
+						Ω(fakeContainer.SetPropertyCallCount()).Should(Equal(1))
+
+						name, value := fakeContainer.SetPropertyArgsForCall(0)
+						Ω(name).Should(Equal("some-property"))
+						Ω(value).Should(Equal("some-value"))
+					})
+
+					itResetsGraceTimeWhenHandling(func() {
+						err := container.SetProperty("some-property", "some-value")
+						Ω(err).ShouldNot(HaveOccurred())
+					})
+
+					itFailsWhenTheContainerIsNotFound(func() {
+						err := container.SetProperty("some-property", "some-value")
+						Ω(err).Should(HaveOccurred())
+					})
+				})
+
+				Context("when setting the property fails", func() {
+					BeforeEach(func() {
+						fakeContainer.SetPropertyReturns(errors.New("oh no!"))
+					})
+
+					It("returns an error", func() {
+						err := container.SetProperty("some-property", "some-value")
+						Ω(err).Should(HaveOccurred())
+					})
+				})
+			})
+
+			Describe("removing", func() {
+				Context("when removing the property succeeds", func() {
+					BeforeEach(func() {
+						fakeContainer.RemovePropertyReturns(nil)
+					})
+
+					It("returns the property from the container", func() {
+						err := container.RemoveProperty("some-property")
+						Ω(err).ShouldNot(HaveOccurred())
+
+						Ω(fakeContainer.RemovePropertyCallCount()).Should(Equal(1))
+
+						name := fakeContainer.RemovePropertyArgsForCall(0)
+						Ω(name).Should(Equal("some-property"))
+					})
+
+					itResetsGraceTimeWhenHandling(func() {
+						err := container.RemoveProperty("some-property")
+						Ω(err).ShouldNot(HaveOccurred())
+					})
+
+					itFailsWhenTheContainerIsNotFound(func() {
+						err := container.RemoveProperty("some-property")
+						Ω(err).Should(HaveOccurred())
+					})
+				})
+
+				Context("when setting the property fails", func() {
+					BeforeEach(func() {
+						fakeContainer.RemovePropertyReturns(errors.New("oh no!"))
+					})
+
+					It("returns an error", func() {
+						err := container.RemoveProperty("some-property")
+						Ω(err).Should(HaveOccurred())
+					})
+				})
+			})
+		})
+
 		Describe("streaming in", func() {
 			It("streams the file in, waits for completion, and succeeds", func() {
 				data := bytes.NewBufferString("chunk-1;chunk-2;chunk-3;")
