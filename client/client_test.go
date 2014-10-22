@@ -155,10 +155,9 @@ var _ = Describe("Client", func() {
 				fakeConnection.ListReturns([]string{"some-other-handle"}, nil)
 			})
 
-			It("returns an error", func() {
+			It("returns ErrContainerNotFound", func() {
 				_, err := client.Lookup("some-handle")
-				Ω(err).Should(HaveOccurred())
-				Ω(err.Error()).Should(Equal("container not found: some-handle"))
+				Ω(err).Should(Equal(ErrContainerNotFound))
 			})
 		})
 

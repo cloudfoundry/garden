@@ -2,7 +2,6 @@ package client
 
 import (
 	"errors"
-	"fmt"
 
 	"github.com/cloudfoundry-incubator/garden/api"
 	"github.com/cloudfoundry-incubator/garden/client/connection"
@@ -71,5 +70,5 @@ func (client *client) Lookup(handle string) (api.Container, error) {
 		}
 	}
 
-	return nil, fmt.Errorf("container not found: %s", handle)
+	return nil, ErrContainerNotFound
 }
