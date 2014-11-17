@@ -205,25 +205,90 @@ is a JSON structure with the following fields:
 Example: PUT /containers/:handle/limits/bandwidth
 
 # Get current container bandwidth limit
-Example: PUT /containers/:handle/limits/bandwidth
+Example: GET /containers/:handle/limits/bandwidth
 
 # Limit container cpu
-Example: PUT /containers/:handle/limits/cpu
+##Example
+~~~~
+PUT /containers/:handle/limits/cpu
+{ "limit_in_shares": 2 }
+~~~~
+
+Limits container CPU
+
+The field `limit_in_shares` is optional. When it is not specified, the cpu limit will not be changed.
 
 # Get current container cpu limit
-Example: PUT /containers/:handle/limits/cpu
+##Example
+~~~~
+GET /containers/:handle/limits/cpu
 
-# Limit container disk
-Example: PUT /containers/:handle/limits/disk
-
-# Get current container disk limit
-Example: PUT /containers/:handle/limits/disk
+200 Ok
+{ "limit_in_shares": 2 }
+~~~~
 
 # Limit container memory
-Example: PUT /containers/:handle/limits/memory
+##Example
+~~~~
+PUT /containers/:handle/limits/memory
+{ "limit_in_bytes": 2 }
+~~~~
+
+Limits container memory
+The limit applies to all process in the container. When the limit is
+exceeded, the container will be automatically stopped.
+
+If no limit is given, the current value is returned, and no change is made.
 
 # Get current container memory limit
-Example: PUT /containers/:handle/limits/memory
+##Example
+~~~~
+GET /containers/:handle/limits/memory
+
+200 Ok
+{ "limit_in_bytes": 2 }
+~~~~
+
+# Limit container disk
+##Example
+~~~~
+PUT /containers/:handle/limits/disk
+{ "block_soft": 2, "block_hard": 2, .. }
+~~~~
+
+Limits the disk usage for a container.
+
+The disk limits that are set by this command only have effect for the container's unprivileged user.
+Files/directories created by its privileged user are not subject to these limits.
+
+> **TODO** Link to page explaining how disk management works.
+
+### Request Parameters
+
+* `block_soft`: New soft block limit.
+* `block_hard`: New hard block limit.
+* `inode_soft`: New soft inode limit.
+* `inode_hard`: New hard inode limit.
+* `byte_soft`: New soft block limit specified in bytes. Only has effect when `block_soft` is not specified.
+* `byte_hard`: New hard block limit specified in bytes. Only has effect when `block_hard` is not specified.
+
+# Get current container disk limit
+##Example
+~~~~
+GET /containers/:handle/limits/disk
+
+200 Ok
+{ "block_soft": 2, .. }
+~~~~
+
+### Response Parameters
+
+* `block_soft`: New soft block limit.
+* `block_hard`: New hard block limit.
+* `inode_soft`: New soft inode limit.
+* `inode_hard`: New hard inode limit.
+* `byte_soft`: New soft block limit specified in bytes.
+* `byte_hard`: New hard block limit specified in bytes.
 
 # Allow a container port to be accessed externally
 Example: POST /containers/:handle/net/in
