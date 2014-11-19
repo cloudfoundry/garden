@@ -80,6 +80,7 @@ type ContainerInfo struct {
 	Events        []string
 	HostIP        string
 	ContainerIP   string
+	ExternalIP    string
 	ContainerPath string
 	ProcessIDs    []uint32
 	MemoryStat    ContainerMemoryStat
