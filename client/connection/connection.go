@@ -751,6 +751,7 @@ func (c *connection) Info(handle string) (api.ContainerInfo, error) {
 
 		HostIP:      res.GetHostIp(),
 		ContainerIP: res.GetContainerIp(),
+		ExternalIP:  res.GetExternalIp(),
 
 		ContainerPath: res.GetContainerPath(),
 

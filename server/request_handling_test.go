@@ -1037,6 +1037,7 @@ var _ = Describe("When a client connects", func() {
 				Events:        []string{"oom", "party"},
 				HostIP:        "host-ip",
 				ContainerIP:   "container-ip",
+				ExternalIP:    "external-ip",
 				ContainerPath: "/path/to/container",
 				ProcessIDs:    []uint32{1, 2},
 				Properties: api.Properties{

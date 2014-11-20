@@ -1088,6 +1088,7 @@ func (s *GardenServer) handleInfo(w http.ResponseWriter, r *http.Request) {
 		Events:        info.Events,
 		HostIp:        proto.String(info.HostIP),
 		ContainerIp:   proto.String(info.ContainerIP),
+		ExternalIp:    proto.String(info.ExternalIP),
 		ContainerPath: proto.String(info.ContainerPath),
 		ProcessIds:    processIDs,
 

@@ -33,6 +33,7 @@ type InfoResponse struct {
 	HostIp           *string                     `protobuf:"bytes,30,opt,name=host_ip" json:"host_ip,omitempty"`
 	ContainerIp      *string                     `protobuf:"bytes,31,opt,name=container_ip" json:"container_ip,omitempty"`
 	ContainerPath    *string                     `protobuf:"bytes,32,opt,name=container_path" json:"container_path,omitempty"`
+	ExternalIp       *string                     `protobuf:"bytes,33,opt,name=external_ip" json:"external_ip,omitempty"`
 	MemoryStat       *InfoResponse_MemoryStat    `protobuf:"bytes,40,opt,name=memory_stat" json:"memory_stat,omitempty"`
 	CpuStat          *InfoResponse_CpuStat       `protobuf:"bytes,41,opt,name=cpu_stat" json:"cpu_stat,omitempty"`
 	DiskStat         *InfoResponse_DiskStat      `protobuf:"bytes,42,opt,name=disk_stat" json:"disk_stat,omitempty"`
@@ -78,6 +79,13 @@ func (m *InfoResponse) GetContainerIp() string {
 func (m *InfoResponse) GetContainerPath() string {
 	if m != nil && m.ContainerPath != nil {
 		return *m.ContainerPath
+	}
+	return ""
+}
+
+func (m *InfoResponse) GetExternalIp() string {
+	if m != nil && m.ExternalIp != nil {
+		return *m.ExternalIp
 	}
 	return ""
 }
