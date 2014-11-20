@@ -44,6 +44,7 @@ type ProcessSpec struct {
 	Dir  string
 
 	Privileged bool
+	User       string
 
 	Limits ResourceLimits
 	TTY    *TTYSpec

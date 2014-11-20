@@ -15,6 +15,7 @@ type RunRequest struct {
 	Handle           *string                `protobuf:"bytes,1,req,name=handle" json:"handle,omitempty"`
 	Path             *string                `protobuf:"bytes,2,req,name=path" json:"path,omitempty"`
 	Privileged       *bool                  `protobuf:"varint,3,opt,name=privileged,def=0" json:"privileged,omitempty"`
+	User             *string                `protobuf:"bytes,9,opt,name=user" json:"user,omitempty"`
 	Rlimits          *ResourceLimits        `protobuf:"bytes,4,opt,name=rlimits" json:"rlimits,omitempty"`
 	Env              []*EnvironmentVariable `protobuf:"bytes,5,rep,name=env" json:"env,omitempty"`
 	Args             []string               `protobuf:"bytes,6,rep,name=args" json:"args,omitempty"`
@@ -48,6 +49,13 @@ func (m *RunRequest) GetPrivileged() bool {
 		return *m.Privileged
 	}
 	return Default_RunRequest_Privileged
+}
+
+func (m *RunRequest) GetUser() string {
+	if m != nil && m.User != nil {
+		return *m.User
+	}
+	return ""
 }
 
 func (m *RunRequest) GetRlimits() *ResourceLimits {

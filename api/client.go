@@ -23,6 +23,7 @@ type ContainerSpec struct {
 	Network    string
 	Properties Properties
 	Env        []string
+	Privileged bool
 }
 
 type BindMount struct {

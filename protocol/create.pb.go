@@ -85,6 +85,7 @@ type CreateRequest struct {
 	Rootfs           *string                    `protobuf:"bytes,5,opt,name=rootfs" json:"rootfs,omitempty"`
 	Properties       []*Property                `protobuf:"bytes,6,rep,name=properties" json:"properties,omitempty"`
 	Env              []*EnvironmentVariable     `protobuf:"bytes,7,rep,name=env" json:"env,omitempty"`
+	Privileged       *bool                      `protobuf:"varint,8,opt,name=privileged" json:"privileged,omitempty"`
 	XXX_unrecognized []byte                     `json:"-"`
 }
 
@@ -139,6 +140,13 @@ func (m *CreateRequest) GetEnv() []*EnvironmentVariable {
 		return m.Env
 	}
 	return nil
+}
+
+func (m *CreateRequest) GetPrivileged() bool {
+	if m != nil && m.Privileged != nil {
+		return *m.Privileged
+	}
+	return false
 }
 
 type CreateRequest_BindMount struct {

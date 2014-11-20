@@ -157,10 +157,11 @@ var _ = Describe("Connection", func() {
 				ghttp.CombineHandlers(
 					ghttp.VerifyRequest("POST", "/containers"),
 					verifyProtoBody(&protocol.CreateRequest{
-						Handle:    proto.String("some-handle"),
-						GraceTime: proto.Uint32(10),
-						Rootfs:    proto.String("some-rootfs-path"),
-						Network:   proto.String("some-network"),
+						Handle:     proto.String("some-handle"),
+						GraceTime:  proto.Uint32(10),
+						Rootfs:     proto.String("some-rootfs-path"),
+						Network:    proto.String("some-network"),
+						Privileged: proto.Bool(false),
 						BindMounts: []*protocol.CreateRequest_BindMount{
 							{
 								SrcPath: proto.String("/src-a"),
@@ -837,6 +838,7 @@ var _ = Describe("Connection", func() {
 							Args:       []string{"arg1", "arg2"},
 							Dir:        proto.String("/some/dir"),
 							Privileged: proto.Bool(true),
+							User:       proto.String(""),
 							Rlimits: &protocol.ResourceLimits{
 								As:         proto.Uint64(1),
 								Core:       proto.Uint64(2),
@@ -932,6 +934,7 @@ var _ = Describe("Connection", func() {
 							Path:       proto.String("lol"),
 							Args:       []string{"arg1", "arg2"},
 							Privileged: proto.Bool(false),
+							User:       proto.String(""),
 							Tty: &protocol.TTY{
 								WindowSize: &protocol.TTY_WindowSize{
 									Columns: proto.Uint32(100),
