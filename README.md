@@ -54,6 +54,8 @@ curl -H "Content-Type: application/json" \
   -d '{"path":"sleep","args":["10"]}'
 ```
 
+The REST API is documented in more detail in [doc/garden-api.md](doc/garden-api.md)
+
 # Testing
 
 ## Pre-requisites
