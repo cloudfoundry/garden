@@ -125,13 +125,13 @@ It is only when a container is destroyed that its filesystem is cleaned up.
 # Add files to a Container
 ## Example
 ~~~~
-PUT /containers/:handle/files?destination=/foo/bar/baz
+PUT /containers/:handle/files?destination=/path/to/dir
 contents
 ~~~~
 
 ## Description
-Sets the contents of a file in the container. The path to the file is specified by the `?destination`
-query parameter. The body of the request becoems the body of the file in the container.
+Sets the contents of a directory in the container. The path to the directory is specified by the `?destination`
+query parameter. The body of the request becomes the contents of the directory in the container.
 
 # Get files from a Container
 ## Example
