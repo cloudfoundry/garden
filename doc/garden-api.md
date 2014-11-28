@@ -55,21 +55,50 @@ All parameters are optional.
 ### Request Parameters:
 
 * `bind_mounts`: Contains the paths that should be mounted in the
- container's filesystem. The `src_path` field for every bind mount holds the
- path as seen from the host, where the `dst_path` field holds the path as
- seem from the container.
+container's filesystem. The `src_path` field for every bind mount holds the
+path as seen from the host, where the `dst_path` field holds the path as
+seem from the container.
+
 * `grace_time`: Can be used to specify how long a container can go
  unreferenced by any client connection. After this time, the container will
  automatically be destroyed. If not specified, the container will be
  subject to the globally configured grace time.
+ 
 * `handle`: If specified, its value must be used to refer to the
  container in future requests. If it is not specified,
  garden uses its internal container ID as the container handle.
+
+* `network`: Determines the subnet and IP address of a container.
+    
+    If not specified, a `/30` subnet is allocated from a default network pool.
+    
+    If specified, it takes the form `a.b.c.d/n` where `a.b.c.d` is an IP address and `n` is the number of
+    bits in the network prefix. `a.b.c.d`
+    masked by the first `n` bits is the network address of a subnet called the subnet address. If
+    the remaining bits are zero (i.e. `a.b.c.d` *is* the subnet address),
+    the container is allocated an unused IP address from the
+    subnet. Otherwise, the container is given the IP address `a.b.c.d`.
+    
+    The container IP address cannot be the subnet address or
+    the broadcast address of the subnet (all non prefix bits set) or the address
+    one less than the broadcast address (which is reserved). 
+
+    Multiple containers may share a subnet by passing the same subnet address on the corresponding
+    create calls. Containers on the same subnet can communicate with each other over IP 
+    without restriction. In particular, they are not affected by packet filtering.
+
+    An error is returned if:
+
+    * the IP address cannot be allocated or is already in use,
+    * the subnet specified overlaps the default network pool, or
+    * the subnet specified overlaps (but does not equal) a subnet that has
+      already had a container allocated from it.
+
 * `properties`: A sequence of string key/value pairs providing arbitrary
  data about the container. The keys are assumed to be unique but this is not
  enforced via the protocol.
 
-> **TODO**: `network` and `rootfs`
+> **TODO**: `rootfs`
 
 # Get Info for a Container
 ## Example
