@@ -94,6 +94,10 @@ seem from the container.
     * the subnet specified overlaps (but does not equal) a subnet that has
       already had a container allocated from it.
 
+* `privileged`: If specified and true the root user in the container will be
+mapped to the root user in the host. Otherwise, the root user in the container
+is mapped to a non-root user in the host. Defaults to false.
+
 * `properties`: A sequence of string key/value pairs providing arbitrary
  data about the container. The keys are assumed to be unique but this is not
  enforced via the protocol.
@@ -180,7 +184,7 @@ Retrieves the contents of a file inside the container, specified by the `source`
 POST /containers/:handle/processes
 {
 "path": "/path/to/exe",
-"privileged": false,
+"user": "vcap",
  ..
 }
 ~~~~
@@ -198,7 +202,8 @@ The specified script is interpreted by `/bin/bash` inside the container.
 * `handle`: Container handle.
 * `path`: Path to command to execute.
 * `args`: Arguments to pass to command.
-* `privileged`: Whether to run the script as root or not.
+* `privileged`: Whether to run the script as root or not. Can be overriden by 'user', if specified.
+* 'user': The name of a user in the container to run the process as. If not specified defaults to 'root' for privileged processes, and 'vcap' for unprivileged processes.
 * `rlimits`: Resource limits (see `ResourceLimits`).
 * `env`: Environment Variables (see `EnvironmentVariable`).
 * `dir`: Working directory (default: home directory).
