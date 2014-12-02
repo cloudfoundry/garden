@@ -202,8 +202,8 @@ The specified script is interpreted by `/bin/bash` inside the container.
 * `handle`: Container handle.
 * `path`: Path to command to execute.
 * `args`: Arguments to pass to command.
-* `privileged`: Whether to run the script as root or not. Can be overriden by 'user', if specified.
-* 'user': The name of a user in the container to run the process as. If not specified defaults to 'root' for privileged processes, and 'vcap' for unprivileged processes.
+* `privileged`: Whether to run the script as root or not. Can be overriden by `user`, if specified.
+* `user`: The name of a user in the container to run the process as. If not specified defaults to `root` for privileged processes, and `vcap` for unprivileged processes.
 * `rlimits`: Resource limits (see `ResourceLimits`).
 * `env`: Environment Variables (see `EnvironmentVariable`).
 * `dir`: Working directory (default: home directory).
