@@ -54,37 +54,57 @@ All parameters are optional.
 
 ### Request Parameters:
 
-* `bind_mounts`: Contains the paths that should be mounted in the
-container's filesystem. The `src_path` field for every bind mount holds the
-path as seen from the host, where the `dst_path` field holds the path as
-seem from the container.
+* `bind_mounts`: a list of mount point descriptions which will result in corresponding mount
+points being created in the container's file system.
+
+    Each mount point description specifies the following parameters:
+
+    * `src_path`: a string containing the path of the directory to be mounted
+    * `dst_path`: a string containing the path of the mount point in the container. If the
+     directory does not exist, it is created.
+    * `mode`: either `"RO"` or `"RW"`. Alternatively, `mode` may be omitted and defaults to `RO`.
+     If `mode` is `"RO"`, a read-only mount point is created.
+     If `mode` is `"RW"`, a read-write mount point is created.
+    * `origin`: either `"Host"` or `"Container"`. Alternatively, `origin` may be omitted and
+     defaults to `"Host"`. If `origin` is `"Host"`, `src_path` denotes a path in the host.
+     If `origin` is `"Container"`, `src_path` denotes a path in the container.
+
+    Each mount point is mounted (with the bind option) into the container's file system.
+    The effective permissions of the mount point are the permissions of the source directory if the mode
+    is read-write and the permissions of the source directory with the write bits turned off if the mode
+    of the mount point is read-only.
+
+    An error is returned if:
+
+    * one or more of the mount points has a non-existent source directory, or
+    * one or more of the mount points cannot be created.
 
 * `grace_time`: Can be used to specify how long a container can go
  unreferenced by any client connection. After this time, the container will
  automatically be destroyed. If not specified, the container will be
  subject to the globally configured grace time.
- 
+
 * `handle`: If specified, its value must be used to refer to the
  container in future requests. If it is not specified,
  garden uses its internal container ID as the container handle.
 
 * `network`: Determines the subnet and IP address of a container.
-    
+
     If not specified, a `/30` subnet is allocated from a default network pool.
-    
+
     If specified, it takes the form `a.b.c.d/n` where `a.b.c.d` is an IP address and `n` is the number of
     bits in the network prefix. `a.b.c.d`
     masked by the first `n` bits is the network address of a subnet called the subnet address. If
     the remaining bits are zero (i.e. `a.b.c.d` *is* the subnet address),
     the container is allocated an unused IP address from the
     subnet. Otherwise, the container is given the IP address `a.b.c.d`.
-    
+
     The container IP address cannot be the subnet address or
     the broadcast address of the subnet (all non prefix bits set) or the address
-    one less than the broadcast address (which is reserved). 
+    one less than the broadcast address (which is reserved).
 
     Multiple containers may share a subnet by passing the same subnet address on the corresponding
-    create calls. Containers on the same subnet can communicate with each other over IP 
+    create calls. Containers on the same subnet can communicate with each other over IP
     without restriction. In particular, they are not affected by packet filtering.
 
     An error is returned if:
@@ -102,7 +122,7 @@ is mapped to a non-root user in the host. Defaults to false.
  data about the container. The keys are assumed to be unique but this is not
  enforced via the protocol.
 
-> **TODO**: `rootfs`
+> **TODO**: `env`, `rootfs`
 
 # Get Info for a Container
 ## Example
