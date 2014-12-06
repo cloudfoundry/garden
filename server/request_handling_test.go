@@ -25,6 +25,7 @@ import (
 
 var _ = Describe("When a client connects", func() {
 	var socketPath string
+	var tmpdir string
 
 	var serverBackend *fakes.FakeBackend
 
@@ -39,7 +40,8 @@ var _ = Describe("When a client connects", func() {
 	BeforeEach(func() {
 		logger = lagertest.NewTestLogger("test")
 
-		tmpdir, err := ioutil.TempDir(os.TempDir(), "api-server-test")
+		var err error
+		tmpdir, err = ioutil.TempDir(os.TempDir(), "api-server-test")
 		Ω(err).ShouldNot(HaveOccurred())
 
 		socketPath = path.Join(tmpdir, "api.sock")
@@ -67,6 +69,9 @@ var _ = Describe("When a client connects", func() {
 	AfterEach(func() {
 		if isRunning {
 			apiServer.Stop()
+		}
+		if tmpdir != "" {
+			os.RemoveAll(tmpdir)
 		}
 	})
 

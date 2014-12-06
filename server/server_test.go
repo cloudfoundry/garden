@@ -21,14 +21,22 @@ import (
 
 var _ = Describe("The Garden server", func() {
 	var logger *lagertest.TestLogger
+	var tmpdir string
 
 	BeforeEach(func() {
 		logger = lagertest.NewTestLogger("test")
 	})
 
+	AfterEach(func() {
+		if tmpdir != "" {
+			os.RemoveAll(tmpdir)
+		}
+	})
+
 	Context("when passed a socket", func() {
 		It("listens on the given socket path and chmods it to 0777", func() {
-			tmpdir, err := ioutil.TempDir(os.TempDir(), "api-server-test")
+			var err error
+			tmpdir, err = ioutil.TempDir(os.TempDir(), "api-server-test")
 			Ω(err).ShouldNot(HaveOccurred())
 
 			socketPath := path.Join(tmpdir, "api.sock")
@@ -47,7 +55,8 @@ var _ = Describe("The Garden server", func() {
 		})
 
 		It("deletes the socket file if it is already there", func() {
-			tmpdir, err := ioutil.TempDir(os.TempDir(), "api-server-test")
+			var err error
+			tmpdir, err = ioutil.TempDir(os.TempDir(), "api-server-test")
 			Ω(err).ShouldNot(HaveOccurred())
 
 			socketPath := path.Join(tmpdir, "api.sock")
@@ -76,7 +85,8 @@ var _ = Describe("The Garden server", func() {
 	})
 
 	It("starts the backend", func() {
-		tmpdir, err := ioutil.TempDir(os.TempDir(), "api-server-test")
+		var err error
+		tmpdir, err = ioutil.TempDir(os.TempDir(), "api-server-test")
 		Ω(err).ShouldNot(HaveOccurred())
 
 		socketPath := path.Join(tmpdir, "api.sock")
@@ -92,7 +102,8 @@ var _ = Describe("The Garden server", func() {
 	})
 
 	It("destroys containers that have been idle for their grace time", func() {
-		tmpdir, err := ioutil.TempDir(os.TempDir(), "api-server-test")
+		var err error
+		tmpdir, err = ioutil.TempDir(os.TempDir(), "api-server-test")
 		Ω(err).ShouldNot(HaveOccurred())
 
 		socketPath := path.Join(tmpdir, "api.sock")
@@ -121,7 +132,8 @@ var _ = Describe("The Garden server", func() {
 		disaster := errors.New("oh no!")
 
 		It("fails to start", func() {
-			tmpdir, err := ioutil.TempDir(os.TempDir(), "api-server-test")
+			var err error
+			tmpdir, err = ioutil.TempDir(os.TempDir(), "api-server-test")
 			Ω(err).ShouldNot(HaveOccurred())
 
 			socketPath := path.Join(tmpdir, "api.sock")
@@ -165,7 +177,8 @@ var _ = Describe("The Garden server", func() {
 		var apiClient api.Client
 
 		BeforeEach(func() {
-			tmpdir, err := ioutil.TempDir(os.TempDir(), "api-server-test")
+			var err error
+			tmpdir, err = ioutil.TempDir(os.TempDir(), "api-server-test")
 			Ω(err).ShouldNot(HaveOccurred())
 
 			socketPath = path.Join(tmpdir, "api.sock")
