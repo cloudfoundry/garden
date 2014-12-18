@@ -385,7 +385,7 @@ var _ = Describe("When a client connects", func() {
 
 		itResetsGraceTimeWhenHandling := func(call func()) {
 			Context("when created with a grace time", func() {
-				graceTime := 1 * time.Second
+				graceTime := 200 * time.Millisecond
 
 				BeforeEach(func() {
 					serverBackend.GraceTimeReturns(graceTime)
@@ -402,7 +402,7 @@ var _ = Describe("When a client connects", func() {
 					Eventually(serverBackend.DestroyCallCount, 2*graceTime).Should(Equal(1))
 					Ω(serverBackend.DestroyArgsForCall(0)).Should(Equal(container.Handle()))
 
-					Ω(time.Since(before)).Should(BeNumerically("~", graceTime, 100*time.Millisecond))
+					Ω(time.Since(before)).Should(BeNumerically("~", graceTime, 20*time.Millisecond))
 				})
 			})
 		}
