@@ -1006,21 +1006,22 @@ var _ = Describe("When a client connects", func() {
 
 		Describe("net out", func() {
 			It("permits traffic outside of the container", func() {
-				err := container.NetOut("1.2.3.4/22", 456)
+				err := container.NetOut("1.2.3.4/22", 456, api.ProtocolAll)
 				Ω(err).ShouldNot(HaveOccurred())
 
-				cidr, port := fakeContainer.NetOutArgsForCall(0)
+				cidr, port, protoc := fakeContainer.NetOutArgsForCall(0)
 				Ω(cidr).Should(Equal("1.2.3.4/22"))
 				Ω(port).Should(Equal(uint32(456)))
+				Ω(protoc).Should(Equal(api.ProtocolAll))
 			})
 
 			itResetsGraceTimeWhenHandling(func() {
-				err := container.NetOut("1.2.3.4/22", 456)
+				err := container.NetOut("1.2.3.4/22", 456, api.ProtocolAll)
 				Ω(err).ShouldNot(HaveOccurred())
 			})
 
 			itFailsWhenTheContainerIsNotFound(func() {
-				err := container.NetOut("1.2.3.4/22", 456)
+				err := container.NetOut("1.2.3.4/22", 456, api.ProtocolAll)
 				Ω(err).Should(HaveOccurred())
 			})
 
@@ -1030,7 +1031,7 @@ var _ = Describe("When a client connects", func() {
 				})
 
 				It("fails", func() {
-					err := container.NetOut("1.2.3.4/22", 456)
+					err := container.NetOut("1.2.3.4/22", 456, api.ProtocolAll)
 					Ω(err).Should(HaveOccurred())
 				})
 			})

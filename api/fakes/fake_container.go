@@ -119,11 +119,12 @@ type FakeContainer struct {
 		result2 uint32
 		result3 error
 	}
-	NetOutStub        func(network string, port uint32) error
+	NetOutStub        func(network string, port uint32, protocol api.Protocol) error
 	netOutMutex       sync.RWMutex
 	netOutArgsForCall []struct {
-		network string
-		port    uint32
+		network  string
+		port     uint32
+		protocol api.Protocol
 	}
 	netOutReturns struct {
 		result1 error
@@ -586,15 +587,16 @@ func (fake *FakeContainer) NetInReturns(result1 uint32, result2 uint32, result3 
 	}{result1, result2, result3}
 }
 
-func (fake *FakeContainer) NetOut(network string, port uint32) error {
+func (fake *FakeContainer) NetOut(network string, port uint32, protocol api.Protocol) error {
 	fake.netOutMutex.Lock()
 	fake.netOutArgsForCall = append(fake.netOutArgsForCall, struct {
-		network string
-		port    uint32
-	}{network, port})
+		network  string
+		port     uint32
+		protocol api.Protocol
+	}{network, port, protocol})
 	fake.netOutMutex.Unlock()
 	if fake.NetOutStub != nil {
-		return fake.NetOutStub(network, port)
+		return fake.NetOutStub(network, port, protocol)
 	} else {
 		return fake.netOutReturns.result1
 	}
@@ -606,10 +608,10 @@ func (fake *FakeContainer) NetOutCallCount() int {
 	return len(fake.netOutArgsForCall)
 }
 
-func (fake *FakeContainer) NetOutArgsForCall(i int) (string, uint32) {
+func (fake *FakeContainer) NetOutArgsForCall(i int) (string, uint32, api.Protocol) {
 	fake.netOutMutex.RLock()
 	defer fake.netOutMutex.RUnlock()
-	return fake.netOutArgsForCall[i].network, fake.netOutArgsForCall[i].port
+	return fake.netOutArgsForCall[i].network, fake.netOutArgsForCall[i].port, fake.netOutArgsForCall[i].protocol
 }
 
 func (fake *FakeContainer) NetOutReturns(result1 error) {

@@ -519,20 +519,28 @@ var _ = Describe("Connection", func() {
 
 	Describe("NetOut", func() {
 		BeforeEach(func() {
+			all := protocol.NetOutRequest_ALL
+
 			server.AppendHandlers(
 				ghttp.CombineHandlers(
 					ghttp.VerifyRequest("POST", "/containers/foo-handle/net/out"),
 					verifyProtoBody(&protocol.NetOutRequest{
-						Handle:  proto.String("foo-handle"),
-						Network: proto.String("foo-network"),
-						Port:    proto.Uint32(42),
+						Handle:   proto.String("foo-handle"),
+						Network:  proto.String("foo-network"),
+						Port:     proto.Uint32(42),
+						Protocol: &all,
 					}),
 					ghttp.RespondWith(200, marshalProto(&protocol.NetOutResponse{}))))
 		})
 
 		It("should return the allocated ports", func() {
-			err := connection.NetOut("foo-handle", "foo-network", 42)
+			err := connection.NetOut("foo-handle", "foo-network", 42, api.ProtocolAll)
 			Ω(err).ShouldNot(HaveOccurred())
+		})
+
+		It("returns an error if the protocol is unknown", func() {
+			err := connection.NetOut("foo-handle", "foo-network", 42, 58)
+			Ω(err).Should(MatchError("invalid protocol"))
 		})
 	})
 
@@ -564,10 +572,7 @@ var _ = Describe("Connection", func() {
 						Events:        []string{"maxing", "relaxing all cool"},
 						HostIp:        proto.String("host-ip"),
 						ContainerIp:   proto.String("container-ip"),
-						ContainerPath: proto.String("container-path"),
-						ProcessIds:    []uint64{1, 2},
-
-						Properties: []*protocol.Property{
+						ContainerPath: proto.String("container-path"), ProcessIds: []uint64{1, 2}, Properties: []*protocol.Property{
 							{
 								Key:   proto.String("prop-key"),
 								Value: proto.String("prop-value"),

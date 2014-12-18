@@ -727,6 +727,7 @@ func (s *GardenServer) handleNetOut(w http.ResponseWriter, r *http.Request) {
 
 	network := request.GetNetwork()
 	port := request.GetPort()
+	protoc := api.Protocol(request.GetProtocol())
 
 	container, err := s.backend.Lookup(handle)
 	if err != nil {
@@ -742,7 +743,7 @@ func (s *GardenServer) handleNetOut(w http.ResponseWriter, r *http.Request) {
 		"port":    port,
 	})
 
-	err = container.NetOut(network, port)
+	err = container.NetOut(network, port, protoc)
 	if err != nil {
 		s.writeError(w, err, hLog)
 		return

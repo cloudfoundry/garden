@@ -510,13 +510,14 @@ var _ = Describe("Container", func() {
 
 	Describe("NetOut", func() {
 		It("sends a net out request", func() {
-			err := container.NetOut("some-network", 1234)
+			err := container.NetOut("some-network", 1234, api.ProtocolTCP)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			h, network, port := fakeConnection.NetOutArgsForCall(0)
+			h, network, port, protocol := fakeConnection.NetOutArgsForCall(0)
 			Ω(h).Should(Equal("some-handle"))
 			Ω(network).Should(Equal("some-network"))
 			Ω(port).Should(Equal(uint32(1234)))
+			Ω(protocol).Should(Equal(api.ProtocolTCP))
 		})
 
 		Context("when the request fails", func() {
@@ -527,7 +528,7 @@ var _ = Describe("Container", func() {
 			})
 
 			It("returns the error", func() {
-				err := container.NetOut("some-network", 1234)
+				err := container.NetOut("some-network", 1234, api.ProtocolAll)
 				Ω(err).Should(Equal(disaster))
 			})
 		})
