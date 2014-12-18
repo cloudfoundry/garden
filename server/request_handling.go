@@ -1268,6 +1268,18 @@ func (s *GardenServer) streamInput(decoder *json.Decoder, in *io.PipeWriter, pro
 				}
 			}
 
+		case payload.Signal != nil:
+			switch payload.GetSignal() {
+			case protocol.ProcessPayload_kill:
+				process.Signal(api.SignalKill)
+			case protocol.ProcessPayload_terminate:
+				process.Signal(api.SignalTerminate)
+			default:
+				s.logger.Error("stream-input-unknown-process-payload-signal", nil, lager.Data{"payload": payload})
+				in.Close()
+				return
+			}
+
 		default:
 			s.logger.Error("stream-input-unknown-process-payload", nil, lager.Data{"payload": payload})
 			in.Close()

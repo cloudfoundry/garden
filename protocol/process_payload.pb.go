@@ -47,6 +47,39 @@ func (x *ProcessPayload_Source) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+type ProcessPayload_Signal int32
+
+const (
+	ProcessPayload_terminate ProcessPayload_Signal = 0
+	ProcessPayload_kill      ProcessPayload_Signal = 1
+)
+
+var ProcessPayload_Signal_name = map[int32]string{
+	0: "terminate",
+	1: "kill",
+}
+var ProcessPayload_Signal_value = map[string]int32{
+	"terminate": 0,
+	"kill":      1,
+}
+
+func (x ProcessPayload_Signal) Enum() *ProcessPayload_Signal {
+	p := new(ProcessPayload_Signal)
+	*p = x
+	return p
+}
+func (x ProcessPayload_Signal) String() string {
+	return proto.EnumName(ProcessPayload_Signal_name, int32(x))
+}
+func (x *ProcessPayload_Signal) UnmarshalJSON(data []byte) error {
+	value, err := proto.UnmarshalJSONEnum(ProcessPayload_Signal_value, data, "ProcessPayload_Signal")
+	if err != nil {
+		return err
+	}
+	*x = ProcessPayload_Signal(value)
+	return nil
+}
+
 type ProcessPayload struct {
 	ProcessId        *uint32                `protobuf:"varint,1,req,name=process_id" json:"process_id,omitempty"`
 	Source           *ProcessPayload_Source `protobuf:"varint,2,opt,name=source,enum=garden.ProcessPayload_Source" json:"source,omitempty"`
@@ -54,6 +87,7 @@ type ProcessPayload struct {
 	ExitStatus       *uint32                `protobuf:"varint,4,opt,name=exit_status" json:"exit_status,omitempty"`
 	Error            *string                `protobuf:"bytes,5,opt,name=error" json:"error,omitempty"`
 	Tty              *TTY                   `protobuf:"bytes,6,opt,name=tty" json:"tty,omitempty"`
+	Signal           *ProcessPayload_Signal `protobuf:"varint,7,opt,name=signal,enum=garden.ProcessPayload_Signal" json:"signal,omitempty"`
 	XXX_unrecognized []byte                 `json:"-"`
 }
 
@@ -103,6 +137,14 @@ func (m *ProcessPayload) GetTty() *TTY {
 	return nil
 }
 
+func (m *ProcessPayload) GetSignal() ProcessPayload_Signal {
+	if m != nil && m.Signal != nil {
+		return *m.Signal
+	}
+	return ProcessPayload_terminate
+}
+
 func init() {
 	proto.RegisterEnum("garden.ProcessPayload_Source", ProcessPayload_Source_name, ProcessPayload_Source_value)
+	proto.RegisterEnum("garden.ProcessPayload_Signal", ProcessPayload_Signal_name, ProcessPayload_Signal_value)
 }

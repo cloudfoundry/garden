@@ -13,13 +13,13 @@ type FakeConnection struct {
 	PingStub        func() error
 	pingMutex       sync.RWMutex
 	pingArgsForCall []struct{}
-	pingReturns struct {
+	pingReturns     struct {
 		result1 error
 	}
 	CapacityStub        func() (api.Capacity, error)
 	capacityMutex       sync.RWMutex
 	capacityArgsForCall []struct{}
-	capacityReturns struct {
+	capacityReturns     struct {
 		result1 api.Capacity
 		result2 error
 	}

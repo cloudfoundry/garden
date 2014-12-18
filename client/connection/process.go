@@ -22,13 +22,13 @@ type process struct {
 	doneL      *sync.Cond
 }
 
-func newProcess(id uint32, conn net.Conn) *process {
+func newProcess(id uint32, netConn net.Conn) *process {
 	return &process{
 		id: id,
 
 		stream: &processStream{
 			id:   id,
-			conn: conn,
+			conn: netConn,
 		},
 
 		doneL: sync.NewCond(&sync.Mutex{}),
@@ -53,6 +53,10 @@ func (p *process) Wait() (int, error) {
 
 func (p *process) SetTTY(tty api.TTYSpec) error {
 	return p.stream.SetTTY(tty)
+}
+
+func (p *process) Signal(signal api.Signal) error {
+	return p.stream.Signal(signal)
 }
 
 func (p *process) exited(exitStatus int, err error) {

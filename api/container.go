@@ -78,7 +78,15 @@ type Process interface {
 	ID() uint32
 	Wait() (int, error)
 	SetTTY(TTYSpec) error
+	Signal(Signal) error
 }
+
+type Signal int
+
+const (
+	SignalTerminate Signal = iota
+	SignalKill
+)
 
 type PortMapping struct {
 	HostPort      uint32
