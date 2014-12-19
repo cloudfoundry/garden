@@ -14,17 +14,17 @@ var _ = math.Inf
 type NetOutRequest_Protocol int32
 
 const (
-	NetOutRequest_ALL NetOutRequest_Protocol = 0
-	NetOutRequest_TCP NetOutRequest_Protocol = 1
+	NetOutRequest_TCP NetOutRequest_Protocol = 0
+	NetOutRequest_ALL NetOutRequest_Protocol = 1
 )
 
 var NetOutRequest_Protocol_name = map[int32]string{
-	0: "ALL",
-	1: "TCP",
+	0: "TCP",
+	1: "ALL",
 }
 var NetOutRequest_Protocol_value = map[string]int32{
-	"ALL": 0,
-	"TCP": 1,
+	"TCP": 0,
+	"ALL": 1,
 }
 
 func (x NetOutRequest_Protocol) Enum() *NetOutRequest_Protocol {
@@ -81,7 +81,7 @@ func (m *NetOutRequest) GetProtocol() NetOutRequest_Protocol {
 	if m != nil && m.Protocol != nil {
 		return *m.Protocol
 	}
-	return NetOutRequest_ALL
+	return NetOutRequest_TCP
 }
 
 type NetOutResponse struct {
