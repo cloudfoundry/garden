@@ -725,9 +725,20 @@ func (s *GardenServer) handleNetOut(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var protoc api.Protocol
+	switch request.GetProtocol() {
+	case protocol.NetOutRequest_TCP:
+		protoc = api.ProtocolTCP
+	case protocol.NetOutRequest_ALL:
+		protoc = api.ProtocolAll
+	default:
+		err := fmt.Errorf("invalid protocol: %d", request.GetProtocol())
+		s.writeError(w, err, hLog)
+		return
+	}
+
 	network := request.GetNetwork()
 	port := request.GetPort()
-	protoc := api.Protocol(request.GetProtocol())
 
 	container, err := s.backend.Lookup(handle)
 	if err != nil {
@@ -739,8 +750,9 @@ func (s *GardenServer) handleNetOut(w http.ResponseWriter, r *http.Request) {
 	defer s.bomberman.Unpause(container.Handle())
 
 	hLog.Debug("allowing-out", lager.Data{
-		"network": network,
-		"port":    port,
+		"network":  network,
+		"port":     port,
+		"protocol": protoc,
 	})
 
 	err = container.NetOut(network, port, protoc)

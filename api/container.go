@@ -40,8 +40,10 @@ type Container interface {
 type Protocol uint8
 
 const (
-	ProtocolTCP Protocol = 0
-	ProtocolAll Protocol = 1
+	ProtocolTCP Protocol = 1 << iota
+	ProtocolUDP
+	ProtocolICMP
+	ProtocolAll Protocol = (1 << iota) - 1
 )
 
 type ProcessSpec struct {
