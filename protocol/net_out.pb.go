@@ -48,6 +48,7 @@ type NetOutRequest struct {
 	Handle           *string                 `protobuf:"bytes,1,req,name=handle" json:"handle,omitempty"`
 	Network          *string                 `protobuf:"bytes,2,opt,name=network" json:"network,omitempty"`
 	Port             *uint32                 `protobuf:"varint,3,opt,name=port" json:"port,omitempty"`
+	PortRange        *string                 `protobuf:"bytes,4,opt,name=port_range" json:"port_range,omitempty"`
 	Protocol         *NetOutRequest_Protocol `protobuf:"varint,5,opt,name=protocol,enum=garden.NetOutRequest_Protocol" json:"protocol,omitempty"`
 	XXX_unrecognized []byte                  `json:"-"`
 }
@@ -75,6 +76,13 @@ func (m *NetOutRequest) GetPort() uint32 {
 		return *m.Port
 	}
 	return 0
+}
+
+func (m *NetOutRequest) GetPortRange() string {
+	if m != nil && m.PortRange != nil {
+		return *m.PortRange
+	}
+	return ""
 }
 
 func (m *NetOutRequest) GetProtocol() NetOutRequest_Protocol {
