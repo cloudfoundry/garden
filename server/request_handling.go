@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"time"
 
-	"code.google.com/p/gogoprotobuf/proto"
+	"github.com/gogo/protobuf/proto"
 
 	"github.com/cloudfoundry-incubator/garden/api"
 	protocol "github.com/cloudfoundry-incubator/garden/protocol"
