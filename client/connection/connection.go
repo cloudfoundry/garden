@@ -56,7 +56,7 @@ type Connection interface {
 	Attach(handle string, processID uint32, io api.ProcessIO) (api.Process, error)
 
 	NetIn(handle string, hostPort, containerPort uint32) (uint32, uint32, error)
-	NetOut(handle string, network string, port uint32, protocol api.Protocol) error
+	NetOut(handle string, network string, port uint32, portRange string, protocol api.Protocol) error
 
 	GetProperty(handle string, name string) (string, error)
 	SetProperty(handle string, name string, value string) error
@@ -360,7 +360,7 @@ func (c *connection) NetIn(handle string, hostPort, containerPort uint32) (uint3
 	return res.GetHostPort(), res.GetContainerPort(), nil
 }
 
-func (c *connection) NetOut(handle string, network string, port uint32, netProto api.Protocol) error {
+func (c *connection) NetOut(handle string, network string, port uint32, portRange string, netProto api.Protocol) error {
 	var np protocol.NetOutRequest_Protocol
 
 	switch netProto {
@@ -375,10 +375,11 @@ func (c *connection) NetOut(handle string, network string, port uint32, netProto
 	return c.do(
 		routes.NetOut,
 		&protocol.NetOutRequest{
-			Handle:   proto.String(handle),
-			Network:  proto.String(network),
-			Port:     proto.Uint32(port),
-			Protocol: &np,
+			Handle:    proto.String(handle),
+			Network:   proto.String(network),
+			Port:      proto.Uint32(port),
+			PortRange: proto.String(portRange),
+			Protocol:  &np,
 		},
 		&protocol.NetOutResponse{},
 		rata.Params{

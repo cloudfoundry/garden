@@ -739,6 +739,7 @@ func (s *GardenServer) handleNetOut(w http.ResponseWriter, r *http.Request) {
 
 	network := request.GetNetwork()
 	port := request.GetPort()
+	portRange := request.GetPortRange()
 
 	container, err := s.backend.Lookup(handle)
 	if err != nil {
@@ -750,12 +751,13 @@ func (s *GardenServer) handleNetOut(w http.ResponseWriter, r *http.Request) {
 	defer s.bomberman.Unpause(container.Handle())
 
 	hLog.Debug("allowing-out", lager.Data{
-		"network":  network,
-		"port":     port,
-		"protocol": protoc,
+		"network":   network,
+		"port":      port,
+		"portRange": portRange,
+		"protocol":  protoc,
 	})
 
-	err = container.NetOut(network, port, protoc)
+	err = container.NetOut(network, port, portRange, protoc)
 	if err != nil {
 		s.writeError(w, err, hLog)
 		return

@@ -518,29 +518,55 @@ var _ = Describe("Connection", func() {
 	})
 
 	Describe("NetOut", func() {
-		BeforeEach(func() {
-			all := protocol.NetOutRequest_ALL
+		Context("with port", func() {
+			BeforeEach(func() {
+				all := protocol.NetOutRequest_ALL
 
-			server.AppendHandlers(
-				ghttp.CombineHandlers(
-					ghttp.VerifyRequest("POST", "/containers/foo-handle/net/out"),
-					verifyProtoBody(&protocol.NetOutRequest{
-						Handle:   proto.String("foo-handle"),
-						Network:  proto.String("foo-network"),
-						Port:     proto.Uint32(42),
-						Protocol: &all,
-					}),
-					ghttp.RespondWith(200, marshalProto(&protocol.NetOutResponse{}))))
+				server.AppendHandlers(
+					ghttp.CombineHandlers(
+						ghttp.VerifyRequest("POST", "/containers/foo-handle/net/out"),
+						verifyProtoBody(&protocol.NetOutRequest{
+							Handle:    proto.String("foo-handle"),
+							Network:   proto.String("foo-network"),
+							Port:      proto.Uint32(42),
+							PortRange: proto.String(""),
+							Protocol:  &all,
+						}),
+						ghttp.RespondWith(200, marshalProto(&protocol.NetOutResponse{}))))
+			})
+
+			It("should return the port", func() {
+				err := connection.NetOut("foo-handle", "foo-network", 42, "", api.ProtocolAll)
+				Ω(err).ShouldNot(HaveOccurred())
+			})
+
+			It("returns an error if the protocol is unknown", func() {
+				err := connection.NetOut("foo-handle", "foo-network", 42, "", 58)
+				Ω(err).Should(MatchError("invalid protocol"))
+			})
 		})
 
-		It("should return the allocated ports", func() {
-			err := connection.NetOut("foo-handle", "foo-network", 42, api.ProtocolAll)
-			Ω(err).ShouldNot(HaveOccurred())
-		})
+		Context("with port range", func() {
+			BeforeEach(func() {
+				all := protocol.NetOutRequest_ALL
 
-		It("returns an error if the protocol is unknown", func() {
-			err := connection.NetOut("foo-handle", "foo-network", 42, 58)
-			Ω(err).Should(MatchError("invalid protocol"))
+				server.AppendHandlers(
+					ghttp.CombineHandlers(
+						ghttp.VerifyRequest("POST", "/containers/foo-handle/net/out"),
+						verifyProtoBody(&protocol.NetOutRequest{
+							Handle:    proto.String("foo-handle"),
+							Network:   proto.String("foo-network"),
+							Port:      proto.Uint32(0),
+							PortRange: proto.String("8080:8081"),
+							Protocol:  &all,
+						}),
+						ghttp.RespondWith(200, marshalProto(&protocol.NetOutResponse{}))))
+			})
+
+			It("should return the port range", func() {
+				err := connection.NetOut("foo-handle", "foo-network", 0, "8080:8081", api.ProtocolAll)
+				Ω(err).ShouldNot(HaveOccurred())
+			})
 		})
 	})
 
