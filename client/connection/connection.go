@@ -12,14 +12,15 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
-	"code.google.com/p/gogoprotobuf/proto"
 	"github.com/cloudfoundry-incubator/garden/api"
 	protocol "github.com/cloudfoundry-incubator/garden/protocol"
 	"github.com/cloudfoundry-incubator/garden/routes"
 	"github.com/cloudfoundry-incubator/garden/transport"
+	"github.com/gogo/protobuf/proto"
 	"github.com/tedsuo/rata"
 )
 
@@ -56,7 +57,7 @@ type Connection interface {
 	Attach(handle string, processID uint32, io api.ProcessIO) (api.Process, error)
 
 	NetIn(handle string, hostPort, containerPort uint32) (uint32, uint32, error)
-	NetOut(handle string, network string, port uint32) error
+	NetOut(handle string, network string, port uint32, portRange string, protocol api.Protocol) error
 
 	GetProperty(handle string, name string) (string, error)
 	SetProperty(handle string, name string, value string) error
@@ -360,13 +361,38 @@ func (c *connection) NetIn(handle string, hostPort, containerPort uint32) (uint3
 	return res.GetHostPort(), res.GetContainerPort(), nil
 }
 
-func (c *connection) NetOut(handle string, network string, port uint32) error {
+func (c *connection) NetOut(handle string, network string, port uint32, portRange string, netProto api.Protocol) error {
+	var np protocol.NetOutRequest_Protocol
+
+	switch netProto {
+	case api.ProtocolTCP:
+		np = protocol.NetOutRequest_TCP
+	case api.ProtocolAll:
+		np = protocol.NetOutRequest_ALL
+	default:
+		return errors.New("invalid protocol")
+	}
+
+	if portRange != "" {
+		r := strings.Split(portRange, ":")
+		if len(r) != 2 {
+			return fmt.Errorf("Invalid port range: %q", portRange)
+		}
+		lo, startErr := strconv.Atoi(r[0])
+		hi, endErr := strconv.Atoi(r[1])
+		if startErr != nil || endErr != nil || lo <= 0 || lo > 65535 || hi <= 0 || hi > 65535 {
+			return fmt.Errorf("Invalid port range: %q", portRange)
+		}
+	}
+
 	return c.do(
 		routes.NetOut,
 		&protocol.NetOutRequest{
-			Handle:  proto.String(handle),
-			Network: proto.String(network),
-			Port:    proto.Uint32(port),
+			Handle:    proto.String(handle),
+			Network:   proto.String(network),
+			Port:      proto.Uint32(port),
+			PortRange: proto.String(portRange),
+			Protocol:  &np,
 		},
 		&protocol.NetOutResponse{},
 		rata.Params{

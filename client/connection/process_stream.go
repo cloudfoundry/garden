@@ -4,10 +4,10 @@ import (
 	"net"
 	"sync"
 
-	"code.google.com/p/gogoprotobuf/proto"
 	"github.com/cloudfoundry-incubator/garden/api"
 	protocol "github.com/cloudfoundry-incubator/garden/protocol"
 	"github.com/cloudfoundry-incubator/garden/transport"
+	"github.com/gogo/protobuf/proto"
 )
 
 var stdin = protocol.ProcessPayload_stdin

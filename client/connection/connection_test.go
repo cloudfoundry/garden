@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"time"
 
-	"code.google.com/p/gogoprotobuf/proto"
+	"github.com/gogo/protobuf/proto"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
@@ -518,21 +518,136 @@ var _ = Describe("Connection", func() {
 	})
 
 	Describe("NetOut", func() {
-		BeforeEach(func() {
-			server.AppendHandlers(
-				ghttp.CombineHandlers(
-					ghttp.VerifyRequest("POST", "/containers/foo-handle/net/out"),
-					verifyProtoBody(&protocol.NetOutRequest{
-						Handle:  proto.String("foo-handle"),
-						Network: proto.String("foo-network"),
-						Port:    proto.Uint32(42),
-					}),
-					ghttp.RespondWith(200, marshalProto(&protocol.NetOutResponse{}))))
+		Context("with port", func() {
+			BeforeEach(func() {
+				all := protocol.NetOutRequest_ALL
+
+				server.AppendHandlers(
+					ghttp.CombineHandlers(
+						ghttp.VerifyRequest("POST", "/containers/foo-handle/net/out"),
+						verifyProtoBody(&protocol.NetOutRequest{
+							Handle:    proto.String("foo-handle"),
+							Network:   proto.String("foo-network"),
+							Port:      proto.Uint32(42),
+							PortRange: proto.String(""),
+							Protocol:  &all,
+						}),
+						ghttp.RespondWith(200, marshalProto(&protocol.NetOutResponse{}))))
+			})
+
+			It("should return the port", func() {
+				err := connection.NetOut("foo-handle", "foo-network", 42, "", api.ProtocolAll)
+				Ω(err).ShouldNot(HaveOccurred())
+			})
+
+			It("returns an error if the protocol is unknown", func() {
+				err := connection.NetOut("foo-handle", "foo-network", 42, "", 58)
+				Ω(err).Should(MatchError("invalid protocol"))
+			})
 		})
 
-		It("should return the allocated ports", func() {
-			err := connection.NetOut("foo-handle", "foo-network", 42)
-			Ω(err).ShouldNot(HaveOccurred())
+		Context("with port range", func() {
+			BeforeEach(func() {
+				all := protocol.NetOutRequest_ALL
+
+				server.AppendHandlers(
+					ghttp.CombineHandlers(
+						ghttp.VerifyRequest("POST", "/containers/foo-handle/net/out"),
+						verifyProtoBody(&protocol.NetOutRequest{
+							Handle:    proto.String("foo-handle"),
+							Network:   proto.String("foo-network"),
+							Port:      proto.Uint32(0),
+							PortRange: proto.String("8080:8081"),
+							Protocol:  &all,
+						}),
+						ghttp.RespondWith(200, marshalProto(&protocol.NetOutResponse{}))))
+			})
+
+			It("should return the port range", func() {
+				err := connection.NetOut("foo-handle", "foo-network", 0, "8080:8081", api.ProtocolAll)
+				Ω(err).ShouldNot(HaveOccurred())
+			})
+		})
+
+		Context("with an invalid port range", func() {
+			It("should return an error when the port range is malformed", func() {
+				err := connection.NetOut("foo-handle", "foo-network", 0, "8080-8081", api.ProtocolAll)
+				Ω(err).Should(HaveOccurred())
+				Ω(err).Should(MatchError(`Invalid port range: "8080-8081"`))
+			})
+
+			It("should return an error when there are too many colons in the port range", func() {
+				err := connection.NetOut("foo-handle", "foo-network", 0, "1:2:3", api.ProtocolAll)
+				Ω(err).Should(HaveOccurred())
+				Ω(err).Should(MatchError(`Invalid port range: "1:2:3"`))
+			})
+
+			It("should return an error when the port range has no start", func() {
+				err := connection.NetOut("foo-handle", "foo-network", 0, ":8081", api.ProtocolAll)
+				Ω(err).Should(HaveOccurred())
+				Ω(err).Should(MatchError(`Invalid port range: ":8081"`))
+			})
+
+			It("should return an error when the port range has no end", func() {
+				err := connection.NetOut("foo-handle", "foo-network", 0, "8080:", api.ProtocolAll)
+				Ω(err).Should(HaveOccurred())
+				Ω(err).Should(MatchError(`Invalid port range: "8080:"`))
+			})
+
+			It("should return an error when the start of the port range is not an integer", func() {
+				err := connection.NetOut("foo-handle", "foo-network", 0, "x:8081", api.ProtocolAll)
+				Ω(err).Should(HaveOccurred())
+				Ω(err).Should(MatchError(`Invalid port range: "x:8081"`))
+			})
+
+			It("should return an error when the end of the port range is not an integer", func() {
+				err := connection.NetOut("foo-handle", "foo-network", 0, "8080:x", api.ProtocolAll)
+				Ω(err).Should(HaveOccurred())
+				Ω(err).Should(MatchError(`Invalid port range: "8080:x"`))
+			})
+
+			It("should return an error when the start of the port range is 0", func() {
+				err := connection.NetOut("foo-handle", "foo-network", 0, "0:8081", api.ProtocolAll)
+				Ω(err).Should(HaveOccurred())
+				Ω(err).Should(MatchError(`Invalid port range: "0:8081"`))
+			})
+
+			It("should return an error when the end of the port range is 0", func() {
+				err := connection.NetOut("foo-handle", "foo-network", 0, "8080:0", api.ProtocolAll)
+				Ω(err).Should(HaveOccurred())
+				Ω(err).Should(MatchError(`Invalid port range: "8080:0"`))
+			})
+
+			It("should return an error when the start of the port range is negative", func() {
+				err := connection.NetOut("foo-handle", "foo-network", 0, "-8080:8081", api.ProtocolAll)
+				Ω(err).Should(HaveOccurred())
+				Ω(err).Should(MatchError(`Invalid port range: "-8080:8081"`))
+			})
+
+			It("should return an error when the end of the port range is negative", func() {
+				err := connection.NetOut("foo-handle", "foo-network", 0, "8080:-8081", api.ProtocolAll)
+				Ω(err).Should(HaveOccurred())
+				Ω(err).Should(MatchError(`Invalid port range: "8080:-8081"`))
+			})
+
+			It("should return an error when the start of the port range is too large", func() {
+				err := connection.NetOut("foo-handle", "foo-network", 0, "65536:8081", api.ProtocolAll)
+				Ω(err).Should(HaveOccurred())
+				Ω(err).Should(MatchError(`Invalid port range: "65536:8081"`))
+			})
+
+			It("should return an error when the end of the port range is too large", func() {
+				err := connection.NetOut("foo-handle", "foo-network", 0, "8080:65536", api.ProtocolAll)
+				Ω(err).Should(HaveOccurred())
+				Ω(err).Should(MatchError(`Invalid port range: "8080:65536"`))
+			})
+
+			It("should return an error when the start of the port range is much too large", func() {
+				err := connection.NetOut("foo-handle", "foo-network", 0, "200000000000000000000000000000000000000:8081", api.ProtocolAll)
+				Ω(err).Should(HaveOccurred())
+				Ω(err).Should(MatchError(`Invalid port range: "200000000000000000000000000000000000000:8081"`))
+			})
+
 		})
 	})
 
@@ -564,10 +679,7 @@ var _ = Describe("Connection", func() {
 						Events:        []string{"maxing", "relaxing all cool"},
 						HostIp:        proto.String("host-ip"),
 						ContainerIp:   proto.String("container-ip"),
-						ContainerPath: proto.String("container-path"),
-						ProcessIds:    []uint64{1, 2},
-
-						Properties: []*protocol.Property{
+						ContainerPath: proto.String("container-path"), ProcessIds: []uint64{1, 2}, Properties: []*protocol.Property{
 							{
 								Key:   proto.String("prop-key"),
 								Value: proto.String("prop-value"),

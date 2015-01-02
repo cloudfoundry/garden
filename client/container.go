@@ -105,8 +105,8 @@ func (container *container) NetIn(hostPort, containerPort uint32) (uint32, uint3
 	return container.connection.NetIn(container.handle, hostPort, containerPort)
 }
 
-func (container *container) NetOut(network string, port uint32) error {
-	return container.connection.NetOut(container.handle, network, port)
+func (container *container) NetOut(network string, port uint32, portRange string, protocol api.Protocol) error {
+	return container.connection.NetOut(container.handle, network, port, portRange, protocol)
 }
 
 func (container *container) GetProperty(name string) (string, error) {

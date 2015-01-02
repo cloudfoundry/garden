@@ -8,10 +8,10 @@ import (
 	"sync"
 	"time"
 
-	"code.google.com/p/gogoprotobuf/proto"
 	"github.com/cloudfoundry-incubator/garden/api"
 	"github.com/cloudfoundry-incubator/garden/routes"
 	"github.com/cloudfoundry-incubator/garden/server/bomberman"
+	"github.com/gogo/protobuf/proto"
 	"github.com/pivotal-golang/lager"
 	"github.com/tedsuo/rata"
 )
