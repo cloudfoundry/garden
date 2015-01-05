@@ -12,7 +12,6 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
-	"strconv"
 	"strings"
 	"time"
 
@@ -371,18 +370,6 @@ func (c *connection) NetOut(handle string, network string, port uint32, portRang
 		np = protocol.NetOutRequest_ALL
 	default:
 		return errors.New("invalid protocol")
-	}
-
-	if portRange != "" {
-		r := strings.Split(portRange, ":")
-		if len(r) != 2 {
-			return fmt.Errorf("Invalid port range: %q", portRange)
-		}
-		lo, startErr := strconv.Atoi(r[0])
-		hi, endErr := strconv.Atoi(r[1])
-		if startErr != nil || endErr != nil || lo <= 0 || lo > 65535 || hi <= 0 || hi > 65535 {
-			return fmt.Errorf("Invalid port range: %q", portRange)
-		}
 	}
 
 	return c.do(

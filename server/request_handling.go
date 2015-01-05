@@ -7,6 +7,8 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gogo/protobuf/proto"
@@ -713,6 +715,19 @@ func (s *GardenServer) handleNetIn(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func validPortRange(portRange string) bool {
+	if portRange != "" {
+		r := strings.Split(portRange, ":")
+		if len(r) != 2 {
+			return false
+		}
+		lo, startErr := strconv.Atoi(r[0])
+		hi, endErr := strconv.Atoi(r[1])
+		return startErr == nil && endErr == nil && lo > 0 && lo <= 65535 && hi > 0 && hi <= 65535
+	}
+	return true
+}
+
 func (s *GardenServer) handleNetOut(w http.ResponseWriter, r *http.Request) {
 	handle := r.FormValue(":handle")
 
@@ -740,6 +755,12 @@ func (s *GardenServer) handleNetOut(w http.ResponseWriter, r *http.Request) {
 	network := request.GetNetwork()
 	port := request.GetPort()
 	portRange := request.GetPortRange()
+
+	if !validPortRange(portRange) {
+		err := fmt.Errorf("invalid port range: %q", portRange)
+		s.writeError(w, err, hLog)
+		return
+	}
 
 	container, err := s.backend.Lookup(handle)
 	if err != nil {

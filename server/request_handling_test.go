@@ -1027,6 +1027,87 @@ var _ = Describe("When a client connects", func() {
 				Ω(protoc).Should(Equal(api.ProtocolAll))
 			})
 
+			Context("with an invalid port range", func() {
+				It("should return an error when the port range is malformed", func() {
+					err := container.NetOut("foo-network", 0, "8080-8081", api.ProtocolAll)
+					Ω(err).Should(HaveOccurred())
+					Ω(err).Should(MatchError(`invalid port range: "8080-8081"`))
+				})
+
+				It("should return an error when there are too many colons in the port range", func() {
+					err := container.NetOut("foo-network", 0, "1:2:3", api.ProtocolAll)
+					Ω(err).Should(HaveOccurred())
+					Ω(err).Should(MatchError(`invalid port range: "1:2:3"`))
+				})
+
+				It("should return an error when the port range has no start", func() {
+					err := container.NetOut("foo-network", 0, ":8081", api.ProtocolAll)
+					Ω(err).Should(HaveOccurred())
+					Ω(err).Should(MatchError(`invalid port range: ":8081"`))
+				})
+
+				It("should return an error when the port range has no end", func() {
+					err := container.NetOut("foo-network", 0, "8080:", api.ProtocolAll)
+					Ω(err).Should(HaveOccurred())
+					Ω(err).Should(MatchError(`invalid port range: "8080:"`))
+				})
+
+				It("should return an error when the start of the port range is not an integer", func() {
+					err := container.NetOut("foo-network", 0, "x:8081", api.ProtocolAll)
+					Ω(err).Should(HaveOccurred())
+					Ω(err).Should(MatchError(`invalid port range: "x:8081"`))
+				})
+
+				It("should return an error when the end of the port range is not an integer", func() {
+					err := container.NetOut("foo-network", 0, "8080:x", api.ProtocolAll)
+					Ω(err).Should(HaveOccurred())
+					Ω(err).Should(MatchError(`invalid port range: "8080:x"`))
+				})
+
+				It("should return an error when the start of the port range is 0", func() {
+					err := container.NetOut("foo-network", 0, "0:8081", api.ProtocolAll)
+					Ω(err).Should(HaveOccurred())
+					Ω(err).Should(MatchError(`invalid port range: "0:8081"`))
+				})
+
+				It("should return an error when the end of the port range is 0", func() {
+					err := container.NetOut("foo-network", 0, "8080:0", api.ProtocolAll)
+					Ω(err).Should(HaveOccurred())
+					Ω(err).Should(MatchError(`invalid port range: "8080:0"`))
+				})
+
+				It("should return an error when the start of the port range is negative", func() {
+					err := container.NetOut("foo-network", 0, "-8080:8081", api.ProtocolAll)
+					Ω(err).Should(HaveOccurred())
+					Ω(err).Should(MatchError(`invalid port range: "-8080:8081"`))
+				})
+
+				It("should return an error when the end of the port range is negative", func() {
+					err := container.NetOut("foo-network", 0, "8080:-8081", api.ProtocolAll)
+					Ω(err).Should(HaveOccurred())
+					Ω(err).Should(MatchError(`invalid port range: "8080:-8081"`))
+				})
+
+				It("should return an error when the start of the port range is too large", func() {
+					err := container.NetOut("foo-network", 0, "65536:8081", api.ProtocolAll)
+					Ω(err).Should(HaveOccurred())
+					Ω(err).Should(MatchError(`invalid port range: "65536:8081"`))
+				})
+
+				It("should return an error when the end of the port range is too large", func() {
+					err := container.NetOut("foo-network", 0, "8080:65536", api.ProtocolAll)
+					Ω(err).Should(HaveOccurred())
+					Ω(err).Should(MatchError(`invalid port range: "8080:65536"`))
+				})
+
+				It("should return an error when the start of the port range is much too large", func() {
+					err := container.NetOut("foo-network", 0, "200000000000000000000000000000000000000:8081", api.ProtocolAll)
+					Ω(err).Should(HaveOccurred())
+					Ω(err).Should(MatchError(`invalid port range: "200000000000000000000000000000000000000:8081"`))
+				})
+
+			})
+
 			itResetsGraceTimeWhenHandling(func() {
 				err := container.NetOut("1.2.3.4/22", 456, "", api.ProtocolAll)
 				Ω(err).ShouldNot(HaveOccurred())
