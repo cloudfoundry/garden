@@ -1027,6 +1027,17 @@ var _ = Describe("When a client connects", func() {
 				Ω(protoc).Should(Equal(api.ProtocolAll))
 			})
 
+			It("permits ICMP traffic outside of the container", func() {
+				err := container.NetOut("1.2.3.4/22", 0, "", api.ProtocolICMP)
+				Ω(err).ShouldNot(HaveOccurred())
+
+				cidr, port, portRange, protoc := fakeContainer.NetOutArgsForCall(0)
+				Ω(cidr).Should(Equal("1.2.3.4/22"))
+				Ω(port).Should(Equal(uint32(0)))
+				Ω(portRange).Should(Equal(""))
+				Ω(protoc).Should(Equal(api.ProtocolICMP))
+			})
+
 			Context("with an invalid port range", func() {
 				It("should return an error when the port range is malformed", func() {
 					err := container.NetOut("foo-network", 0, "8080-8081", api.ProtocolAll)

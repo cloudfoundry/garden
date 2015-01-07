@@ -569,6 +569,29 @@ var _ = Describe("Connection", func() {
 			})
 		})
 
+		Context("with ICMP protocol", func() {
+			BeforeEach(func() {
+				icmp := protocol.NetOutRequest_ICMP
+
+				server.AppendHandlers(
+					ghttp.CombineHandlers(
+						ghttp.VerifyRequest("POST", "/containers/foo-handle/net/out"),
+						verifyProtoBody(&protocol.NetOutRequest{
+							Handle:    proto.String("foo-handle"),
+							Network:   proto.String("foo-network"),
+							Port:      proto.Uint32(0),
+							PortRange: proto.String(""),
+							Protocol:  &icmp,
+						}),
+						ghttp.RespondWith(200, marshalProto(&protocol.NetOutResponse{}))))
+			})
+
+			It("should return the port", func() {
+				err := connection.NetOut("foo-handle", "foo-network", 0, "", api.ProtocolICMP)
+				Ω(err).ShouldNot(HaveOccurred())
+			})
+		})
+
 	})
 
 	Describe("Listing containers", func() {
