@@ -546,6 +546,29 @@ var _ = Describe("Connection", func() {
 			})
 		})
 
+		Context("when sending a request for UDP to be opened", func() {
+			BeforeEach(func() {
+				udp := protocol.NetOutRequest_UDP
+
+				server.AppendHandlers(
+					ghttp.CombineHandlers(
+						ghttp.VerifyRequest("POST", "/containers/udp-handle/net/out"),
+						verifyProtoBody(&protocol.NetOutRequest{
+							Handle:    proto.String("udp-handle"),
+							Network:   proto.String("udp-network"),
+							Port:      proto.Uint32(42),
+							PortRange: proto.String("8080:8081"),
+							Protocol:  &udp,
+						}),
+						ghttp.RespondWith(200, marshalProto(&protocol.NetOutResponse{}))))
+			})
+
+			It("receives a message containing the UDP protocol", func() {
+				err := connection.NetOut("udp-handle", "udp-network", 42, "8080:8081", api.ProtocolUDP)
+				Ω(err).ShouldNot(HaveOccurred())
+			})
+		})
+
 		Context("with port range", func() {
 			BeforeEach(func() {
 				all := protocol.NetOutRequest_ALL

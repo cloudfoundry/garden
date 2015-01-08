@@ -17,17 +17,20 @@ const (
 	NetOutRequest_TCP  NetOutRequest_Protocol = 0
 	NetOutRequest_ALL  NetOutRequest_Protocol = 1
 	NetOutRequest_ICMP NetOutRequest_Protocol = 2
+	NetOutRequest_UDP  NetOutRequest_Protocol = 3
 )
 
 var NetOutRequest_Protocol_name = map[int32]string{
 	0: "TCP",
 	1: "ALL",
 	2: "ICMP",
+	3: "UDP",
 }
 var NetOutRequest_Protocol_value = map[string]int32{
 	"TCP":  0,
 	"ALL":  1,
 	"ICMP": 2,
+	"UDP":  3,
 }
 
 func (x NetOutRequest_Protocol) Enum() *NetOutRequest_Protocol {
