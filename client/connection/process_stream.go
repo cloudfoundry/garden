@@ -1,6 +1,7 @@
 package connection
 
 import (
+	"fmt"
 	"net"
 	"sync"
 
@@ -11,6 +12,8 @@ import (
 )
 
 var stdin = protocol.ProcessPayload_stdin
+var sigKill = protocol.ProcessPayload_kill
+var sigTerm = protocol.ProcessPayload_terminate
 
 type processStream struct {
 	id   uint32
@@ -47,6 +50,23 @@ func (s *processStream) SetTTY(spec api.TTYSpec) error {
 	return s.sendPayload(&protocol.ProcessPayload{
 		ProcessId: proto.Uint32(s.id),
 		Tty:       tty,
+	})
+}
+
+func (s *processStream) Signal(signal api.Signal) error {
+	var payloadSignal protocol.ProcessPayload_Signal
+	switch signal {
+	case api.SignalKill:
+		payloadSignal = sigKill
+	case api.SignalTerminate:
+		payloadSignal = sigTerm
+	default:
+		return fmt.Errorf("Unknown signal type: %d", signal)
+	}
+
+	return s.sendPayload(&protocol.ProcessPayload{
+		ProcessId: proto.Uint32(s.id),
+		Signal:    &payloadSignal,
 	})
 }
 

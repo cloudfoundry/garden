@@ -979,6 +979,104 @@ var _ = Describe("Connection", func() {
 			})
 		})
 
+		Context("when the process is terminated", func() {
+			termSignal := protocol.ProcessPayload_terminate
+
+			BeforeEach(func() {
+				server.AppendHandlers(
+					ghttp.CombineHandlers(
+						ghttp.VerifyRequest("POST", "/containers/foo-handle/processes"),
+						func(w http.ResponseWriter, r *http.Request) {
+							w.WriteHeader(http.StatusOK)
+
+							conn, br, err := w.(http.Hijacker).Hijack()
+							Ω(err).ShouldNot(HaveOccurred())
+
+							defer conn.Close()
+
+							decoder := json.NewDecoder(br)
+
+							transport.WriteMessage(conn, &protocol.ProcessPayload{ProcessId: proto.Uint32(42)})
+
+							var payload protocol.ProcessPayload
+							err = decoder.Decode(&payload)
+							Ω(err).ShouldNot(HaveOccurred())
+
+							Ω(payload).Should(Equal(protocol.ProcessPayload{
+								ProcessId: proto.Uint32(42),
+								Signal:    &termSignal,
+							}))
+
+							transport.WriteMessage(conn, &protocol.ProcessPayload{ProcessId: proto.Uint32(42), ExitStatus: proto.Uint32(3)})
+						},
+					),
+				)
+			})
+
+			It("sends the appropriate protocol message", func() {
+				process, err := connection.Run("foo-handle", api.ProcessSpec{}, api.ProcessIO{})
+
+				Ω(err).ShouldNot(HaveOccurred())
+				Ω(process.ID()).Should(Equal(uint32(42)))
+
+				err = process.Signal(api.SignalTerminate)
+				Ω(err).ShouldNot(HaveOccurred())
+
+				status, err := process.Wait()
+				Ω(err).ShouldNot(HaveOccurred())
+				Ω(status).Should(Equal(3))
+			})
+		})
+
+		Context("when the process is killed", func() {
+			killSignal := protocol.ProcessPayload_kill
+
+			BeforeEach(func() {
+				server.AppendHandlers(
+					ghttp.CombineHandlers(
+						ghttp.VerifyRequest("POST", "/containers/foo-handle/processes"),
+						func(w http.ResponseWriter, r *http.Request) {
+							w.WriteHeader(http.StatusOK)
+
+							conn, br, err := w.(http.Hijacker).Hijack()
+							Ω(err).ShouldNot(HaveOccurred())
+
+							defer conn.Close()
+
+							decoder := json.NewDecoder(br)
+
+							transport.WriteMessage(conn, &protocol.ProcessPayload{ProcessId: proto.Uint32(42)})
+
+							var payload protocol.ProcessPayload
+							err = decoder.Decode(&payload)
+							Ω(err).ShouldNot(HaveOccurred())
+
+							Ω(payload).Should(Equal(protocol.ProcessPayload{
+								ProcessId: proto.Uint32(42),
+								Signal:    &killSignal,
+							}))
+
+							transport.WriteMessage(conn, &protocol.ProcessPayload{ProcessId: proto.Uint32(42), ExitStatus: proto.Uint32(3)})
+						},
+					),
+				)
+			})
+
+			It("sends the appropriate protocol message", func() {
+				process, err := connection.Run("foo-handle", api.ProcessSpec{}, api.ProcessIO{})
+
+				Ω(err).ShouldNot(HaveOccurred())
+				Ω(process.ID()).Should(Equal(uint32(42)))
+
+				err = process.Signal(api.SignalKill)
+				Ω(err).ShouldNot(HaveOccurred())
+
+				status, err := process.Wait()
+				Ω(err).ShouldNot(HaveOccurred())
+				Ω(status).Should(Equal(3))
+			})
+		})
+
 		Context("when the process's window is resized", func() {
 			BeforeEach(func() {
 				server.AppendHandlers(

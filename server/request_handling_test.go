@@ -1506,6 +1506,58 @@ var _ = Describe("When a client connects", func() {
 				})
 			})
 
+			Context("when the process is killed", func() {
+				var fakeProcess *fakes.FakeProcess
+
+				BeforeEach(func() {
+					fakeProcess = new(fakes.FakeProcess)
+					fakeProcess.IDReturns(42)
+					fakeProcess.WaitStub = func() (int, error) {
+						select {}
+						return 0, nil
+					}
+
+					fakeContainer.RunReturns(fakeProcess, nil)
+				})
+
+				It("is eventually killed in the backend", func() {
+					process, err := container.Run(processSpec, api.ProcessIO{})
+					Ω(err).ShouldNot(HaveOccurred())
+
+					err = process.Signal(api.SignalKill)
+					Ω(err).ShouldNot(HaveOccurred())
+
+					Eventually(fakeProcess.SignalCallCount).Should(Equal(1))
+					Ω(fakeProcess.SignalArgsForCall(0)).Should(Equal(api.SignalKill))
+				})
+			})
+
+			Context("when the process is terminated", func() {
+				var fakeProcess *fakes.FakeProcess
+
+				BeforeEach(func() {
+					fakeProcess = new(fakes.FakeProcess)
+					fakeProcess.IDReturns(42)
+					fakeProcess.WaitStub = func() (int, error) {
+						select {}
+						return 0, nil
+					}
+
+					fakeContainer.RunReturns(fakeProcess, nil)
+				})
+
+				It("is eventually terminated in the backend", func() {
+					process, err := container.Run(processSpec, api.ProcessIO{})
+					Ω(err).ShouldNot(HaveOccurred())
+
+					err = process.Signal(api.SignalTerminate)
+					Ω(err).ShouldNot(HaveOccurred())
+
+					Eventually(fakeProcess.SignalCallCount).Should(Equal(1))
+					Ω(fakeProcess.SignalArgsForCall(0)).Should(Equal(api.SignalTerminate))
+				})
+			})
+
 			Context("when the process's window size is set", func() {
 				var fakeProcess *fakes.FakeProcess
 

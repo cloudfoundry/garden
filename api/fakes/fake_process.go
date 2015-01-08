@@ -2,21 +2,22 @@
 package fakes
 
 import (
-	"github.com/cloudfoundry-incubator/garden/api"
 	"sync"
+
+	"github.com/cloudfoundry-incubator/garden/api"
 )
 
 type FakeProcess struct {
 	IDStub        func() uint32
 	iDMutex       sync.RWMutex
 	iDArgsForCall []struct{}
-	iDReturns     struct {
+	iDReturns struct {
 		result1 uint32
 	}
 	WaitStub        func() (int, error)
 	waitMutex       sync.RWMutex
 	waitArgsForCall []struct{}
-	waitReturns     struct {
+	waitReturns struct {
 		result1 int
 		result2 error
 	}
@@ -28,12 +29,20 @@ type FakeProcess struct {
 	setTTYReturns struct {
 		result1 error
 	}
+	SignalStub        func(api.Signal) error
+	signalMutex       sync.RWMutex
+	signalArgsForCall []struct {
+		arg1 api.Signal
+	}
+	signalReturns struct {
+		result1 error
+	}
 }
 
 func (fake *FakeProcess) ID() uint32 {
 	fake.iDMutex.Lock()
-	defer fake.iDMutex.Unlock()
 	fake.iDArgsForCall = append(fake.iDArgsForCall, struct{}{})
+	fake.iDMutex.Unlock()
 	if fake.IDStub != nil {
 		return fake.IDStub()
 	} else {
@@ -56,8 +65,8 @@ func (fake *FakeProcess) IDReturns(result1 uint32) {
 
 func (fake *FakeProcess) Wait() (int, error) {
 	fake.waitMutex.Lock()
-	defer fake.waitMutex.Unlock()
 	fake.waitArgsForCall = append(fake.waitArgsForCall, struct{}{})
+	fake.waitMutex.Unlock()
 	if fake.WaitStub != nil {
 		return fake.WaitStub()
 	} else {
@@ -81,10 +90,10 @@ func (fake *FakeProcess) WaitReturns(result1 int, result2 error) {
 
 func (fake *FakeProcess) SetTTY(arg1 api.TTYSpec) error {
 	fake.setTTYMutex.Lock()
-	defer fake.setTTYMutex.Unlock()
 	fake.setTTYArgsForCall = append(fake.setTTYArgsForCall, struct {
 		arg1 api.TTYSpec
 	}{arg1})
+	fake.setTTYMutex.Unlock()
 	if fake.SetTTYStub != nil {
 		return fake.SetTTYStub(arg1)
 	} else {
@@ -107,6 +116,38 @@ func (fake *FakeProcess) SetTTYArgsForCall(i int) api.TTYSpec {
 func (fake *FakeProcess) SetTTYReturns(result1 error) {
 	fake.SetTTYStub = nil
 	fake.setTTYReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *FakeProcess) Signal(arg1 api.Signal) error {
+	fake.signalMutex.Lock()
+	fake.signalArgsForCall = append(fake.signalArgsForCall, struct {
+		arg1 api.Signal
+	}{arg1})
+	fake.signalMutex.Unlock()
+	if fake.SignalStub != nil {
+		return fake.SignalStub(arg1)
+	} else {
+		return fake.signalReturns.result1
+	}
+}
+
+func (fake *FakeProcess) SignalCallCount() int {
+	fake.signalMutex.RLock()
+	defer fake.signalMutex.RUnlock()
+	return len(fake.signalArgsForCall)
+}
+
+func (fake *FakeProcess) SignalArgsForCall(i int) api.Signal {
+	fake.signalMutex.RLock()
+	defer fake.signalMutex.RUnlock()
+	return fake.signalArgsForCall[i].arg1
+}
+
+func (fake *FakeProcess) SignalReturns(result1 error) {
+	fake.SignalStub = nil
+	fake.signalReturns = struct {
 		result1 error
 	}{result1}
 }
