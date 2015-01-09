@@ -1038,6 +1038,17 @@ var _ = Describe("When a client connects", func() {
 				Ω(protoc).Should(Equal(api.ProtocolICMP))
 			})
 
+			It("permits UDP traffic outside of the container", func() {
+				err := container.NetOut("1.2.3.4/22", 1234, "8080:8181", api.ProtocolUDP)
+				Ω(err).ShouldNot(HaveOccurred())
+
+				cidr, port, portRange, protoc := fakeContainer.NetOutArgsForCall(0)
+				Ω(cidr).Should(Equal("1.2.3.4/22"))
+				Ω(port).Should(Equal(uint32(1234)))
+				Ω(portRange).Should(Equal("8080:8181"))
+				Ω(protoc).Should(Equal(api.ProtocolUDP))
+			})
+
 			Context("with an invalid port range", func() {
 				It("should return an error when the port range is malformed", func() {
 					err := container.NetOut("foo-network", 0, "8080-8081", api.ProtocolAll)

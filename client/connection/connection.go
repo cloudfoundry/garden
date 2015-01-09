@@ -368,6 +368,8 @@ func (c *connection) NetOut(handle string, network string, port uint32, portRang
 		np = protocol.NetOutRequest_TCP
 	case api.ProtocolICMP:
 		np = protocol.NetOutRequest_ICMP
+	case api.ProtocolUDP:
+		np = protocol.NetOutRequest_UDP
 	case api.ProtocolAll:
 		np = protocol.NetOutRequest_ALL
 	default:

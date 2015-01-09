@@ -43,6 +43,7 @@ const (
 	ProtocolTCP Protocol = 1 << iota
 	ProtocolUDP
 	ProtocolICMP
+
 	ProtocolAll Protocol = (1 << iota) - 1
 )
 

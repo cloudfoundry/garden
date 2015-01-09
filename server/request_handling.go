@@ -746,6 +746,8 @@ func (s *GardenServer) handleNetOut(w http.ResponseWriter, r *http.Request) {
 		protoc = api.ProtocolTCP
 	case protocol.NetOutRequest_ICMP:
 		protoc = api.ProtocolICMP
+	case protocol.NetOutRequest_UDP:
+		protoc = api.ProtocolUDP
 	case protocol.NetOutRequest_ALL:
 		protoc = api.ProtocolAll
 	default:
