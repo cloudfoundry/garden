@@ -27,7 +27,7 @@ type Container interface {
 	CurrentMemoryLimits() (MemoryLimits, error)
 
 	NetIn(hostPort, containerPort uint32) (uint32, uint32, error)
-	NetOut(network string, port uint32, portRange string, protocol Protocol) error
+	NetOut(network string, port uint32, portRange string, protocol Protocol, icmpType int32, icmpCode int32) error
 
 	Run(ProcessSpec, ProcessIO) (Process, error)
 	Attach(uint32, ProcessIO) (Process, error)

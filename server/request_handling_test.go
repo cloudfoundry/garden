@@ -1006,10 +1006,10 @@ var _ = Describe("When a client connects", func() {
 
 		Describe("net out", func() {
 			It("permits traffic outside of the container with port specified", func() {
-				err := container.NetOut("1.2.3.4/22", 456, "", api.ProtocolAll)
+				err := container.NetOut("1.2.3.4/22", 456, "", api.ProtocolAll, -1, -1)
 				Ω(err).ShouldNot(HaveOccurred())
 
-				cidr, port, portRange, protoc := fakeContainer.NetOutArgsForCall(0)
+				cidr, port, portRange, protoc, _, _ := fakeContainer.NetOutArgsForCall(0)
 				Ω(cidr).Should(Equal("1.2.3.4/22"))
 				Ω(port).Should(Equal(uint32(456)))
 				Ω(portRange).Should(Equal(""))
@@ -1017,10 +1017,10 @@ var _ = Describe("When a client connects", func() {
 			})
 
 			It("permits traffic outside of the container with port range specified", func() {
-				err := container.NetOut("1.2.3.4/22", 0, "80:81", api.ProtocolAll)
+				err := container.NetOut("1.2.3.4/22", 0, "80:81", api.ProtocolAll, -1, -1)
 				Ω(err).ShouldNot(HaveOccurred())
 
-				cidr, port, portRange, protoc := fakeContainer.NetOutArgsForCall(0)
+				cidr, port, portRange, protoc, _, _ := fakeContainer.NetOutArgsForCall(0)
 				Ω(cidr).Should(Equal("1.2.3.4/22"))
 				Ω(port).Should(Equal(uint32(0)))
 				Ω(portRange).Should(Equal("80:81"))
@@ -1028,21 +1028,23 @@ var _ = Describe("When a client connects", func() {
 			})
 
 			It("permits ICMP traffic outside of the container", func() {
-				err := container.NetOut("1.2.3.4/22", 0, "", api.ProtocolICMP)
+				err := container.NetOut("1.2.3.4/22", 0, "", api.ProtocolICMP, 4, 7)
 				Ω(err).ShouldNot(HaveOccurred())
 
-				cidr, port, portRange, protoc := fakeContainer.NetOutArgsForCall(0)
+				cidr, port, portRange, protoc, icmpType, icmpCode := fakeContainer.NetOutArgsForCall(0)
 				Ω(cidr).Should(Equal("1.2.3.4/22"))
 				Ω(port).Should(Equal(uint32(0)))
 				Ω(portRange).Should(Equal(""))
 				Ω(protoc).Should(Equal(api.ProtocolICMP))
+				Ω(icmpType).Should(Equal(int32(4)))
+				Ω(icmpCode).Should(Equal(int32(7)))
 			})
 
 			It("permits UDP traffic outside of the container", func() {
-				err := container.NetOut("1.2.3.4/22", 1234, "8080:8181", api.ProtocolUDP)
+				err := container.NetOut("1.2.3.4/22", 1234, "8080:8181", api.ProtocolUDP, -1, -1)
 				Ω(err).ShouldNot(HaveOccurred())
 
-				cidr, port, portRange, protoc := fakeContainer.NetOutArgsForCall(0)
+				cidr, port, portRange, protoc, _, _ := fakeContainer.NetOutArgsForCall(0)
 				Ω(cidr).Should(Equal("1.2.3.4/22"))
 				Ω(port).Should(Equal(uint32(1234)))
 				Ω(portRange).Should(Equal("8080:8181"))
@@ -1051,79 +1053,79 @@ var _ = Describe("When a client connects", func() {
 
 			Context("with an invalid port range", func() {
 				It("should return an error when the port range is malformed", func() {
-					err := container.NetOut("foo-network", 0, "8080-8081", api.ProtocolAll)
+					err := container.NetOut("foo-network", 0, "8080-8081", api.ProtocolAll, -1, -1)
 					Ω(err).Should(HaveOccurred())
 					Ω(err).Should(MatchError(`invalid port range: "8080-8081"`))
 				})
 
 				It("should return an error when there are too many colons in the port range", func() {
-					err := container.NetOut("foo-network", 0, "1:2:3", api.ProtocolAll)
+					err := container.NetOut("foo-network", 0, "1:2:3", api.ProtocolAll, -1, -1)
 					Ω(err).Should(HaveOccurred())
 					Ω(err).Should(MatchError(`invalid port range: "1:2:3"`))
 				})
 
 				It("should return an error when the port range has no start", func() {
-					err := container.NetOut("foo-network", 0, ":8081", api.ProtocolAll)
+					err := container.NetOut("foo-network", 0, ":8081", api.ProtocolAll, -1, -1)
 					Ω(err).Should(HaveOccurred())
 					Ω(err).Should(MatchError(`invalid port range: ":8081"`))
 				})
 
 				It("should return an error when the port range has no end", func() {
-					err := container.NetOut("foo-network", 0, "8080:", api.ProtocolAll)
+					err := container.NetOut("foo-network", 0, "8080:", api.ProtocolAll, -1, -1)
 					Ω(err).Should(HaveOccurred())
 					Ω(err).Should(MatchError(`invalid port range: "8080:"`))
 				})
 
 				It("should return an error when the start of the port range is not an integer", func() {
-					err := container.NetOut("foo-network", 0, "x:8081", api.ProtocolAll)
+					err := container.NetOut("foo-network", 0, "x:8081", api.ProtocolAll, -1, -1)
 					Ω(err).Should(HaveOccurred())
 					Ω(err).Should(MatchError(`invalid port range: "x:8081"`))
 				})
 
 				It("should return an error when the end of the port range is not an integer", func() {
-					err := container.NetOut("foo-network", 0, "8080:x", api.ProtocolAll)
+					err := container.NetOut("foo-network", 0, "8080:x", api.ProtocolAll, -1, -1)
 					Ω(err).Should(HaveOccurred())
 					Ω(err).Should(MatchError(`invalid port range: "8080:x"`))
 				})
 
 				It("should return an error when the start of the port range is 0", func() {
-					err := container.NetOut("foo-network", 0, "0:8081", api.ProtocolAll)
+					err := container.NetOut("foo-network", 0, "0:8081", api.ProtocolAll, -1, -1)
 					Ω(err).Should(HaveOccurred())
 					Ω(err).Should(MatchError(`invalid port range: "0:8081"`))
 				})
 
 				It("should return an error when the end of the port range is 0", func() {
-					err := container.NetOut("foo-network", 0, "8080:0", api.ProtocolAll)
+					err := container.NetOut("foo-network", 0, "8080:0", api.ProtocolAll, -1, -1)
 					Ω(err).Should(HaveOccurred())
 					Ω(err).Should(MatchError(`invalid port range: "8080:0"`))
 				})
 
 				It("should return an error when the start of the port range is negative", func() {
-					err := container.NetOut("foo-network", 0, "-8080:8081", api.ProtocolAll)
+					err := container.NetOut("foo-network", 0, "-8080:8081", api.ProtocolAll, -1, -1)
 					Ω(err).Should(HaveOccurred())
 					Ω(err).Should(MatchError(`invalid port range: "-8080:8081"`))
 				})
 
 				It("should return an error when the end of the port range is negative", func() {
-					err := container.NetOut("foo-network", 0, "8080:-8081", api.ProtocolAll)
+					err := container.NetOut("foo-network", 0, "8080:-8081", api.ProtocolAll, -1, -1)
 					Ω(err).Should(HaveOccurred())
 					Ω(err).Should(MatchError(`invalid port range: "8080:-8081"`))
 				})
 
 				It("should return an error when the start of the port range is too large", func() {
-					err := container.NetOut("foo-network", 0, "65536:8081", api.ProtocolAll)
+					err := container.NetOut("foo-network", 0, "65536:8081", api.ProtocolAll, -1, -1)
 					Ω(err).Should(HaveOccurred())
 					Ω(err).Should(MatchError(`invalid port range: "65536:8081"`))
 				})
 
 				It("should return an error when the end of the port range is too large", func() {
-					err := container.NetOut("foo-network", 0, "8080:65536", api.ProtocolAll)
+					err := container.NetOut("foo-network", 0, "8080:65536", api.ProtocolAll, -1, -1)
 					Ω(err).Should(HaveOccurred())
 					Ω(err).Should(MatchError(`invalid port range: "8080:65536"`))
 				})
 
 				It("should return an error when the start of the port range is much too large", func() {
-					err := container.NetOut("foo-network", 0, "200000000000000000000000000000000000000:8081", api.ProtocolAll)
+					err := container.NetOut("foo-network", 0, "200000000000000000000000000000000000000:8081", api.ProtocolAll, -1, -1)
 					Ω(err).Should(HaveOccurred())
 					Ω(err).Should(MatchError(`invalid port range: "200000000000000000000000000000000000000:8081"`))
 				})
@@ -1131,12 +1133,12 @@ var _ = Describe("When a client connects", func() {
 			})
 
 			itResetsGraceTimeWhenHandling(func() {
-				err := container.NetOut("1.2.3.4/22", 456, "", api.ProtocolAll)
+				err := container.NetOut("1.2.3.4/22", 456, "", api.ProtocolAll, -1, -1)
 				Ω(err).ShouldNot(HaveOccurred())
 			})
 
 			itFailsWhenTheContainerIsNotFound(func() {
-				err := container.NetOut("1.2.3.4/22", 456, "", api.ProtocolAll)
+				err := container.NetOut("1.2.3.4/22", 456, "", api.ProtocolAll, -1, -1)
 				Ω(err).Should(HaveOccurred())
 			})
 
@@ -1146,7 +1148,7 @@ var _ = Describe("When a client connects", func() {
 				})
 
 				It("fails", func() {
-					err := container.NetOut("1.2.3.4/22", 456, "", api.ProtocolAll)
+					err := container.NetOut("1.2.3.4/22", 456, "", api.ProtocolAll, -1, -1)
 					Ω(err).Should(HaveOccurred())
 				})
 			})

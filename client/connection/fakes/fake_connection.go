@@ -13,13 +13,13 @@ type FakeConnection struct {
 	PingStub        func() error
 	pingMutex       sync.RWMutex
 	pingArgsForCall []struct{}
-	pingReturns     struct {
+	pingReturns struct {
 		result1 error
 	}
 	CapacityStub        func() (api.Capacity, error)
 	capacityMutex       sync.RWMutex
 	capacityArgsForCall []struct{}
-	capacityReturns     struct {
+	capacityReturns struct {
 		result1 api.Capacity
 		result2 error
 	}
@@ -197,7 +197,7 @@ type FakeConnection struct {
 		result2 uint32
 		result3 error
 	}
-	NetOutStub        func(handle string, network string, port uint32, portRange string, protocol api.Protocol) error
+	NetOutStub        func(handle string, network string, port uint32, portRange string, protocol api.Protocol, icmpType int32, icmpCode int32) error
 	netOutMutex       sync.RWMutex
 	netOutArgsForCall []struct {
 		handle    string
@@ -205,6 +205,8 @@ type FakeConnection struct {
 		port      uint32
 		portRange string
 		protocol  api.Protocol
+		icmpType  int32
+		icmpCode  int32
 	}
 	netOutReturns struct {
 		result1 error
@@ -895,7 +897,7 @@ func (fake *FakeConnection) NetInReturns(result1 uint32, result2 uint32, result3
 	}{result1, result2, result3}
 }
 
-func (fake *FakeConnection) NetOut(handle string, network string, port uint32, portRange string, protocol api.Protocol) error {
+func (fake *FakeConnection) NetOut(handle string, network string, port uint32, portRange string, protocol api.Protocol, icmpType int32, icmpCode int32) error {
 	fake.netOutMutex.Lock()
 	fake.netOutArgsForCall = append(fake.netOutArgsForCall, struct {
 		handle    string
@@ -903,10 +905,12 @@ func (fake *FakeConnection) NetOut(handle string, network string, port uint32, p
 		port      uint32
 		portRange string
 		protocol  api.Protocol
-	}{handle, network, port, portRange, protocol})
+		icmpType  int32
+		icmpCode  int32
+	}{handle, network, port, portRange, protocol, icmpType, icmpCode})
 	fake.netOutMutex.Unlock()
 	if fake.NetOutStub != nil {
-		return fake.NetOutStub(handle, network, port, portRange, protocol)
+		return fake.NetOutStub(handle, network, port, portRange, protocol, icmpType, icmpCode)
 	} else {
 		return fake.netOutReturns.result1
 	}
@@ -918,10 +922,10 @@ func (fake *FakeConnection) NetOutCallCount() int {
 	return len(fake.netOutArgsForCall)
 }
 
-func (fake *FakeConnection) NetOutArgsForCall(i int) (string, string, uint32, string, api.Protocol) {
+func (fake *FakeConnection) NetOutArgsForCall(i int) (string, string, uint32, string, api.Protocol, int32, int32) {
 	fake.netOutMutex.RLock()
 	defer fake.netOutMutex.RUnlock()
-	return fake.netOutArgsForCall[i].handle, fake.netOutArgsForCall[i].network, fake.netOutArgsForCall[i].port, fake.netOutArgsForCall[i].portRange, fake.netOutArgsForCall[i].protocol
+	return fake.netOutArgsForCall[i].handle, fake.netOutArgsForCall[i].network, fake.netOutArgsForCall[i].port, fake.netOutArgsForCall[i].portRange, fake.netOutArgsForCall[i].protocol, fake.netOutArgsForCall[i].icmpType, fake.netOutArgsForCall[i].icmpCode
 }
 
 func (fake *FakeConnection) NetOutReturns(result1 error) {

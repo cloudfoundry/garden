@@ -759,6 +759,8 @@ func (s *GardenServer) handleNetOut(w http.ResponseWriter, r *http.Request) {
 	network := request.GetNetwork()
 	port := request.GetPort()
 	portRange := request.GetPortRange()
+	icmpType := request.GetIcmpType()
+	icmpCode := request.GetIcmpCode()
 
 	if !validPortRange(portRange) {
 		err := fmt.Errorf("invalid port range: %q", portRange)
@@ -780,9 +782,11 @@ func (s *GardenServer) handleNetOut(w http.ResponseWriter, r *http.Request) {
 		"port":      port,
 		"portRange": portRange,
 		"protocol":  protoc,
+		"icmpType":  icmpType,
+		"icmpCode":  icmpCode,
 	})
 
-	err = container.NetOut(network, port, portRange, protoc)
+	err = container.NetOut(network, port, portRange, protoc, icmpType, icmpCode)
 	if err != nil {
 		s.writeError(w, err, hLog)
 		return

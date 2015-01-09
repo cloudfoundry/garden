@@ -531,17 +531,19 @@ var _ = Describe("Connection", func() {
 							Port:      proto.Uint32(42),
 							PortRange: proto.String(""),
 							Protocol:  &all,
+							IcmpType:  proto.Int32(-1),
+							IcmpCode:  proto.Int32(-1),
 						}),
 						ghttp.RespondWith(200, marshalProto(&protocol.NetOutResponse{}))))
 			})
 
-			It("should return the port", func() {
-				err := connection.NetOut("foo-handle", "foo-network", 42, "", api.ProtocolAll)
+			It("should send the correct values", func() {
+				err := connection.NetOut("foo-handle", "foo-network", 42, "", api.ProtocolAll, -1, -1)
 				Ω(err).ShouldNot(HaveOccurred())
 			})
 
 			It("returns an error if the protocol is unknown", func() {
-				err := connection.NetOut("foo-handle", "foo-network", 42, "", 58)
+				err := connection.NetOut("foo-handle", "foo-network", 42, "", 58, -1, -1)
 				Ω(err).Should(MatchError("invalid protocol"))
 			})
 		})
@@ -559,12 +561,14 @@ var _ = Describe("Connection", func() {
 							Port:      proto.Uint32(42),
 							PortRange: proto.String("8080:8081"),
 							Protocol:  &udp,
+							IcmpType:  proto.Int32(-1),
+							IcmpCode:  proto.Int32(-1),
 						}),
 						ghttp.RespondWith(200, marshalProto(&protocol.NetOutResponse{}))))
 			})
 
 			It("receives a message containing the UDP protocol", func() {
-				err := connection.NetOut("udp-handle", "udp-network", 42, "8080:8081", api.ProtocolUDP)
+				err := connection.NetOut("udp-handle", "udp-network", 42, "8080:8081", api.ProtocolUDP, -1, -1)
 				Ω(err).ShouldNot(HaveOccurred())
 			})
 		})
@@ -582,12 +586,14 @@ var _ = Describe("Connection", func() {
 							Port:      proto.Uint32(0),
 							PortRange: proto.String("8080:8081"),
 							Protocol:  &all,
+							IcmpType:  proto.Int32(-1),
+							IcmpCode:  proto.Int32(-1),
 						}),
 						ghttp.RespondWith(200, marshalProto(&protocol.NetOutResponse{}))))
 			})
 
-			It("should return the port range", func() {
-				err := connection.NetOut("foo-handle", "foo-network", 0, "8080:8081", api.ProtocolAll)
+			It("should send the correct values", func() {
+				err := connection.NetOut("foo-handle", "foo-network", 0, "8080:8081", api.ProtocolAll, -1, -1)
 				Ω(err).ShouldNot(HaveOccurred())
 			})
 		})
@@ -605,12 +611,14 @@ var _ = Describe("Connection", func() {
 							Port:      proto.Uint32(0),
 							PortRange: proto.String(""),
 							Protocol:  &icmp,
+							IcmpType:  proto.Int32(3),
+							IcmpCode:  proto.Int32(2),
 						}),
 						ghttp.RespondWith(200, marshalProto(&protocol.NetOutResponse{}))))
 			})
 
-			It("should return the port", func() {
-				err := connection.NetOut("foo-handle", "foo-network", 0, "", api.ProtocolICMP)
+			It("should send the correct values", func() {
+				err := connection.NetOut("foo-handle", "foo-network", 0, "", api.ProtocolICMP, 3, 2)
 				Ω(err).ShouldNot(HaveOccurred())
 			})
 		})
