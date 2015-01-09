@@ -58,6 +58,7 @@ type NetOutRequest struct {
 	Protocol         *NetOutRequest_Protocol `protobuf:"varint,5,opt,name=protocol,enum=garden.NetOutRequest_Protocol" json:"protocol,omitempty"`
 	IcmpType         *int32                  `protobuf:"varint,6,opt,name=icmp_type,def=-1" json:"icmp_type,omitempty"`
 	IcmpCode         *int32                  `protobuf:"varint,7,opt,name=icmp_code,def=-1" json:"icmp_code,omitempty"`
+	Log              *bool                   `protobuf:"varint,8,opt,name=log" json:"log,omitempty"`
 	XXX_unrecognized []byte                  `json:"-"`
 }
 
@@ -115,6 +116,13 @@ func (m *NetOutRequest) GetIcmpCode() int32 {
 		return *m.IcmpCode
 	}
 	return Default_NetOutRequest_IcmpCode
+}
+
+func (m *NetOutRequest) GetLog() bool {
+	if m != nil && m.Log != nil {
+		return *m.Log
+	}
+	return false
 }
 
 type NetOutResponse struct {

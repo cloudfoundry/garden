@@ -26,6 +26,8 @@ import (
 var ErrDisconnected = errors.New("disconnected")
 var ErrInvalidMessage = errors.New("invalid message payload")
 
+//go:generate counterfeiter . Connection
+
 type Connection interface {
 	Ping() error
 
@@ -60,7 +62,7 @@ type Connection interface {
 	Attach(handle string, processID uint32, io garden.ProcessIO) (garden.Process, error)
 
 	NetIn(handle string, hostPort, containerPort uint32) (uint32, uint32, error)
-	NetOut(handle string, network string, port uint32, portRange string, protocol garden.Protocol, icmpType int32, icmpCode int32) error
+	NetOut(handle string, network string, port uint32, portRange string, protocol garden.Protocol, icmpType int32, icmpCode int32, log bool) error
 
 	GetProperty(handle string, name string) (string, error)
 	SetProperty(handle string, name string, value string) error
@@ -363,7 +365,7 @@ func (c *connection) NetIn(handle string, hostPort, containerPort uint32) (uint3
 	return res.GetHostPort(), res.GetContainerPort(), nil
 }
 
-func (c *connection) NetOut(handle string, network string, port uint32, portRange string, netProto garden.Protocol, icmpType int32, icmpCode int32) error {
+func (c *connection) NetOut(handle string, network string, port uint32, portRange string, netProto garden.Protocol, icmpType int32, icmpCode int32, log bool) error {
 	var np protocol.NetOutRequest_Protocol
 
 	switch netProto {
@@ -386,6 +388,7 @@ func (c *connection) NetOut(handle string, network string, port uint32, portRang
 			Network:   proto.String(network),
 			Port:      proto.Uint32(port),
 			PortRange: proto.String(portRange),
+			Log:       proto.Bool(log),
 			Protocol:  &np,
 			IcmpType:  proto.Int32(icmpType),
 			IcmpCode:  proto.Int32(icmpCode),

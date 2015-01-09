@@ -197,7 +197,7 @@ type FakeConnection struct {
 		result2 uint32
 		result3 error
 	}
-	NetOutStub        func(handle string, network string, port uint32, portRange string, protocol garden.Protocol, icmpType int32, icmpCode int32) error
+	NetOutStub        func(handle string, network string, port uint32, portRange string, protocol garden.Protocol, icmpType int32, icmpCode int32, log bool) error
 	netOutMutex       sync.RWMutex
 	netOutArgsForCall []struct {
 		handle    string
@@ -207,6 +207,7 @@ type FakeConnection struct {
 		protocol  garden.Protocol
 		icmpType  int32
 		icmpCode  int32
+		log       bool
 	}
 	netOutReturns struct {
 		result1 error
@@ -897,7 +898,7 @@ func (fake *FakeConnection) NetInReturns(result1 uint32, result2 uint32, result3
 	}{result1, result2, result3}
 }
 
-func (fake *FakeConnection) NetOut(handle string, network string, port uint32, portRange string, protocol garden.Protocol, icmpType int32, icmpCode int32) error {
+func (fake *FakeConnection) NetOut(handle string, network string, port uint32, portRange string, protocol garden.Protocol, icmpType int32, icmpCode int32, log bool) error {
 	fake.netOutMutex.Lock()
 	fake.netOutArgsForCall = append(fake.netOutArgsForCall, struct {
 		handle    string
@@ -907,10 +908,11 @@ func (fake *FakeConnection) NetOut(handle string, network string, port uint32, p
 		protocol  garden.Protocol
 		icmpType  int32
 		icmpCode  int32
-	}{handle, network, port, portRange, protocol, icmpType, icmpCode})
+		log       bool
+	}{handle, network, port, portRange, protocol, icmpType, icmpCode, log})
 	fake.netOutMutex.Unlock()
 	if fake.NetOutStub != nil {
-		return fake.NetOutStub(handle, network, port, portRange, protocol, icmpType, icmpCode)
+		return fake.NetOutStub(handle, network, port, portRange, protocol, icmpType, icmpCode, log)
 	} else {
 		return fake.netOutReturns.result1
 	}
@@ -922,10 +924,10 @@ func (fake *FakeConnection) NetOutCallCount() int {
 	return len(fake.netOutArgsForCall)
 }
 
-func (fake *FakeConnection) NetOutArgsForCall(i int) (string, string, uint32, string, garden.Protocol, int32, int32) {
+func (fake *FakeConnection) NetOutArgsForCall(i int) (string, string, uint32, string, garden.Protocol, int32, int32, bool) {
 	fake.netOutMutex.RLock()
 	defer fake.netOutMutex.RUnlock()
-	return fake.netOutArgsForCall[i].handle, fake.netOutArgsForCall[i].network, fake.netOutArgsForCall[i].port, fake.netOutArgsForCall[i].portRange, fake.netOutArgsForCall[i].protocol, fake.netOutArgsForCall[i].icmpType, fake.netOutArgsForCall[i].icmpCode
+	return fake.netOutArgsForCall[i].handle, fake.netOutArgsForCall[i].network, fake.netOutArgsForCall[i].port, fake.netOutArgsForCall[i].portRange, fake.netOutArgsForCall[i].protocol, fake.netOutArgsForCall[i].icmpType, fake.netOutArgsForCall[i].icmpCode, fake.netOutArgsForCall[i].log
 }
 
 func (fake *FakeConnection) NetOutReturns(result1 error) {

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -534,111 +535,111 @@ var _ = Describe("Connection", func() {
 	})
 
 	Describe("NetOut", func() {
+		var (
+			handle    string
+			network   string
+			port      uint32
+			portRange string
+			protoc    protocol.NetOutRequest_Protocol
+			icmpType  int32
+			icmpCode  int32
+			logging   bool
+		)
+
+		JustBeforeEach(func() {
+			server.AppendHandlers(
+				ghttp.CombineHandlers(
+					ghttp.VerifyRequest("POST", fmt.Sprintf("/containers/%s/net/out", handle)),
+					verifyProtoBody(&protocol.NetOutRequest{
+						Handle:    proto.String(handle),
+						Network:   proto.String(network),
+						Port:      proto.Uint32(port),
+						PortRange: proto.String(portRange),
+						Protocol:  &protoc,
+						IcmpType:  proto.Int32(icmpType),
+						IcmpCode:  proto.Int32(icmpCode),
+						Log:       proto.Bool(logging),
+					}),
+					ghttp.RespondWith(200, marshalProto(&protocol.NetOutResponse{}))))
+		})
+
+		BeforeEach(func() {
+			handle = "foo-handle"
+			network = "foo-network"
+			icmpType = -1
+			icmpCode = -1
+			logging = false
+		})
+
 		Context("with port", func() {
 			BeforeEach(func() {
-				all := protocol.NetOutRequest_ALL
-
-				server.AppendHandlers(
-					ghttp.CombineHandlers(
-						ghttp.VerifyRequest("POST", "/containers/foo-handle/net/out"),
-						verifyProtoBody(&protocol.NetOutRequest{
-							Handle:    proto.String("foo-handle"),
-							Network:   proto.String("foo-network"),
-							Port:      proto.Uint32(42),
-							PortRange: proto.String(""),
-							Protocol:  &all,
-							IcmpType:  proto.Int32(-1),
-							IcmpCode:  proto.Int32(-1),
-						}),
-						ghttp.RespondWith(200, marshalProto(&protocol.NetOutResponse{}))))
+				port = 42
+				portRange = ""
+				protoc = protocol.NetOutRequest_ALL
 			})
 
-			It("should send the correct values", func() {
-				err := connection.NetOut("foo-handle", "foo-network", 42, "", garden.ProtocolAll, -1, -1)
+			It("should return the port", func() {
+				err := connection.NetOut("foo-handle", "foo-network", 42, "", garden.ProtocolAll, -1, -1, false)
 				Ω(err).ShouldNot(HaveOccurred())
+			})
+
+			Context("when we request logging", func() {
+				BeforeEach(func() {
+					logging = true
+				})
+
+				It("should record that we want logging", func() {
+					err := connection.NetOut("foo-handle", "foo-network", 42, "", garden.ProtocolAll, -1, -1, logging)
+					Ω(err).ShouldNot(HaveOccurred())
+				})
 			})
 
 			It("returns an error if the protocol is unknown", func() {
-				err := connection.NetOut("foo-handle", "foo-network", 42, "", 58, -1, -1)
+				err := connection.NetOut("foo-handle", "foo-network", 42, "", 58, -1, -1, false)
 				Ω(err).Should(MatchError("invalid protocol"))
-			})
-		})
-
-		Context("when sending a request for UDP to be opened", func() {
-			BeforeEach(func() {
-				udp := protocol.NetOutRequest_UDP
-
-				server.AppendHandlers(
-					ghttp.CombineHandlers(
-						ghttp.VerifyRequest("POST", "/containers/udp-handle/net/out"),
-						verifyProtoBody(&protocol.NetOutRequest{
-							Handle:    proto.String("udp-handle"),
-							Network:   proto.String("udp-network"),
-							Port:      proto.Uint32(42),
-							PortRange: proto.String("8080:8081"),
-							Protocol:  &udp,
-							IcmpType:  proto.Int32(-1),
-							IcmpCode:  proto.Int32(-1),
-						}),
-						ghttp.RespondWith(200, marshalProto(&protocol.NetOutResponse{}))))
-			})
-
-			It("receives a message containing the UDP protocol", func() {
-				err := connection.NetOut("udp-handle", "udp-network", 42, "8080:8081", garden.ProtocolUDP, -1, -1)
-				Ω(err).ShouldNot(HaveOccurred())
 			})
 		})
 
 		Context("with port range", func() {
 			BeforeEach(func() {
-				all := protocol.NetOutRequest_ALL
+				port = 0
+				portRange = "8080:8081"
+				protoc = protocol.NetOutRequest_UDP
+			})
 
-				server.AppendHandlers(
-					ghttp.CombineHandlers(
-						ghttp.VerifyRequest("POST", "/containers/foo-handle/net/out"),
-						verifyProtoBody(&protocol.NetOutRequest{
-							Handle:    proto.String("foo-handle"),
-							Network:   proto.String("foo-network"),
-							Port:      proto.Uint32(0),
-							PortRange: proto.String("8080:8081"),
-							Protocol:  &all,
-							IcmpType:  proto.Int32(-1),
-							IcmpCode:  proto.Int32(-1),
-						}),
-						ghttp.RespondWith(200, marshalProto(&protocol.NetOutResponse{}))))
+			It("receives a message containing the UDP protocol", func() {
+				err := connection.NetOut("foo-handle", "foo-network", 0, "8080:8081", garden.ProtocolUDP, -1, -1, false)
+				Ω(err).ShouldNot(HaveOccurred())
+			})
+		})
+
+		Context("when sending a request for UDP to be opened", func() {
+			BeforeEach(func() {
+				port = 42
+				portRange = "8080:8081"
+				protoc = protocol.NetOutRequest_UDP
 			})
 
 			It("should send the correct values", func() {
-				err := connection.NetOut("foo-handle", "foo-network", 0, "8080:8081", garden.ProtocolAll, -1, -1)
+				err := connection.NetOut("foo-handle", "foo-network", 42, "8080:8081", garden.ProtocolUDP, -1, -1, false)
 				Ω(err).ShouldNot(HaveOccurred())
 			})
 		})
 
 		Context("with ICMP protocol", func() {
 			BeforeEach(func() {
-				icmp := protocol.NetOutRequest_ICMP
-
-				server.AppendHandlers(
-					ghttp.CombineHandlers(
-						ghttp.VerifyRequest("POST", "/containers/foo-handle/net/out"),
-						verifyProtoBody(&protocol.NetOutRequest{
-							Handle:    proto.String("foo-handle"),
-							Network:   proto.String("foo-network"),
-							Port:      proto.Uint32(0),
-							PortRange: proto.String(""),
-							Protocol:  &icmp,
-							IcmpType:  proto.Int32(3),
-							IcmpCode:  proto.Int32(2),
-						}),
-						ghttp.RespondWith(200, marshalProto(&protocol.NetOutResponse{}))))
+				port = 0
+				portRange = ""
+				protoc = protocol.NetOutRequest_ICMP
+				icmpType = 3
+				icmpCode = 2
 			})
 
 			It("should send the correct values", func() {
-				err := connection.NetOut("foo-handle", "foo-network", 0, "", garden.ProtocolICMP, 3, 2)
+				err := connection.NetOut("foo-handle", "foo-network", 0, "", garden.ProtocolICMP, 3, 2, false)
 				Ω(err).ShouldNot(HaveOccurred())
 			})
 		})
-
 	})
 
 	Describe("Listing containers", func() {

@@ -104,9 +104,12 @@ type Container interface {
 	// * icmpCode: the ICMP code value to be whitelisted when protocol=ICMP (a
 	//             value of -1 means all codes and is the default)
 	//
+	// * log: Boolean specifying whether or not logging should be enabled. If
+	//        logging is enabled, the first packet of a given connection is logged.
+	//
 	// Errors:
 	// * None.
-	NetOut(network string, port uint32, portRange string, protocol Protocol, icmpType int32, icmpCode int32) error
+	NetOut(network string, port uint32, portRange string, protocol Protocol, icmpType int32, icmpCode int32, log bool) error
 
 	// Run a script inside a container.
 	//

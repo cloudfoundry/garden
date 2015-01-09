@@ -509,18 +509,43 @@ var _ = Describe("Container", func() {
 	})
 
 	Describe("NetOut", func() {
-		It("sends a net out request", func() {
-			err := container.NetOut("some-network", 70, "80:81", garden.ProtocolTCP, 2, 3)
-			Ω(err).ShouldNot(HaveOccurred())
+		ItForwardsPortRequestsOverTheConnectionForProtocol := func(name string, protocol garden.Protocol) {
+			It(fmt.Sprintf("sends a net out request with the %s protocol and a port", name), func() {
+				err := container.NetOut("some-network", 1234, "", protocol, 2, 3, true)
+				Ω(err).ShouldNot(HaveOccurred())
 
-			h, network, port, portRange, protocol, icmpType, icmpCode := fakeConnection.NetOutArgsForCall(0)
-			Ω(h).Should(Equal("some-handle"))
-			Ω(network).Should(Equal("some-network"))
-			Ω(port).Should(Equal(uint32(70)))
-			Ω(portRange).Should(Equal("80:81"))
-			Ω(protocol).Should(Equal(garden.ProtocolTCP))
-			Ω(icmpType).Should(Equal(int32(2)))
-			Ω(icmpCode).Should(Equal(int32(3)))
+				h, network, port, portRange, protocol, icmpType, icmpCode, log := fakeConnection.NetOutArgsForCall(0)
+				Ω(h).Should(Equal("some-handle"))
+				Ω(network).Should(Equal("some-network"))
+				Ω(port).Should(Equal(uint32(1234)))
+				Ω(portRange).Should(Equal(""))
+				Ω(protocol).Should(Equal(protocol))
+				Ω(icmpType).Should(Equal(int32(2)))
+				Ω(icmpCode).Should(Equal(int32(3)))
+				Ω(log).Should(Equal(true))
+			})
+		}
+
+		ItForwardsPortRangeRequestsOverTheConnectionForProtocol := func(name string, protocol garden.Protocol) {
+			It("sends a net out request with a port range", func() {
+				err := container.NetOut("some-network", 0, "80:81", protocol, 2, 3, false)
+				Ω(err).ShouldNot(HaveOccurred())
+
+				h, network, port, portRange, protocol, icmpType, icmpCode, log := fakeConnection.NetOutArgsForCall(0)
+				Ω(h).Should(Equal("some-handle"))
+				Ω(network).Should(Equal("some-network"))
+				Ω(port).Should(Equal(uint32(0)))
+				Ω(portRange).Should(Equal("80:81"))
+				Ω(protocol).Should(Equal(protocol))
+				Ω(icmpType).Should(Equal(int32(2)))
+				Ω(icmpCode).Should(Equal(int32(3)))
+				Ω(log).Should(Equal(false))
+			})
+		}
+
+		Describe("TCP", func() {
+			ItForwardsPortRequestsOverTheConnectionForProtocol("TCP", garden.ProtocolTCP)
+			ItForwardsPortRangeRequestsOverTheConnectionForProtocol("TCP", garden.ProtocolTCP)
 		})
 
 		Context("when the request fails", func() {
@@ -531,7 +556,7 @@ var _ = Describe("Container", func() {
 			})
 
 			It("returns the error", func() {
-				err := container.NetOut("some-network", 1234, "", garden.ProtocolAll, -1, -1)
+				err := container.NetOut("some-network", 1234, "", garden.ProtocolAll, -1, -1, false)
 				Ω(err).Should(Equal(disaster))
 			})
 		})

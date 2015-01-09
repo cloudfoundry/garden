@@ -119,7 +119,7 @@ type FakeContainer struct {
 		result2 uint32
 		result3 error
 	}
-	NetOutStub        func(network string, port uint32, portRange string, protocol garden.Protocol, icmpType int32, icmpCode int32) error
+	NetOutStub        func(network string, port uint32, portRange string, protocol garden.Protocol, icmpType int32, icmpCode int32, log bool) error
 	netOutMutex       sync.RWMutex
 	netOutArgsForCall []struct {
 		network   string
@@ -128,6 +128,7 @@ type FakeContainer struct {
 		protocol  garden.Protocol
 		icmpType  int32
 		icmpCode  int32
+		log       bool
 	}
 	netOutReturns struct {
 		result1 error
@@ -142,11 +143,11 @@ type FakeContainer struct {
 		result1 garden.Process
 		result2 error
 	}
-	AttachStub        func(uint32, garden.ProcessIO) (garden.Process, error)
+	AttachStub        func(processID uint32, io garden.ProcessIO) (garden.Process, error)
 	attachMutex       sync.RWMutex
 	attachArgsForCall []struct {
-		arg1 uint32
-		arg2 garden.ProcessIO
+		processID uint32
+		io        garden.ProcessIO
 	}
 	attachReturns struct {
 		result1 garden.Process
@@ -590,7 +591,7 @@ func (fake *FakeContainer) NetInReturns(result1 uint32, result2 uint32, result3 
 	}{result1, result2, result3}
 }
 
-func (fake *FakeContainer) NetOut(network string, port uint32, portRange string, protocol garden.Protocol, icmpType int32, icmpCode int32) error {
+func (fake *FakeContainer) NetOut(network string, port uint32, portRange string, protocol garden.Protocol, icmpType int32, icmpCode int32, log bool) error {
 	fake.netOutMutex.Lock()
 	fake.netOutArgsForCall = append(fake.netOutArgsForCall, struct {
 		network   string
@@ -599,10 +600,11 @@ func (fake *FakeContainer) NetOut(network string, port uint32, portRange string,
 		protocol  garden.Protocol
 		icmpType  int32
 		icmpCode  int32
-	}{network, port, portRange, protocol, icmpType, icmpCode})
+		log       bool
+	}{network, port, portRange, protocol, icmpType, icmpCode, log})
 	fake.netOutMutex.Unlock()
 	if fake.NetOutStub != nil {
-		return fake.NetOutStub(network, port, portRange, protocol, icmpType, icmpCode)
+		return fake.NetOutStub(network, port, portRange, protocol, icmpType, icmpCode, log)
 	} else {
 		return fake.netOutReturns.result1
 	}
@@ -614,10 +616,10 @@ func (fake *FakeContainer) NetOutCallCount() int {
 	return len(fake.netOutArgsForCall)
 }
 
-func (fake *FakeContainer) NetOutArgsForCall(i int) (string, uint32, string, garden.Protocol, int32, int32) {
+func (fake *FakeContainer) NetOutArgsForCall(i int) (string, uint32, string, garden.Protocol, int32, int32, bool) {
 	fake.netOutMutex.RLock()
 	defer fake.netOutMutex.RUnlock()
-	return fake.netOutArgsForCall[i].network, fake.netOutArgsForCall[i].port, fake.netOutArgsForCall[i].portRange, fake.netOutArgsForCall[i].protocol, fake.netOutArgsForCall[i].icmpType, fake.netOutArgsForCall[i].icmpCode
+	return fake.netOutArgsForCall[i].network, fake.netOutArgsForCall[i].port, fake.netOutArgsForCall[i].portRange, fake.netOutArgsForCall[i].protocol, fake.netOutArgsForCall[i].icmpType, fake.netOutArgsForCall[i].icmpCode, fake.netOutArgsForCall[i].log
 }
 
 func (fake *FakeContainer) NetOutReturns(result1 error) {
@@ -661,15 +663,15 @@ func (fake *FakeContainer) RunReturns(result1 garden.Process, result2 error) {
 	}{result1, result2}
 }
 
-func (fake *FakeContainer) Attach(arg1 uint32, arg2 garden.ProcessIO) (garden.Process, error) {
+func (fake *FakeContainer) Attach(processID uint32, io garden.ProcessIO) (garden.Process, error) {
 	fake.attachMutex.Lock()
 	fake.attachArgsForCall = append(fake.attachArgsForCall, struct {
-		arg1 uint32
-		arg2 garden.ProcessIO
-	}{arg1, arg2})
+		processID uint32
+		io        garden.ProcessIO
+	}{processID, io})
 	fake.attachMutex.Unlock()
 	if fake.AttachStub != nil {
-		return fake.AttachStub(arg1, arg2)
+		return fake.AttachStub(processID, io)
 	} else {
 		return fake.attachReturns.result1, fake.attachReturns.result2
 	}
@@ -684,7 +686,7 @@ func (fake *FakeContainer) AttachCallCount() int {
 func (fake *FakeContainer) AttachArgsForCall(i int) (uint32, garden.ProcessIO) {
 	fake.attachMutex.RLock()
 	defer fake.attachMutex.RUnlock()
-	return fake.attachArgsForCall[i].arg1, fake.attachArgsForCall[i].arg2
+	return fake.attachArgsForCall[i].processID, fake.attachArgsForCall[i].io
 }
 
 func (fake *FakeContainer) AttachReturns(result1 garden.Process, result2 error) {

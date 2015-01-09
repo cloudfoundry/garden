@@ -786,7 +786,7 @@ func (s *GardenServer) handleNetOut(w http.ResponseWriter, r *http.Request) {
 		"icmpCode":  icmpCode,
 	})
 
-	err = container.NetOut(network, port, portRange, protoc, icmpType, icmpCode)
+	err = container.NetOut(network, port, portRange, protoc, icmpType, icmpCode, request.GetLog())
 	if err != nil {
 		s.writeError(w, err, hLog)
 		return
