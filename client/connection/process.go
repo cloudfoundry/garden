@@ -7,7 +7,7 @@ import (
 	"net"
 	"sync"
 
-	"github.com/cloudfoundry-incubator/garden/api"
+	"github.com/cloudfoundry-incubator/garden"
 	protocol "github.com/cloudfoundry-incubator/garden/protocol"
 )
 
@@ -51,11 +51,11 @@ func (p *process) Wait() (int, error) {
 	return p.exitStatus, p.exitErr
 }
 
-func (p *process) SetTTY(tty api.TTYSpec) error {
+func (p *process) SetTTY(tty garden.TTYSpec) error {
 	return p.stream.SetTTY(tty)
 }
 
-func (p *process) Signal(signal api.Signal) error {
+func (p *process) Signal(signal garden.Signal) error {
 	return p.stream.Signal(signal)
 }
 
@@ -69,7 +69,7 @@ func (p *process) exited(exitStatus int, err error) {
 	p.doneL.Broadcast()
 }
 
-func (p *process) streamPayloads(decoder *json.Decoder, processIO api.ProcessIO) {
+func (p *process) streamPayloads(decoder *json.Decoder, processIO garden.ProcessIO) {
 	defer p.stream.Close()
 
 	if processIO.Stdin != nil {

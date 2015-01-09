@@ -6,19 +6,19 @@ import (
 
 	"time"
 
-	"github.com/cloudfoundry-incubator/garden/api"
-	"github.com/cloudfoundry-incubator/garden/api/fakes"
+	"github.com/cloudfoundry-incubator/garden"
+	"github.com/cloudfoundry-incubator/garden/fakes"
 	"github.com/cloudfoundry-incubator/garden/server/bomberman"
 )
 
 var _ = Describe("Bomberman", func() {
 	It("straps a bomb to the given container with the container's grace time as the countdown", func() {
-		detonated := make(chan api.Container)
+		detonated := make(chan garden.Container)
 
 		backend := new(fakes.FakeBackend)
 		backend.GraceTimeReturns(100 * time.Millisecond)
 
-		bomberman := bomberman.New(backend, func(container api.Container) {
+		bomberman := bomberman.New(backend, func(container garden.Container) {
 			detonated <- container
 		})
 
@@ -36,12 +36,12 @@ var _ = Describe("Bomberman", func() {
 
 	Context("when the container has a grace time of 0", func() {
 		It("never detonates", func() {
-			detonated := make(chan api.Container)
+			detonated := make(chan garden.Container)
 
 			backend := new(fakes.FakeBackend)
 			backend.GraceTimeReturns(0)
 
-			bomberman := bomberman.New(backend, func(container api.Container) {
+			bomberman := bomberman.New(backend, func(container garden.Container) {
 				detonated <- container
 			})
 
@@ -60,12 +60,12 @@ var _ = Describe("Bomberman", func() {
 
 	Describe("pausing a container's timebomb", func() {
 		It("prevents it from detonating", func() {
-			detonated := make(chan api.Container)
+			detonated := make(chan garden.Container)
 
 			backend := new(fakes.FakeBackend)
 			backend.GraceTimeReturns(100 * time.Millisecond)
 
-			bomberman := bomberman.New(backend, func(container api.Container) {
+			bomberman := bomberman.New(backend, func(container garden.Container) {
 				detonated <- container
 			})
 
@@ -84,7 +84,7 @@ var _ = Describe("Bomberman", func() {
 
 		Context("when the handle is invalid", func() {
 			It("doesn't launch any missiles or anything like that", func() {
-				bomberman := bomberman.New(new(fakes.FakeBackend), func(container api.Container) {
+				bomberman := bomberman.New(new(fakes.FakeBackend), func(container garden.Container) {
 					panic("dont call me")
 				})
 
@@ -94,12 +94,12 @@ var _ = Describe("Bomberman", func() {
 
 		Describe("and then unpausing it", func() {
 			It("causes it to detonate after the countdown", func() {
-				detonated := make(chan api.Container)
+				detonated := make(chan garden.Container)
 
 				backend := new(fakes.FakeBackend)
 				backend.GraceTimeReturns(100 * time.Millisecond)
 
-				bomberman := bomberman.New(backend, func(container api.Container) {
+				bomberman := bomberman.New(backend, func(container garden.Container) {
 					detonated <- container
 				})
 
@@ -122,7 +122,7 @@ var _ = Describe("Bomberman", func() {
 
 			Context("when the handle is invalid", func() {
 				It("doesn't launch any missiles or anything like that", func() {
-					bomberman := bomberman.New(new(fakes.FakeBackend), func(container api.Container) {
+					bomberman := bomberman.New(new(fakes.FakeBackend), func(container garden.Container) {
 						panic("dont call me")
 					})
 
@@ -134,12 +134,12 @@ var _ = Describe("Bomberman", func() {
 
 	Describe("defusing a container's timebomb", func() {
 		It("prevents it from detonating", func() {
-			detonated := make(chan api.Container)
+			detonated := make(chan garden.Container)
 
 			backend := new(fakes.FakeBackend)
 			backend.GraceTimeReturns(100 * time.Millisecond)
 
-			bomberman := bomberman.New(backend, func(container api.Container) {
+			bomberman := bomberman.New(backend, func(container garden.Container) {
 				detonated <- container
 			})
 
@@ -158,7 +158,7 @@ var _ = Describe("Bomberman", func() {
 
 		Context("when the handle is invalid", func() {
 			It("doesn't launch any missiles or anything like that", func() {
-				bomberman := bomberman.New(new(fakes.FakeBackend), func(container api.Container) {
+				bomberman := bomberman.New(new(fakes.FakeBackend), func(container garden.Container) {
 					panic("dont call me")
 				})
 

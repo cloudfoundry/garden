@@ -12,14 +12,14 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 
-	"github.com/cloudfoundry-incubator/garden/api"
-	wfakes "github.com/cloudfoundry-incubator/garden/api/fakes"
+	"github.com/cloudfoundry-incubator/garden"
 	. "github.com/cloudfoundry-incubator/garden/client"
 	"github.com/cloudfoundry-incubator/garden/client/connection/fakes"
+	wfakes "github.com/cloudfoundry-incubator/garden/fakes"
 )
 
 var _ = Describe("Container", func() {
-	var container api.Container
+	var container garden.Container
 
 	var fakeConnection *fakes.FakeConnection
 
@@ -34,7 +34,7 @@ var _ = Describe("Container", func() {
 
 		fakeConnection.CreateReturns("some-handle", nil)
 
-		container, err = client.Create(api.ContainerSpec{})
+		container, err = client.Create(garden.ContainerSpec{})
 		Ω(err).ShouldNot(HaveOccurred())
 	})
 
@@ -70,7 +70,7 @@ var _ = Describe("Container", func() {
 
 	Describe("Info", func() {
 		It("sends an info request", func() {
-			infoToReturn := api.ContainerInfo{
+			infoToReturn := garden.ContainerInfo{
 				State: "chillin",
 			}
 
@@ -88,7 +88,7 @@ var _ = Describe("Container", func() {
 			disaster := errors.New("oh no!")
 
 			BeforeEach(func() {
-				fakeConnection.InfoReturns(api.ContainerInfo{}, disaster)
+				fakeConnection.InfoReturns(garden.ContainerInfo{}, disaster)
 			})
 
 			It("returns the error", func() {
@@ -159,25 +159,25 @@ var _ = Describe("Container", func() {
 
 	Describe("LimitBandwidth", func() {
 		It("sends a limit bandwidth request", func() {
-			err := container.LimitBandwidth(api.BandwidthLimits{
+			err := container.LimitBandwidth(garden.BandwidthLimits{
 				RateInBytesPerSecond: 1,
 			})
 			Ω(err).ShouldNot(HaveOccurred())
 
 			handle, limits := fakeConnection.LimitBandwidthArgsForCall(0)
 			Ω(handle).Should(Equal("some-handle"))
-			Ω(limits).Should(Equal(api.BandwidthLimits{RateInBytesPerSecond: 1}))
+			Ω(limits).Should(Equal(garden.BandwidthLimits{RateInBytesPerSecond: 1}))
 		})
 
 		Context("when the request fails", func() {
 			disaster := errors.New("oh no!")
 
 			BeforeEach(func() {
-				fakeConnection.LimitBandwidthReturns(api.BandwidthLimits{}, disaster)
+				fakeConnection.LimitBandwidthReturns(garden.BandwidthLimits{}, disaster)
 			})
 
 			It("returns the error", func() {
-				err := container.LimitBandwidth(api.BandwidthLimits{})
+				err := container.LimitBandwidth(garden.BandwidthLimits{})
 				Ω(err).Should(Equal(disaster))
 			})
 		})
@@ -185,25 +185,25 @@ var _ = Describe("Container", func() {
 
 	Describe("LimitCPU", func() {
 		It("sends a limit cpu request", func() {
-			err := container.LimitCPU(api.CPULimits{
+			err := container.LimitCPU(garden.CPULimits{
 				LimitInShares: 1,
 			})
 			Ω(err).ShouldNot(HaveOccurred())
 
 			handle, limits := fakeConnection.LimitCPUArgsForCall(0)
 			Ω(handle).Should(Equal("some-handle"))
-			Ω(limits).Should(Equal(api.CPULimits{LimitInShares: 1}))
+			Ω(limits).Should(Equal(garden.CPULimits{LimitInShares: 1}))
 		})
 
 		Context("when the request fails", func() {
 			disaster := errors.New("oh no!")
 
 			BeforeEach(func() {
-				fakeConnection.LimitCPUReturns(api.CPULimits{}, disaster)
+				fakeConnection.LimitCPUReturns(garden.CPULimits{}, disaster)
 			})
 
 			It("returns the error", func() {
-				err := container.LimitCPU(api.CPULimits{})
+				err := container.LimitCPU(garden.CPULimits{})
 				Ω(err).Should(Equal(disaster))
 			})
 		})
@@ -211,25 +211,25 @@ var _ = Describe("Container", func() {
 
 	Describe("LimitDisk", func() {
 		It("sends a limit bandwidth request", func() {
-			err := container.LimitDisk(api.DiskLimits{
+			err := container.LimitDisk(garden.DiskLimits{
 				ByteHard: 1,
 			})
 			Ω(err).ShouldNot(HaveOccurred())
 
 			handle, limits := fakeConnection.LimitDiskArgsForCall(0)
 			Ω(handle).Should(Equal("some-handle"))
-			Ω(limits).Should(Equal(api.DiskLimits{ByteHard: 1}))
+			Ω(limits).Should(Equal(garden.DiskLimits{ByteHard: 1}))
 		})
 
 		Context("when the request fails", func() {
 			disaster := errors.New("oh no!")
 
 			BeforeEach(func() {
-				fakeConnection.LimitDiskReturns(api.DiskLimits{}, disaster)
+				fakeConnection.LimitDiskReturns(garden.DiskLimits{}, disaster)
 			})
 
 			It("returns the error", func() {
-				err := container.LimitDisk(api.DiskLimits{})
+				err := container.LimitDisk(garden.DiskLimits{})
 				Ω(err).Should(Equal(disaster))
 			})
 		})
@@ -237,25 +237,25 @@ var _ = Describe("Container", func() {
 
 	Describe("LimitMemory", func() {
 		It("sends a limit bandwidth request", func() {
-			err := container.LimitMemory(api.MemoryLimits{
+			err := container.LimitMemory(garden.MemoryLimits{
 				LimitInBytes: 1,
 			})
 			Ω(err).ShouldNot(HaveOccurred())
 
 			handle, limits := fakeConnection.LimitMemoryArgsForCall(0)
 			Ω(handle).Should(Equal("some-handle"))
-			Ω(limits).Should(Equal(api.MemoryLimits{LimitInBytes: 1}))
+			Ω(limits).Should(Equal(garden.MemoryLimits{LimitInBytes: 1}))
 		})
 
 		Context("when the request fails", func() {
 			disaster := errors.New("oh no!")
 
 			BeforeEach(func() {
-				fakeConnection.LimitMemoryReturns(api.MemoryLimits{}, disaster)
+				fakeConnection.LimitMemoryReturns(garden.MemoryLimits{}, disaster)
 			})
 
 			It("returns the error", func() {
-				err := container.LimitMemory(api.MemoryLimits{})
+				err := container.LimitMemory(garden.MemoryLimits{})
 				Ω(err).Should(Equal(disaster))
 			})
 		})
@@ -263,7 +263,7 @@ var _ = Describe("Container", func() {
 
 	Describe("CurrentBandwidthLimits", func() {
 		It("sends an empty limit request and returns its response", func() {
-			limitsToReturn := api.BandwidthLimits{
+			limitsToReturn := garden.BandwidthLimits{
 				RateInBytesPerSecond:      1,
 				BurstRateInBytesPerSecond: 2,
 			}
@@ -280,7 +280,7 @@ var _ = Describe("Container", func() {
 			disaster := errors.New("oh no!")
 
 			BeforeEach(func() {
-				fakeConnection.CurrentBandwidthLimitsReturns(api.BandwidthLimits{}, disaster)
+				fakeConnection.CurrentBandwidthLimitsReturns(garden.BandwidthLimits{}, disaster)
 			})
 
 			It("returns the error", func() {
@@ -292,7 +292,7 @@ var _ = Describe("Container", func() {
 
 	Describe("CurrentCPULimits", func() {
 		It("sends an empty limit request and returns its response", func() {
-			limitsToReturn := api.CPULimits{
+			limitsToReturn := garden.CPULimits{
 				LimitInShares: 1,
 			}
 
@@ -308,7 +308,7 @@ var _ = Describe("Container", func() {
 			disaster := errors.New("oh no!")
 
 			BeforeEach(func() {
-				fakeConnection.CurrentCPULimitsReturns(api.CPULimits{}, disaster)
+				fakeConnection.CurrentCPULimitsReturns(garden.CPULimits{}, disaster)
 			})
 
 			It("returns the error", func() {
@@ -320,7 +320,7 @@ var _ = Describe("Container", func() {
 
 	Describe("CurrentDiskLimits", func() {
 		It("sends an empty limit request and returns its response", func() {
-			limitsToReturn := api.DiskLimits{
+			limitsToReturn := garden.DiskLimits{
 				BlockSoft: 3,
 				BlockHard: 4,
 				InodeSoft: 7,
@@ -341,7 +341,7 @@ var _ = Describe("Container", func() {
 			disaster := errors.New("oh no!")
 
 			BeforeEach(func() {
-				fakeConnection.CurrentDiskLimitsReturns(api.DiskLimits{}, disaster)
+				fakeConnection.CurrentDiskLimitsReturns(garden.DiskLimits{}, disaster)
 			})
 
 			It("returns the error", func() {
@@ -353,7 +353,7 @@ var _ = Describe("Container", func() {
 
 	Describe("CurrentMemoryLimits", func() {
 		It("gets the current limits", func() {
-			limitsToReturn := api.MemoryLimits{
+			limitsToReturn := garden.MemoryLimits{
 				LimitInBytes: 1,
 			}
 
@@ -369,7 +369,7 @@ var _ = Describe("Container", func() {
 			disaster := errors.New("oh no!")
 
 			BeforeEach(func() {
-				fakeConnection.CurrentMemoryLimitsReturns(api.MemoryLimits{}, disaster)
+				fakeConnection.CurrentMemoryLimitsReturns(garden.MemoryLimits{}, disaster)
 			})
 
 			It("returns the error", func() {
@@ -381,7 +381,7 @@ var _ = Describe("Container", func() {
 
 	Describe("Run", func() {
 		It("sends a run request and returns the process id and a stream", func() {
-			fakeConnection.RunStub = func(handle string, spec api.ProcessSpec, io api.ProcessIO) (api.Process, error) {
+			fakeConnection.RunStub = func(handle string, spec garden.ProcessSpec, io garden.ProcessIO) (garden.Process, error) {
 				process := new(wfakes.FakeProcess)
 
 				process.IDReturns(42)
@@ -400,14 +400,14 @@ var _ = Describe("Container", func() {
 				return process, nil
 			}
 
-			spec := api.ProcessSpec{
+			spec := garden.ProcessSpec{
 				Path: "some-script",
 			}
 
 			stdout := gbytes.NewBuffer()
 			stderr := gbytes.NewBuffer()
 
-			processIO := api.ProcessIO{
+			processIO := garden.ProcessIO{
 				Stdout: stdout,
 				Stderr: stderr,
 			}
@@ -433,7 +433,7 @@ var _ = Describe("Container", func() {
 
 	Describe("Attach", func() {
 		It("sends an attach request and returns a stream", func() {
-			fakeConnection.AttachStub = func(handle string, processID uint32, io api.ProcessIO) (api.Process, error) {
+			fakeConnection.AttachStub = func(handle string, processID uint32, io garden.ProcessIO) (garden.Process, error) {
 				process := new(wfakes.FakeProcess)
 
 				process.IDReturns(42)
@@ -455,7 +455,7 @@ var _ = Describe("Container", func() {
 			stdout := gbytes.NewBuffer()
 			stderr := gbytes.NewBuffer()
 
-			processIO := api.ProcessIO{
+			processIO := garden.ProcessIO{
 				Stdout: stdout,
 				Stderr: stderr,
 			}
@@ -510,7 +510,7 @@ var _ = Describe("Container", func() {
 
 	Describe("NetOut", func() {
 		It("sends a net out request", func() {
-			err := container.NetOut("some-network", 70, "80:81", api.ProtocolTCP, 2, 3)
+			err := container.NetOut("some-network", 70, "80:81", garden.ProtocolTCP, 2, 3)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			h, network, port, portRange, protocol, icmpType, icmpCode := fakeConnection.NetOutArgsForCall(0)
@@ -518,7 +518,7 @@ var _ = Describe("Container", func() {
 			Ω(network).Should(Equal("some-network"))
 			Ω(port).Should(Equal(uint32(70)))
 			Ω(portRange).Should(Equal("80:81"))
-			Ω(protocol).Should(Equal(api.ProtocolTCP))
+			Ω(protocol).Should(Equal(garden.ProtocolTCP))
 			Ω(icmpType).Should(Equal(int32(2)))
 			Ω(icmpCode).Should(Equal(int32(3)))
 		})
@@ -531,7 +531,7 @@ var _ = Describe("Container", func() {
 			})
 
 			It("returns the error", func() {
-				err := container.NetOut("some-network", 1234, "", api.ProtocolAll, -1, -1)
+				err := container.NetOut("some-network", 1234, "", garden.ProtocolAll, -1, -1)
 				Ω(err).Should(Equal(disaster))
 			})
 		})

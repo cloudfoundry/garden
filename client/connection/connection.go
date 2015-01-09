@@ -15,7 +15,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cloudfoundry-incubator/garden/api"
+	"github.com/cloudfoundry-incubator/garden"
 	protocol "github.com/cloudfoundry-incubator/garden/protocol"
 	"github.com/cloudfoundry-incubator/garden/routes"
 	"github.com/cloudfoundry-incubator/garden/transport"
@@ -29,34 +29,34 @@ var ErrInvalidMessage = errors.New("invalid message payload")
 type Connection interface {
 	Ping() error
 
-	Capacity() (api.Capacity, error)
+	Capacity() (garden.Capacity, error)
 
-	Create(spec api.ContainerSpec) (string, error)
-	List(properties api.Properties) ([]string, error)
+	Create(spec garden.ContainerSpec) (string, error)
+	List(properties garden.Properties) ([]string, error)
 	Destroy(handle string) error
 
 	Stop(handle string, kill bool) error
 
-	Info(handle string) (api.ContainerInfo, error)
+	Info(handle string) (garden.ContainerInfo, error)
 
 	StreamIn(handle string, dstPath string, reader io.Reader) error
 	StreamOut(handle string, srcPath string) (io.ReadCloser, error)
 
-	LimitBandwidth(handle string, limits api.BandwidthLimits) (api.BandwidthLimits, error)
-	LimitCPU(handle string, limits api.CPULimits) (api.CPULimits, error)
-	LimitDisk(handle string, limits api.DiskLimits) (api.DiskLimits, error)
-	LimitMemory(handle string, limit api.MemoryLimits) (api.MemoryLimits, error)
+	LimitBandwidth(handle string, limits garden.BandwidthLimits) (garden.BandwidthLimits, error)
+	LimitCPU(handle string, limits garden.CPULimits) (garden.CPULimits, error)
+	LimitDisk(handle string, limits garden.DiskLimits) (garden.DiskLimits, error)
+	LimitMemory(handle string, limit garden.MemoryLimits) (garden.MemoryLimits, error)
 
-	CurrentBandwidthLimits(handle string) (api.BandwidthLimits, error)
-	CurrentCPULimits(handle string) (api.CPULimits, error)
-	CurrentDiskLimits(handle string) (api.DiskLimits, error)
-	CurrentMemoryLimits(handle string) (api.MemoryLimits, error)
+	CurrentBandwidthLimits(handle string) (garden.BandwidthLimits, error)
+	CurrentCPULimits(handle string) (garden.CPULimits, error)
+	CurrentDiskLimits(handle string) (garden.DiskLimits, error)
+	CurrentMemoryLimits(handle string) (garden.MemoryLimits, error)
 
-	Run(handle string, spec api.ProcessSpec, io api.ProcessIO) (api.Process, error)
-	Attach(handle string, processID uint32, io api.ProcessIO) (api.Process, error)
+	Run(handle string, spec garden.ProcessSpec, io garden.ProcessIO) (garden.Process, error)
+	Attach(handle string, processID uint32, io garden.ProcessIO) (garden.Process, error)
 
 	NetIn(handle string, hostPort, containerPort uint32) (uint32, uint32, error)
-	NetOut(handle string, network string, port uint32, portRange string, protocol api.Protocol, icmpType int32, icmpCode int32) error
+	NetOut(handle string, network string, port uint32, portRange string, protocol garden.Protocol, icmpType int32, icmpCode int32) error
 
 	GetProperty(handle string, name string) (string, error)
 	SetProperty(handle string, name string, value string) error
@@ -110,22 +110,22 @@ func (c *connection) Ping() error {
 	return c.do(routes.Ping, nil, &protocol.PingResponse{}, nil, nil)
 }
 
-func (c *connection) Capacity() (api.Capacity, error) {
+func (c *connection) Capacity() (garden.Capacity, error) {
 	capacity := &protocol.CapacityResponse{}
 
 	err := c.do(routes.Capacity, nil, capacity, nil, nil)
 	if err != nil {
-		return api.Capacity{}, err
+		return garden.Capacity{}, err
 	}
 
-	return api.Capacity{
+	return garden.Capacity{
 		MemoryInBytes: capacity.GetMemoryInBytes(),
 		DiskInBytes:   capacity.GetDiskInBytes(),
 		MaxContainers: capacity.GetMaxContainers(),
 	}, nil
 }
 
-func (c *connection) Create(spec api.ContainerSpec) (string, error) {
+func (c *connection) Create(spec garden.ContainerSpec) (string, error) {
 	req := &protocol.CreateRequest{}
 
 	if spec.Handle != "" {
@@ -155,16 +155,16 @@ func (c *connection) Create(spec api.ContainerSpec) (string, error) {
 		var origin protocol.CreateRequest_BindMount_Origin
 
 		switch bm.Mode {
-		case api.BindMountModeRO:
+		case garden.BindMountModeRO:
 			mode = protocol.CreateRequest_BindMount_RO
-		case api.BindMountModeRW:
+		case garden.BindMountModeRW:
 			mode = protocol.CreateRequest_BindMount_RW
 		}
 
 		switch bm.Origin {
-		case api.BindMountOriginHost:
+		case garden.BindMountOriginHost:
 			origin = protocol.CreateRequest_BindMount_Host
-		case api.BindMountOriginContainer:
+		case garden.BindMountOriginContainer:
 			origin = protocol.CreateRequest_BindMount_Container
 		}
 
@@ -222,7 +222,7 @@ func (c *connection) Destroy(handle string) error {
 	)
 }
 
-func (c *connection) Run(handle string, spec api.ProcessSpec, processIO api.ProcessIO) (api.Process, error) {
+func (c *connection) Run(handle string, spec garden.ProcessSpec, processIO garden.ProcessIO) (garden.Process, error) {
 	reqBody := new(bytes.Buffer)
 
 	var dir *string
@@ -301,7 +301,7 @@ func (c *connection) Run(handle string, spec api.ProcessSpec, processIO api.Proc
 	return p, nil
 }
 
-func (c *connection) Attach(handle string, processID uint32, processIO api.ProcessIO) (api.Process, error) {
+func (c *connection) Attach(handle string, processID uint32, processIO garden.ProcessIO) (garden.Process, error) {
 	reqBody := new(bytes.Buffer)
 
 	err := transport.WriteMessage(reqBody, &protocol.AttachRequest{
@@ -360,17 +360,17 @@ func (c *connection) NetIn(handle string, hostPort, containerPort uint32) (uint3
 	return res.GetHostPort(), res.GetContainerPort(), nil
 }
 
-func (c *connection) NetOut(handle string, network string, port uint32, portRange string, netProto api.Protocol, icmpType int32, icmpCode int32) error {
+func (c *connection) NetOut(handle string, network string, port uint32, portRange string, netProto garden.Protocol, icmpType int32, icmpCode int32) error {
 	var np protocol.NetOutRequest_Protocol
 
 	switch netProto {
-	case api.ProtocolTCP:
+	case garden.ProtocolTCP:
 		np = protocol.NetOutRequest_TCP
-	case api.ProtocolICMP:
+	case garden.ProtocolICMP:
 		np = protocol.NetOutRequest_ICMP
-	case api.ProtocolUDP:
+	case garden.ProtocolUDP:
 		np = protocol.NetOutRequest_UDP
-	case api.ProtocolAll:
+	case garden.ProtocolAll:
 		np = protocol.NetOutRequest_ALL
 	default:
 		return errors.New("invalid protocol")
@@ -468,7 +468,7 @@ func (c *connection) RemoveProperty(handle string, name string) error {
 	return nil
 }
 
-func (c *connection) LimitBandwidth(handle string, limits api.BandwidthLimits) (api.BandwidthLimits, error) {
+func (c *connection) LimitBandwidth(handle string, limits garden.BandwidthLimits) (garden.BandwidthLimits, error) {
 	res := &protocol.LimitBandwidthResponse{}
 
 	err := c.do(
@@ -486,16 +486,16 @@ func (c *connection) LimitBandwidth(handle string, limits api.BandwidthLimits) (
 	)
 
 	if err != nil {
-		return api.BandwidthLimits{}, err
+		return garden.BandwidthLimits{}, err
 	}
 
-	return api.BandwidthLimits{
+	return garden.BandwidthLimits{
 		RateInBytesPerSecond:      res.GetRate(),
 		BurstRateInBytesPerSecond: res.GetBurst(),
 	}, nil
 }
 
-func (c *connection) CurrentBandwidthLimits(handle string) (api.BandwidthLimits, error) {
+func (c *connection) CurrentBandwidthLimits(handle string) (garden.BandwidthLimits, error) {
 	res := &protocol.LimitBandwidthResponse{}
 
 	err := c.do(
@@ -509,16 +509,16 @@ func (c *connection) CurrentBandwidthLimits(handle string) (api.BandwidthLimits,
 	)
 
 	if err != nil {
-		return api.BandwidthLimits{}, err
+		return garden.BandwidthLimits{}, err
 	}
 
-	return api.BandwidthLimits{
+	return garden.BandwidthLimits{
 		RateInBytesPerSecond:      res.GetRate(),
 		BurstRateInBytesPerSecond: res.GetBurst(),
 	}, nil
 }
 
-func (c *connection) LimitCPU(handle string, limits api.CPULimits) (api.CPULimits, error) {
+func (c *connection) LimitCPU(handle string, limits garden.CPULimits) (garden.CPULimits, error) {
 	res := &protocol.LimitCpuResponse{}
 
 	err := c.do(
@@ -535,15 +535,15 @@ func (c *connection) LimitCPU(handle string, limits api.CPULimits) (api.CPULimit
 	)
 
 	if err != nil {
-		return api.CPULimits{}, err
+		return garden.CPULimits{}, err
 	}
 
-	return api.CPULimits{
+	return garden.CPULimits{
 		LimitInShares: res.GetLimitInShares(),
 	}, nil
 }
 
-func (c *connection) CurrentCPULimits(handle string) (api.CPULimits, error) {
+func (c *connection) CurrentCPULimits(handle string) (garden.CPULimits, error) {
 	res := &protocol.LimitCpuResponse{}
 
 	err := c.do(
@@ -557,15 +557,15 @@ func (c *connection) CurrentCPULimits(handle string) (api.CPULimits, error) {
 	)
 
 	if err != nil {
-		return api.CPULimits{}, err
+		return garden.CPULimits{}, err
 	}
 
-	return api.CPULimits{
+	return garden.CPULimits{
 		LimitInShares: res.GetLimitInShares(),
 	}, nil
 }
 
-func (c *connection) LimitDisk(handle string, limits api.DiskLimits) (api.DiskLimits, error) {
+func (c *connection) LimitDisk(handle string, limits garden.DiskLimits) (garden.DiskLimits, error) {
 	res := &protocol.LimitDiskResponse{}
 
 	err := c.do(
@@ -590,10 +590,10 @@ func (c *connection) LimitDisk(handle string, limits api.DiskLimits) (api.DiskLi
 	)
 
 	if err != nil {
-		return api.DiskLimits{}, err
+		return garden.DiskLimits{}, err
 	}
 
-	return api.DiskLimits{
+	return garden.DiskLimits{
 		BlockSoft: res.GetBlockSoft(),
 		BlockHard: res.GetBlockHard(),
 
@@ -605,7 +605,7 @@ func (c *connection) LimitDisk(handle string, limits api.DiskLimits) (api.DiskLi
 	}, nil
 }
 
-func (c *connection) CurrentDiskLimits(handle string) (api.DiskLimits, error) {
+func (c *connection) CurrentDiskLimits(handle string) (garden.DiskLimits, error) {
 	res := &protocol.LimitDiskResponse{}
 
 	err := c.do(
@@ -619,10 +619,10 @@ func (c *connection) CurrentDiskLimits(handle string) (api.DiskLimits, error) {
 	)
 
 	if err != nil {
-		return api.DiskLimits{}, err
+		return garden.DiskLimits{}, err
 	}
 
-	return api.DiskLimits{
+	return garden.DiskLimits{
 		BlockSoft: res.GetBlockSoft(),
 		BlockHard: res.GetBlockHard(),
 
@@ -634,7 +634,7 @@ func (c *connection) CurrentDiskLimits(handle string) (api.DiskLimits, error) {
 	}, nil
 }
 
-func (c *connection) LimitMemory(handle string, limits api.MemoryLimits) (api.MemoryLimits, error) {
+func (c *connection) LimitMemory(handle string, limits garden.MemoryLimits) (garden.MemoryLimits, error) {
 	res := &protocol.LimitMemoryResponse{}
 
 	err := c.do(
@@ -651,15 +651,15 @@ func (c *connection) LimitMemory(handle string, limits api.MemoryLimits) (api.Me
 	)
 
 	if err != nil {
-		return api.MemoryLimits{}, err
+		return garden.MemoryLimits{}, err
 	}
 
-	return api.MemoryLimits{
+	return garden.MemoryLimits{
 		LimitInBytes: res.GetLimitInBytes(),
 	}, nil
 }
 
-func (c *connection) CurrentMemoryLimits(handle string) (api.MemoryLimits, error) {
+func (c *connection) CurrentMemoryLimits(handle string) (garden.MemoryLimits, error) {
 	res := &protocol.LimitMemoryResponse{}
 
 	err := c.do(
@@ -673,10 +673,10 @@ func (c *connection) CurrentMemoryLimits(handle string) (api.MemoryLimits, error
 	)
 
 	if err != nil {
-		return api.MemoryLimits{}, err
+		return garden.MemoryLimits{}, err
 	}
 
-	return api.MemoryLimits{
+	return garden.MemoryLimits{
 		LimitInBytes: res.GetLimitInBytes(),
 	}, nil
 }
@@ -714,7 +714,7 @@ func (c *connection) StreamOut(handle string, srcPath string) (io.ReadCloser, er
 	)
 }
 
-func (c *connection) List(filterProperties api.Properties) ([]string, error) {
+func (c *connection) List(filterProperties garden.Properties) ([]string, error) {
 	values := url.Values{}
 	for name, val := range filterProperties {
 		values[name] = []string{val}
@@ -736,12 +736,12 @@ func (c *connection) List(filterProperties api.Properties) ([]string, error) {
 	return res.GetHandles(), nil
 }
 
-func (c *connection) Info(handle string) (api.ContainerInfo, error) {
+func (c *connection) Info(handle string) (garden.ContainerInfo, error) {
 	res := &protocol.InfoResponse{}
 
 	err := c.do(routes.Info, nil, res, rata.Params{"handle": handle}, nil)
 	if err != nil {
-		return api.ContainerInfo{}, err
+		return garden.ContainerInfo{}, err
 	}
 
 	processIDs := []uint32{}
@@ -749,14 +749,14 @@ func (c *connection) Info(handle string) (api.ContainerInfo, error) {
 		processIDs = append(processIDs, uint32(pid))
 	}
 
-	properties := api.Properties{}
+	properties := garden.Properties{}
 	for _, prop := range res.GetProperties() {
 		properties[prop.GetKey()] = prop.GetValue()
 	}
 
-	mappedPorts := []api.PortMapping{}
+	mappedPorts := []garden.PortMapping{}
 	for _, mapping := range res.GetMappedPorts() {
-		mappedPorts = append(mappedPorts, api.PortMapping{
+		mappedPorts = append(mappedPorts, garden.PortMapping{
 			HostPort:      mapping.GetHostPort(),
 			ContainerPort: mapping.GetContainerPort(),
 		})
@@ -767,7 +767,7 @@ func (c *connection) Info(handle string) (api.ContainerInfo, error) {
 	diskStat := res.GetDiskStat()
 	memoryStat := res.GetMemoryStat()
 
-	return api.ContainerInfo{
+	return garden.ContainerInfo{
 		State:  res.GetState(),
 		Events: res.GetEvents(),
 
@@ -781,25 +781,25 @@ func (c *connection) Info(handle string) (api.ContainerInfo, error) {
 
 		Properties: properties,
 
-		BandwidthStat: api.ContainerBandwidthStat{
+		BandwidthStat: garden.ContainerBandwidthStat{
 			InRate:   bandwidthStat.GetInRate(),
 			InBurst:  bandwidthStat.GetInBurst(),
 			OutRate:  bandwidthStat.GetOutRate(),
 			OutBurst: bandwidthStat.GetOutBurst(),
 		},
 
-		CPUStat: api.ContainerCPUStat{
+		CPUStat: garden.ContainerCPUStat{
 			Usage:  cpuStat.GetUsage(),
 			User:   cpuStat.GetUser(),
 			System: cpuStat.GetSystem(),
 		},
 
-		DiskStat: api.ContainerDiskStat{
+		DiskStat: garden.ContainerDiskStat{
 			BytesUsed:  diskStat.GetBytesUsed(),
 			InodesUsed: diskStat.GetInodesUsed(),
 		},
 
-		MemoryStat: api.ContainerMemoryStat{
+		MemoryStat: garden.ContainerMemoryStat{
 			Cache:                   memoryStat.GetCache(),
 			Rss:                     memoryStat.GetRss(),
 			MappedFile:              memoryStat.GetMappedFile(),

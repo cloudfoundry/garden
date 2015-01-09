@@ -4,7 +4,7 @@ package fakes
 import (
 	"sync"
 
-	"github.com/cloudfoundry-incubator/garden/api"
+	"github.com/cloudfoundry-incubator/garden"
 )
 
 type FakeProcess struct {
@@ -21,18 +21,18 @@ type FakeProcess struct {
 		result1 int
 		result2 error
 	}
-	SetTTYStub        func(api.TTYSpec) error
+	SetTTYStub        func(garden.TTYSpec) error
 	setTTYMutex       sync.RWMutex
 	setTTYArgsForCall []struct {
-		arg1 api.TTYSpec
+		arg1 garden.TTYSpec
 	}
 	setTTYReturns struct {
 		result1 error
 	}
-	SignalStub        func(api.Signal) error
+	SignalStub        func(garden.Signal) error
 	signalMutex       sync.RWMutex
 	signalArgsForCall []struct {
-		arg1 api.Signal
+		arg1 garden.Signal
 	}
 	signalReturns struct {
 		result1 error
@@ -88,10 +88,10 @@ func (fake *FakeProcess) WaitReturns(result1 int, result2 error) {
 	}{result1, result2}
 }
 
-func (fake *FakeProcess) SetTTY(arg1 api.TTYSpec) error {
+func (fake *FakeProcess) SetTTY(arg1 garden.TTYSpec) error {
 	fake.setTTYMutex.Lock()
 	fake.setTTYArgsForCall = append(fake.setTTYArgsForCall, struct {
-		arg1 api.TTYSpec
+		arg1 garden.TTYSpec
 	}{arg1})
 	fake.setTTYMutex.Unlock()
 	if fake.SetTTYStub != nil {
@@ -107,7 +107,7 @@ func (fake *FakeProcess) SetTTYCallCount() int {
 	return len(fake.setTTYArgsForCall)
 }
 
-func (fake *FakeProcess) SetTTYArgsForCall(i int) api.TTYSpec {
+func (fake *FakeProcess) SetTTYArgsForCall(i int) garden.TTYSpec {
 	fake.setTTYMutex.RLock()
 	defer fake.setTTYMutex.RUnlock()
 	return fake.setTTYArgsForCall[i].arg1
@@ -120,10 +120,10 @@ func (fake *FakeProcess) SetTTYReturns(result1 error) {
 	}{result1}
 }
 
-func (fake *FakeProcess) Signal(arg1 api.Signal) error {
+func (fake *FakeProcess) Signal(arg1 garden.Signal) error {
 	fake.signalMutex.Lock()
 	fake.signalArgsForCall = append(fake.signalArgsForCall, struct {
-		arg1 api.Signal
+		arg1 garden.Signal
 	}{arg1})
 	fake.signalMutex.Unlock()
 	if fake.SignalStub != nil {
@@ -139,7 +139,7 @@ func (fake *FakeProcess) SignalCallCount() int {
 	return len(fake.signalArgsForCall)
 }
 
-func (fake *FakeProcess) SignalArgsForCall(i int) api.Signal {
+func (fake *FakeProcess) SignalArgsForCall(i int) garden.Signal {
 	fake.signalMutex.RLock()
 	defer fake.signalMutex.RUnlock()
 	return fake.signalArgsForCall[i].arg1
@@ -152,4 +152,4 @@ func (fake *FakeProcess) SignalReturns(result1 error) {
 	}{result1}
 }
 
-var _ api.Process = new(FakeProcess)
+var _ garden.Process = new(FakeProcess)

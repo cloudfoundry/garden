@@ -15,7 +15,7 @@ import (
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/ghttp"
 
-	"github.com/cloudfoundry-incubator/garden/api"
+	"github.com/cloudfoundry-incubator/garden"
 	. "github.com/cloudfoundry-incubator/garden/client/connection"
 	protocol "github.com/cloudfoundry-incubator/garden/protocol"
 	"github.com/cloudfoundry-incubator/garden/transport"
@@ -24,7 +24,7 @@ import (
 var _ = Describe("Connection", func() {
 	var (
 		connection     Connection
-		resourceLimits api.ResourceLimits
+		resourceLimits garden.ResourceLimits
 		server         *ghttp.Server
 	)
 
@@ -37,7 +37,7 @@ var _ = Describe("Connection", func() {
 	})
 
 	BeforeEach(func() {
-		rlimits := &api.ResourceLimits{
+		rlimits := &garden.ResourceLimits{
 			As:         proto.Uint64(1),
 			Core:       proto.Uint64(2),
 			Cpu:        proto.Uint64(4),
@@ -55,7 +55,7 @@ var _ = Describe("Connection", func() {
 			Stack:      proto.Uint64(16),
 		}
 
-		resourceLimits = api.ResourceLimits{
+		resourceLimits = garden.ResourceLimits{
 			As:         rlimits.As,
 			Core:       rlimits.Core,
 			Cpu:        rlimits.Cpu,
@@ -195,23 +195,23 @@ var _ = Describe("Connection", func() {
 		})
 
 		It("should create a container", func() {
-			handle, err := connection.Create(api.ContainerSpec{
+			handle, err := connection.Create(garden.ContainerSpec{
 				Handle:     "some-handle",
 				GraceTime:  10 * time.Second,
 				RootFSPath: "some-rootfs-path",
 				Network:    "some-network",
-				BindMounts: []api.BindMount{
+				BindMounts: []garden.BindMount{
 					{
 						SrcPath: "/src-a",
 						DstPath: "/dst-a",
-						Mode:    api.BindMountModeRO,
-						Origin:  api.BindMountOriginHost,
+						Mode:    garden.BindMountModeRO,
+						Origin:  garden.BindMountOriginHost,
 					},
 					{
 						SrcPath: "/src-b",
 						DstPath: "/dst-b",
-						Mode:    api.BindMountModeRW,
-						Origin:  api.BindMountOriginContainer,
+						Mode:    garden.BindMountModeRW,
+						Origin:  garden.BindMountOriginContainer,
 					},
 				},
 				Properties: map[string]string{
@@ -275,7 +275,7 @@ var _ = Describe("Connection", func() {
 			})
 
 			It("should limit memory", func() {
-				newLimits, err := connection.LimitMemory("foo", api.MemoryLimits{
+				newLimits, err := connection.LimitMemory("foo", garden.MemoryLimits{
 					LimitInBytes: 42,
 				})
 
@@ -322,7 +322,7 @@ var _ = Describe("Connection", func() {
 			})
 
 			It("should limit CPU", func() {
-				newLimits, err := connection.LimitCPU("foo", api.CPULimits{
+				newLimits, err := connection.LimitCPU("foo", garden.CPULimits{
 					LimitInShares: 42,
 				})
 
@@ -372,7 +372,7 @@ var _ = Describe("Connection", func() {
 			})
 
 			It("should limit Bandwidth", func() {
-				newLimits, err := connection.LimitBandwidth("foo", api.BandwidthLimits{
+				newLimits, err := connection.LimitBandwidth("foo", garden.BandwidthLimits{
 					RateInBytesPerSecond:      42,
 					BurstRateInBytesPerSecond: 43,
 				})
@@ -437,7 +437,7 @@ var _ = Describe("Connection", func() {
 			})
 
 			It("should limit disk", func() {
-				newLimits, err := connection.LimitDisk("foo", api.DiskLimits{
+				newLimits, err := connection.LimitDisk("foo", garden.DiskLimits{
 					BlockSoft: 42,
 					BlockHard: 42,
 
@@ -449,7 +449,7 @@ var _ = Describe("Connection", func() {
 				})
 
 				Ω(err).ShouldNot(HaveOccurred())
-				Ω(newLimits).Should(Equal(api.DiskLimits{
+				Ω(newLimits).Should(Equal(garden.DiskLimits{
 					BlockSoft: 3,
 					BlockHard: 4,
 					InodeSoft: 7,
@@ -481,7 +481,7 @@ var _ = Describe("Connection", func() {
 				limits, err := connection.CurrentDiskLimits("foo")
 				Ω(err).ShouldNot(HaveOccurred())
 
-				Ω(limits).Should(Equal(api.DiskLimits{
+				Ω(limits).Should(Equal(garden.DiskLimits{
 					BlockSoft: 3,
 					BlockHard: 4,
 					InodeSoft: 7,
@@ -538,7 +538,7 @@ var _ = Describe("Connection", func() {
 			})
 
 			It("should send the correct values", func() {
-				err := connection.NetOut("foo-handle", "foo-network", 42, "", api.ProtocolAll, -1, -1)
+				err := connection.NetOut("foo-handle", "foo-network", 42, "", garden.ProtocolAll, -1, -1)
 				Ω(err).ShouldNot(HaveOccurred())
 			})
 
@@ -568,7 +568,7 @@ var _ = Describe("Connection", func() {
 			})
 
 			It("receives a message containing the UDP protocol", func() {
-				err := connection.NetOut("udp-handle", "udp-network", 42, "8080:8081", api.ProtocolUDP, -1, -1)
+				err := connection.NetOut("udp-handle", "udp-network", 42, "8080:8081", garden.ProtocolUDP, -1, -1)
 				Ω(err).ShouldNot(HaveOccurred())
 			})
 		})
@@ -593,7 +593,7 @@ var _ = Describe("Connection", func() {
 			})
 
 			It("should send the correct values", func() {
-				err := connection.NetOut("foo-handle", "foo-network", 0, "8080:8081", api.ProtocolAll, -1, -1)
+				err := connection.NetOut("foo-handle", "foo-network", 0, "8080:8081", garden.ProtocolAll, -1, -1)
 				Ω(err).ShouldNot(HaveOccurred())
 			})
 		})
@@ -618,7 +618,7 @@ var _ = Describe("Connection", func() {
 			})
 
 			It("should send the correct values", func() {
-				err := connection.NetOut("foo-handle", "foo-network", 0, "", api.ProtocolICMP, 3, 2)
+				err := connection.NetOut("foo-handle", "foo-network", 0, "", garden.ProtocolICMP, 3, 2)
 				Ω(err).ShouldNot(HaveOccurred())
 			})
 		})
@@ -733,11 +733,11 @@ var _ = Describe("Connection", func() {
 			Ω(info.ContainerPath).Should(Equal("container-path"))
 			Ω(info.ProcessIDs).Should(Equal([]uint32{1, 2}))
 
-			Ω(info.Properties).Should(Equal(api.Properties{
+			Ω(info.Properties).Should(Equal(garden.Properties{
 				"prop-key": "prop-value",
 			}))
 
-			Ω(info.MemoryStat).Should(Equal(api.ContainerMemoryStat{
+			Ω(info.MemoryStat).Should(Equal(garden.ContainerMemoryStat{
 				Cache:                   1,
 				Rss:                     2,
 				MappedFile:              3,
@@ -768,25 +768,25 @@ var _ = Describe("Connection", func() {
 				TotalUnevictable:        28,
 			}))
 
-			Ω(info.CPUStat).Should(Equal(api.ContainerCPUStat{
+			Ω(info.CPUStat).Should(Equal(garden.ContainerCPUStat{
 				Usage:  1,
 				User:   2,
 				System: 3,
 			}))
 
-			Ω(info.DiskStat).Should(Equal(api.ContainerDiskStat{
+			Ω(info.DiskStat).Should(Equal(garden.ContainerDiskStat{
 				BytesUsed:  1,
 				InodesUsed: 2,
 			}))
 
-			Ω(info.BandwidthStat).Should(Equal(api.ContainerBandwidthStat{
+			Ω(info.BandwidthStat).Should(Equal(garden.ContainerBandwidthStat{
 				InRate:   1,
 				InBurst:  2,
 				OutRate:  3,
 				OutBurst: 4,
 			}))
 
-			Ω(info.MappedPorts).Should(Equal([]api.PortMapping{
+			Ω(info.MappedPorts).Should(Equal([]garden.PortMapping{
 				{HostPort: 1234, ContainerPort: 5678},
 				{HostPort: 1235, ContainerPort: 5679},
 			}))
@@ -809,7 +809,7 @@ var _ = Describe("Connection", func() {
 				)
 			})
 
-			It("tells api to stream, and then streams the content as a series of chunks", func() {
+			It("tells garden.to stream, and then streams the content as a series of chunks", func() {
 				buffer := bytes.NewBufferString("chunk-1chunk-2")
 
 				err := connection.StreamIn("foo-handle", "/bar", buffer)
@@ -873,7 +873,7 @@ var _ = Describe("Connection", func() {
 				)
 			})
 
-			It("asks api for the given file, then reads its content", func() {
+			It("asks garden.for the given file, then reads its content", func() {
 				reader, err := connection.StreamOut("foo-handle", "/bar")
 				Ω(err).ShouldNot(HaveOccurred())
 
@@ -897,7 +897,7 @@ var _ = Describe("Connection", func() {
 				)
 			})
 
-			It("asks api for the given file, then reads its content", func() {
+			It("asks garden.for the given file, then reads its content", func() {
 				reader, err := connection.StreamOut("foo-handle", "/bar")
 				Ω(err).ShouldNot(HaveOccurred())
 
@@ -985,13 +985,13 @@ var _ = Describe("Connection", func() {
 				stdout := gbytes.NewBuffer()
 				stderr := gbytes.NewBuffer()
 
-				process, err := connection.Run("foo-handle", api.ProcessSpec{
+				process, err := connection.Run("foo-handle", garden.ProcessSpec{
 					Path:       "lol",
 					Args:       []string{"arg1", "arg2"},
 					Dir:        "/some/dir",
 					Privileged: true,
 					Limits:     resourceLimits,
-				}, api.ProcessIO{
+				}, garden.ProcessIO{
 					Stdin:  bytes.NewBufferString("stdin data"),
 					Stdout: stdout,
 					Stderr: stderr,
@@ -1045,12 +1045,12 @@ var _ = Describe("Connection", func() {
 			})
 
 			It("sends the appropriate protocol message", func() {
-				process, err := connection.Run("foo-handle", api.ProcessSpec{}, api.ProcessIO{})
+				process, err := connection.Run("foo-handle", garden.ProcessSpec{}, garden.ProcessIO{})
 
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(process.ID()).Should(Equal(uint32(42)))
 
-				err = process.Signal(api.SignalTerminate)
+				err = process.Signal(garden.SignalTerminate)
 				Ω(err).ShouldNot(HaveOccurred())
 
 				status, err := process.Wait()
@@ -1094,12 +1094,12 @@ var _ = Describe("Connection", func() {
 			})
 
 			It("sends the appropriate protocol message", func() {
-				process, err := connection.Run("foo-handle", api.ProcessSpec{}, api.ProcessIO{})
+				process, err := connection.Run("foo-handle", garden.ProcessSpec{}, garden.ProcessIO{})
 
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(process.ID()).Should(Equal(uint32(42)))
 
-				err = process.Signal(api.SignalKill)
+				err = process.Signal(garden.SignalKill)
 				Ω(err).ShouldNot(HaveOccurred())
 
 				status, err := process.Wait()
@@ -1160,16 +1160,16 @@ var _ = Describe("Connection", func() {
 			})
 
 			It("sends the appropriate protocol message", func() {
-				process, err := connection.Run("foo-handle", api.ProcessSpec{
+				process, err := connection.Run("foo-handle", garden.ProcessSpec{
 					Path: "lol",
 					Args: []string{"arg1", "arg2"},
-					TTY: &api.TTYSpec{
-						WindowSize: &api.WindowSize{
+					TTY: &garden.TTYSpec{
+						WindowSize: &garden.WindowSize{
 							Columns: 100,
 							Rows:    200,
 						},
 					},
-				}, api.ProcessIO{
+				}, garden.ProcessIO{
 					Stdin:  bytes.NewBufferString("stdin data"),
 					Stdout: gbytes.NewBuffer(),
 					Stderr: gbytes.NewBuffer(),
@@ -1178,8 +1178,8 @@ var _ = Describe("Connection", func() {
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(process.ID()).Should(Equal(uint32(42)))
 
-				err = process.SetTTY(api.TTYSpec{
-					WindowSize: &api.WindowSize{
+				err = process.SetTTY(garden.TTYSpec{
+					WindowSize: &garden.WindowSize{
 						Columns: 80,
 						Rows:    24,
 					},
@@ -1217,11 +1217,11 @@ var _ = Describe("Connection", func() {
 
 			Describe("waiting on the process", func() {
 				It("returns an error", func() {
-					process, err := connection.Run("foo-handle", api.ProcessSpec{
+					process, err := connection.Run("foo-handle", garden.ProcessSpec{
 						Path: "lol",
 						Args: []string{"arg1", "arg2"},
 						Dir:  "/some/dir",
-					}, api.ProcessIO{})
+					}, garden.ProcessIO{})
 
 					Ω(err).ShouldNot(HaveOccurred())
 
@@ -1247,11 +1247,11 @@ var _ = Describe("Connection", func() {
 
 			Describe("waiting on the process", func() {
 				It("returns an error", func() {
-					process, err := connection.Run("foo-handle", api.ProcessSpec{
+					process, err := connection.Run("foo-handle", garden.ProcessSpec{
 						Path: "lol",
 						Args: []string{"arg1", "arg2"},
 						Dir:  "/some/dir",
-					}, api.ProcessIO{})
+					}, garden.ProcessIO{})
 
 					Ω(err).ShouldNot(HaveOccurred())
 
@@ -1311,7 +1311,7 @@ var _ = Describe("Connection", func() {
 				stdout := gbytes.NewBuffer()
 				stderr := gbytes.NewBuffer()
 
-				process, err := connection.Attach("foo-handle", 42, api.ProcessIO{
+				process, err := connection.Attach("foo-handle", 42, garden.ProcessIO{
 					Stdin:  bytes.NewBufferString("stdin data"),
 					Stdout: stdout,
 					Stderr: stderr,
@@ -1367,7 +1367,7 @@ var _ = Describe("Connection", func() {
 
 				stdinR, stdinW := io.Pipe()
 
-				_, err := connection.Attach("foo-handle", 42, api.ProcessIO{
+				_, err := connection.Attach("foo-handle", 42, garden.ProcessIO{
 					Stdin: stdinR,
 				})
 				Ω(err).ShouldNot(HaveOccurred())
@@ -1394,7 +1394,7 @@ var _ = Describe("Connection", func() {
 
 			Describe("waiting on the process", func() {
 				It("returns an error", func() {
-					process, err := connection.Attach("foo-handle", 42, api.ProcessIO{})
+					process, err := connection.Attach("foo-handle", 42, garden.ProcessIO{})
 
 					Ω(err).ShouldNot(HaveOccurred())
 					Ω(process.ID()).Should(Equal(uint32(42)))
@@ -1429,7 +1429,7 @@ var _ = Describe("Connection", func() {
 
 			Describe("waiting on the process", func() {
 				It("returns an error", func() {
-					process, err := connection.Attach("foo-handle", 42, api.ProcessIO{})
+					process, err := connection.Attach("foo-handle", 42, garden.ProcessIO{})
 
 					Ω(err).ShouldNot(HaveOccurred())
 					Ω(process.ID()).Should(Equal(uint32(42)))

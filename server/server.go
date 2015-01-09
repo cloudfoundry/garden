@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cloudfoundry-incubator/garden/api"
+	"github.com/cloudfoundry-incubator/garden"
 	"github.com/cloudfoundry-incubator/garden/routes"
 	"github.com/cloudfoundry-incubator/garden/server/bomberman"
 	"github.com/gogo/protobuf/proto"
@@ -24,7 +24,7 @@ type GardenServer struct {
 	listenAddr    string
 
 	containerGraceTime time.Duration
-	backend            api.Backend
+	backend            garden.Backend
 
 	listener net.Listener
 	handling *sync.WaitGroup
@@ -52,7 +52,7 @@ func (e UnhandledRequestError) Error() string {
 func New(
 	listenNetwork, listenAddr string,
 	containerGraceTime time.Duration,
-	backend api.Backend,
+	backend garden.Backend,
 	logger lager.Logger,
 ) *GardenServer {
 	s := &GardenServer{
@@ -232,7 +232,7 @@ func (s *GardenServer) removeExistingSocket() error {
 	return nil
 }
 
-func (s *GardenServer) reapContainer(container api.Container) {
+func (s *GardenServer) reapContainer(container garden.Container) {
 	s.logger.Info("reaping", lager.Data{
 		"handle":     container.Handle(),
 		"grace-time": s.backend.GraceTime(container).String(),

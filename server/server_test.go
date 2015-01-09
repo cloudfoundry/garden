@@ -12,10 +12,10 @@ import (
 	"github.com/onsi/gomega/gbytes"
 	"github.com/pivotal-golang/lager/lagertest"
 
-	"github.com/cloudfoundry-incubator/garden/api"
-	"github.com/cloudfoundry-incubator/garden/api/fakes"
+	"github.com/cloudfoundry-incubator/garden"
 	"github.com/cloudfoundry-incubator/garden/client"
 	"github.com/cloudfoundry-incubator/garden/client/connection"
+	"github.com/cloudfoundry-incubator/garden/fakes"
 	"github.com/cloudfoundry-incubator/garden/server"
 )
 
@@ -112,7 +112,7 @@ var _ = Describe("The Garden server", func() {
 
 		doomedContainer := new(fakes.FakeContainer)
 
-		fakeBackend.ContainersReturns([]api.Container{doomedContainer}, nil)
+		fakeBackend.ContainersReturns([]garden.Container{doomedContainer}, nil)
 		fakeBackend.GraceTimeReturns(100 * time.Millisecond)
 
 		apiServer := server.New("unix", socketPath, 0, fakeBackend, logger)
@@ -170,11 +170,11 @@ var _ = Describe("The Garden server", func() {
 	Describe("shutting down", func() {
 		var socketPath string
 
-		var serverBackend api.Backend
+		var serverBackend garden.Backend
 		var fakeBackend *fakes.FakeBackend
 
 		var apiServer *server.GardenServer
-		var apiClient api.Client
+		var apiClient garden.Client
 
 		BeforeEach(func() {
 			var err error
@@ -218,7 +218,7 @@ var _ = Describe("The Garden server", func() {
 				creating = make(chan struct{})
 				finishCreating = make(chan struct{})
 
-				fakeBackend.CreateStub = func(api.ContainerSpec) (api.Container, error) {
+				fakeBackend.CreateStub = func(garden.ContainerSpec) (garden.Container, error) {
 					close(creating)
 					<-finishCreating
 					return new(fakes.FakeContainer), nil
@@ -226,12 +226,12 @@ var _ = Describe("The Garden server", func() {
 			})
 
 			It("waits for it to complete and stops accepting requests", func() {
-				created := make(chan api.Container, 1)
+				created := make(chan garden.Container, 1)
 
 				go func() {
 					defer GinkgoRecover()
 
-					container, err := apiClient.Create(api.ContainerSpec{})
+					container, err := apiClient.Create(garden.ContainerSpec{})
 					Ω(err).ShouldNot(HaveOccurred())
 
 					created <- container
@@ -261,7 +261,7 @@ var _ = Describe("The Garden server", func() {
 			It("does not wait for the request to complete", func(done Done) {
 				fakeContainer := new(fakes.FakeContainer)
 
-				fakeContainer.RunStub = func(spec api.ProcessSpec, io api.ProcessIO) (api.Process, error) {
+				fakeContainer.RunStub = func(spec garden.ProcessSpec, io garden.ProcessIO) (garden.Process, error) {
 					process := new(fakes.FakeProcess)
 
 					process.WaitStub = func() (int, error) {
@@ -286,17 +286,17 @@ var _ = Describe("The Garden server", func() {
 
 				fakeBackend.CreateReturns(fakeContainer, nil)
 
-				clientContainer, err := apiClient.Create(api.ContainerSpec{})
+				clientContainer, err := apiClient.Create(garden.ContainerSpec{})
 				Ω(err).ShouldNot(HaveOccurred())
 
 				fakeBackend.LookupReturns(fakeContainer, nil)
 
 				stdout := gbytes.NewBuffer()
 
-				process, err := clientContainer.Run(api.ProcessSpec{
+				process, err := clientContainer.Run(garden.ProcessSpec{
 					Path: "some-path",
 					Args: []string{"arg1", "arg2"},
-				}, api.ProcessIO{
+				}, garden.ProcessIO{
 					Stdout: stdout,
 				})
 				Ω(err).ShouldNot(HaveOccurred())

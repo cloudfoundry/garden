@@ -3,7 +3,7 @@ package client
 import (
 	"io"
 
-	"github.com/cloudfoundry-incubator/garden/api"
+	"github.com/cloudfoundry-incubator/garden"
 	"github.com/cloudfoundry-incubator/garden/client/connection"
 )
 
@@ -13,7 +13,7 @@ type container struct {
 	connection connection.Connection
 }
 
-func newContainer(handle string, connection connection.Connection) api.Container {
+func newContainer(handle string, connection connection.Connection) garden.Container {
 	return &container{
 		handle: handle,
 
@@ -29,7 +29,7 @@ func (container *container) Stop(kill bool) error {
 	return container.connection.Stop(container.handle, kill)
 }
 
-func (container *container) Info() (api.ContainerInfo, error) {
+func (container *container) Info() (garden.ContainerInfo, error) {
 	return container.connection.Info(container.handle)
 }
 
@@ -41,7 +41,7 @@ func (container *container) StreamOut(srcPath string) (io.ReadCloser, error) {
 	return container.connection.StreamOut(container.handle, srcPath)
 }
 
-func (container *container) LimitBandwidth(limits api.BandwidthLimits) error {
+func (container *container) LimitBandwidth(limits garden.BandwidthLimits) error {
 	_, err := container.connection.LimitBandwidth(container.handle, limits)
 	if err != nil {
 		return err
@@ -50,11 +50,11 @@ func (container *container) LimitBandwidth(limits api.BandwidthLimits) error {
 	return nil
 }
 
-func (container *container) CurrentBandwidthLimits() (api.BandwidthLimits, error) {
+func (container *container) CurrentBandwidthLimits() (garden.BandwidthLimits, error) {
 	return container.connection.CurrentBandwidthLimits(container.handle)
 }
 
-func (container *container) LimitCPU(limits api.CPULimits) error {
+func (container *container) LimitCPU(limits garden.CPULimits) error {
 	_, err := container.connection.LimitCPU(container.handle, limits)
 	if err != nil {
 		return err
@@ -63,11 +63,11 @@ func (container *container) LimitCPU(limits api.CPULimits) error {
 	return nil
 }
 
-func (container *container) CurrentCPULimits() (api.CPULimits, error) {
+func (container *container) CurrentCPULimits() (garden.CPULimits, error) {
 	return container.connection.CurrentCPULimits(container.handle)
 }
 
-func (container *container) LimitDisk(limits api.DiskLimits) error {
+func (container *container) LimitDisk(limits garden.DiskLimits) error {
 	_, err := container.connection.LimitDisk(container.handle, limits)
 	if err != nil {
 		return err
@@ -76,11 +76,11 @@ func (container *container) LimitDisk(limits api.DiskLimits) error {
 	return nil
 }
 
-func (container *container) CurrentDiskLimits() (api.DiskLimits, error) {
+func (container *container) CurrentDiskLimits() (garden.DiskLimits, error) {
 	return container.connection.CurrentDiskLimits(container.handle)
 }
 
-func (container *container) LimitMemory(limits api.MemoryLimits) error {
+func (container *container) LimitMemory(limits garden.MemoryLimits) error {
 	_, err := container.connection.LimitMemory(container.handle, limits)
 	if err != nil {
 		return err
@@ -89,15 +89,15 @@ func (container *container) LimitMemory(limits api.MemoryLimits) error {
 	return nil
 }
 
-func (container *container) CurrentMemoryLimits() (api.MemoryLimits, error) {
+func (container *container) CurrentMemoryLimits() (garden.MemoryLimits, error) {
 	return container.connection.CurrentMemoryLimits(container.handle)
 }
 
-func (container *container) Run(spec api.ProcessSpec, io api.ProcessIO) (api.Process, error) {
+func (container *container) Run(spec garden.ProcessSpec, io garden.ProcessIO) (garden.Process, error) {
 	return container.connection.Run(container.handle, spec, io)
 }
 
-func (container *container) Attach(processID uint32, io api.ProcessIO) (api.Process, error) {
+func (container *container) Attach(processID uint32, io garden.ProcessIO) (garden.Process, error) {
 	return container.connection.Attach(container.handle, processID, io)
 }
 
@@ -105,7 +105,7 @@ func (container *container) NetIn(hostPort, containerPort uint32) (uint32, uint3
 	return container.connection.NetIn(container.handle, hostPort, containerPort)
 }
 
-func (container *container) NetOut(network string, port uint32, portRange string, protocol api.Protocol, icmpType int32, icmpCode int32) error {
+func (container *container) NetOut(network string, port uint32, portRange string, protocol garden.Protocol, icmpType int32, icmpCode int32) error {
 	return container.connection.NetOut(container.handle, network, port, portRange, protocol, icmpType, icmpCode)
 }
 

@@ -5,7 +5,7 @@ import (
 	"net"
 	"sync"
 
-	"github.com/cloudfoundry-incubator/garden/api"
+	"github.com/cloudfoundry-incubator/garden"
 	protocol "github.com/cloudfoundry-incubator/garden/protocol"
 	"github.com/cloudfoundry-incubator/garden/transport"
 	"github.com/gogo/protobuf/proto"
@@ -37,7 +37,7 @@ func (s *processStream) CloseStdin() error {
 	})
 }
 
-func (s *processStream) SetTTY(spec api.TTYSpec) error {
+func (s *processStream) SetTTY(spec garden.TTYSpec) error {
 	tty := &protocol.TTY{}
 
 	if spec.WindowSize != nil {
@@ -53,12 +53,12 @@ func (s *processStream) SetTTY(spec api.TTYSpec) error {
 	})
 }
 
-func (s *processStream) Signal(signal api.Signal) error {
+func (s *processStream) Signal(signal garden.Signal) error {
 	var payloadSignal protocol.ProcessPayload_Signal
 	switch signal {
-	case api.SignalKill:
+	case garden.SignalKill:
 		payloadSignal = sigKill
-	case api.SignalTerminate:
+	case garden.SignalTerminate:
 		payloadSignal = sigTerm
 	default:
 		return fmt.Errorf("Unknown signal type: %d", signal)

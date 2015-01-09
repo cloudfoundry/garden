@@ -4,30 +4,30 @@ package fakes
 import (
 	"sync"
 
-	"github.com/cloudfoundry-incubator/garden/api"
+	"github.com/cloudfoundry-incubator/garden"
 )
 
 type FakeClient struct {
 	PingStub        func() error
 	pingMutex       sync.RWMutex
 	pingArgsForCall []struct{}
-	pingReturns     struct {
+	pingReturns struct {
 		result1 error
 	}
-	CapacityStub        func() (api.Capacity, error)
+	CapacityStub        func() (garden.Capacity, error)
 	capacityMutex       sync.RWMutex
 	capacityArgsForCall []struct{}
-	capacityReturns     struct {
-		result1 api.Capacity
+	capacityReturns struct {
+		result1 garden.Capacity
 		result2 error
 	}
-	CreateStub        func(api.ContainerSpec) (api.Container, error)
+	CreateStub        func(garden.ContainerSpec) (garden.Container, error)
 	createMutex       sync.RWMutex
 	createArgsForCall []struct {
-		arg1 api.ContainerSpec
+		arg1 garden.ContainerSpec
 	}
 	createReturns struct {
-		result1 api.Container
+		result1 garden.Container
 		result2 error
 	}
 	DestroyStub        func(handle string) error
@@ -38,22 +38,22 @@ type FakeClient struct {
 	destroyReturns struct {
 		result1 error
 	}
-	ContainersStub        func(api.Properties) ([]api.Container, error)
+	ContainersStub        func(garden.Properties) ([]garden.Container, error)
 	containersMutex       sync.RWMutex
 	containersArgsForCall []struct {
-		arg1 api.Properties
+		arg1 garden.Properties
 	}
 	containersReturns struct {
-		result1 []api.Container
+		result1 []garden.Container
 		result2 error
 	}
-	LookupStub        func(handle string) (api.Container, error)
+	LookupStub        func(handle string) (garden.Container, error)
 	lookupMutex       sync.RWMutex
 	lookupArgsForCall []struct {
 		handle string
 	}
 	lookupReturns struct {
-		result1 api.Container
+		result1 garden.Container
 		result2 error
 	}
 }
@@ -82,7 +82,7 @@ func (fake *FakeClient) PingReturns(result1 error) {
 	}{result1}
 }
 
-func (fake *FakeClient) Capacity() (api.Capacity, error) {
+func (fake *FakeClient) Capacity() (garden.Capacity, error) {
 	fake.capacityMutex.Lock()
 	fake.capacityArgsForCall = append(fake.capacityArgsForCall, struct{}{})
 	fake.capacityMutex.Unlock()
@@ -99,18 +99,18 @@ func (fake *FakeClient) CapacityCallCount() int {
 	return len(fake.capacityArgsForCall)
 }
 
-func (fake *FakeClient) CapacityReturns(result1 api.Capacity, result2 error) {
+func (fake *FakeClient) CapacityReturns(result1 garden.Capacity, result2 error) {
 	fake.CapacityStub = nil
 	fake.capacityReturns = struct {
-		result1 api.Capacity
+		result1 garden.Capacity
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *FakeClient) Create(arg1 api.ContainerSpec) (api.Container, error) {
+func (fake *FakeClient) Create(arg1 garden.ContainerSpec) (garden.Container, error) {
 	fake.createMutex.Lock()
 	fake.createArgsForCall = append(fake.createArgsForCall, struct {
-		arg1 api.ContainerSpec
+		arg1 garden.ContainerSpec
 	}{arg1})
 	fake.createMutex.Unlock()
 	if fake.CreateStub != nil {
@@ -126,16 +126,16 @@ func (fake *FakeClient) CreateCallCount() int {
 	return len(fake.createArgsForCall)
 }
 
-func (fake *FakeClient) CreateArgsForCall(i int) api.ContainerSpec {
+func (fake *FakeClient) CreateArgsForCall(i int) garden.ContainerSpec {
 	fake.createMutex.RLock()
 	defer fake.createMutex.RUnlock()
 	return fake.createArgsForCall[i].arg1
 }
 
-func (fake *FakeClient) CreateReturns(result1 api.Container, result2 error) {
+func (fake *FakeClient) CreateReturns(result1 garden.Container, result2 error) {
 	fake.CreateStub = nil
 	fake.createReturns = struct {
-		result1 api.Container
+		result1 garden.Container
 		result2 error
 	}{result1, result2}
 }
@@ -172,10 +172,10 @@ func (fake *FakeClient) DestroyReturns(result1 error) {
 	}{result1}
 }
 
-func (fake *FakeClient) Containers(arg1 api.Properties) ([]api.Container, error) {
+func (fake *FakeClient) Containers(arg1 garden.Properties) ([]garden.Container, error) {
 	fake.containersMutex.Lock()
 	fake.containersArgsForCall = append(fake.containersArgsForCall, struct {
-		arg1 api.Properties
+		arg1 garden.Properties
 	}{arg1})
 	fake.containersMutex.Unlock()
 	if fake.ContainersStub != nil {
@@ -191,21 +191,21 @@ func (fake *FakeClient) ContainersCallCount() int {
 	return len(fake.containersArgsForCall)
 }
 
-func (fake *FakeClient) ContainersArgsForCall(i int) api.Properties {
+func (fake *FakeClient) ContainersArgsForCall(i int) garden.Properties {
 	fake.containersMutex.RLock()
 	defer fake.containersMutex.RUnlock()
 	return fake.containersArgsForCall[i].arg1
 }
 
-func (fake *FakeClient) ContainersReturns(result1 []api.Container, result2 error) {
+func (fake *FakeClient) ContainersReturns(result1 []garden.Container, result2 error) {
 	fake.ContainersStub = nil
 	fake.containersReturns = struct {
-		result1 []api.Container
+		result1 []garden.Container
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *FakeClient) Lookup(handle string) (api.Container, error) {
+func (fake *FakeClient) Lookup(handle string) (garden.Container, error) {
 	fake.lookupMutex.Lock()
 	fake.lookupArgsForCall = append(fake.lookupArgsForCall, struct {
 		handle string
@@ -230,12 +230,12 @@ func (fake *FakeClient) LookupArgsForCall(i int) string {
 	return fake.lookupArgsForCall[i].handle
 }
 
-func (fake *FakeClient) LookupReturns(result1 api.Container, result2 error) {
+func (fake *FakeClient) LookupReturns(result1 garden.Container, result2 error) {
 	fake.LookupStub = nil
 	fake.lookupReturns = struct {
-		result1 api.Container
+		result1 garden.Container
 		result2 error
 	}{result1, result2}
 }
 
-var _ api.Client = new(FakeClient)
+var _ garden.Client = new(FakeClient)
