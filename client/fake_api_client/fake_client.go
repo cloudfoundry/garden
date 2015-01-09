@@ -7,7 +7,7 @@ import (
 )
 
 type FakeClient struct {
-	api.Client
+	garden.Client
 
 	Connection *fakes.FakeConnection
 }
