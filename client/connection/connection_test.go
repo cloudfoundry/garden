@@ -226,16 +226,32 @@ var _ = Describe("Connection", func() {
 	})
 
 	Describe("Destroying", func() {
-		BeforeEach(func() {
-			server.AppendHandlers(
-				ghttp.CombineHandlers(
-					ghttp.VerifyRequest("DELETE", "/containers/foo"),
-					ghttp.RespondWith(200, marshalProto(&protocol.DestroyResponse{}))))
+		Context("when destroying succeeds", func() {
+			BeforeEach(func() {
+				server.AppendHandlers(
+					ghttp.CombineHandlers(
+						ghttp.VerifyRequest("DELETE", "/containers/foo"),
+						ghttp.RespondWith(200, marshalProto(&protocol.DestroyResponse{}))))
+			})
+
+			It("should stop the container", func() {
+				err := connection.Destroy("foo")
+				Ω(err).ShouldNot(HaveOccurred())
+			})
 		})
 
-		It("should stop the container", func() {
-			err := connection.Destroy("foo")
-			Ω(err).ShouldNot(HaveOccurred())
+		Context("when destroying fails", func() {
+			BeforeEach(func() {
+				server.AppendHandlers(
+					ghttp.CombineHandlers(
+						ghttp.VerifyRequest("DELETE", "/containers/foo"),
+						ghttp.RespondWith(423, "some error")))
+			})
+
+			It("return an appropriate error with the code and message", func() {
+				err := connection.Destroy("foo")
+				Ω(err).Should(MatchError(Error{423, "some error"}))
+			})
 		})
 	})
 

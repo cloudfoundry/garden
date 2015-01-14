@@ -1217,8 +1217,13 @@ func resourceLimits(limits *protocol.ResourceLimits) garden.ResourceLimits {
 func (s *GardenServer) writeError(w http.ResponseWriter, err error, logger lager.Logger) {
 	logger.Error("failed", err)
 
+	statusCode := http.StatusInternalServerError
+	if _, ok := err.(garden.ContainerNotFoundError); ok {
+		statusCode = http.StatusNotFound
+	}
+
 	w.Header().Set("Content-Type", "text/plain")
-	w.WriteHeader(http.StatusInternalServerError)
+	w.WriteHeader(statusCode)
 	w.Write([]byte(err.Error()))
 }
 

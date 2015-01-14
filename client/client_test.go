@@ -8,6 +8,7 @@ import (
 
 	"github.com/cloudfoundry-incubator/garden"
 	. "github.com/cloudfoundry-incubator/garden/client"
+	"github.com/cloudfoundry-incubator/garden/client/connection"
 	"github.com/cloudfoundry-incubator/garden/client/connection/fakes"
 )
 
@@ -138,6 +139,19 @@ var _ = Describe("Client", func() {
 				Ω(err).Should(Equal(disaster))
 			})
 		})
+
+		Context("when the error is a 404", func() {
+			notFound := connection.Error{404, ""}
+
+			BeforeEach(func() {
+				fakeConnection.DestroyReturns(notFound)
+			})
+
+			It("returns an ContainerNotFoundError with the requested handle", func() {
+				err := client.Destroy("some-handle")
+				Ω(err).Should(MatchError(garden.ContainerNotFoundError{"some-handle"}))
+			})
+		})
 	})
 
 	Describe("Lookup", func() {
@@ -155,9 +169,9 @@ var _ = Describe("Client", func() {
 				fakeConnection.ListReturns([]string{"some-other-handle"}, nil)
 			})
 
-			It("returns ErrContainerNotFound", func() {
+			It("returns ContainerNotFoundError", func() {
 				_, err := client.Lookup("some-handle")
-				Ω(err).Should(Equal(ErrContainerNotFound))
+				Ω(err).Should(MatchError(garden.ContainerNotFoundError{"some-handle"}))
 			})
 		})
 

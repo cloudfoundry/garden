@@ -33,6 +33,10 @@ type Connection interface {
 
 	Create(spec garden.ContainerSpec) (string, error)
 	List(properties garden.Properties) ([]string, error)
+
+	// Destroys the container with the given handle. If the container cannot be
+	// found, garden.ContainerNotFoundError is returned. If deletion fails for another
+	// reason, another error type is returned.
 	Destroy(handle string) error
 
 	Stop(handle string, kill bool) error
@@ -72,14 +76,13 @@ type connection struct {
 	noKeepaliveClient *http.Client
 }
 
-type GardenError struct {
-	Message   string
-	Data      string
-	Backtrace []string
+type Error struct {
+	StatusCode int
+	Message    string
 }
 
-func (e *GardenError) Error() string {
-	return e.Message
+func (err Error) Error() string {
+	return err.Message
 }
 
 func New(network, address string) Connection {
@@ -925,7 +928,8 @@ func (c *connection) doStream(
 		if err != nil {
 			return nil, fmt.Errorf("bad response: %s", httpResp.Status)
 		}
-		return nil, fmt.Errorf(string(errResponse))
+
+		return nil, Error{httpResp.StatusCode, string(errResponse)}
 	}
 
 	return httpResp.Body, nil

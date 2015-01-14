@@ -1,6 +1,7 @@
 package garden
 
 import (
+	"fmt"
 	"time"
 )
 
@@ -13,6 +14,14 @@ type Client interface {
 	Destroy(handle string) error
 	Containers(Properties) ([]Container, error)
 	Lookup(handle string) (Container, error)
+}
+
+type ContainerNotFoundError struct {
+	Handle string
+}
+
+func (err ContainerNotFoundError) Error() string {
+	return fmt.Sprintf("unknown handle: %s", err.Handle)
 }
 
 type ContainerSpec struct {

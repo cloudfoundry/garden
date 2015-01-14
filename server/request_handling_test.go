@@ -278,14 +278,29 @@ var _ = Describe("When a client connects", func() {
 			})
 		})
 
-		Context("when destroying the container fails", func() {
+		Context("when the container cannot be found", func() {
+			var theError = garden.ContainerNotFoundError{"some-handle"}
+
 			BeforeEach(func() {
-				serverBackend.DestroyReturns(errors.New("oh no!"))
+				serverBackend.DestroyReturns(theError)
 			})
 
-			It("sends a GardenError response", func() {
+			It("returns an ContainerNotFoundError", func() {
 				err := apiClient.Destroy("some-handle")
-				Ω(err).Should(HaveOccurred())
+				Ω(err).Should(MatchError(garden.ContainerNotFoundError{"some-handle"}))
+			})
+		})
+
+		Context("when destroying the container fails", func() {
+			var theError = errors.New("o no")
+
+			BeforeEach(func() {
+				serverBackend.DestroyReturns(theError)
+			})
+
+			It("returns an error with the same message", func() {
+				err := apiClient.Destroy("some-handle")
+				Ω(err).Should(MatchError("o no"))
 			})
 
 			Context("and destroying is attempted again", func() {

@@ -1,8 +1,6 @@
 package client
 
 import (
-	"errors"
-
 	"github.com/cloudfoundry-incubator/garden"
 	"github.com/cloudfoundry-incubator/garden/client/connection"
 )
@@ -10,8 +8,6 @@ import (
 type Client interface {
 	garden.Client
 }
-
-var ErrContainerNotFound = errors.New("container not found")
 
 type client struct {
 	connection connection.Connection
@@ -55,7 +51,13 @@ func (client *client) Containers(properties garden.Properties) ([]garden.Contain
 }
 
 func (client *client) Destroy(handle string) error {
-	return client.connection.Destroy(handle)
+	err := client.connection.Destroy(handle)
+
+	if err, ok := err.(connection.Error); ok && err.StatusCode == 404 {
+		return garden.ContainerNotFoundError{handle}
+	}
+
+	return err
 }
 
 func (client *client) Lookup(handle string) (garden.Container, error) {
@@ -70,5 +72,5 @@ func (client *client) Lookup(handle string) (garden.Container, error) {
 		}
 	}
 
-	return nil, ErrContainerNotFound
+	return nil, garden.ContainerNotFoundError{handle}
 }
