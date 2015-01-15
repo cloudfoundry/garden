@@ -29,9 +29,11 @@ Garden provides a platform-neutral API for containerization. Backends implement 
 
  - [Garden Linux](https://github.com/cloudfoundry-incubator/garden-linux/) - Linux Backend
 
-# REST API
+# Garden API
 
-Garden provides a Google protocol buffer interface which is also surfaced as a REST API.
+The canonical API for Garden is defined as a collection of Go interfaces. See the [godoc documentation](http://godoc.org/github.com/cloudfoundry-incubator/garden) for details.
+
+For convenience during Garden development, Garden also supports a REST API which may be used to "kick the tyres". The REST API is not supported.
 
 For example, if [Garden Linux](https://github.com/cloudfoundry-incubator/garden-linux) is deployed to `localhost` and configured to listen on port `7777`, the following commands may be used to kick its tyres:
 ```sh
@@ -54,7 +56,7 @@ curl -H "Content-Type: application/json" \
   -d '{"path":"sleep","args":["10"]}'
 ```
 
-The REST API is documented in more detail in [doc/garden-api.md](doc/garden-api.md)
+See [REST API examples](doc/garden-api.md) for more.
 
 # Testing
 
