@@ -14,23 +14,23 @@ var _ = math.Inf
 type NetOutRequest_Protocol int32
 
 const (
-	NetOutRequest_TCP  NetOutRequest_Protocol = 0
-	NetOutRequest_UDP  NetOutRequest_Protocol = 1
-	NetOutRequest_ICMP NetOutRequest_Protocol = 2
-	NetOutRequest_ALL  NetOutRequest_Protocol = 3
+	NetOutRequest_ALL  NetOutRequest_Protocol = 0
+	NetOutRequest_TCP  NetOutRequest_Protocol = 1
+	NetOutRequest_UDP  NetOutRequest_Protocol = 2
+	NetOutRequest_ICMP NetOutRequest_Protocol = 3
 )
 
 var NetOutRequest_Protocol_name = map[int32]string{
-	0: "TCP",
-	1: "UDP",
-	2: "ICMP",
-	3: "ALL",
+	0: "ALL",
+	1: "TCP",
+	2: "UDP",
+	3: "ICMP",
 }
 var NetOutRequest_Protocol_value = map[string]int32{
-	"TCP":  0,
-	"UDP":  1,
-	"ICMP": 2,
-	"ALL":  3,
+	"ALL":  0,
+	"TCP":  1,
+	"UDP":  2,
+	"ICMP": 3,
 }
 
 func (x NetOutRequest_Protocol) Enum() *NetOutRequest_Protocol {
@@ -75,7 +75,7 @@ func (m *NetOutRequest) GetProtocol() NetOutRequest_Protocol {
 	if m != nil && m.Protocol != nil {
 		return *m.Protocol
 	}
-	return NetOutRequest_TCP
+	return NetOutRequest_ALL
 }
 
 func (m *NetOutRequest) GetNetwork() *NetOutRequest_IPRange {
