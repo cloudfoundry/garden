@@ -105,8 +105,8 @@ func (container *container) NetIn(hostPort, containerPort uint32) (uint32, uint3
 	return container.connection.NetIn(container.handle, hostPort, containerPort)
 }
 
-func (container *container) NetOut(network string, port uint32, portRange string, protocol garden.Protocol, icmpType int32, icmpCode int32, log bool) error {
-	return container.connection.NetOut(container.handle, network, port, portRange, protocol, icmpType, icmpCode, log)
+func (container *container) NetOut(netOutRule garden.NetOutRule) error {
+	return container.connection.NetOut(container.handle, netOutRule)
 }
 
 func (container *container) GetProperty(name string) (string, error) {

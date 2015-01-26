@@ -15,22 +15,22 @@ type NetOutRequest_Protocol int32
 
 const (
 	NetOutRequest_TCP  NetOutRequest_Protocol = 0
-	NetOutRequest_ALL  NetOutRequest_Protocol = 1
+	NetOutRequest_UDP  NetOutRequest_Protocol = 1
 	NetOutRequest_ICMP NetOutRequest_Protocol = 2
-	NetOutRequest_UDP  NetOutRequest_Protocol = 3
+	NetOutRequest_ALL  NetOutRequest_Protocol = 3
 )
 
 var NetOutRequest_Protocol_name = map[int32]string{
 	0: "TCP",
-	1: "ALL",
+	1: "UDP",
 	2: "ICMP",
-	3: "UDP",
+	3: "ALL",
 }
 var NetOutRequest_Protocol_value = map[string]int32{
 	"TCP":  0,
-	"ALL":  1,
+	"UDP":  1,
 	"ICMP": 2,
-	"UDP":  3,
+	"ALL":  3,
 }
 
 func (x NetOutRequest_Protocol) Enum() *NetOutRequest_Protocol {
@@ -51,48 +51,22 @@ func (x *NetOutRequest_Protocol) UnmarshalJSON(data []byte) error {
 }
 
 type NetOutRequest struct {
-	Handle           *string                 `protobuf:"bytes,1,req,name=handle" json:"handle,omitempty"`
-	Network          *string                 `protobuf:"bytes,2,opt,name=network" json:"network,omitempty"`
-	Port             *uint32                 `protobuf:"varint,3,opt,name=port" json:"port,omitempty"`
-	PortRange        *string                 `protobuf:"bytes,4,opt,name=port_range" json:"port_range,omitempty"`
-	Protocol         *NetOutRequest_Protocol `protobuf:"varint,5,opt,name=protocol,enum=garden.NetOutRequest_Protocol" json:"protocol,omitempty"`
-	IcmpType         *int32                  `protobuf:"varint,6,opt,name=icmp_type,def=-1" json:"icmp_type,omitempty"`
-	IcmpCode         *int32                  `protobuf:"varint,7,opt,name=icmp_code,def=-1" json:"icmp_code,omitempty"`
-	Log              *bool                   `protobuf:"varint,8,opt,name=log" json:"log,omitempty"`
-	XXX_unrecognized []byte                  `json:"-"`
+	Handle           *string                    `protobuf:"bytes,1,req,name=handle" json:"handle,omitempty"`
+	Protocol         *NetOutRequest_Protocol    `protobuf:"varint,2,req,name=protocol,enum=garden.NetOutRequest_Protocol" json:"protocol,omitempty"`
+	Network          *NetOutRequest_IPRange     `protobuf:"bytes,3,opt,name=network" json:"network,omitempty"`
+	Ports            *NetOutRequest_PortRange   `protobuf:"bytes,4,opt,name=ports" json:"ports,omitempty"`
+	Icmps            *NetOutRequest_ICMPControl `protobuf:"bytes,5,opt,name=icmps" json:"icmps,omitempty"`
+	Log              *bool                      `protobuf:"varint,6,req,name=log" json:"log,omitempty"`
+	XXX_unrecognized []byte                     `json:"-"`
 }
 
 func (m *NetOutRequest) Reset()         { *m = NetOutRequest{} }
 func (m *NetOutRequest) String() string { return proto.CompactTextString(m) }
 func (*NetOutRequest) ProtoMessage()    {}
 
-const Default_NetOutRequest_IcmpType int32 = -1
-const Default_NetOutRequest_IcmpCode int32 = -1
-
 func (m *NetOutRequest) GetHandle() string {
 	if m != nil && m.Handle != nil {
 		return *m.Handle
-	}
-	return ""
-}
-
-func (m *NetOutRequest) GetNetwork() string {
-	if m != nil && m.Network != nil {
-		return *m.Network
-	}
-	return ""
-}
-
-func (m *NetOutRequest) GetPort() uint32 {
-	if m != nil && m.Port != nil {
-		return *m.Port
-	}
-	return 0
-}
-
-func (m *NetOutRequest) GetPortRange() string {
-	if m != nil && m.PortRange != nil {
-		return *m.PortRange
 	}
 	return ""
 }
@@ -104,18 +78,25 @@ func (m *NetOutRequest) GetProtocol() NetOutRequest_Protocol {
 	return NetOutRequest_TCP
 }
 
-func (m *NetOutRequest) GetIcmpType() int32 {
-	if m != nil && m.IcmpType != nil {
-		return *m.IcmpType
+func (m *NetOutRequest) GetNetwork() *NetOutRequest_IPRange {
+	if m != nil {
+		return m.Network
 	}
-	return Default_NetOutRequest_IcmpType
+	return nil
 }
 
-func (m *NetOutRequest) GetIcmpCode() int32 {
-	if m != nil && m.IcmpCode != nil {
-		return *m.IcmpCode
+func (m *NetOutRequest) GetPorts() *NetOutRequest_PortRange {
+	if m != nil {
+		return m.Ports
 	}
-	return Default_NetOutRequest_IcmpCode
+	return nil
+}
+
+func (m *NetOutRequest) GetIcmps() *NetOutRequest_ICMPControl {
+	if m != nil {
+		return m.Icmps
+	}
+	return nil
 }
 
 func (m *NetOutRequest) GetLog() bool {
@@ -123,6 +104,80 @@ func (m *NetOutRequest) GetLog() bool {
 		return *m.Log
 	}
 	return false
+}
+
+type NetOutRequest_IPRange struct {
+	Start            *string `protobuf:"bytes,1,req,name=start" json:"start,omitempty"`
+	End              *string `protobuf:"bytes,2,req,name=end" json:"end,omitempty"`
+	XXX_unrecognized []byte  `json:"-"`
+}
+
+func (m *NetOutRequest_IPRange) Reset()         { *m = NetOutRequest_IPRange{} }
+func (m *NetOutRequest_IPRange) String() string { return proto.CompactTextString(m) }
+func (*NetOutRequest_IPRange) ProtoMessage()    {}
+
+func (m *NetOutRequest_IPRange) GetStart() string {
+	if m != nil && m.Start != nil {
+		return *m.Start
+	}
+	return ""
+}
+
+func (m *NetOutRequest_IPRange) GetEnd() string {
+	if m != nil && m.End != nil {
+		return *m.End
+	}
+	return ""
+}
+
+type NetOutRequest_PortRange struct {
+	Start            *uint32 `protobuf:"varint,1,req,name=start" json:"start,omitempty"`
+	End              *uint32 `protobuf:"varint,2,req,name=end" json:"end,omitempty"`
+	XXX_unrecognized []byte  `json:"-"`
+}
+
+func (m *NetOutRequest_PortRange) Reset()         { *m = NetOutRequest_PortRange{} }
+func (m *NetOutRequest_PortRange) String() string { return proto.CompactTextString(m) }
+func (*NetOutRequest_PortRange) ProtoMessage()    {}
+
+func (m *NetOutRequest_PortRange) GetStart() uint32 {
+	if m != nil && m.Start != nil {
+		return *m.Start
+	}
+	return 0
+}
+
+func (m *NetOutRequest_PortRange) GetEnd() uint32 {
+	if m != nil && m.End != nil {
+		return *m.End
+	}
+	return 0
+}
+
+type NetOutRequest_ICMPControl struct {
+	Type             *uint32 `protobuf:"varint,1,req,name=type" json:"type,omitempty"`
+	Code             *int32  `protobuf:"varint,2,opt,name=code,def=-1" json:"code,omitempty"`
+	XXX_unrecognized []byte  `json:"-"`
+}
+
+func (m *NetOutRequest_ICMPControl) Reset()         { *m = NetOutRequest_ICMPControl{} }
+func (m *NetOutRequest_ICMPControl) String() string { return proto.CompactTextString(m) }
+func (*NetOutRequest_ICMPControl) ProtoMessage()    {}
+
+const Default_NetOutRequest_ICMPControl_Code int32 = -1
+
+func (m *NetOutRequest_ICMPControl) GetType() uint32 {
+	if m != nil && m.Type != nil {
+		return *m.Type
+	}
+	return 0
+}
+
+func (m *NetOutRequest_ICMPControl) GetCode() int32 {
+	if m != nil && m.Code != nil {
+		return *m.Code
+	}
+	return Default_NetOutRequest_ICMPControl_Code
 }
 
 type NetOutResponse struct {

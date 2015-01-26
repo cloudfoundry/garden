@@ -7,8 +7,6 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/gogo/protobuf/proto"
@@ -715,19 +713,6 @@ func (s *GardenServer) handleNetIn(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func validPortRange(portRange string) bool {
-	if portRange != "" {
-		r := strings.Split(portRange, ":")
-		if len(r) != 2 {
-			return false
-		}
-		lo, startErr := strconv.Atoi(r[0])
-		hi, endErr := strconv.Atoi(r[1])
-		return startErr == nil && endErr == nil && lo > 0 && lo <= 65535 && hi > 0 && hi <= 65535
-	}
-	return true
-}
-
 func (s *GardenServer) handleNetOut(w http.ResponseWriter, r *http.Request) {
 	handle := r.FormValue(":handle")
 
@@ -756,16 +741,29 @@ func (s *GardenServer) handleNetOut(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	network := request.GetNetwork()
-	port := request.GetPort()
-	portRange := request.GetPortRange()
-	icmpType := request.GetIcmpType()
-	icmpCode := request.GetIcmpCode()
+	var network *garden.IPRange
+	if n := request.GetNetwork(); n != nil {
+		network = &garden.IPRange{
+			Start: net.ParseIP(n.GetStart()),
+			End:   net.ParseIP(n.GetEnd()),
+		}
+	}
 
-	if !validPortRange(portRange) {
-		err := fmt.Errorf("invalid port range: %q", portRange)
-		s.writeError(w, err, hLog)
-		return
+	var ports *garden.PortRange
+	if p := request.GetPorts(); p != nil {
+		ports = &garden.PortRange{uint16(p.GetStart()), uint16(p.GetEnd())}
+	}
+
+	var icmps *garden.ICMPControl
+	if i := request.GetIcmps(); i != nil {
+		icmps = &garden.ICMPControl{
+			Type: garden.ICMPType(i.GetType()),
+		}
+
+		if gc := i.GetCode(); gc != -1 {
+			c := uint8(gc)
+			icmps.Code = (*garden.ICMPCode)(&c)
+		}
 	}
 
 	container, err := s.backend.Lookup(handle)
@@ -777,24 +775,27 @@ func (s *GardenServer) handleNetOut(w http.ResponseWriter, r *http.Request) {
 	s.bomberman.Pause(container.Handle())
 	defer s.bomberman.Unpause(container.Handle())
 
+	rule := garden.NetOutRule{
+		Protocol: protoc,
+		Network:  network,
+		Ports:    ports,
+		ICMPs:    icmps,
+		Log:      request.GetLog(),
+	}
+
 	hLog.Debug("allowing-out", lager.Data{
-		"network":   network,
-		"port":      port,
-		"portRange": portRange,
-		"protocol":  protoc,
-		"icmpType":  icmpType,
-		"icmpCode":  icmpCode,
+		"rule": rule,
 	})
 
-	err = container.NetOut(network, port, portRange, protoc, icmpType, icmpCode, request.GetLog())
+	err = container.NetOut(rule)
+
 	if err != nil {
 		s.writeError(w, err, hLog)
 		return
 	}
 
-	hLog.Info("allowed", lager.Data{
-		"network": network,
-		"port":    port,
+	hLog.Debug("allowed", lager.Data{
+		"rule": rule,
 	})
 
 	s.writeResponse(w, &protocol.NetOutResponse{})

@@ -119,16 +119,10 @@ type FakeContainer struct {
 		result2 uint32
 		result3 error
 	}
-	NetOutStub        func(network string, port uint32, portRange string, protocol garden.Protocol, icmpType int32, icmpCode int32, log bool) error
+	NetOutStub        func(netOutRule garden.NetOutRule) error
 	netOutMutex       sync.RWMutex
 	netOutArgsForCall []struct {
-		network   string
-		port      uint32
-		portRange string
-		protocol  garden.Protocol
-		icmpType  int32
-		icmpCode  int32
-		log       bool
+		netOutRule garden.NetOutRule
 	}
 	netOutReturns struct {
 		result1 error
@@ -591,20 +585,14 @@ func (fake *FakeContainer) NetInReturns(result1 uint32, result2 uint32, result3 
 	}{result1, result2, result3}
 }
 
-func (fake *FakeContainer) NetOut(network string, port uint32, portRange string, protocol garden.Protocol, icmpType int32, icmpCode int32, log bool) error {
+func (fake *FakeContainer) NetOut(netOutRule garden.NetOutRule) error {
 	fake.netOutMutex.Lock()
 	fake.netOutArgsForCall = append(fake.netOutArgsForCall, struct {
-		network   string
-		port      uint32
-		portRange string
-		protocol  garden.Protocol
-		icmpType  int32
-		icmpCode  int32
-		log       bool
-	}{network, port, portRange, protocol, icmpType, icmpCode, log})
+		netOutRule garden.NetOutRule
+	}{netOutRule})
 	fake.netOutMutex.Unlock()
 	if fake.NetOutStub != nil {
-		return fake.NetOutStub(network, port, portRange, protocol, icmpType, icmpCode, log)
+		return fake.NetOutStub(netOutRule)
 	} else {
 		return fake.netOutReturns.result1
 	}
@@ -616,10 +604,10 @@ func (fake *FakeContainer) NetOutCallCount() int {
 	return len(fake.netOutArgsForCall)
 }
 
-func (fake *FakeContainer) NetOutArgsForCall(i int) (string, uint32, string, garden.Protocol, int32, int32, bool) {
+func (fake *FakeContainer) NetOutArgsForCall(i int) garden.NetOutRule {
 	fake.netOutMutex.RLock()
 	defer fake.netOutMutex.RUnlock()
-	return fake.netOutArgsForCall[i].network, fake.netOutArgsForCall[i].port, fake.netOutArgsForCall[i].portRange, fake.netOutArgsForCall[i].protocol, fake.netOutArgsForCall[i].icmpType, fake.netOutArgsForCall[i].icmpCode, fake.netOutArgsForCall[i].log
+	return fake.netOutArgsForCall[i].netOutRule
 }
 
 func (fake *FakeContainer) NetOutReturns(result1 error) {

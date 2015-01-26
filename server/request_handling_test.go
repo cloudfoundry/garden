@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net"
 	"os"
 	"path"
 	"sync"
@@ -1020,156 +1021,129 @@ var _ = Describe("When a client connects", func() {
 		})
 
 		Describe("net out", func() {
-			It("permits traffic outside of the container with port specified", func() {
-				err := container.NetOut("1.2.3.4/22", 456, "", garden.ProtocolAll, -1, -1, false)
-				Ω(err).ShouldNot(HaveOccurred())
+			Context("when a zero-value NetOutRule is supplied", func() {
+				It("permits all TCP traffic to everywhere, with logging not enabled", func() {
+					Ω(container.NetOut(garden.NetOutRule{})).Should(Succeed())
+					rule := fakeContainer.NetOutArgsForCall(0)
 
-				cidr, port, portRange, protoc, _, _, log := fakeContainer.NetOutArgsForCall(0)
-				Ω(cidr).Should(Equal("1.2.3.4/22"))
-				Ω(port).Should(Equal(uint32(456)))
-				Ω(portRange).Should(Equal(""))
-				Ω(protoc).Should(Equal(garden.ProtocolAll))
-				Ω(log).Should(Equal(false))
+					Ω(rule.Protocol).Should(Equal(garden.ProtocolAll))
+					Ω(rule.Network).Should(BeNil())
+					Ω(rule.Ports).Should(BeNil())
+					Ω(rule.ICMPs).Should(BeNil())
+					Ω(rule.Log).Should(Equal(false))
+				})
 			})
 
-			It("permits traffic outside of the container with port range specified", func() {
-				err := container.NetOut("1.2.3.4/22", 0, "80:81", garden.ProtocolAll, -1, -1, false)
-				Ω(err).ShouldNot(HaveOccurred())
+			Context("when protocol is specified", func() {
+				Context("as TCP", func() {
+					It("permits TCP traffic", func() {
+						Ω(container.NetOut(garden.NetOutRule{
+							Protocol: garden.ProtocolTCP,
+						})).Should(Succeed())
+						rule := fakeContainer.NetOutArgsForCall(0)
+						Ω(rule.Protocol).Should(Equal(garden.ProtocolTCP))
+					})
+				})
 
-				cidr, port, portRange, protoc, _, _, log := fakeContainer.NetOutArgsForCall(0)
-				Ω(cidr).Should(Equal("1.2.3.4/22"))
-				Ω(port).Should(Equal(uint32(0)))
-				Ω(portRange).Should(Equal("80:81"))
-				Ω(protoc).Should(Equal(garden.ProtocolAll))
-				Ω(log).Should(Equal(false))
+				Context("as UDP", func() {
+					It("permits UDP traffic", func() {
+						Ω(container.NetOut(garden.NetOutRule{
+							Protocol: garden.ProtocolUDP,
+						})).Should(Succeed())
+						rule := fakeContainer.NetOutArgsForCall(0)
+						Ω(rule.Protocol).Should(Equal(garden.ProtocolUDP))
+					})
+				})
+
+				Context("as ICMP", func() {
+					It("permits ICMP traffic", func() {
+						Ω(container.NetOut(garden.NetOutRule{
+							Protocol: garden.ProtocolICMP,
+						})).Should(Succeed())
+						rule := fakeContainer.NetOutArgsForCall(0)
+						Ω(rule.Protocol).Should(Equal(garden.ProtocolICMP))
+					})
+				})
+
+				Context("as ALL", func() {
+					It("permits ALL traffic", func() {
+						Ω(container.NetOut(garden.NetOutRule{
+							Protocol: garden.ProtocolAll,
+						})).Should(Succeed())
+
+						rule := fakeContainer.NetOutArgsForCall(0)
+						Ω(rule.Protocol).Should(Equal(garden.ProtocolAll))
+					})
+				})
 			})
 
-			It("permits ICMP traffic outside of the container", func() {
-				err := container.NetOut("1.2.3.4/22", 0, "", garden.ProtocolICMP, 4, 7, false)
-				Ω(err).ShouldNot(HaveOccurred())
+			Context("when network is specified", func() {
+				It("permits traffic to that network", func() {
+					Ω(container.NetOut(garden.NetOutRule{
+						Network: &garden.IPRange{net.ParseIP("1.3.5.7"), net.ParseIP("9.9.7.6")},
+					})).Should(Succeed())
 
-				cidr, port, portRange, protoc, icmpType, icmpCode, log := fakeContainer.NetOutArgsForCall(0)
-				Ω(cidr).Should(Equal("1.2.3.4/22"))
-				Ω(port).Should(Equal(uint32(0)))
-				Ω(portRange).Should(Equal(""))
-				Ω(protoc).Should(Equal(garden.ProtocolICMP))
-				Ω(icmpType).Should(Equal(int32(4)))
-				Ω(icmpCode).Should(Equal(int32(7)))
-				Ω(log).Should(Equal(false))
+					rule := fakeContainer.NetOutArgsForCall(0)
+					Ω(rule.Network).Should(Equal(&garden.IPRange{
+						Start: net.ParseIP("1.3.5.7"),
+						End:   net.ParseIP("9.9.7.6"),
+					}))
+				})
 			})
 
-			It("permits UDP traffic outside of the container", func() {
-				err := container.NetOut("1.2.3.4/22", 1234, "8080:8181", garden.ProtocolUDP, -1, -1, false)
-				Ω(err).ShouldNot(HaveOccurred())
+			Context("when ports are specified", func() {
+				It("permits traffic to those ports", func() {
+					Ω(container.NetOut(garden.NetOutRule{
+						Ports: &garden.PortRange{4, 44},
+					})).Should(Succeed())
 
-				cidr, port, portRange, protoc, _, _, log := fakeContainer.NetOutArgsForCall(0)
-				Ω(cidr).Should(Equal("1.2.3.4/22"))
-				Ω(port).Should(Equal(uint32(1234)))
-				Ω(portRange).Should(Equal("8080:8181"))
-				Ω(protoc).Should(Equal(garden.ProtocolUDP))
-				Ω(log).Should(Equal(false))
+					rule := fakeContainer.NetOutArgsForCall(0)
+					Ω(rule.Ports).Should(Equal(&garden.PortRange{
+						Start: 4,
+						End:   44,
+					}))
+				})
 			})
 
-			It("permits logged TCP traffic outside of the container", func() {
-				err := container.NetOut("1.2.3.4/22", 1234, "8080:8181", garden.ProtocolTCP, -1, -1, true)
-				Ω(err).ShouldNot(HaveOccurred())
+			Context("when icmps are specified without a code", func() {
+				It("permits traffic matching those icmps", func() {
+					Ω(container.NetOut(garden.NetOutRule{
+						ICMPs: &garden.ICMPControl{Type: 4},
+					})).Should(Succeed())
 
-				cidr, port, portRange, protoc, _, _, log := fakeContainer.NetOutArgsForCall(0)
-				Ω(cidr).Should(Equal("1.2.3.4/22"))
-				Ω(port).Should(Equal(uint32(1234)))
-				Ω(portRange).Should(Equal("8080:8181"))
-				Ω(protoc).Should(Equal(garden.ProtocolTCP))
-				Ω(log).Should(Equal(true))
+					rule := fakeContainer.NetOutArgsForCall(0)
+					Ω(rule.ICMPs).Should(Equal(&garden.ICMPControl{Type: 4}))
+				})
 			})
 
-			Context("with an invalid port range", func() {
-				It("should return an error when the port range is malformed", func() {
-					err := container.NetOut("foo-network", 0, "8080-8081", garden.ProtocolAll, -1, -1, false)
-					Ω(err).Should(HaveOccurred())
-					Ω(err).Should(MatchError(`invalid port range: "8080-8081"`))
-				})
+			Context("when icmps are specified with a code", func() {
+				It("permits traffic matching those icmps", func() {
+					var code garden.ICMPCode = 34
+					Ω(container.NetOut(garden.NetOutRule{
+						ICMPs: &garden.ICMPControl{Type: 4, Code: &code},
+					})).Should(Succeed())
 
-				It("should return an error when there are too many colons in the port range", func() {
-					err := container.NetOut("foo-network", 0, "1:2:3", garden.ProtocolAll, -1, -1, false)
-					Ω(err).Should(HaveOccurred())
-					Ω(err).Should(MatchError(`invalid port range: "1:2:3"`))
+					rule := fakeContainer.NetOutArgsForCall(0)
+					Ω(rule.ICMPs).Should(Equal(&garden.ICMPControl{Type: 4, Code: &code}))
 				})
+			})
 
-				It("should return an error when the port range has no start", func() {
-					err := container.NetOut("foo-network", 0, ":8081", garden.ProtocolAll, -1, -1, false)
-					Ω(err).Should(HaveOccurred())
-					Ω(err).Should(MatchError(`invalid port range: ":8081"`))
+			Context("when log is true", func() {
+				It("requests that the rule logs", func() {
+					Ω(container.NetOut(garden.NetOutRule{Log: true})).Should(Succeed())
+
+					rule := fakeContainer.NetOutArgsForCall(0)
+					Ω(rule.Log).Should(BeTrue())
 				})
-
-				It("should return an error when the port range has no end", func() {
-					err := container.NetOut("foo-network", 0, "8080:", garden.ProtocolAll, -1, -1, false)
-					Ω(err).Should(HaveOccurred())
-					Ω(err).Should(MatchError(`invalid port range: "8080:"`))
-				})
-
-				It("should return an error when the start of the port range is not an integer", func() {
-					err := container.NetOut("foo-network", 0, "x:8081", garden.ProtocolAll, -1, -1, false)
-					Ω(err).Should(HaveOccurred())
-					Ω(err).Should(MatchError(`invalid port range: "x:8081"`))
-				})
-
-				It("should return an error when the end of the port range is not an integer", func() {
-					err := container.NetOut("foo-network", 0, "8080:x", garden.ProtocolAll, -1, -1, false)
-					Ω(err).Should(HaveOccurred())
-					Ω(err).Should(MatchError(`invalid port range: "8080:x"`))
-				})
-
-				It("should return an error when the start of the port range is 0", func() {
-					err := container.NetOut("foo-network", 0, "0:8081", garden.ProtocolAll, -1, -1, false)
-					Ω(err).Should(HaveOccurred())
-					Ω(err).Should(MatchError(`invalid port range: "0:8081"`))
-				})
-
-				It("should return an error when the end of the port range is 0", func() {
-					err := container.NetOut("foo-network", 0, "8080:0", garden.ProtocolAll, -1, -1, false)
-					Ω(err).Should(HaveOccurred())
-					Ω(err).Should(MatchError(`invalid port range: "8080:0"`))
-				})
-
-				It("should return an error when the start of the port range is negative", func() {
-					err := container.NetOut("foo-network", 0, "-8080:8081", garden.ProtocolAll, -1, -1, false)
-					Ω(err).Should(HaveOccurred())
-					Ω(err).Should(MatchError(`invalid port range: "-8080:8081"`))
-				})
-
-				It("should return an error when the end of the port range is negative", func() {
-					err := container.NetOut("foo-network", 0, "8080:-8081", garden.ProtocolAll, -1, -1, false)
-					Ω(err).Should(HaveOccurred())
-					Ω(err).Should(MatchError(`invalid port range: "8080:-8081"`))
-				})
-
-				It("should return an error when the start of the port range is too large", func() {
-					err := container.NetOut("foo-network", 0, "65536:8081", garden.ProtocolAll, -1, -1, false)
-					Ω(err).Should(HaveOccurred())
-					Ω(err).Should(MatchError(`invalid port range: "65536:8081"`))
-				})
-
-				It("should return an error when the end of the port range is too large", func() {
-					err := container.NetOut("foo-network", 0, "8080:65536", garden.ProtocolAll, -1, -1, false)
-					Ω(err).Should(HaveOccurred())
-					Ω(err).Should(MatchError(`invalid port range: "8080:65536"`))
-				})
-
-				It("should return an error when the start of the port range is much too large", func() {
-					err := container.NetOut("foo-network", 0, "200000000000000000000000000000000000000:8081", garden.ProtocolAll, -1, -1, false)
-					Ω(err).Should(HaveOccurred())
-					Ω(err).Should(MatchError(`invalid port range: "200000000000000000000000000000000000000:8081"`))
-				})
-
 			})
 
 			itResetsGraceTimeWhenHandling(func() {
-				err := container.NetOut("1.2.3.4/22", 456, "", garden.ProtocolAll, -1, -1, false)
+				err := container.NetOut(garden.NetOutRule{})
 				Ω(err).ShouldNot(HaveOccurred())
 			})
 
 			itFailsWhenTheContainerIsNotFound(func() {
-				err := container.NetOut("1.2.3.4/22", 456, "", garden.ProtocolAll, -1, -1, false)
+				err := container.NetOut(garden.NetOutRule{})
 				Ω(err).Should(HaveOccurred())
 			})
 
@@ -1179,7 +1153,7 @@ var _ = Describe("When a client connects", func() {
 				})
 
 				It("fails", func() {
-					err := container.NetOut("1.2.3.4/22", 456, "", garden.ProtocolAll, -1, -1, false)
+					err := container.NetOut(garden.NetOutRule{})
 					Ω(err).Should(HaveOccurred())
 				})
 			})

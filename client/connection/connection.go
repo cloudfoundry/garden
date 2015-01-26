@@ -62,7 +62,7 @@ type Connection interface {
 	Attach(handle string, processID uint32, io garden.ProcessIO) (garden.Process, error)
 
 	NetIn(handle string, hostPort, containerPort uint32) (uint32, uint32, error)
-	NetOut(handle string, network string, port uint32, portRange string, protocol garden.Protocol, icmpType int32, icmpCode int32, log bool) error
+	NetOut(handle string, rule garden.NetOutRule) error
 
 	GetProperty(handle string, name string) (string, error)
 	SetProperty(handle string, name string, value string) error
@@ -365,10 +365,11 @@ func (c *connection) NetIn(handle string, hostPort, containerPort uint32) (uint3
 	return res.GetHostPort(), res.GetContainerPort(), nil
 }
 
-func (c *connection) NetOut(handle string, network string, port uint32, portRange string, netProto garden.Protocol, icmpType int32, icmpCode int32, log bool) error {
+func (c *connection) NetOut(handle string, rule garden.NetOutRule) error {
+
 	var np protocol.NetOutRequest_Protocol
 
-	switch netProto {
+	switch rule.Protocol {
 	case garden.ProtocolTCP:
 		np = protocol.NetOutRequest_TCP
 	case garden.ProtocolICMP:
@@ -381,17 +382,41 @@ func (c *connection) NetOut(handle string, network string, port uint32, portRang
 		return errors.New("invalid protocol")
 	}
 
+	var network *protocol.NetOutRequest_IPRange
+	if rule.Network != nil {
+		network = &protocol.NetOutRequest_IPRange{
+			Start: proto.String(rule.Network.Start.String()),
+			End:   proto.String(rule.Network.End.String()),
+		}
+	}
+
+	var ports *protocol.NetOutRequest_PortRange
+	if rule.Ports != nil {
+		ports = &protocol.NetOutRequest_PortRange{
+			Start: proto.Uint32(uint32(rule.Ports.Start)),
+			End:   proto.Uint32(uint32(rule.Ports.End)),
+		}
+	}
+
+	var icmps *protocol.NetOutRequest_ICMPControl
+	if rule.ICMPs != nil {
+		icmps = &protocol.NetOutRequest_ICMPControl{
+			Type: proto.Uint32(uint32(rule.ICMPs.Type)),
+		}
+		if rule.ICMPs.Code != nil {
+			icmps.Code = proto.Int32(int32(*rule.ICMPs.Code))
+		}
+	}
+
 	return c.do(
 		routes.NetOut,
 		&protocol.NetOutRequest{
-			Handle:    proto.String(handle),
-			Network:   proto.String(network),
-			Port:      proto.Uint32(port),
-			PortRange: proto.String(portRange),
-			Log:       proto.Bool(log),
-			Protocol:  &np,
-			IcmpType:  proto.Int32(icmpType),
-			IcmpCode:  proto.Int32(icmpCode),
+			Handle:   proto.String(handle),
+			Protocol: &np,
+			Network:  network,
+			Ports:    ports,
+			Icmps:    icmps,
+			Log:      proto.Bool(rule.Log),
 		},
 		&protocol.NetOutResponse{},
 		rata.Params{
