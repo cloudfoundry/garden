@@ -106,6 +106,8 @@ type Container interface {
 	//
 	// * log: Boolean specifying whether or not logging should be enabled. If
 	//        logging is enabled, the first packet of a given connection is logged.
+	//        Later NetOut calls take precedence over earlier calls, which is
+	//        significant only in relation to logging.
 	//
 	// Errors:
 	// * None.
