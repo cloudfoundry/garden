@@ -5,6 +5,8 @@ import (
 	"time"
 )
 
+//go:generate counterfeiter . Client
+
 type Client interface {
 	// Pings the garden server.
 	//

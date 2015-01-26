@@ -1,8 +1,8 @@
 package garden
 
-import (
-	"io"
-)
+import "io"
+
+//go:generate counterfeiter . Container
 
 type Container interface {
 	Handle() string
@@ -185,6 +185,8 @@ type ProcessIO struct {
 	Stdout io.Writer
 	Stderr io.Writer
 }
+
+//go:generate counterfeiter . Process
 
 type Process interface {
 	ID() uint32
