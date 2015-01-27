@@ -741,17 +741,20 @@ func (s *GardenServer) handleNetOut(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var network *garden.IPRange
-	if n := request.GetNetwork(); n != nil {
-		network = &garden.IPRange{
+	var networks []garden.IPRange
+	for _, n := range request.GetNetworks() {
+		networks = append(networks, garden.IPRange{
 			Start: net.ParseIP(n.GetStart()),
 			End:   net.ParseIP(n.GetEnd()),
-		}
+		})
 	}
 
-	var ports *garden.PortRange
-	if p := request.GetPorts(); p != nil {
-		ports = &garden.PortRange{uint16(p.GetStart()), uint16(p.GetEnd())}
+	var ports []garden.PortRange
+	for _, p := range request.GetPorts() {
+		ports = append(ports, garden.PortRange{
+			uint16(p.GetStart()),
+			uint16(p.GetEnd()),
+		})
 	}
 
 	var icmps *garden.ICMPControl
@@ -777,7 +780,7 @@ func (s *GardenServer) handleNetOut(w http.ResponseWriter, r *http.Request) {
 
 	rule := garden.NetOutRule{
 		Protocol: protoc,
-		Network:  network,
+		Networks: networks,
 		Ports:    ports,
 		ICMPs:    icmps,
 		Log:      request.GetLog(),

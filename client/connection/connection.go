@@ -382,20 +382,20 @@ func (c *connection) NetOut(handle string, rule garden.NetOutRule) error {
 		return errors.New("invalid protocol")
 	}
 
-	var network *protocol.NetOutRequest_IPRange
-	if rule.Network != nil {
-		network = &protocol.NetOutRequest_IPRange{
-			Start: proto.String(rule.Network.Start.String()),
-			End:   proto.String(rule.Network.End.String()),
-		}
+	var networks []*protocol.NetOutRequest_IPRange
+	for _, n := range rule.Networks {
+		networks = append(networks, &protocol.NetOutRequest_IPRange{
+			Start: proto.String(n.Start.String()),
+			End:   proto.String(n.End.String()),
+		})
 	}
 
-	var ports *protocol.NetOutRequest_PortRange
-	if rule.Ports != nil {
-		ports = &protocol.NetOutRequest_PortRange{
-			Start: proto.Uint32(uint32(rule.Ports.Start)),
-			End:   proto.Uint32(uint32(rule.Ports.End)),
-		}
+	var ports []*protocol.NetOutRequest_PortRange
+	for _, p := range rule.Ports {
+		ports = append(ports, &protocol.NetOutRequest_PortRange{
+			Start: proto.Uint32(uint32(p.Start)),
+			End:   proto.Uint32(uint32(p.End)),
+		})
 	}
 
 	var icmps *protocol.NetOutRequest_ICMPControl
@@ -413,7 +413,7 @@ func (c *connection) NetOut(handle string, rule garden.NetOutRule) error {
 		&protocol.NetOutRequest{
 			Handle:   proto.String(handle),
 			Protocol: &np,
-			Network:  network,
+			Networks: networks,
 			Ports:    ports,
 			Icmps:    icmps,
 			Log:      proto.Bool(rule.Log),

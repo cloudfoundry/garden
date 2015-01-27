@@ -4,8 +4,8 @@ import "net"
 
 type NetOutRule struct {
 	Protocol Protocol     // the protocol to be whitelisted; default TCP
-	Network  *IPRange     // a range of IP addresses to whitelist; Start to End inclusive; default all
-	Ports    *PortRange   // a range of ports to whitelist; Start to End inclusive; ignored if Protocol is ICMP; default all
+	Networks []IPRange    // a list of ranges of IP addresses to whitelist; Start to End inclusive; default all
+	Ports    []PortRange  // a list of ranges of ports to whitelist; Start to End inclusive; ignored if Protocol is ICMP; default all
 	ICMPs    *ICMPControl // specifying which ICMP codes to whitelist; ignored if Protocol is not ICMP; default all
 	Log      bool         // if true, logging is enabled; ignored if Protocol is not TCP or All; default false
 }
@@ -38,18 +38,18 @@ type ICMPControl struct {
 }
 
 // IPRangeFromIP creates an IPRange containing a single IP
-func IPRangeFromIP(ip net.IP) *IPRange {
-	return &IPRange{Start: ip, End: ip}
+func IPRangeFromIP(ip net.IP) IPRange {
+	return IPRange{Start: ip, End: ip}
 }
 
 // IPRangeFromIPNet creates an IPRange containing the same IPs as a given IPNet
-func IPRangeFromIPNet(ipNet *net.IPNet) *IPRange {
-	return &IPRange{Start: ipNet.IP, End: lastIP(ipNet)}
+func IPRangeFromIPNet(ipNet *net.IPNet) IPRange {
+	return IPRange{Start: ipNet.IP, End: lastIP(ipNet)}
 }
 
 // PortRangeFromPort creates a PortRange containing a single port
-func PortRangeFromPort(port uint16) *PortRange {
-	return &PortRange{Start: port, End: port}
+func PortRangeFromPort(port uint16) PortRange {
+	return PortRange{Start: port, End: port}
 }
 
 // ICMPControlCode creates a value for the Code field in ICMPControl

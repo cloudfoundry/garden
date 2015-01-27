@@ -510,33 +510,38 @@ var _ = Describe("Container", func() {
 	})
 
 	Describe("NetOut", func() {
-		Describe("TCP", func() {
-			It("sends NetOut requests with default values over the connection", func() {
-				Ω(container.NetOut(garden.NetOutRule{
-					Network: garden.IPRangeFromIP(net.ParseIP("1.2.3.4")),
-					Ports:   &garden.PortRange{Start: 12, End: 24},
-					Log:     true,
-				})).Should(Succeed())
+		It("sends NetOut requests over the connection", func() {
+			Ω(container.NetOut(garden.NetOutRule{
+				Networks: []garden.IPRange{garden.IPRangeFromIP(net.ParseIP("1.2.3.4"))},
+				Ports: []garden.PortRange{
+					{Start: 12, End: 24},
+				},
+				Log: true,
+			})).Should(Succeed())
 
-				h, rule := fakeConnection.NetOutArgsForCall(0)
-				Ω(h).Should(Equal("some-handle"))
-				Ω(rule.Network).Should(Equal(&garden.IPRange{Start: net.ParseIP("1.2.3.4"), End: net.ParseIP("1.2.3.4")}))
-				Ω(rule.Ports).Should(Equal(&garden.PortRange{Start: 12, End: 24}))
-				Ω(rule.Log).Should(Equal(true))
-			})
+			h, rule := fakeConnection.NetOutArgsForCall(0)
+			Ω(h).Should(Equal("some-handle"))
+
+			Ω(rule.Networks).Should(HaveLen(1))
+			Ω(rule.Networks[0]).Should(Equal(garden.IPRange{Start: net.ParseIP("1.2.3.4"), End: net.ParseIP("1.2.3.4")}))
+
+			Ω(rule.Ports).Should(HaveLen(1))
+			Ω(rule.Ports[0]).Should(Equal(garden.PortRange{Start: 12, End: 24}))
+
+			Ω(rule.Log).Should(Equal(true))
+		})
+	})
+
+	Context("when the request fails", func() {
+		disaster := errors.New("oh no!")
+
+		BeforeEach(func() {
+			fakeConnection.NetOutReturns(disaster)
 		})
 
-		Context("when the request fails", func() {
-			disaster := errors.New("oh no!")
-
-			BeforeEach(func() {
-				fakeConnection.NetOutReturns(disaster)
-			})
-
-			It("returns the error", func() {
-				err := container.NetOut(garden.NetOutRule{})
-				Ω(err).Should(Equal(disaster))
-			})
+		It("returns the error", func() {
+			err := container.NetOut(garden.NetOutRule{})
+			Ω(err).Should(Equal(disaster))
 		})
 	})
 })

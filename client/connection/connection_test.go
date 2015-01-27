@@ -539,8 +539,8 @@ var _ = Describe("Connection", func() {
 		var (
 			handle           string
 			expectedProtocol protocol.NetOutRequest_Protocol
-			expectedNetwork  *protocol.NetOutRequest_IPRange
-			expectedPorts    *protocol.NetOutRequest_PortRange
+			expectedNetworks []*protocol.NetOutRequest_IPRange
+			expectedPorts    []*protocol.NetOutRequest_PortRange
 			expectedICMPs    *protocol.NetOutRequest_ICMPControl
 			expectedLog      bool
 		)
@@ -551,7 +551,7 @@ var _ = Describe("Connection", func() {
 					ghttp.VerifyRequest("POST", fmt.Sprintf("/containers/%s/net/out", handle)),
 					verifyProtoBody(&protocol.NetOutRequest{
 						Handle:   proto.String(handle),
-						Network:  expectedNetwork,
+						Networks: expectedNetworks,
 						Ports:    expectedPorts,
 						Protocol: &expectedProtocol,
 						Icmps:    expectedICMPs,
@@ -561,7 +561,7 @@ var _ = Describe("Connection", func() {
 		})
 
 		BeforeEach(func() {
-			expectedNetwork = nil
+			expectedNetworks = nil
 			expectedPorts = nil
 			expectedICMPs = nil
 			expectedLog = false
@@ -574,19 +574,42 @@ var _ = Describe("Connection", func() {
 			})
 		})
 
+		Context("when the network is zero-length", func() {
+			BeforeEach(func() {
+				expectedNetworks = nil
+			})
+
+			It("should not send any networks", func() {
+				Ω(connection.NetOut(handle, garden.NetOutRule{
+					Networks: []garden.IPRange{},
+				})).Should(Succeed())
+			})
+		})
+
 		Context("when Network is not nil", func() {
 			BeforeEach(func() {
-				expectedNetwork = &protocol.NetOutRequest_IPRange{
-					Start: proto.String("1.2.3.4"),
-					End:   proto.String("4.3.2.1"),
+				expectedNetworks = []*protocol.NetOutRequest_IPRange{
+					{
+						Start: proto.String("1.2.3.4"),
+						End:   proto.String("4.3.2.1"),
+					}, {
+						Start: proto.String("9.8.7.6"),
+						End:   proto.String("6.7.8.9"),
+					},
 				}
 			})
 
 			It("should send the networks IPs as strings", func() {
 				Ω(connection.NetOut(handle, garden.NetOutRule{
-					Network: &garden.IPRange{
-						Start: net.ParseIP("1.2.3.4"),
-						End:   net.ParseIP("4.3.2.1"),
+					Networks: []garden.IPRange{
+						{
+							Start: net.ParseIP("1.2.3.4"),
+							End:   net.ParseIP("4.3.2.1"),
+						},
+						{
+							Start: net.ParseIP("9.8.7.6"),
+							End:   net.ParseIP("6.7.8.9"),
+						},
 					},
 				})).Should(Succeed())
 			})
@@ -614,17 +637,29 @@ var _ = Describe("Connection", func() {
 
 		Context("when Ports is not nil", func() {
 			BeforeEach(func() {
-				expectedPorts = &protocol.NetOutRequest_PortRange{
-					Start: proto.Uint32(1),
-					End:   proto.Uint32(99),
+				expectedPorts = []*protocol.NetOutRequest_PortRange{
+					{
+						Start: proto.Uint32(1),
+						End:   proto.Uint32(99),
+					},
+					{
+						Start: proto.Uint32(101),
+						End:   proto.Uint32(102),
+					},
 				}
 			})
 
 			It("should send the ports as uint32s", func() {
 				Ω(connection.NetOut(handle, garden.NetOutRule{
-					Ports: &garden.PortRange{
-						Start: 1,
-						End:   99,
+					Ports: []garden.PortRange{
+						{
+							Start: 1,
+							End:   99,
+						},
+						{
+							Start: 101,
+							End:   102,
+						},
 					},
 				})).Should(Succeed())
 			})

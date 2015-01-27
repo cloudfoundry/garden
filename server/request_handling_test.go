@@ -1027,7 +1027,7 @@ var _ = Describe("When a client connects", func() {
 					rule := fakeContainer.NetOutArgsForCall(0)
 
 					Ω(rule.Protocol).Should(Equal(garden.ProtocolAll))
-					Ω(rule.Network).Should(BeNil())
+					Ω(rule.Networks).Should(BeNil())
 					Ω(rule.Ports).Should(BeNil())
 					Ω(rule.ICMPs).Should(BeNil())
 					Ω(rule.Log).Should(Equal(false))
@@ -1080,28 +1080,82 @@ var _ = Describe("When a client connects", func() {
 			Context("when network is specified", func() {
 				It("permits traffic to that network", func() {
 					Ω(container.NetOut(garden.NetOutRule{
-						Network: &garden.IPRange{net.ParseIP("1.3.5.7"), net.ParseIP("9.9.7.6")},
+						Networks: []garden.IPRange{
+							{net.ParseIP("1.3.5.7"), net.ParseIP("9.9.7.6")},
+						},
 					})).Should(Succeed())
 
 					rule := fakeContainer.NetOutArgsForCall(0)
-					Ω(rule.Network).Should(Equal(&garden.IPRange{
-						Start: net.ParseIP("1.3.5.7"),
-						End:   net.ParseIP("9.9.7.6"),
+					Ω(rule.Networks).Should(Equal([]garden.IPRange{
+						{
+							Start: net.ParseIP("1.3.5.7"),
+							End:   net.ParseIP("9.9.7.6"),
+						},
 					}))
+				})
+			})
+
+			Context("when multiple networks are specified", func() {
+				It("permits traffic to those networks", func() {
+					Ω(container.NetOut(garden.NetOutRule{
+						Networks: []garden.IPRange{
+							{net.ParseIP("1.3.5.7"), net.ParseIP("9.9.7.6")},
+							{net.ParseIP("2.4.6.8"), net.ParseIP("8.6.4.2")},
+						},
+					})).Should(Succeed())
+
+					rule := fakeContainer.NetOutArgsForCall(0)
+					Ω(rule.Networks).Should(ConsistOf(
+						garden.IPRange{
+							Start: net.ParseIP("1.3.5.7"),
+							End:   net.ParseIP("9.9.7.6"),
+						},
+						garden.IPRange{
+							Start: net.ParseIP("2.4.6.8"),
+							End:   net.ParseIP("8.6.4.2"),
+						},
+					))
 				})
 			})
 
 			Context("when ports are specified", func() {
 				It("permits traffic to those ports", func() {
 					Ω(container.NetOut(garden.NetOutRule{
-						Ports: &garden.PortRange{4, 44},
+						Ports: []garden.PortRange{
+							{4, 44},
+						},
 					})).Should(Succeed())
 
 					rule := fakeContainer.NetOutArgsForCall(0)
-					Ω(rule.Ports).Should(Equal(&garden.PortRange{
-						Start: 4,
-						End:   44,
+					Ω(rule.Ports).Should(Equal([]garden.PortRange{
+						{
+							Start: 4,
+							End:   44,
+						},
 					}))
+				})
+			})
+
+			Context("when multiple ports are specified", func() {
+				It("permits traffic to those ports", func() {
+					Ω(container.NetOut(garden.NetOutRule{
+						Ports: []garden.PortRange{
+							{4, 44},
+							{563, 3944},
+						},
+					})).Should(Succeed())
+
+					rule := fakeContainer.NetOutArgsForCall(0)
+					Ω(rule.Ports).Should(ConsistOf(
+						garden.PortRange{
+							Start: 4,
+							End:   44,
+						},
+						garden.PortRange{
+							Start: 563,
+							End:   3944,
+						},
+					))
 				})
 			})
 

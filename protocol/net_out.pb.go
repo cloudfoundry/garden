@@ -53,8 +53,8 @@ func (x *NetOutRequest_Protocol) UnmarshalJSON(data []byte) error {
 type NetOutRequest struct {
 	Handle           *string                    `protobuf:"bytes,1,req,name=handle" json:"handle,omitempty"`
 	Protocol         *NetOutRequest_Protocol    `protobuf:"varint,2,req,name=protocol,enum=garden.NetOutRequest_Protocol" json:"protocol,omitempty"`
-	Network          *NetOutRequest_IPRange     `protobuf:"bytes,3,opt,name=network" json:"network,omitempty"`
-	Ports            *NetOutRequest_PortRange   `protobuf:"bytes,4,opt,name=ports" json:"ports,omitempty"`
+	Networks         []*NetOutRequest_IPRange   `protobuf:"bytes,3,rep,name=networks" json:"networks,omitempty"`
+	Ports            []*NetOutRequest_PortRange `protobuf:"bytes,4,rep,name=ports" json:"ports,omitempty"`
 	Icmps            *NetOutRequest_ICMPControl `protobuf:"bytes,5,opt,name=icmps" json:"icmps,omitempty"`
 	Log              *bool                      `protobuf:"varint,6,req,name=log" json:"log,omitempty"`
 	XXX_unrecognized []byte                     `json:"-"`
@@ -78,14 +78,14 @@ func (m *NetOutRequest) GetProtocol() NetOutRequest_Protocol {
 	return NetOutRequest_ALL
 }
 
-func (m *NetOutRequest) GetNetwork() *NetOutRequest_IPRange {
+func (m *NetOutRequest) GetNetworks() []*NetOutRequest_IPRange {
 	if m != nil {
-		return m.Network
+		return m.Networks
 	}
 	return nil
 }
 
-func (m *NetOutRequest) GetPorts() *NetOutRequest_PortRange {
+func (m *NetOutRequest) GetPorts() []*NetOutRequest_PortRange {
 	if m != nil {
 		return m.Ports
 	}
