@@ -77,7 +77,25 @@ type ContainerSpec struct {
 	// subject to the globally configured grace time.
 	GraceTime time.Duration
 
-	// TODO
+	// RootFSPath is a URI referring to the root file system for the container.
+	// The URI scheme must either be the empty string or "docker".
+	//
+	// A URI with an empty scheme determines the path of a root file system.
+	// If this path is empty, a default root file system is used.
+	// Other parts of the URI are ignored.
+	//
+	// A URI with scheme "docker" refers to a Docker image. The path in the URI
+	// (without the leading /) identifies a Docker image as the repository name
+	// in the default Docker registry. If a fragment is specified in the URI, this
+	// determines the tag associated with the image.
+	// If a host is specified in the URI, this determines the Docker registry to use.
+	// If no host is specified in the URI, a default Docker registry is used.
+	// Other parts of the URI are ignored.
+	//
+	// Examples:
+	// * "/some/path"
+	// * "docker:///onsi/grace-busybox"
+	// * "docker://index.docker.io/busybox"
 	RootFSPath string
 
 	// * bind_mounts: a list of mount point descriptions which will result in corresponding mount
