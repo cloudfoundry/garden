@@ -99,7 +99,7 @@ func (s *GardenServer) handleList(w http.ResponseWriter, r *http.Request) {
 		handles = append(handles, container.Handle())
 	}
 
-	s.writeResponse(w, &protocol.ListResponse{Handles: handles})
+	s.writeResponse(w, &struct{ Handles []string }{handles})
 }
 
 func (s *GardenServer) handleDestroy(w http.ResponseWriter, r *http.Request) {

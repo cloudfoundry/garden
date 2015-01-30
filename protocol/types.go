@@ -66,8 +66,6 @@ func TypeForMessage(msg proto.Message) Message_Type {
 	case *ProcessPayload:
 		return Message_ProcessPayload
 
-	case *ListRequest, *ListResponse:
-		return Message_List
 	}
 
 	panic("unknown message type")
@@ -104,8 +102,6 @@ func RequestMessageForType(t Message_Type) proto.Message {
 	case Message_Attach:
 		return &AttachRequest{}
 
-	case Message_List:
-		return &ListRequest{}
 	}
 
 	panic("unknown message type")
@@ -139,8 +135,6 @@ func ResponseMessageForType(t Message_Type) proto.Message {
 	case Message_Run, Message_Attach:
 		return &ProcessPayload{}
 
-	case Message_List:
-		return &ListResponse{}
 	}
 
 	panic("unknown message type")

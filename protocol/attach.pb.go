@@ -15,7 +15,6 @@ It is generated from these files:
 	limit_cpu.proto
 	limit_disk.proto
 	limit_memory.proto
-	list.proto
 	message.proto
 	net_in.proto
 	net_out.proto

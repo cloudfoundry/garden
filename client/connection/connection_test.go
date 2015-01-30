@@ -695,8 +695,10 @@ var _ = Describe("Connection", func() {
 			server.AppendHandlers(
 				ghttp.CombineHandlers(
 					ghttp.VerifyRequest("GET", "/containers", "foo=bar"),
-					ghttp.RespondWith(200, marshalProto(&protocol.ListResponse{
-						Handles: []string{"container1", "container2", "container3"},
+					ghttp.RespondWith(200, marshalProto(&struct {
+						Handles []string `json:"handles"`
+					}{
+						[]string{"container1", "container2", "container3"},
 					}))))
 		})
 

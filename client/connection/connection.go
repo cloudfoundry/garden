@@ -689,20 +689,21 @@ func (c *connection) List(filterProperties garden.Properties) ([]string, error) 
 		values[name] = []string{val}
 	}
 
-	res := &protocol.ListResponse{}
+	res := &struct {
+		Handles []string
+	}{}
 
-	err := c.do(
+	if err := c.do(
 		routes.List,
 		nil,
-		res,
+		&res,
 		nil,
 		values,
-	)
-	if err != nil {
+	); err != nil {
 		return nil, err
 	}
 
-	return res.GetHandles(), nil
+	return res.Handles, nil
 }
 
 func (c *connection) Info(handle string) (garden.ContainerInfo, error) {
