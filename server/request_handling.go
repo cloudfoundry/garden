@@ -41,11 +41,7 @@ func (s *GardenServer) handleCapacity(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s.writeResponse(w, &protocol.CapacityResponse{
-		MemoryInBytes: proto.Uint64(capacity.MemoryInBytes),
-		DiskInBytes:   proto.Uint64(capacity.DiskInBytes),
-		MaxContainers: proto.Uint64(capacity.MaxContainers),
-	})
+	s.writeResponse(w, capacity)
 }
 
 func (s *GardenServer) handleCreate(w http.ResponseWriter, r *http.Request) {

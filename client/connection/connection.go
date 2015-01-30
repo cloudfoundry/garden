@@ -116,18 +116,13 @@ func (c *connection) Ping() error {
 }
 
 func (c *connection) Capacity() (garden.Capacity, error) {
-	capacity := &protocol.CapacityResponse{}
-
-	err := c.do(routes.Capacity, nil, capacity, nil, nil)
+	capacity := garden.Capacity{}
+	err := c.do(routes.Capacity, nil, &capacity, nil, nil)
 	if err != nil {
 		return garden.Capacity{}, err
 	}
 
-	return garden.Capacity{
-		MemoryInBytes: capacity.GetMemoryInBytes(),
-		DiskInBytes:   capacity.GetDiskInBytes(),
-		MaxContainers: capacity.GetMaxContainers(),
-	}, nil
+	return capacity, nil
 }
 
 func (c *connection) Create(spec garden.ContainerSpec) (string, error) {

@@ -116,10 +116,10 @@ var _ = Describe("Connection", func() {
 				server.AppendHandlers(
 					ghttp.CombineHandlers(
 						ghttp.VerifyRequest("GET", "/capacity"),
-						ghttp.RespondWith(200, marshalProto(&protocol.CapacityResponse{
-							MemoryInBytes: proto.Uint64(1111),
-							DiskInBytes:   proto.Uint64(2222),
-							MaxContainers: proto.Uint64(42),
+						ghttp.RespondWith(200, marshalProto(&garden.Capacity{
+							MemoryInBytes: 1111,
+							DiskInBytes:   2222,
+							MaxContainers: 42,
 						}))))
 			})
 

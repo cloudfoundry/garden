@@ -171,9 +171,9 @@ type BindMount struct {
 }
 
 type Capacity struct {
-	MemoryInBytes uint64
-	DiskInBytes   uint64
-	MaxContainers uint64
+	MemoryInBytes uint64 `json:"memory_in_bytes,omitempty"`
+	DiskInBytes   uint64 `json:"disk_in_bytes,omitempty"`
+	MaxContainers uint64 `json:"max_containers,omitempty"`
 }
 
 type Properties map[string]string
