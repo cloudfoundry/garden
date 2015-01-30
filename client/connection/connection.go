@@ -157,7 +157,7 @@ func (c *connection) Destroy(handle string) error {
 	return c.do(
 		routes.Destroy,
 		nil,
-		&protocol.DestroyResponse{},
+		&struct{}{},
 		rata.Params{
 			"handle": handle,
 		},

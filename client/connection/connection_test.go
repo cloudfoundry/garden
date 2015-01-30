@@ -221,7 +221,7 @@ var _ = Describe("Connection", func() {
 				server.AppendHandlers(
 					ghttp.CombineHandlers(
 						ghttp.VerifyRequest("DELETE", "/containers/foo"),
-						ghttp.RespondWith(200, marshalProto(&protocol.DestroyResponse{}))))
+						ghttp.RespondWith(200, "{}")))
 			})
 
 			It("should stop the container", func() {

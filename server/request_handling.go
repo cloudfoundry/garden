@@ -142,7 +142,7 @@ func (s *GardenServer) handleDestroy(w http.ResponseWriter, r *http.Request) {
 
 	s.bomberman.Defuse(handle)
 
-	s.writeResponse(w, &protocol.DestroyResponse{})
+	s.writeResponse(w, &struct{}{})
 }
 
 func (s *GardenServer) handleStop(w http.ResponseWriter, r *http.Request) {
