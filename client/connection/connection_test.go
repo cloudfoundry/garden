@@ -82,12 +82,12 @@ var _ = Describe("Connection", func() {
 				server.AppendHandlers(
 					ghttp.CombineHandlers(
 						ghttp.VerifyRequest("GET", "/ping"),
-						ghttp.RespondWith(200, marshalProto(&protocol.PingResponse{})),
+						ghttp.RespondWith(200, "{}"),
 					),
 				)
 			})
 
-			It("should return the server's capacity", func() {
+			It("should ping the server", func() {
 				err := connection.Ping()
 				Ω(err).ShouldNot(HaveOccurred())
 			})

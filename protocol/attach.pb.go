@@ -21,7 +21,6 @@ It is generated from these files:
 	message.proto
 	net_in.proto
 	net_out.proto
-	ping.proto
 	process_payload.proto
 	property.proto
 	remove_property.proto

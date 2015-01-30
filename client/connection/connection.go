@@ -112,7 +112,7 @@ func New(network, address string) Connection {
 }
 
 func (c *connection) Ping() error {
-	return c.do(routes.Ping, nil, &protocol.PingResponse{}, nil, nil)
+	return c.do(routes.Ping, nil, &struct{}{}, nil, nil)
 }
 
 func (c *connection) Capacity() (garden.Capacity, error) {

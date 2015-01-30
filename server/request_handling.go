@@ -29,7 +29,7 @@ func (s *GardenServer) handlePing(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s.writeResponse(w, &protocol.PingResponse{})
+	s.writeResponse(w, &struct{}{})
 }
 
 func (s *GardenServer) handleCapacity(w http.ResponseWriter, r *http.Request) {

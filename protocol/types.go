@@ -68,8 +68,6 @@ func TypeForMessage(msg proto.Message) Message_Type {
 	case *ProcessPayload:
 		return Message_ProcessPayload
 
-	case *PingRequest, *PingResponse:
-		return Message_Ping
 	case *ListRequest, *ListResponse:
 		return Message_List
 	case *CapacityRequest, *CapacityResponse:
@@ -112,8 +110,6 @@ func RequestMessageForType(t Message_Type) proto.Message {
 	case Message_Attach:
 		return &AttachRequest{}
 
-	case Message_Ping:
-		return &PingRequest{}
 	case Message_List:
 		return &ListRequest{}
 	case Message_Capacity:
@@ -153,8 +149,6 @@ func ResponseMessageForType(t Message_Type) proto.Message {
 	case Message_Run, Message_Attach:
 		return &ProcessPayload{}
 
-	case Message_Ping:
-		return &PingResponse{}
 	case Message_List:
 		return &ListResponse{}
 	case Message_Capacity:
