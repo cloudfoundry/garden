@@ -123,6 +123,9 @@ type ContainerSpec struct {
 	// create calls. Containers on the same subnet can communicate with each other over IP
 	// without restriction. In particular, they are not affected by packet filtering.
 	//
+	// Note that a container can use TCP, UDP, and ICMP, although its external access is governed
+	// by filters (see Container.NetOut()) and by any implementation-specific filters.
+	//
 	// An error is returned if:
 	// * the IP address cannot be allocated or is already in use,
 	// * the subnet specified overlaps the default network pool, or
