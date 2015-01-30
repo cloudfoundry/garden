@@ -149,81 +149,69 @@ var _ = Describe("Connection", func() {
 	})
 
 	Describe("Creating", func() {
-		BeforeEach(func() {
-			ro := protocol.CreateRequest_BindMount_RO
-			rw := protocol.CreateRequest_BindMount_RW
-			hostOrigin := protocol.CreateRequest_BindMount_Host
-			containerOrigin := protocol.CreateRequest_BindMount_Container
+		var spec garden.ContainerSpec
 
+		JustBeforeEach(func() {
 			server.AppendHandlers(
 				ghttp.CombineHandlers(
 					ghttp.VerifyRequest("POST", "/containers"),
-					verifyProtoBody(&protocol.CreateRequest{
-						Handle:     proto.String("some-handle"),
-						GraceTime:  proto.Uint32(10),
-						Rootfs:     proto.String("some-rootfs-path"),
-						Network:    proto.String("some-network"),
-						Privileged: proto.Bool(false),
-						BindMounts: []*protocol.CreateRequest_BindMount{
-							{
-								SrcPath: proto.String("/src-a"),
-								DstPath: proto.String("/dst-a"),
-								Mode:    &ro,
-								Origin:  &hostOrigin,
-							},
-							{
-								SrcPath: proto.String("/src-b"),
-								DstPath: proto.String("/dst-b"),
-								Mode:    &rw,
-								Origin:  &containerOrigin,
-							},
-						},
-						Properties: []*protocol.Property{
-							{
-								Key:   proto.String("foo"),
-								Value: proto.String("bar"),
-							},
-						},
-						Env: []*protocol.EnvironmentVariable{
-							{
-								Key:   proto.String("env1"),
-								Value: proto.String("env1Value1"),
-							},
-						},
-					}),
-					ghttp.RespondWith(200, marshalProto(&protocol.CreateResponse{
-						Handle: proto.String("foohandle"),
-					}))))
+					func(resp http.ResponseWriter, req *http.Request) {
+						defer GinkgoRecover()
+
+						decoder := json.NewDecoder(req.Body)
+						var received garden.ContainerSpec
+						decoder.Decode(&received)
+
+						Ω(received).Should(Equal(spec))
+					},
+					ghttp.RespondWith(200, marshalProto(&struct{ Handle string }{"foohandle"}))))
 		})
 
-		It("should create a container", func() {
-			handle, err := connection.Create(garden.ContainerSpec{
-				Handle:     "some-handle",
-				GraceTime:  10 * time.Second,
-				RootFSPath: "some-rootfs-path",
-				Network:    "some-network",
-				BindMounts: []garden.BindMount{
-					{
-						SrcPath: "/src-a",
-						DstPath: "/dst-a",
-						Mode:    garden.BindMountModeRO,
-						Origin:  garden.BindMountOriginHost,
-					},
-					{
-						SrcPath: "/src-b",
-						DstPath: "/dst-b",
-						Mode:    garden.BindMountModeRW,
-						Origin:  garden.BindMountOriginContainer,
-					},
-				},
-				Properties: map[string]string{
-					"foo": "bar",
-				},
-				Env: []string{"env1=env1Value1"},
+		Context("with an empty ContainerSpec", func() {
+			BeforeEach(func() {
+				spec = garden.ContainerSpec{}
 			})
 
-			Ω(err).ShouldNot(HaveOccurred())
-			Ω(handle).Should(Equal("foohandle"))
+			It("sends the ContainerSpec over the connection as JSON", func() {
+				handle, err := connection.Create(spec)
+				Ω(err).ShouldNot(HaveOccurred())
+				Ω(handle).Should(Equal("foohandle"))
+			})
+		})
+
+		Context("with a fully specified ContainerSpec", func() {
+			BeforeEach(func() {
+				spec = garden.ContainerSpec{
+					Handle:     "some-handle",
+					GraceTime:  10 * time.Second,
+					RootFSPath: "some-rootfs-path",
+					Network:    "some-network",
+					BindMounts: []garden.BindMount{
+						{
+							SrcPath: "/src-a",
+							DstPath: "/dst-a",
+							Mode:    garden.BindMountModeRO,
+							Origin:  garden.BindMountOriginHost,
+						},
+						{
+							SrcPath: "/src-b",
+							DstPath: "/dst-b",
+							Mode:    garden.BindMountModeRW,
+							Origin:  garden.BindMountOriginContainer,
+						},
+					},
+					Properties: map[string]string{
+						"foo": "bar",
+					},
+					Env: []string{"env1=env1Value1"},
+				}
+			})
+
+			It("sends the ContainerSpec over the connection as JSON", func() {
+				handle, err := connection.Create(spec)
+				Ω(err).ShouldNot(HaveOccurred())
+				Ω(handle).Should(Equal("foohandle"))
+			})
 		})
 	})
 
@@ -1536,7 +1524,7 @@ func verifyProtoBody(expectedBodyMessages ...proto.Message) http.HandlerFunc {
 	}
 }
 
-func marshalProto(messages ...proto.Message) string {
+func marshalProto(messages ...interface{}) string {
 	result := new(bytes.Buffer)
 	for _, msg := range messages {
 		err := transport.WriteMessage(result, msg)

@@ -7,7 +7,6 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"time"
 
 	"github.com/gogo/protobuf/proto"
 
@@ -50,52 +49,22 @@ func (s *GardenServer) handleCapacity(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *GardenServer) handleCreate(w http.ResponseWriter, r *http.Request) {
-	var request protocol.CreateRequest
-	if !s.readRequest(&request, w, r) {
+	var spec garden.ContainerSpec
+	if !s.readRequest(&spec, w, r) {
 		return
 	}
 
 	hLog := s.logger.Session("create", lager.Data{
-		"request": request,
+		"request": spec,
 	})
 
-	bindMounts := []garden.BindMount{}
-
-	for _, bm := range request.GetBindMounts() {
-		bindMount := garden.BindMount{
-			SrcPath: bm.GetSrcPath(),
-			DstPath: bm.GetDstPath(),
-			Mode:    garden.BindMountMode(bm.GetMode()),
-			Origin:  garden.BindMountOrigin(bm.GetOrigin()),
-		}
-
-		bindMounts = append(bindMounts, bindMount)
-	}
-
-	properties := map[string]string{}
-
-	for _, prop := range request.GetProperties() {
-		properties[prop.GetKey()] = prop.GetValue()
-	}
-
-	graceTime := s.containerGraceTime
-
-	if request.GraceTime != nil {
-		graceTime = time.Duration(request.GetGraceTime()) * time.Second
+	if spec.GraceTime == 0 {
+		spec.GraceTime = s.containerGraceTime
 	}
 
 	hLog.Debug("creating")
 
-	container, err := s.backend.Create(garden.ContainerSpec{
-		Handle:     request.GetHandle(),
-		GraceTime:  graceTime,
-		RootFSPath: request.GetRootfs(),
-		Network:    request.GetNetwork(),
-		BindMounts: bindMounts,
-		Properties: properties,
-		Env:        convertEnv(request.GetEnv()),
-		Privileged: request.GetPrivileged(),
-	})
+	container, err := s.backend.Create(spec)
 	if err != nil {
 		s.writeError(w, err, hLog)
 		return
@@ -105,8 +74,8 @@ func (s *GardenServer) handleCreate(w http.ResponseWriter, r *http.Request) {
 
 	s.bomberman.Strap(container)
 
-	s.writeResponse(w, &protocol.CreateResponse{
-		Handle: proto.String(container.Handle()),
+	s.writeResponse(w, &struct{ Handle string }{
+		Handle: container.Handle(),
 	})
 }
 
@@ -1231,12 +1200,12 @@ func (s *GardenServer) writeError(w http.ResponseWriter, err error, logger lager
 	w.Write([]byte(err.Error()))
 }
 
-func (s *GardenServer) writeResponse(w http.ResponseWriter, msg proto.Message) {
+func (s *GardenServer) writeResponse(w http.ResponseWriter, msg interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	transport.WriteMessage(w, msg)
 }
 
-func (s *GardenServer) readRequest(msg proto.Message, w http.ResponseWriter, r *http.Request) bool {
+func (s *GardenServer) readRequest(msg interface{}, w http.ResponseWriter, r *http.Request) bool {
 	if r.Header.Get("Content-Type") != "application/json" {
 		s.writeError(w, ErrInvalidContentType, s.logger)
 		return false

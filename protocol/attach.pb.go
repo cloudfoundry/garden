@@ -8,7 +8,6 @@ Package garden is a generated protocol buffer package.
 It is generated from these files:
 	attach.proto
 	capacity.proto
-	create.proto
 	destroy.proto
 	environment_variable.proto
 	error.proto

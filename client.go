@@ -69,13 +69,13 @@ type ContainerSpec struct {
 	// Handle, if specified, is used to refer to the
 	// container in future requests. If it is not specified,
 	// garden uses its internal container ID as the container handle.
-	Handle string
+	Handle string `json:"handle,omitempty"`
 
 	// GraceTime can be used to specify how long a container can go
 	// unreferenced by any client connection. After this time, the container will
 	// automatically be destroyed. If not specified, the container will be
 	// subject to the globally configured grace time.
-	GraceTime time.Duration
+	GraceTime time.Duration `json:"grace_time,omitempty"`
 
 	// RootFSPath is a URI referring to the root file system for the container.
 	// The URI scheme must either be the empty string or "docker".
@@ -96,7 +96,7 @@ type ContainerSpec struct {
 	// * "/some/path"
 	// * "docker:///onsi/grace-busybox"
 	// * "docker://index.docker.io/busybox"
-	RootFSPath string
+	RootFSPath string `json:"rootfs,omitempty"`
 
 	// * bind_mounts: a list of mount point descriptions which will result in corresponding mount
 	// points being created in the container's file system.
@@ -104,7 +104,7 @@ type ContainerSpec struct {
 	// An error is returned if:
 	// * one or more of the mount points has a non-existent source directory, or
 	// * one or more of the mount points cannot be created.
-	BindMounts []BindMount
+	BindMounts []BindMount `json:"bind_mounts,omitempty"`
 
 	// Network determines the subnet and IP address of a container.
 	//
@@ -128,20 +128,20 @@ type ContainerSpec struct {
 	// * the subnet specified overlaps the default network pool, or
 	// * the subnet specified overlaps (but does not equal) a subnet that has
 	//   already had a container allocated from it.
-	Network string
+	Network string `json:"network,omitempty"`
 
 	// Properties is a sequence of string key/value pairs providing arbitrary
 	// data about the container. The keys are assumed to be unique but this is not
 	// enforced via the protocol.
-	Properties Properties
+	Properties Properties `json:"properties,omitempty"`
 
 	// TODO
-	Env []string
+	Env []string `json:"env,omitempty"`
 
 	// If Privileged is true the container does not have a user namespace and the root user in the container
 	// is the same as the root user in the host. Otherwise, the container has a user namespace and the root
 	// user in the container is mapped to a non-root user in the host. Defaults to false.
-	Privileged bool
+	Privileged bool `json:"privileged,omitempty"`
 }
 
 // BindMount specifies parameters for a single mount point.
@@ -152,22 +152,22 @@ type ContainerSpec struct {
 // of the mount point is read-only.
 type BindMount struct {
 	// SrcPath contains the path of the directory to be mounted.
-	SrcPath string
+	SrcPath string `json:"src_path,omitempty"`
 
 	// DstPath contains the path of the mount point in the container. If the
 	// directory does not exist, it is created.
-	DstPath string
+	DstPath string `json:"dst_path,omitempty"`
 
 	// Mode must be either "RO" or "RW". Alternatively, mode may be omitted and defaults to RO.
 	// If mode is "RO", a read-only mount point is created.
 	// If mode is "RW", a read-write mount point is created.
-	Mode BindMountMode
+	Mode BindMountMode `json:"mode,omitempty"`
 
 	// BindMountOrigin must be either "Host" or "Container". Alternatively, origin may be omitted and
 	// defaults to "Host".
 	// If origin is "Host", src_path denotes a path in the host.
 	// If origin is "Container", src_path denotes a path in the container.
-	Origin BindMountOrigin
+	Origin BindMountOrigin `json:"origin,omitempty"`
 }
 
 type Capacity struct {

@@ -131,73 +131,16 @@ func (c *connection) Capacity() (garden.Capacity, error) {
 }
 
 func (c *connection) Create(spec garden.ContainerSpec) (string, error) {
-	req := &protocol.CreateRequest{}
+	res := struct {
+		Handle string `json:"handle"`
+	}{}
 
-	if spec.Handle != "" {
-		req.Handle = proto.String(spec.Handle)
-	}
-
-	if spec.RootFSPath != "" {
-		req.Rootfs = proto.String(spec.RootFSPath)
-	}
-
-	if spec.GraceTime != 0 {
-		req.GraceTime = proto.Uint32(uint32(spec.GraceTime.Seconds()))
-	}
-
-	if spec.Network != "" {
-		req.Network = proto.String(spec.Network)
-	}
-
-	if spec.Env != nil {
-		req.Env = convertEnvironmentVariables(spec.Env)
-	}
-
-	req.Privileged = proto.Bool(spec.Privileged)
-
-	for _, bm := range spec.BindMounts {
-		var mode protocol.CreateRequest_BindMount_Mode
-		var origin protocol.CreateRequest_BindMount_Origin
-
-		switch bm.Mode {
-		case garden.BindMountModeRO:
-			mode = protocol.CreateRequest_BindMount_RO
-		case garden.BindMountModeRW:
-			mode = protocol.CreateRequest_BindMount_RW
-		}
-
-		switch bm.Origin {
-		case garden.BindMountOriginHost:
-			origin = protocol.CreateRequest_BindMount_Host
-		case garden.BindMountOriginContainer:
-			origin = protocol.CreateRequest_BindMount_Container
-		}
-
-		req.BindMounts = append(req.BindMounts, &protocol.CreateRequest_BindMount{
-			SrcPath: proto.String(bm.SrcPath),
-			DstPath: proto.String(bm.DstPath),
-			Mode:    &mode,
-			Origin:  &origin,
-		})
-	}
-
-	props := []*protocol.Property{}
-	for key, val := range spec.Properties {
-		props = append(props, &protocol.Property{
-			Key:   proto.String(key),
-			Value: proto.String(val),
-		})
-	}
-
-	req.Properties = props
-
-	res := &protocol.CreateResponse{}
-	err := c.do(routes.Create, req, res, nil, nil)
+	err := c.do(routes.Create, spec, &res, nil, nil)
 	if err != nil {
 		return "", err
 	}
 
-	return res.GetHandle(), nil
+	return res.Handle, nil
 }
 
 func (c *connection) Stop(handle string, kill bool) error {
@@ -887,7 +830,7 @@ func convertEnvironmentVariables(environmentVariables []string) []*protocol.Envi
 
 func (c *connection) do(
 	handler string,
-	req, res proto.Message,
+	req, res interface{},
 	params rata.Params,
 	query url.Values,
 ) error {
