@@ -45,11 +45,6 @@ func TypeForMessage(msg proto.Message) Message_Type {
 	case *NetOutRequest, *NetOutResponse:
 		return Message_NetOut
 
-	case *StreamInRequest, *StreamInResponse:
-		return Message_StreamIn
-	case *StreamOutRequest, *StreamOutResponse:
-		return Message_StreamOut
-
 	case *LimitMemoryRequest, *LimitMemoryResponse:
 		return Message_LimitMemory
 	case *LimitDiskRequest, *LimitDiskResponse:
@@ -83,11 +78,6 @@ func RequestMessageForType(t Message_Type) proto.Message {
 	case Message_NetOut:
 		return &NetOutRequest{}
 
-	case Message_StreamIn:
-		return &StreamInRequest{}
-	case Message_StreamOut:
-		return &StreamOutRequest{}
-
 	case Message_LimitMemory:
 		return &LimitMemoryRequest{}
 	case Message_LimitDisk:
@@ -117,11 +107,6 @@ func ResponseMessageForType(t Message_Type) proto.Message {
 		return &NetInResponse{}
 	case Message_NetOut:
 		return &NetOutResponse{}
-
-	case Message_StreamIn:
-		return &StreamInResponse{}
-	case Message_StreamOut:
-		return &StreamOutResponse{}
 
 	case Message_LimitMemory:
 		return &LimitMemoryResponse{}

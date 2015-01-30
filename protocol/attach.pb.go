@@ -25,8 +25,6 @@ It is generated from these files:
 	run.proto
 	set_property.proto
 	stop.proto
-	stream_in.proto
-	stream_out.proto
 	tty.proto
 
 It has these top-level messages:
