@@ -29,7 +29,7 @@ func (s *GardenServer) handlePing(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s.writeResponse(w, &struct{}{})
+	s.writeSuccess(w)
 }
 
 func (s *GardenServer) handleCapacity(w http.ResponseWriter, r *http.Request) {
@@ -142,7 +142,7 @@ func (s *GardenServer) handleDestroy(w http.ResponseWriter, r *http.Request) {
 
 	s.bomberman.Defuse(handle)
 
-	s.writeResponse(w, &struct{}{})
+	s.writeSuccess(w)
 }
 
 func (s *GardenServer) handleStop(w http.ResponseWriter, r *http.Request) {
@@ -210,7 +210,11 @@ func (s *GardenServer) handleStreamIn(w http.ResponseWriter, r *http.Request) {
 
 	hLog.Info("streamed-in")
 
-	s.writeResponse(w, &protocol.StreamInResponse{})
+	s.writeSuccess(w)
+}
+
+func (s *GardenServer) writeSuccess(w http.ResponseWriter) {
+	s.writeResponse(w, &struct{}{})
 }
 
 func (s *GardenServer) handleStreamOut(w http.ResponseWriter, r *http.Request) {
