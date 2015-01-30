@@ -9,7 +9,7 @@ mkdir -p $FIRST_GOPATH/bin
 export PATH=$FIRST_GOPATH/bin:$PATH
 
 go get -t -v ./...
-go get code.google.com/p/go.tools/cmd/cover
+go get golang.org/x/tools/cmd/cover
 go get github.com/dustin/goveralls
 go install github.com/onsi/ginkgo/ginkgo
 
