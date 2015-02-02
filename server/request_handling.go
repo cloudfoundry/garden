@@ -906,18 +906,10 @@ func (s *GardenServer) handleRun(w http.ResponseWriter, r *http.Request) {
 		"handle": handle,
 	})
 
-	var request protocol.RunRequest
+	var request garden.ProcessSpec
 	if !s.readRequest(&request, w, r) {
 		return
 	}
-
-	path := request.GetPath()
-	args := request.GetArgs()
-	dir := request.GetDir()
-	privileged := request.GetPrivileged()
-	user := request.GetUser()
-	env := request.GetEnv()
-	tty := request.GetTty()
 
 	container, err := s.backend.Lookup(handle)
 	if err != nil {
@@ -928,22 +920,8 @@ func (s *GardenServer) handleRun(w http.ResponseWriter, r *http.Request) {
 	s.bomberman.Pause(container.Handle())
 	defer s.bomberman.Unpause(container.Handle())
 
-	processSpec := garden.ProcessSpec{
-		Path:       path,
-		Args:       args,
-		Dir:        dir,
-		Privileged: privileged,
-		User:       user,
-		Env:        convertEnv(env),
-		TTY:        ttySpecFrom(tty),
-	}
-
-	if request.Rlimits != nil {
-		processSpec.Limits = resourceLimits(request.Rlimits)
-	}
-
 	hLog.Debug("running", lager.Data{
-		"spec": processSpec,
+		"spec": request,
 	})
 
 	stdout := make(chan []byte, 1000)
@@ -957,14 +935,14 @@ func (s *GardenServer) handleRun(w http.ResponseWriter, r *http.Request) {
 		Stderr: &chanWriter{stderr},
 	}
 
-	process, err := container.Run(processSpec, processIO)
+	process, err := container.Run(request, processIO)
 	if err != nil {
 		s.writeError(w, err, hLog)
 		return
 	}
 
 	hLog.Info("spawned", lager.Data{
-		"spec": processSpec,
+		"spec": request,
 		"id":   process.ID(),
 	})
 
@@ -980,8 +958,8 @@ func (s *GardenServer) handleRun(w http.ResponseWriter, r *http.Request) {
 
 	defer conn.Close()
 
-	transport.WriteMessage(conn, &protocol.ProcessPayload{
-		ProcessId: proto.Uint32(process.ID()),
+	transport.WriteMessage(conn, &transport.ProcessPayload{
+		ProcessID: process.ID(),
 	})
 
 	go s.streamInput(json.NewDecoder(br), stdinW, process)
@@ -1167,26 +1145,6 @@ func (s *GardenServer) handleInfo(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func resourceLimits(limits *protocol.ResourceLimits) garden.ResourceLimits {
-	return garden.ResourceLimits{
-		As:         limits.As,
-		Core:       limits.Core,
-		Cpu:        limits.Cpu,
-		Data:       limits.Data,
-		Fsize:      limits.Fsize,
-		Locks:      limits.Locks,
-		Memlock:    limits.Memlock,
-		Msgqueue:   limits.Msgqueue,
-		Nice:       limits.Nice,
-		Nofile:     limits.Nofile,
-		Nproc:      limits.Nproc,
-		Rss:        limits.Rss,
-		Rtprio:     limits.Rtprio,
-		Sigpending: limits.Sigpending,
-		Stack:      limits.Stack,
-	}
-}
-
 func (s *GardenServer) writeError(w http.ResponseWriter, err error, logger lager.Logger) {
 	logger.Error("failed", err)
 
@@ -1232,7 +1190,7 @@ func convertEnv(env []*protocol.EnvironmentVariable) []string {
 
 func (s *GardenServer) streamInput(decoder *json.Decoder, in *io.PipeWriter, process garden.Process) {
 	for {
-		var payload protocol.ProcessPayload
+		var payload transport.ProcessPayload
 		err := decoder.Decode(&payload)
 		if err != nil {
 			in.CloseWithError(errors.New("Connection closed"))
@@ -1240,25 +1198,25 @@ func (s *GardenServer) streamInput(decoder *json.Decoder, in *io.PipeWriter, pro
 		}
 
 		switch {
-		case payload.Tty != nil:
-			process.SetTTY(*ttySpecFrom(payload.GetTty()))
+		case payload.TTY != nil:
+			process.SetTTY(*payload.TTY)
 
 		case payload.Source != nil:
 			if payload.Data == nil {
 				in.Close()
 				return
 			} else {
-				_, err := in.Write([]byte(payload.GetData()))
+				_, err := in.Write([]byte(*payload.Data))
 				if err != nil {
 					return
 				}
 			}
 
 		case payload.Signal != nil:
-			switch payload.GetSignal() {
-			case protocol.ProcessPayload_kill:
+			switch *payload.Signal {
+			case garden.SignalKill:
 				process.Signal(garden.SignalKill)
-			case protocol.ProcessPayload_terminate:
+			case garden.SignalTerminate:
 				process.Signal(garden.SignalTerminate)
 			default:
 				s.logger.Error("stream-input-unknown-process-payload-signal", nil, lager.Data{"payload": payload})
@@ -1296,31 +1254,33 @@ func (s *GardenServer) streamProcess(logger lager.Logger, conn net.Conn, process
 		}
 	}()
 
-	stdoutSource := protocol.ProcessPayload_stdout
-	stderrSource := protocol.ProcessPayload_stderr
+	stdoutSource := transport.Stdout
+	stderrSource := transport.Stderr
 
 	for {
 		select {
 		case data := <-stdout:
-			transport.WriteMessage(conn, &protocol.ProcessPayload{
-				ProcessId: proto.Uint32(process.ID()),
+			d := string(data)
+			transport.WriteMessage(conn, &transport.ProcessPayload{
+				ProcessID: process.ID(),
 				Source:    &stdoutSource,
-				Data:      proto.String(string(data)),
+				Data:      &d,
 			})
 
 		case data := <-stderr:
-			transport.WriteMessage(conn, &protocol.ProcessPayload{
-				ProcessId: proto.Uint32(process.ID()),
+			d := string(data)
+			transport.WriteMessage(conn, &transport.ProcessPayload{
+				ProcessID: process.ID(),
 				Source:    &stderrSource,
-				Data:      proto.String(string(data)),
+				Data:      &d,
 			})
 
 		case status := <-statusCh:
 			flushProcess(conn, process, stdout, stderr)
 
-			transport.WriteMessage(conn, &protocol.ProcessPayload{
-				ProcessId:  proto.Uint32(process.ID()),
-				ExitStatus: proto.Uint32(uint32(status)),
+			transport.WriteMessage(conn, &transport.ProcessPayload{
+				ProcessID:  process.ID(),
+				ExitStatus: &status,
 			})
 
 			stdinPipe.Close()
@@ -1329,9 +1289,10 @@ func (s *GardenServer) streamProcess(logger lager.Logger, conn net.Conn, process
 		case err := <-errCh:
 			flushProcess(conn, process, stdout, stderr)
 
-			transport.WriteMessage(conn, &protocol.ProcessPayload{
-				ProcessId: proto.Uint32(process.ID()),
-				Error:     proto.String(err.Error()),
+			e := err.Error()
+			transport.WriteMessage(conn, &transport.ProcessPayload{
+				ProcessID: process.ID(),
+				Error:     &e,
 			})
 
 			stdinPipe.Close()
@@ -1348,23 +1309,25 @@ func (s *GardenServer) streamProcess(logger lager.Logger, conn net.Conn, process
 }
 
 func flushProcess(conn net.Conn, process garden.Process, stdout <-chan []byte, stderr <-chan []byte) {
-	stdoutSource := protocol.ProcessPayload_stdout
-	stderrSource := protocol.ProcessPayload_stderr
+	stdoutSource := transport.Stdout
+	stderrSource := transport.Stderr
 
 	for {
 		select {
 		case data := <-stdout:
-			transport.WriteMessage(conn, &protocol.ProcessPayload{
-				ProcessId: proto.Uint32(process.ID()),
+			d := string(data)
+			transport.WriteMessage(conn, &transport.ProcessPayload{
+				ProcessID: process.ID(),
 				Source:    &stdoutSource,
-				Data:      proto.String(string(data)),
+				Data:      &d,
 			})
 
 		case data := <-stderr:
-			transport.WriteMessage(conn, &protocol.ProcessPayload{
-				ProcessId: proto.Uint32(process.ID()),
+			d := string(data)
+			transport.WriteMessage(conn, &transport.ProcessPayload{
+				ProcessID: process.ID(),
 				Source:    &stderrSource,
-				Data:      proto.String(string(data)),
+				Data:      &d,
 			})
 
 		default:

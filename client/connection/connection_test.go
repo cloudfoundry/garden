@@ -976,40 +976,22 @@ var _ = Describe("Connection", func() {
 	})
 
 	Describe("Running", func() {
-		stdin := protocol.ProcessPayload_stdin
-		stdout := protocol.ProcessPayload_stdout
-		stderr := protocol.ProcessPayload_stderr
+		var spec garden.ProcessSpec
 
 		Context("when streaming succeeds to completion", func() {
 			BeforeEach(func() {
+				spec = garden.ProcessSpec{
+					Path:       "lol",
+					Args:       []string{"arg1", "arg2"},
+					Dir:        "/some/dir",
+					Privileged: true,
+					Limits:     resourceLimits,
+				}
+
 				server.AppendHandlers(
 					ghttp.CombineHandlers(
 						ghttp.VerifyRequest("POST", "/containers/foo-handle/processes"),
-						ghttp.VerifyJSONRepresenting(&protocol.RunRequest{
-							Handle:     proto.String("foo-handle"),
-							Path:       proto.String("lol"),
-							Args:       []string{"arg1", "arg2"},
-							Dir:        proto.String("/some/dir"),
-							Privileged: proto.Bool(true),
-							User:       proto.String(""),
-							Rlimits: &protocol.ResourceLimits{
-								As:         proto.Uint64(1),
-								Core:       proto.Uint64(2),
-								Cpu:        proto.Uint64(4),
-								Data:       proto.Uint64(5),
-								Fsize:      proto.Uint64(6),
-								Locks:      proto.Uint64(7),
-								Memlock:    proto.Uint64(8),
-								Msgqueue:   proto.Uint64(9),
-								Nice:       proto.Uint64(10),
-								Nofile:     proto.Uint64(11),
-								Nproc:      proto.Uint64(12),
-								Rss:        proto.Uint64(13),
-								Rtprio:     proto.Uint64(14),
-								Sigpending: proto.Uint64(15),
-								Stack:      proto.Uint64(16),
-							},
-						}),
+						ghttp.VerifyJSONRepresenting(spec),
 						func(w http.ResponseWriter, r *http.Request) {
 							w.WriteHeader(http.StatusOK)
 
@@ -1020,29 +1002,30 @@ var _ = Describe("Connection", func() {
 
 							decoder := json.NewDecoder(br)
 
-							transport.WriteMessage(conn, &protocol.ProcessPayload{ProcessId: proto.Uint32(42)})
+							transport.WriteMessage(conn, map[string]interface{}{"process_id": 42})
+							transport.WriteMessage(conn, map[string]interface{}{"process_id": 42, "source": transport.Stdout, "data": "stdout data"})
+							transport.WriteMessage(conn, map[string]interface{}{"process_id": 42, "source": transport.Stderr, "data": "stderr data"})
 
-							transport.WriteMessage(conn, &protocol.ProcessPayload{ProcessId: proto.Uint32(42), Source: &stdout, Data: proto.String("stdout data")})
-
-							transport.WriteMessage(conn, &protocol.ProcessPayload{ProcessId: proto.Uint32(42), Source: &stderr, Data: proto.String("stderr data")})
-
-							var payload protocol.ProcessPayload
+							var payload map[string]interface{}
 							err = decoder.Decode(&payload)
 							Ω(err).ShouldNot(HaveOccurred())
 
-							Ω(payload).Should(Equal(protocol.ProcessPayload{
-								ProcessId: proto.Uint32(42),
-								Source:    &stdin,
-								Data:      proto.String("stdin data"),
+							Ω(payload).Should(Equal(map[string]interface{}{
+								"process_id": float64(42),
+								"source":     float64(transport.Stdin),
+								"data":       "stdin data",
 							}))
 
-							transport.WriteMessage(conn, &protocol.ProcessPayload{
-								ProcessId: proto.Uint32(42),
-								Source:    &stdout,
-								Data:      proto.String("roundtripped " + payload.GetData()),
+							transport.WriteMessage(conn, map[string]interface{}{
+								"process_id": 42,
+								"source":     transport.Stdout,
+								"data":       fmt.Sprintf("roundtripped %s", payload["data"]),
 							})
 
-							transport.WriteMessage(conn, &protocol.ProcessPayload{ProcessId: proto.Uint32(42), ExitStatus: proto.Uint32(3)})
+							transport.WriteMessage(conn, map[string]interface{}{
+								"process_id":  42,
+								"exit_status": 3,
+							})
 						},
 					),
 				)
@@ -1052,13 +1035,7 @@ var _ = Describe("Connection", func() {
 				stdout := gbytes.NewBuffer()
 				stderr := gbytes.NewBuffer()
 
-				process, err := connection.Run("foo-handle", garden.ProcessSpec{
-					Path:       "lol",
-					Args:       []string{"arg1", "arg2"},
-					Dir:        "/some/dir",
-					Privileged: true,
-					Limits:     resourceLimits,
-				}, garden.ProcessIO{
+				process, err := connection.Run("foo-handle", spec, garden.ProcessIO{
 					Stdin:  bytes.NewBufferString("stdin data"),
 					Stdout: stdout,
 					Stderr: stderr,
@@ -1078,8 +1055,6 @@ var _ = Describe("Connection", func() {
 		})
 
 		Context("when the process is terminated", func() {
-			termSignal := protocol.ProcessPayload_terminate
-
 			BeforeEach(func() {
 				server.AppendHandlers(
 					ghttp.CombineHandlers(
@@ -1094,18 +1069,23 @@ var _ = Describe("Connection", func() {
 
 							decoder := json.NewDecoder(br)
 
-							transport.WriteMessage(conn, &protocol.ProcessPayload{ProcessId: proto.Uint32(42)})
+							transport.WriteMessage(conn, map[string]interface{}{
+								"process_id": 42,
+							})
 
-							var payload protocol.ProcessPayload
+							var payload map[string]interface{}
 							err = decoder.Decode(&payload)
 							Ω(err).ShouldNot(HaveOccurred())
 
-							Ω(payload).Should(Equal(protocol.ProcessPayload{
-								ProcessId: proto.Uint32(42),
-								Signal:    &termSignal,
+							Ω(payload).Should(Equal(map[string]interface{}{
+								"process_id": float64(42),
+								"signal":     float64(garden.SignalTerminate),
 							}))
 
-							transport.WriteMessage(conn, &protocol.ProcessPayload{ProcessId: proto.Uint32(42), ExitStatus: proto.Uint32(3)})
+							transport.WriteMessage(conn, map[string]interface{}{
+								"process_id":  42,
+								"exit_status": 3,
+							})
 						},
 					),
 				)
@@ -1127,8 +1107,6 @@ var _ = Describe("Connection", func() {
 		})
 
 		Context("when the process is killed", func() {
-			killSignal := protocol.ProcessPayload_kill
-
 			BeforeEach(func() {
 				server.AppendHandlers(
 					ghttp.CombineHandlers(
@@ -1143,18 +1121,23 @@ var _ = Describe("Connection", func() {
 
 							decoder := json.NewDecoder(br)
 
-							transport.WriteMessage(conn, &protocol.ProcessPayload{ProcessId: proto.Uint32(42)})
+							transport.WriteMessage(conn, map[string]interface{}{
+								"process_id": 42,
+							})
 
-							var payload protocol.ProcessPayload
+							var payload map[string]interface{}
 							err = decoder.Decode(&payload)
 							Ω(err).ShouldNot(HaveOccurred())
 
-							Ω(payload).Should(Equal(protocol.ProcessPayload{
-								ProcessId: proto.Uint32(42),
-								Signal:    &killSignal,
+							Ω(payload).Should(Equal(map[string]interface{}{
+								"process_id": float64(42),
+								"signal":     float64(garden.SignalKill),
 							}))
 
-							transport.WriteMessage(conn, &protocol.ProcessPayload{ProcessId: proto.Uint32(42), ExitStatus: proto.Uint32(3)})
+							transport.WriteMessage(conn, map[string]interface{}{
+								"process_id":  42,
+								"exit_status": 3,
+							})
 						},
 					),
 				)
@@ -1176,24 +1159,23 @@ var _ = Describe("Connection", func() {
 		})
 
 		Context("when the process's window is resized", func() {
+			var spec garden.ProcessSpec
 			BeforeEach(func() {
+				spec = garden.ProcessSpec{
+					Path: "lol",
+					Args: []string{"arg1", "arg2"},
+					TTY: &garden.TTYSpec{
+						WindowSize: &garden.WindowSize{
+							Columns: 100,
+							Rows:    200,
+						},
+					},
+				}
+
 				server.AppendHandlers(
 					ghttp.CombineHandlers(
 						ghttp.VerifyRequest("POST", "/containers/foo-handle/processes"),
-						ghttp.VerifyJSONRepresenting(&protocol.RunRequest{
-							Handle:     proto.String("foo-handle"),
-							Path:       proto.String("lol"),
-							Args:       []string{"arg1", "arg2"},
-							Privileged: proto.Bool(false),
-							User:       proto.String(""),
-							Tty: &protocol.TTY{
-								WindowSize: &protocol.TTY_WindowSize{
-									Columns: proto.Uint32(100),
-									Rows:    proto.Uint32(200),
-								},
-							},
-							Rlimits: &protocol.ResourceLimits{},
-						}),
+						ghttp.VerifyJSONRepresenting(spec),
 						func(w http.ResponseWriter, r *http.Request) {
 							w.WriteHeader(http.StatusOK)
 
@@ -1204,39 +1186,35 @@ var _ = Describe("Connection", func() {
 
 							decoder := json.NewDecoder(br)
 
-							transport.WriteMessage(conn, &protocol.ProcessPayload{ProcessId: proto.Uint32(42)})
+							transport.WriteMessage(conn, map[string]interface{}{
+								"process_id": 42,
+							})
 
-							var payload protocol.ProcessPayload
+							var payload map[string]interface{}
 							err = decoder.Decode(&payload)
 							Ω(err).ShouldNot(HaveOccurred())
 
-							Ω(payload).Should(Equal(protocol.ProcessPayload{
-								ProcessId: proto.Uint32(42),
-								Tty: &protocol.TTY{
-									WindowSize: &protocol.TTY_WindowSize{
-										Columns: proto.Uint32(80),
-										Rows:    proto.Uint32(24),
+							Ω(payload).Should(Equal(map[string]interface{}{
+								"process_id": float64(42),
+								"tty": map[string]interface{}{
+									"window_size": map[string]interface{}{
+										"columns": float64(80),
+										"rows":    float64(24),
 									},
 								},
 							}))
 
-							transport.WriteMessage(conn, &protocol.ProcessPayload{ProcessId: proto.Uint32(42), ExitStatus: proto.Uint32(3)})
+							transport.WriteMessage(conn, map[string]interface{}{
+								"process_id":  42,
+								"exit_status": 3,
+							})
 						},
 					),
 				)
 			})
 
 			It("sends the appropriate protocol message", func() {
-				process, err := connection.Run("foo-handle", garden.ProcessSpec{
-					Path: "lol",
-					Args: []string{"arg1", "arg2"},
-					TTY: &garden.TTYSpec{
-						WindowSize: &garden.WindowSize{
-							Columns: 100,
-							Rows:    200,
-						},
-					},
-				}, garden.ProcessIO{
+				process, err := connection.Run("foo-handle", spec, garden.ProcessIO{
 					Stdin:  bytes.NewBufferString("stdin data"),
 					Stdout: gbytes.NewBuffer(),
 					Stderr: gbytes.NewBuffer(),
@@ -1272,11 +1250,19 @@ var _ = Describe("Connection", func() {
 
 							defer conn.Close()
 
-							transport.WriteMessage(conn, &protocol.ProcessPayload{ProcessId: proto.Uint32(42)})
-
-							transport.WriteMessage(conn, &protocol.ProcessPayload{ProcessId: proto.Uint32(42), Source: &stdout, Data: proto.String("stdout data")})
-
-							transport.WriteMessage(conn, &protocol.ProcessPayload{ProcessId: proto.Uint32(42), Source: &stderr, Data: proto.String("stderr data")})
+							transport.WriteMessage(conn, map[string]interface{}{
+								"process_id": 42,
+							})
+							transport.WriteMessage(conn, map[string]interface{}{
+								"process_id": 42,
+								"source":     transport.Stdout,
+								"data":       "stdout data",
+							})
+							transport.WriteMessage(conn, map[string]interface{}{
+								"process_id": 42,
+								"source":     transport.Stderr,
+								"data":       "stderr data",
+							})
 						},
 					),
 				)
@@ -1303,11 +1289,24 @@ var _ = Describe("Connection", func() {
 				server.AppendHandlers(
 					ghttp.CombineHandlers(
 						ghttp.VerifyRequest("POST", "/containers/foo-handle/processes"),
-						ghttp.RespondWith(200, marshalProto(
-							&protocol.ProcessPayload{ProcessId: proto.Uint32(42)},
-							&protocol.ProcessPayload{ProcessId: proto.Uint32(42), Source: &stdout, Data: proto.String("stdout data")},
-							&protocol.ProcessPayload{ProcessId: proto.Uint32(42), Source: &stderr, Data: proto.String("stderr data")},
-							&protocol.ProcessPayload{ProcessId: proto.Uint32(42), Error: proto.String("oh no!")})),
+						ghttp.RespondWith(200, marshalProto(map[string]interface{}{
+							"process_id": 42,
+						},
+							map[string]interface{}{
+								"process_id": 42,
+								"source":     transport.Stdout,
+								"data":       "stdout data",
+							},
+							map[string]interface{}{
+								"process_id": 42,
+								"source":     transport.Stderr,
+								"data":       "stderr data",
+							},
+							map[string]interface{}{
+								"process_id": 42,
+								"error":      "oh no!",
+							},
+						)),
 					),
 				)
 			})
@@ -1331,10 +1330,6 @@ var _ = Describe("Connection", func() {
 	})
 
 	Describe("Attaching", func() {
-		stdin := protocol.ProcessPayload_stdin
-		stdout := protocol.ProcessPayload_stdout
-		stderr := protocol.ProcessPayload_stderr
-
 		Context("when streaming succeeds to completion", func() {
 			BeforeEach(func() {
 				server.AppendHandlers(
@@ -1348,27 +1343,38 @@ var _ = Describe("Connection", func() {
 
 							defer conn.Close()
 
-							transport.WriteMessage(conn, &protocol.ProcessPayload{ProcessId: proto.Uint32(42), Source: &stdout, Data: proto.String("stdout data")})
+							transport.WriteMessage(conn, map[string]interface{}{
+								"process_id": 42,
+								"source":     transport.Stdout,
+								"data":       "stdout data",
+							})
 
-							transport.WriteMessage(conn, &protocol.ProcessPayload{ProcessId: proto.Uint32(42), Source: &stderr, Data: proto.String("stderr data")})
+							transport.WriteMessage(conn, map[string]interface{}{
+								"process_id": 42,
+								"source":     transport.Stderr,
+								"data":       "stderr data",
+							})
 
-							var payload protocol.ProcessPayload
+							var payload map[string]interface{}
 							err = json.NewDecoder(br).Decode(&payload)
 							Ω(err).ShouldNot(HaveOccurred())
 
-							Ω(payload).Should(Equal(protocol.ProcessPayload{
-								ProcessId: proto.Uint32(42),
-								Source:    &stdin,
-								Data:      proto.String("stdin data"),
+							Ω(payload).Should(Equal(map[string]interface{}{
+								"process_id": float64(42),
+								"source":     float64(transport.Stdin),
+								"data":       "stdin data",
 							}))
 
-							transport.WriteMessage(conn, &protocol.ProcessPayload{
-								ProcessId: proto.Uint32(42),
-								Source:    &stdout,
-								Data:      proto.String("roundtripped " + payload.GetData()),
+							transport.WriteMessage(conn, map[string]interface{}{
+								"process_id": 42,
+								"source":     transport.Stdout,
+								"data":       fmt.Sprintf("roundtripped %s", payload["data"]),
 							})
 
-							transport.WriteMessage(conn, &protocol.ProcessPayload{ProcessId: proto.Uint32(42), ExitStatus: proto.Uint32(3)})
+							transport.WriteMessage(conn, map[string]interface{}{
+								"process_id":  42,
+								"exit_status": 3,
+							})
 						},
 					),
 				)
@@ -1413,17 +1419,17 @@ var _ = Describe("Connection", func() {
 							defer conn.Close()
 							decoder := json.NewDecoder(br)
 
-							var payload protocol.ProcessPayload
+							var payload map[string]interface{}
 							err = decoder.Decode(&payload)
 							Ω(err).ShouldNot(HaveOccurred())
 
-							Ω(payload).Should(Equal(protocol.ProcessPayload{
-								ProcessId: proto.Uint32(42),
-								Source:    &stdin,
-								Data:      proto.String("stdin data"),
+							Ω(payload).Should(Equal(map[string]interface{}{
+								"process_id": float64(42),
+								"source":     float64(transport.Stdin),
+								"data":       "stdin data",
 							}))
 
-							var payload2 protocol.ProcessPayload
+							var payload2 map[string]interface{}
 							err = decoder.Decode(&payload2)
 							Ω(err).Should(HaveOccurred())
 
@@ -1451,10 +1457,24 @@ var _ = Describe("Connection", func() {
 				server.AppendHandlers(
 					ghttp.CombineHandlers(
 						ghttp.VerifyRequest("GET", "/containers/foo-handle/processes/42"),
-						ghttp.RespondWith(200, marshalProto(
-							&protocol.ProcessPayload{ProcessId: proto.Uint32(42), Source: &stdout, Data: proto.String("stdout data")},
-							&protocol.ProcessPayload{ProcessId: proto.Uint32(42), Source: &stderr, Data: proto.String("stderr data")},
-							&protocol.ProcessPayload{ProcessId: proto.Uint32(42), Error: proto.String("oh no!")})),
+						ghttp.RespondWith(200, marshalProto(map[string]interface{}{
+							"process_id": 42,
+						},
+							map[string]interface{}{
+								"process_id": 42,
+								"source":     transport.Stdout,
+								"data":       "stdout data",
+							},
+							map[string]interface{}{
+								"process_id": 42,
+								"source":     transport.Stderr,
+								"data":       "stderr data",
+							},
+							map[string]interface{}{
+								"process_id": 42,
+								"error":      "oh no!",
+							},
+						)),
 					),
 				)
 			})
@@ -1486,9 +1506,17 @@ var _ = Describe("Connection", func() {
 
 							defer conn.Close()
 
-							transport.WriteMessage(conn, &protocol.ProcessPayload{ProcessId: proto.Uint32(42), Source: &stdout, Data: proto.String("stdout data")})
+							transport.WriteMessage(conn, map[string]interface{}{
+								"process_id": 42,
+								"source":     transport.Stdout,
+								"data":       "stdout data",
+							})
 
-							transport.WriteMessage(conn, &protocol.ProcessPayload{ProcessId: proto.Uint32(42), Source: &stderr, Data: proto.String("stderr data")})
+							transport.WriteMessage(conn, map[string]interface{}{
+								"process_id": 42,
+								"source":     transport.Stderr,
+								"data":       "stderr data",
+							})
 						},
 					),
 				)

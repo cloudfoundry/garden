@@ -54,13 +54,6 @@ func TypeForMessage(msg proto.Message) Message_Type {
 	case *LimitCpuRequest, *LimitCpuResponse:
 		return Message_LimitCpu
 
-	case *RunRequest:
-		return Message_Run
-	case *AttachRequest:
-		return Message_Attach
-	case *ProcessPayload:
-		return Message_ProcessPayload
-
 	}
 
 	panic("unknown message type")
@@ -87,11 +80,6 @@ func RequestMessageForType(t Message_Type) proto.Message {
 	case Message_LimitCpu:
 		return &LimitCpuRequest{}
 
-	case Message_Run:
-		return &RunRequest{}
-	case Message_Attach:
-		return &AttachRequest{}
-
 	}
 
 	panic("unknown message type")
@@ -116,9 +104,6 @@ func ResponseMessageForType(t Message_Type) proto.Message {
 		return &LimitBandwidthResponse{}
 	case Message_LimitCpu:
 		return &LimitCpuResponse{}
-
-	case Message_Run, Message_Attach:
-		return &ProcessPayload{}
 
 	}
 

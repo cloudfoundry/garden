@@ -132,25 +132,38 @@ type Container interface {
 
 // ProcessSpec contains parameters for running a script inside a container.
 type ProcessSpec struct {
-	Path string   // Path to command to execute.
-	Args []string // Arguments to pass to command.
-	Env  []string // Environment variables.
-	Dir  string   // Working directory (default: home directory).
+	// Path to command to execute.
+	Path string `json:"path,omitempty"`
 
-	Privileged bool   // Whether to run the script as root or not. Can be overriden by 'user', if specified.
-	User       string // The name of a user in the container to run the process as. If not specified defaults to 'root' for privileged processes, and 'vcap' for unprivileged processes.
+	// Arguments to pass to command.
+	Args []string `json:"args,omitempty"`
 
-	Limits ResourceLimits // Resource limits
-	TTY    *TTYSpec       // Execute with a TTY for stdio.
+	// Environment variables.
+	Env []string `json:"env,omitempty"`
+
+	// Working directory (default: home directory).
+	Dir string `json:"dir,omitempty"`
+
+	// Whether to run the script as root or not. Can be overriden by 'user', if specified.
+	Privileged bool `json:"privileged,omitempty"`
+
+	// The name of a user in the container to run the process as. If not specified defaults to 'root' for privileged processes, and 'vcap' for unprivileged processes.
+	User string `json:"user,omitempty"`
+
+	// Resource limits
+	Limits ResourceLimits `json:"rlimits,omitempty"`
+
+	// Execute with a TTY for stdio.
+	TTY *TTYSpec `json:"tty,omitempty"`
 }
 
 type TTYSpec struct {
-	WindowSize *WindowSize
+	WindowSize *WindowSize `json:"window_size,omitempty"`
 }
 
 type WindowSize struct {
-	Columns int
-	Rows    int
+	Columns int `json:"columns,omitempty"`
+	Rows    int `json:"rows,omitempty"`
 }
 
 type ProcessIO struct {
@@ -275,19 +288,19 @@ type CPULimits struct {
 // Please refer to the manual page of getrlimit for a description of the individual fields:
 // http://www.kernel.org/doc/man-pages/online/pages/man2/getrlimit.2.html
 type ResourceLimits struct {
-	As         *uint64
-	Core       *uint64
-	Cpu        *uint64
-	Data       *uint64
-	Fsize      *uint64
-	Locks      *uint64
-	Memlock    *uint64
-	Msgqueue   *uint64
-	Nice       *uint64
-	Nofile     *uint64
-	Nproc      *uint64
-	Rss        *uint64
-	Rtprio     *uint64
-	Sigpending *uint64
-	Stack      *uint64
+	As         *uint64 `json:"as,omitempty"`
+	Core       *uint64 `json:"core,omitempty"`
+	Cpu        *uint64 `json:"cpu,omitempty"`
+	Data       *uint64 `json:"data,omitempty"`
+	Fsize      *uint64 `json:"fsize,omitempty"`
+	Locks      *uint64 `json:"locks,omitempty"`
+	Memlock    *uint64 `json:"memlock,omitempty"`
+	Msgqueue   *uint64 `json:"msgqueue,omitempty"`
+	Nice       *uint64 `json:"nice,omitempty"`
+	Nofile     *uint64 `json:"nofile,omitempty"`
+	Nproc      *uint64 `json:"nproc,omitempty"`
+	Rss        *uint64 `json:"rss,omitempty"`
+	Rtprio     *uint64 `json:"rtprio,omitempty"`
+	Sigpending *uint64 `json:"sigpending,omitempty"`
+	Stack      *uint64 `json:"stack,omitempty"`
 }
