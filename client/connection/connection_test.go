@@ -19,7 +19,6 @@ import (
 
 	"github.com/cloudfoundry-incubator/garden"
 	. "github.com/cloudfoundry-incubator/garden/client/connection"
-	protocol "github.com/cloudfoundry-incubator/garden/protocol"
 	"github.com/cloudfoundry-incubator/garden/transport"
 )
 
@@ -1335,23 +1334,6 @@ func verifyRequestBody(expectedMessage interface{}, emptyType interface{}) http.
 		Ω(err).ShouldNot(HaveOccurred())
 
 		Ω(received).Should(Equal(expectedMessage))
-	}
-}
-
-func verifyProtoBody(expectedBodyMessages ...proto.Message) http.HandlerFunc {
-	return func(resp http.ResponseWriter, req *http.Request) {
-		defer GinkgoRecover()
-
-		decoder := json.NewDecoder(req.Body)
-
-		for _, msg := range expectedBodyMessages {
-			received := protocol.RequestMessageForType(protocol.TypeForMessage(msg))
-
-			err := decoder.Decode(received)
-			Ω(err).ShouldNot(HaveOccurred())
-
-			Ω(received).Should(Equal(msg))
-		}
 	}
 }
 

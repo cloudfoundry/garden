@@ -12,14 +12,11 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
-	"strings"
 	"time"
 
 	"github.com/cloudfoundry-incubator/garden"
-	protocol "github.com/cloudfoundry-incubator/garden/protocol"
 	"github.com/cloudfoundry-incubator/garden/routes"
 	"github.com/cloudfoundry-incubator/garden/transport"
-	"github.com/gogo/protobuf/proto"
 	"github.com/tedsuo/rata"
 )
 
@@ -166,18 +163,6 @@ func (c *connection) Destroy(handle string) error {
 
 func (c *connection) Run(handle string, spec garden.ProcessSpec, processIO garden.ProcessIO) (garden.Process, error) {
 	reqBody := new(bytes.Buffer)
-
-	var tty *protocol.TTY
-	if spec.TTY != nil {
-		tty = &protocol.TTY{}
-
-		if spec.TTY.WindowSize != nil {
-			tty.WindowSize = &protocol.TTY_WindowSize{
-				Columns: proto.Uint32(uint32(spec.TTY.WindowSize.Columns)),
-				Rows:    proto.Uint32(uint32(spec.TTY.WindowSize.Rows)),
-			}
-		}
-	}
 
 	err := transport.WriteMessage(reqBody, spec)
 	if err != nil {
@@ -526,26 +511,6 @@ func (c *connection) Info(handle string) (garden.ContainerInfo, error) {
 	}
 
 	return res, nil
-}
-
-func convertEnvironmentVariables(environmentVariables []string) []*protocol.EnvironmentVariable {
-	convertedEnvironmentVariables := []*protocol.EnvironmentVariable{}
-
-	for _, env := range environmentVariables {
-		segs := strings.SplitN(env, "=", 2)
-
-		convertedEnvironmentVariable := &protocol.EnvironmentVariable{
-			Key:   proto.String(segs[0]),
-			Value: proto.String(segs[1]),
-		}
-
-		convertedEnvironmentVariables = append(
-			convertedEnvironmentVariables,
-			convertedEnvironmentVariable,
-		)
-	}
-
-	return convertedEnvironmentVariables
 }
 
 func (c *connection) do(

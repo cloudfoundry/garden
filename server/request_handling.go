@@ -9,7 +9,6 @@ import (
 	"net/http"
 
 	"github.com/cloudfoundry-incubator/garden"
-	protocol "github.com/cloudfoundry-incubator/garden/protocol"
 	"github.com/cloudfoundry-incubator/garden/transport"
 	"github.com/pivotal-golang/lager"
 )
@@ -970,16 +969,6 @@ func (s *GardenServer) readRequest(msg interface{}, w http.ResponseWriter, r *ht
 	return true
 }
 
-func convertEnv(env []*protocol.EnvironmentVariable) []string {
-	converted := []string{}
-
-	for _, e := range env {
-		converted = append(converted, e.GetKey()+"="+e.GetValue())
-	}
-
-	return converted
-}
-
 func (s *GardenServer) streamInput(decoder *json.Decoder, in *io.PipeWriter, process garden.Process) {
 	for {
 		var payload transport.ProcessPayload
@@ -1126,21 +1115,4 @@ func flushProcess(conn net.Conn, process garden.Process, stdout <-chan []byte, s
 			return
 		}
 	}
-}
-
-func ttySpecFrom(tty *protocol.TTY) *garden.TTYSpec {
-	var ttySpec *garden.TTYSpec
-	if tty != nil {
-		ttySpec = &garden.TTYSpec{}
-
-		windowSize := tty.GetWindowSize()
-		if windowSize != nil {
-			ttySpec.WindowSize = &garden.WindowSize{
-				Columns: int(windowSize.GetColumns()),
-				Rows:    int(windowSize.GetRows()),
-			}
-		}
-	}
-
-	return ttySpec
 }
