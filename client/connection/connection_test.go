@@ -260,12 +260,11 @@ var _ = Describe("Connection", func() {
 				server.AppendHandlers(
 					ghttp.CombineHandlers(
 						ghttp.VerifyRequest("PUT", "/containers/foo/limits/memory"),
-						verifyProtoBody(&protocol.LimitMemoryRequest{
-							Handle:       proto.String("foo"),
-							LimitInBytes: proto.Uint64(42),
-						}),
-						ghttp.RespondWith(200, marshalProto(&protocol.LimitMemoryResponse{
-							LimitInBytes: proto.Uint64(40),
+						verifyRequestBody(&garden.MemoryLimits{
+							LimitInBytes: 42,
+						}, &garden.MemoryLimits{}),
+						ghttp.RespondWith(200, marshalProto(&garden.MemoryLimits{
+							LimitInBytes: 40,
 						})),
 					),
 				)
@@ -286,9 +285,9 @@ var _ = Describe("Connection", func() {
 				server.AppendHandlers(
 					ghttp.CombineHandlers(
 						ghttp.VerifyRequest("GET", "/containers/foo/limits/memory"),
-						ghttp.RespondWith(200, marshalProto(&protocol.LimitMemoryResponse{
-							LimitInBytes: proto.Uint64(40),
-						})),
+						ghttp.RespondWith(200, marshalProto(&garden.MemoryLimits{
+							LimitInBytes: 40,
+						}, &garden.MemoryLimits{})),
 					),
 				)
 			})
@@ -307,12 +306,11 @@ var _ = Describe("Connection", func() {
 				server.AppendHandlers(
 					ghttp.CombineHandlers(
 						ghttp.VerifyRequest("PUT", "/containers/foo/limits/cpu"),
-						verifyProtoBody(&protocol.LimitCpuRequest{
-							Handle:        proto.String("foo"),
-							LimitInShares: proto.Uint64(42),
-						}),
-						ghttp.RespondWith(200, marshalProto(&protocol.LimitCpuResponse{
-							LimitInShares: proto.Uint64(40),
+						verifyRequestBody(&garden.CPULimits{
+							LimitInShares: 42,
+						}, &garden.CPULimits{}),
+						ghttp.RespondWith(200, marshalProto(&garden.CPULimits{
+							LimitInShares: 40,
 						})),
 					),
 				)
@@ -333,8 +331,8 @@ var _ = Describe("Connection", func() {
 				server.AppendHandlers(
 					ghttp.CombineHandlers(
 						ghttp.VerifyRequest("GET", "/containers/foo/limits/cpu"),
-						ghttp.RespondWith(200, marshalProto(&protocol.LimitCpuResponse{
-							LimitInShares: proto.Uint64(40),
+						ghttp.RespondWith(200, marshalProto(&garden.CPULimits{
+							LimitInShares: 40,
 						})),
 					),
 				)
@@ -355,14 +353,13 @@ var _ = Describe("Connection", func() {
 				server.AppendHandlers(
 					ghttp.CombineHandlers(
 						ghttp.VerifyRequest("PUT", "/containers/foo/limits/bandwidth"),
-						verifyProtoBody(&protocol.LimitBandwidthRequest{
-							Handle: proto.String("foo"),
-							Rate:   proto.Uint64(42),
-							Burst:  proto.Uint64(43),
-						}),
-						ghttp.RespondWith(200, marshalProto(&protocol.LimitBandwidthResponse{
-							Rate:  proto.Uint64(1),
-							Burst: proto.Uint64(2),
+						verifyRequestBody(&garden.BandwidthLimits{
+							RateInBytesPerSecond:      42,
+							BurstRateInBytesPerSecond: 43,
+						}, &garden.BandwidthLimits{}),
+						ghttp.RespondWith(200, marshalProto(&garden.BandwidthLimits{
+							RateInBytesPerSecond:      1,
+							BurstRateInBytesPerSecond: 2,
 						})),
 					),
 				)
@@ -385,9 +382,9 @@ var _ = Describe("Connection", func() {
 				server.AppendHandlers(
 					ghttp.CombineHandlers(
 						ghttp.VerifyRequest("GET", "/containers/foo/limits/bandwidth"),
-						ghttp.RespondWith(200, marshalProto(&protocol.LimitBandwidthResponse{
-							Rate:  proto.Uint64(1),
-							Burst: proto.Uint64(2),
+						ghttp.RespondWith(200, marshalProto(&garden.BandwidthLimits{
+							RateInBytesPerSecond:      1,
+							BurstRateInBytesPerSecond: 2,
 						})),
 					),
 				)
@@ -409,25 +406,21 @@ var _ = Describe("Connection", func() {
 				server.AppendHandlers(
 					ghttp.CombineHandlers(
 						ghttp.VerifyRequest("PUT", "/containers/foo/limits/disk"),
-						verifyProtoBody(&protocol.LimitDiskRequest{
-							Handle: proto.String("foo"),
-
-							BlockSoft: proto.Uint64(42),
-							BlockHard: proto.Uint64(42),
-
-							InodeSoft: proto.Uint64(42),
-							InodeHard: proto.Uint64(42),
-
-							ByteSoft: proto.Uint64(42),
-							ByteHard: proto.Uint64(42),
-						}),
-						ghttp.RespondWith(200, marshalProto(&protocol.LimitDiskResponse{
-							BlockSoft: proto.Uint64(3),
-							BlockHard: proto.Uint64(4),
-							InodeSoft: proto.Uint64(7),
-							InodeHard: proto.Uint64(8),
-							ByteSoft:  proto.Uint64(11),
-							ByteHard:  proto.Uint64(12),
+						verifyRequestBody(&garden.DiskLimits{
+							BlockSoft: 42,
+							BlockHard: 42,
+							InodeSoft: 42,
+							InodeHard: 42,
+							ByteSoft:  42,
+							ByteHard:  42,
+						}, &garden.DiskLimits{}),
+						ghttp.RespondWith(200, marshalProto(&garden.DiskLimits{
+							BlockSoft: 3,
+							BlockHard: 4,
+							InodeSoft: 7,
+							InodeHard: 8,
+							ByteSoft:  11,
+							ByteHard:  12,
 						})),
 					),
 				)
@@ -462,13 +455,13 @@ var _ = Describe("Connection", func() {
 				server.AppendHandlers(
 					ghttp.CombineHandlers(
 						ghttp.VerifyRequest("GET", "/containers/foo/limits/disk"),
-						ghttp.RespondWith(200, marshalProto(&protocol.LimitDiskResponse{
-							BlockSoft: proto.Uint64(3),
-							BlockHard: proto.Uint64(4),
-							InodeSoft: proto.Uint64(7),
-							InodeHard: proto.Uint64(8),
-							ByteSoft:  proto.Uint64(11),
-							ByteHard:  proto.Uint64(12),
+						ghttp.RespondWith(200, marshalProto(&garden.DiskLimits{
+							BlockSoft: 3,
+							BlockHard: 4,
+							InodeSoft: 7,
+							InodeHard: 8,
+							ByteSoft:  11,
+							ByteHard:  12,
 						})),
 					),
 				)

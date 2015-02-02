@@ -260,27 +260,31 @@ type ContainerBandwidthStat struct {
 }
 
 type BandwidthLimits struct {
-	RateInBytesPerSecond      uint64
-	BurstRateInBytesPerSecond uint64
+	RateInBytesPerSecond      uint64 `json:"rate,omitempty"`
+	BurstRateInBytesPerSecond uint64 `json:"burst,omitempty"`
 }
 
 type DiskLimits struct {
-	BlockSoft uint64
-	BlockHard uint64
+	BlockSoft uint64 `json:"block_soft,omitempty"`
+	BlockHard uint64 `json:"block_hard,omitempty"`
 
-	InodeSoft uint64
-	InodeHard uint64
+	InodeSoft uint64 `json:"inode_soft,omitempty"`
+	InodeHard uint64 `json:"inode_hard,omitempty"`
 
-	ByteSoft uint64 // New soft block limit specified in bytes. Only has effect when BlockSoft is not specified.
-	ByteHard uint64 // New hard block limit specified in bytes. Only has effect when BlockHard is not specified.
+	// New soft block limit specified in bytes. Only has effect when BlockSoft is not specified.
+	ByteSoft uint64 `json:"byte_soft,omitempty"`
+
+	// New hard block limit specified in bytes. Only has effect when BlockHard is not specified.
+	ByteHard uint64 `json:"byte_hard,omitempty"`
 }
 
 type MemoryLimits struct {
-	LimitInBytes uint64 //	Memory usage limit in bytes.
+	//	Memory usage limit in bytes.
+	LimitInBytes uint64 `json:"limit_in_bytes,omitempty"`
 }
 
 type CPULimits struct {
-	LimitInShares uint64
+	LimitInShares uint64 `json:"limit_in_shares,omitempty"`
 }
 
 // Resource limits.

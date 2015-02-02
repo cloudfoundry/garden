@@ -263,7 +263,7 @@ func (s *GardenServer) handleStreamOut(w http.ResponseWriter, r *http.Request) {
 func (s *GardenServer) handleLimitBandwidth(w http.ResponseWriter, r *http.Request) {
 	handle := r.FormValue(":handle")
 
-	var request protocol.LimitBandwidthRequest
+	var request garden.BandwidthLimits
 	if !s.readRequest(&request, w, r) {
 		return
 	}
@@ -281,16 +281,11 @@ func (s *GardenServer) handleLimitBandwidth(w http.ResponseWriter, r *http.Reque
 	s.bomberman.Pause(container.Handle())
 	defer s.bomberman.Unpause(container.Handle())
 
-	requestedLimits := garden.BandwidthLimits{
-		RateInBytesPerSecond:      request.GetRate(),
-		BurstRateInBytesPerSecond: request.GetBurst(),
-	}
-
 	hLog.Debug("limiting", lager.Data{
-		"requested-limits": requestedLimits,
+		"requested-limits": request,
 	})
 
-	err = container.LimitBandwidth(requestedLimits)
+	err = container.LimitBandwidth(request)
 	if err != nil {
 		s.writeError(w, err, hLog)
 		return
@@ -306,10 +301,7 @@ func (s *GardenServer) handleLimitBandwidth(w http.ResponseWriter, r *http.Reque
 		"resulting-limits": limits,
 	})
 
-	s.writeResponse(w, &protocol.LimitBandwidthResponse{
-		Rate:  proto.Uint64(limits.RateInBytesPerSecond),
-		Burst: proto.Uint64(limits.BurstRateInBytesPerSecond),
-	})
+	s.writeResponse(w, limits)
 }
 
 func (s *GardenServer) handleCurrentBandwidthLimits(w http.ResponseWriter, r *http.Request) {
@@ -340,10 +332,7 @@ func (s *GardenServer) handleCurrentBandwidthLimits(w http.ResponseWriter, r *ht
 		"limits": limits,
 	})
 
-	s.writeResponse(w, &protocol.LimitBandwidthResponse{
-		Rate:  proto.Uint64(limits.RateInBytesPerSecond),
-		Burst: proto.Uint64(limits.BurstRateInBytesPerSecond),
-	})
+	s.writeResponse(w, limits)
 }
 
 func (s *GardenServer) handleLimitMemory(w http.ResponseWriter, r *http.Request) {
@@ -353,12 +342,10 @@ func (s *GardenServer) handleLimitMemory(w http.ResponseWriter, r *http.Request)
 		"handle": handle,
 	})
 
-	var request protocol.LimitMemoryRequest
+	var request garden.MemoryLimits
 	if !s.readRequest(&request, w, r) {
 		return
 	}
-
-	limitInBytes := request.GetLimitInBytes()
 
 	container, err := s.backend.Lookup(handle)
 	if err != nil {
@@ -369,16 +356,12 @@ func (s *GardenServer) handleLimitMemory(w http.ResponseWriter, r *http.Request)
 	s.bomberman.Pause(container.Handle())
 	defer s.bomberman.Unpause(container.Handle())
 
-	requestedLimits := garden.MemoryLimits{
-		LimitInBytes: limitInBytes,
-	}
-
-	if request.LimitInBytes != nil {
+	if request.LimitInBytes > 0 {
 		hLog.Debug("limiting", lager.Data{
-			"requested-limits": requestedLimits,
+			"requested-limits": request.LimitInBytes,
 		})
 
-		err = container.LimitMemory(requestedLimits)
+		err = container.LimitMemory(request)
 
 		if err != nil {
 			s.writeError(w, err, hLog)
@@ -396,9 +379,7 @@ func (s *GardenServer) handleLimitMemory(w http.ResponseWriter, r *http.Request)
 		"resulting-limits": limits,
 	})
 
-	s.writeResponse(w, &protocol.LimitMemoryResponse{
-		LimitInBytes: proto.Uint64(limits.LimitInBytes),
-	})
+	s.writeResponse(w, limits)
 }
 
 func (s *GardenServer) handleCurrentMemoryLimits(w http.ResponseWriter, r *http.Request) {
@@ -429,9 +410,7 @@ func (s *GardenServer) handleCurrentMemoryLimits(w http.ResponseWriter, r *http.
 		"limits": limits,
 	})
 
-	s.writeResponse(w, &protocol.LimitMemoryResponse{
-		LimitInBytes: proto.Uint64(limits.LimitInBytes),
-	})
+	s.writeResponse(w, limits)
 }
 
 func (s *GardenServer) handleLimitDisk(w http.ResponseWriter, r *http.Request) {
@@ -441,23 +420,15 @@ func (s *GardenServer) handleLimitDisk(w http.ResponseWriter, r *http.Request) {
 		"handle": handle,
 	})
 
-	var request protocol.LimitDiskRequest
+	var request garden.DiskLimits
 	if !s.readRequest(&request, w, r) {
 		return
 	}
 
-	blockSoft := request.GetBlockSoft()
-	blockHard := request.GetBlockHard()
-	inodeSoft := request.GetInodeSoft()
-	inodeHard := request.GetInodeHard()
-	byteSoft := request.GetByteSoft()
-	byteHard := request.GetByteHard()
-
 	settingLimit := false
-
-	if request.BlockSoft != nil || request.BlockHard != nil ||
-		request.InodeSoft != nil || request.InodeHard != nil ||
-		request.ByteSoft != nil || request.ByteHard != nil {
+	if request.BlockSoft > 0 || request.BlockHard > 0 ||
+		request.InodeSoft > 0 || request.InodeHard > 0 ||
+		request.ByteSoft > 0 || request.ByteHard > 0 {
 		settingLimit = true
 	}
 
@@ -470,21 +441,12 @@ func (s *GardenServer) handleLimitDisk(w http.ResponseWriter, r *http.Request) {
 	s.bomberman.Pause(container.Handle())
 	defer s.bomberman.Unpause(container.Handle())
 
-	requestedLimits := garden.DiskLimits{
-		BlockSoft: blockSoft,
-		BlockHard: blockHard,
-		InodeSoft: inodeSoft,
-		InodeHard: inodeHard,
-		ByteSoft:  byteSoft,
-		ByteHard:  byteHard,
-	}
-
 	if settingLimit {
 		hLog.Debug("limiting", lager.Data{
-			"requested-limits": requestedLimits,
+			"requested-limits": request,
 		})
 
-		err = container.LimitDisk(requestedLimits)
+		err = container.LimitDisk(request)
 		if err != nil {
 			s.writeError(w, err, hLog)
 			return
@@ -501,14 +463,7 @@ func (s *GardenServer) handleLimitDisk(w http.ResponseWriter, r *http.Request) {
 		"resulting-limits": limits,
 	})
 
-	s.writeResponse(w, &protocol.LimitDiskResponse{
-		BlockSoft: proto.Uint64(limits.BlockSoft),
-		BlockHard: proto.Uint64(limits.BlockHard),
-		InodeSoft: proto.Uint64(limits.InodeSoft),
-		InodeHard: proto.Uint64(limits.InodeHard),
-		ByteSoft:  proto.Uint64(limits.ByteSoft),
-		ByteHard:  proto.Uint64(limits.ByteHard),
-	})
+	s.writeResponse(w, limits)
 }
 
 func (s *GardenServer) handleCurrentDiskLimits(w http.ResponseWriter, r *http.Request) {
@@ -539,14 +494,7 @@ func (s *GardenServer) handleCurrentDiskLimits(w http.ResponseWriter, r *http.Re
 		"limits": limits,
 	})
 
-	s.writeResponse(w, &protocol.LimitDiskResponse{
-		BlockSoft: proto.Uint64(limits.BlockSoft),
-		BlockHard: proto.Uint64(limits.BlockHard),
-		InodeSoft: proto.Uint64(limits.InodeSoft),
-		InodeHard: proto.Uint64(limits.InodeHard),
-		ByteSoft:  proto.Uint64(limits.ByteSoft),
-		ByteHard:  proto.Uint64(limits.ByteHard),
-	})
+	s.writeResponse(w, limits)
 }
 
 func (s *GardenServer) handleLimitCPU(w http.ResponseWriter, r *http.Request) {
@@ -556,12 +504,10 @@ func (s *GardenServer) handleLimitCPU(w http.ResponseWriter, r *http.Request) {
 		"handle": handle,
 	})
 
-	var request protocol.LimitCpuRequest
+	var request garden.CPULimits
 	if !s.readRequest(&request, w, r) {
 		return
 	}
-
-	limitInShares := request.GetLimitInShares()
 
 	container, err := s.backend.Lookup(handle)
 	if err != nil {
@@ -572,16 +518,12 @@ func (s *GardenServer) handleLimitCPU(w http.ResponseWriter, r *http.Request) {
 	s.bomberman.Pause(container.Handle())
 	defer s.bomberman.Unpause(container.Handle())
 
-	requestedLimits := garden.CPULimits{
-		LimitInShares: limitInShares,
-	}
-
-	if request.LimitInShares != nil {
+	if request.LimitInShares > 0 {
 		hLog.Debug("limiting", lager.Data{
-			"requested-limits": requestedLimits,
+			"requested-limits": request,
 		})
 
-		err = container.LimitCPU(requestedLimits)
+		err = container.LimitCPU(request)
 		if err != nil {
 			s.writeError(w, err, hLog)
 			return
@@ -598,9 +540,7 @@ func (s *GardenServer) handleLimitCPU(w http.ResponseWriter, r *http.Request) {
 		"resulting-limits": limits,
 	})
 
-	s.writeResponse(w, &protocol.LimitCpuResponse{
-		LimitInShares: proto.Uint64(limits.LimitInShares),
-	})
+	s.writeResponse(w, limits)
 }
 
 func (s *GardenServer) handleCurrentCPULimits(w http.ResponseWriter, r *http.Request) {
@@ -631,9 +571,7 @@ func (s *GardenServer) handleCurrentCPULimits(w http.ResponseWriter, r *http.Req
 		"limits": limits,
 	})
 
-	s.writeResponse(w, &protocol.LimitCpuResponse{
-		LimitInShares: proto.Uint64(limits.LimitInShares),
-	})
+	s.writeResponse(w, limits)
 }
 
 func (s *GardenServer) handleNetIn(w http.ResponseWriter, r *http.Request) {

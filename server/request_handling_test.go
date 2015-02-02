@@ -830,16 +830,20 @@ var _ = Describe("When a client connects", func() {
 		})
 
 		Describe("limiting disk", func() {
-			setLimits := garden.DiskLimits{
-				BlockSoft: 111,
-				BlockHard: 222,
+			var setLimits garden.DiskLimits
 
-				InodeSoft: 333,
-				InodeHard: 444,
+			BeforeEach(func() {
+				setLimits = garden.DiskLimits{
+					BlockSoft: 111,
+					BlockHard: 222,
 
-				ByteSoft: 555,
-				ByteHard: 666,
-			}
+					InodeSoft: 333,
+					InodeHard: 444,
+
+					ByteSoft: 555,
+					ByteHard: 666,
+				}
+			})
 
 			It("sets the container's disk limits and returns the current limits", func() {
 				err := container.LimitDisk(setLimits)
@@ -864,7 +868,7 @@ var _ = Describe("When a client connects", func() {
 				})
 
 				It("fails", func() {
-					err := container.LimitDisk(garden.DiskLimits{})
+					err := container.LimitDisk(setLimits)
 					Ω(err).Should(HaveOccurred())
 				})
 			})

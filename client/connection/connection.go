@@ -349,216 +349,130 @@ func (c *connection) RemoveProperty(handle string, name string) error {
 }
 
 func (c *connection) LimitBandwidth(handle string, limits garden.BandwidthLimits) (garden.BandwidthLimits, error) {
-	res := &protocol.LimitBandwidthResponse{}
-
+	res := garden.BandwidthLimits{}
 	err := c.do(
 		routes.LimitBandwidth,
-		&protocol.LimitBandwidthRequest{
-			Handle: proto.String(handle),
-			Rate:   proto.Uint64(limits.RateInBytesPerSecond),
-			Burst:  proto.Uint64(limits.BurstRateInBytesPerSecond),
-		},
-		res,
+		limits,
+		&res,
 		rata.Params{
 			"handle": handle,
 		},
 		nil,
 	)
 
-	if err != nil {
-		return garden.BandwidthLimits{}, err
-	}
-
-	return garden.BandwidthLimits{
-		RateInBytesPerSecond:      res.GetRate(),
-		BurstRateInBytesPerSecond: res.GetBurst(),
-	}, nil
+	return res, err
 }
 
 func (c *connection) CurrentBandwidthLimits(handle string) (garden.BandwidthLimits, error) {
-	res := &protocol.LimitBandwidthResponse{}
+	res := garden.BandwidthLimits{}
 
 	err := c.do(
 		routes.CurrentBandwidthLimits,
 		nil,
-		res,
+		&res,
 		rata.Params{
 			"handle": handle,
 		},
 		nil,
 	)
 
-	if err != nil {
-		return garden.BandwidthLimits{}, err
-	}
-
-	return garden.BandwidthLimits{
-		RateInBytesPerSecond:      res.GetRate(),
-		BurstRateInBytesPerSecond: res.GetBurst(),
-	}, nil
+	return res, err
 }
 
 func (c *connection) LimitCPU(handle string, limits garden.CPULimits) (garden.CPULimits, error) {
-	res := &protocol.LimitCpuResponse{}
+	res := garden.CPULimits{}
 
 	err := c.do(
 		routes.LimitCPU,
-		&protocol.LimitCpuRequest{
-			Handle:        proto.String(handle),
-			LimitInShares: proto.Uint64(limits.LimitInShares),
-		},
-		res,
+		limits,
+		&res,
 		rata.Params{
 			"handle": handle,
 		},
 		nil,
 	)
 
-	if err != nil {
-		return garden.CPULimits{}, err
-	}
-
-	return garden.CPULimits{
-		LimitInShares: res.GetLimitInShares(),
-	}, nil
+	return res, err
 }
 
 func (c *connection) CurrentCPULimits(handle string) (garden.CPULimits, error) {
-	res := &protocol.LimitCpuResponse{}
+	res := garden.CPULimits{}
 
 	err := c.do(
 		routes.CurrentCPULimits,
 		nil,
-		res,
+		&res,
 		rata.Params{
 			"handle": handle,
 		},
 		nil,
 	)
 
-	if err != nil {
-		return garden.CPULimits{}, err
-	}
-
-	return garden.CPULimits{
-		LimitInShares: res.GetLimitInShares(),
-	}, nil
+	return res, err
 }
 
 func (c *connection) LimitDisk(handle string, limits garden.DiskLimits) (garden.DiskLimits, error) {
-	res := &protocol.LimitDiskResponse{}
+	res := garden.DiskLimits{}
 
 	err := c.do(
 		routes.LimitDisk,
-		&protocol.LimitDiskRequest{
-			Handle: proto.String(handle),
-
-			BlockSoft: proto.Uint64(limits.BlockSoft),
-			BlockHard: proto.Uint64(limits.BlockHard),
-
-			InodeSoft: proto.Uint64(limits.InodeSoft),
-			InodeHard: proto.Uint64(limits.InodeHard),
-
-			ByteSoft: proto.Uint64(limits.ByteSoft),
-			ByteHard: proto.Uint64(limits.ByteHard),
-		},
-		res,
+		limits,
+		&res,
 		rata.Params{
 			"handle": handle,
 		},
 		nil,
 	)
 
-	if err != nil {
-		return garden.DiskLimits{}, err
-	}
-
-	return garden.DiskLimits{
-		BlockSoft: res.GetBlockSoft(),
-		BlockHard: res.GetBlockHard(),
-
-		InodeSoft: res.GetInodeSoft(),
-		InodeHard: res.GetInodeHard(),
-
-		ByteSoft: res.GetByteSoft(),
-		ByteHard: res.GetByteHard(),
-	}, nil
+	return res, err
 }
 
 func (c *connection) CurrentDiskLimits(handle string) (garden.DiskLimits, error) {
-	res := &protocol.LimitDiskResponse{}
+	res := garden.DiskLimits{}
 
 	err := c.do(
 		routes.CurrentDiskLimits,
 		nil,
-		res,
+		&res,
 		rata.Params{
 			"handle": handle,
 		},
 		nil,
 	)
 
-	if err != nil {
-		return garden.DiskLimits{}, err
-	}
-
-	return garden.DiskLimits{
-		BlockSoft: res.GetBlockSoft(),
-		BlockHard: res.GetBlockHard(),
-
-		InodeSoft: res.GetInodeSoft(),
-		InodeHard: res.GetInodeHard(),
-
-		ByteSoft: res.GetByteSoft(),
-		ByteHard: res.GetByteHard(),
-	}, nil
+	return res, err
 }
 
 func (c *connection) LimitMemory(handle string, limits garden.MemoryLimits) (garden.MemoryLimits, error) {
-	res := &protocol.LimitMemoryResponse{}
+	res := garden.MemoryLimits{}
 
 	err := c.do(
 		routes.LimitMemory,
-		&protocol.LimitMemoryRequest{
-			Handle:       proto.String(handle),
-			LimitInBytes: proto.Uint64(limits.LimitInBytes),
-		},
-		res,
+		limits,
+		&res,
 		rata.Params{
 			"handle": handle,
 		},
 		nil,
 	)
 
-	if err != nil {
-		return garden.MemoryLimits{}, err
-	}
-
-	return garden.MemoryLimits{
-		LimitInBytes: res.GetLimitInBytes(),
-	}, nil
+	return res, err
 }
 
 func (c *connection) CurrentMemoryLimits(handle string) (garden.MemoryLimits, error) {
-	res := &protocol.LimitMemoryResponse{}
+	res := garden.MemoryLimits{}
 
 	err := c.do(
 		routes.CurrentMemoryLimits,
 		nil,
-		res,
+		&res,
 		rata.Params{
 			"handle": handle,
 		},
 		nil,
 	)
 
-	if err != nil {
-		return garden.MemoryLimits{}, err
-	}
-
-	return garden.MemoryLimits{
-		LimitInBytes: res.GetLimitInBytes(),
-	}, nil
+	return res, err
 }
 
 func (c *connection) StreamIn(handle string, dstPath string, reader io.Reader) error {
