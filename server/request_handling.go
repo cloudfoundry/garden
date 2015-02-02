@@ -8,8 +8,6 @@ import (
 	"net"
 	"net/http"
 
-	"github.com/gogo/protobuf/proto"
-
 	"github.com/cloudfoundry-incubator/garden"
 	protocol "github.com/cloudfoundry-incubator/garden/protocol"
 	"github.com/cloudfoundry-incubator/garden/transport"
@@ -661,17 +659,11 @@ func (s *GardenServer) handleNetOut(w http.ResponseWriter, r *http.Request) {
 
 func (s *GardenServer) handleGetProperty(w http.ResponseWriter, r *http.Request) {
 	handle := r.FormValue(":handle")
+	key := r.FormValue(":key")
 
 	hLog := s.logger.Session("get-property", lager.Data{
 		"handle": handle,
 	})
-
-	var request protocol.GetPropertyRequest
-	if !s.readRequest(&request, w, r) {
-		return
-	}
-
-	key := request.GetKey()
 
 	container, err := s.backend.Lookup(handle)
 	if err != nil {
@@ -697,8 +689,8 @@ func (s *GardenServer) handleGetProperty(w http.ResponseWriter, r *http.Request)
 		"value": value,
 	})
 
-	s.writeResponse(w, &protocol.GetPropertyResponse{
-		Value: proto.String(value),
+	s.writeResponse(w, map[string]string{
+		"value": value,
 	})
 }
 
@@ -710,12 +702,14 @@ func (s *GardenServer) handleSetProperty(w http.ResponseWriter, r *http.Request)
 		"handle": handle,
 	})
 
-	var request protocol.SetPropertyRequest
+	var request struct {
+		Value string `json:"value"`
+	}
 	if !s.readRequest(&request, w, r) {
 		return
 	}
 
-	value := request.GetValue()
+	value := request.Value
 
 	container, err := s.backend.Lookup(handle)
 	if err != nil {
@@ -742,22 +736,16 @@ func (s *GardenServer) handleSetProperty(w http.ResponseWriter, r *http.Request)
 		"value": value,
 	})
 
-	s.writeResponse(w, &protocol.SetPropertyResponse{})
+	s.writeSuccess(w)
 }
 
 func (s *GardenServer) handleRemoveProperty(w http.ResponseWriter, r *http.Request) {
 	handle := r.FormValue(":handle")
+	key := r.FormValue(":key")
 
 	hLog := s.logger.Session("remove-property", lager.Data{
 		"handle": handle,
 	})
-
-	var request protocol.RemovePropertyRequest
-	if !s.readRequest(&request, w, r) {
-		return
-	}
-
-	key := request.GetKey()
 
 	container, err := s.backend.Lookup(handle)
 	if err != nil {
@@ -782,7 +770,7 @@ func (s *GardenServer) handleRemoveProperty(w http.ResponseWriter, r *http.Reque
 		"key": key,
 	})
 
-	s.writeResponse(w, &protocol.RemovePropertyResponse{})
+	s.writeSuccess(w)
 }
 
 func (s *GardenServer) handleRun(w http.ResponseWriter, r *http.Request) {

@@ -276,15 +276,14 @@ func (c *connection) NetOut(handle string, rule garden.NetOutRule) error {
 }
 
 func (c *connection) GetProperty(handle string, name string) (string, error) {
-	res := &protocol.GetPropertyResponse{}
+	var res struct {
+		Value string `json:"value"`
+	}
 
 	err := c.do(
 		routes.GetProperty,
-		&protocol.GetPropertyRequest{
-			Handle: proto.String(handle),
-			Key:    proto.String(name),
-		},
-		res,
+		nil,
+		&res,
 		rata.Params{
 			"handle": handle,
 			"key":    name,
@@ -292,24 +291,16 @@ func (c *connection) GetProperty(handle string, name string) (string, error) {
 		nil,
 	)
 
-	if err != nil {
-		return "", err
-	}
-
-	return res.GetValue(), nil
+	return res.Value, err
 }
 
 func (c *connection) SetProperty(handle string, name string, value string) error {
-	res := &protocol.SetPropertyResponse{}
-
 	err := c.do(
 		routes.SetProperty,
-		&protocol.SetPropertyRequest{
-			Handle: proto.String(handle),
-			Key:    proto.String(name),
-			Value:  proto.String(value),
+		map[string]string{
+			"value": value,
 		},
-		res,
+		&struct{}{},
 		rata.Params{
 			"handle": handle,
 			"key":    name,
@@ -325,15 +316,10 @@ func (c *connection) SetProperty(handle string, name string, value string) error
 }
 
 func (c *connection) RemoveProperty(handle string, name string) error {
-	res := &protocol.RemovePropertyResponse{}
-
 	err := c.do(
 		routes.RemoveProperty,
-		&protocol.RemovePropertyRequest{
-			Handle: proto.String(handle),
-			Key:    proto.String(name),
-		},
-		res,
+		nil,
+		&struct{}{},
 		rata.Params{
 			"handle": handle,
 			"key":    name,
