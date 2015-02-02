@@ -241,14 +241,14 @@ func (c *connection) Attach(handle string, processID uint32, processIO garden.Pr
 }
 
 func (c *connection) NetIn(handle string, hostPort, containerPort uint32) (uint32, uint32, error) {
-	res := &protocol.NetInResponse{}
+	res := &transport.NetInResponse{}
 
 	err := c.do(
 		routes.NetIn,
-		&protocol.NetInRequest{
-			Handle:        proto.String(handle),
-			HostPort:      proto.Uint32(hostPort),
-			ContainerPort: proto.Uint32(containerPort),
+		&transport.NetInRequest{
+			Handle:        handle,
+			HostPort:      hostPort,
+			ContainerPort: containerPort,
 		},
 		res,
 		rata.Params{
@@ -261,63 +261,14 @@ func (c *connection) NetIn(handle string, hostPort, containerPort uint32) (uint3
 		return 0, 0, err
 	}
 
-	return res.GetHostPort(), res.GetContainerPort(), nil
+	return res.HostPort, res.ContainerPort, nil
 }
 
 func (c *connection) NetOut(handle string, rule garden.NetOutRule) error {
-
-	var np protocol.NetOutRequest_Protocol
-
-	switch rule.Protocol {
-	case garden.ProtocolTCP:
-		np = protocol.NetOutRequest_TCP
-	case garden.ProtocolICMP:
-		np = protocol.NetOutRequest_ICMP
-	case garden.ProtocolUDP:
-		np = protocol.NetOutRequest_UDP
-	case garden.ProtocolAll:
-		np = protocol.NetOutRequest_ALL
-	default:
-		return errors.New("invalid protocol")
-	}
-
-	var networks []*protocol.NetOutRequest_IPRange
-	for _, n := range rule.Networks {
-		networks = append(networks, &protocol.NetOutRequest_IPRange{
-			Start: proto.String(n.Start.String()),
-			End:   proto.String(n.End.String()),
-		})
-	}
-
-	var ports []*protocol.NetOutRequest_PortRange
-	for _, p := range rule.Ports {
-		ports = append(ports, &protocol.NetOutRequest_PortRange{
-			Start: proto.Uint32(uint32(p.Start)),
-			End:   proto.Uint32(uint32(p.End)),
-		})
-	}
-
-	var icmps *protocol.NetOutRequest_ICMPControl
-	if rule.ICMPs != nil {
-		icmps = &protocol.NetOutRequest_ICMPControl{
-			Type: proto.Uint32(uint32(rule.ICMPs.Type)),
-		}
-		if rule.ICMPs.Code != nil {
-			icmps.Code = proto.Int32(int32(*rule.ICMPs.Code))
-		}
-	}
-
 	return c.do(
 		routes.NetOut,
-		&protocol.NetOutRequest{
-			Handle:   proto.String(handle),
-			Protocol: &np,
-			Networks: networks,
-			Ports:    ports,
-			Icmps:    icmps,
-			Log:      proto.Bool(rule.Log),
-		},
-		&protocol.NetOutResponse{},
+		rule,
+		&struct{}{},
 		rata.Params{
 			"handle": handle,
 		},

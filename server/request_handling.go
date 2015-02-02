@@ -643,13 +643,13 @@ func (s *GardenServer) handleNetIn(w http.ResponseWriter, r *http.Request) {
 		"handle": handle,
 	})
 
-	var request protocol.NetInRequest
+	var request transport.NetInRequest
 	if !s.readRequest(&request, w, r) {
 		return
 	}
 
-	hostPort := request.GetHostPort()
-	containerPort := request.GetContainerPort()
+	hostPort := request.HostPort
+	containerPort := request.ContainerPort
 
 	container, err := s.backend.Lookup(handle)
 	if err != nil {
@@ -676,9 +676,9 @@ func (s *GardenServer) handleNetIn(w http.ResponseWriter, r *http.Request) {
 		"container-port": containerPort,
 	})
 
-	s.writeResponse(w, &protocol.NetInResponse{
-		HostPort:      proto.Uint32(hostPort),
-		ContainerPort: proto.Uint32(containerPort),
+	s.writeResponse(w, &transport.NetInResponse{
+		HostPort:      hostPort,
+		ContainerPort: containerPort,
 	})
 }
 
@@ -689,53 +689,9 @@ func (s *GardenServer) handleNetOut(w http.ResponseWriter, r *http.Request) {
 		"handle": handle,
 	})
 
-	var request protocol.NetOutRequest
-	if !s.readRequest(&request, w, r) {
+	var rule garden.NetOutRule
+	if !s.readRequest(&rule, w, r) {
 		return
-	}
-
-	var protoc garden.Protocol
-	switch request.GetProtocol() {
-	case protocol.NetOutRequest_TCP:
-		protoc = garden.ProtocolTCP
-	case protocol.NetOutRequest_ICMP:
-		protoc = garden.ProtocolICMP
-	case protocol.NetOutRequest_UDP:
-		protoc = garden.ProtocolUDP
-	case protocol.NetOutRequest_ALL:
-		protoc = garden.ProtocolAll
-	default:
-		err := fmt.Errorf("invalid protocol: %d", request.GetProtocol())
-		s.writeError(w, err, hLog)
-		return
-	}
-
-	var networks []garden.IPRange
-	for _, n := range request.GetNetworks() {
-		networks = append(networks, garden.IPRange{
-			Start: net.ParseIP(n.GetStart()),
-			End:   net.ParseIP(n.GetEnd()),
-		})
-	}
-
-	var ports []garden.PortRange
-	for _, p := range request.GetPorts() {
-		ports = append(ports, garden.PortRange{
-			uint16(p.GetStart()),
-			uint16(p.GetEnd()),
-		})
-	}
-
-	var icmps *garden.ICMPControl
-	if i := request.GetIcmps(); i != nil {
-		icmps = &garden.ICMPControl{
-			Type: garden.ICMPType(i.GetType()),
-		}
-
-		if gc := i.GetCode(); gc != -1 {
-			c := uint8(gc)
-			icmps.Code = (*garden.ICMPCode)(&c)
-		}
 	}
 
 	container, err := s.backend.Lookup(handle)
@@ -746,14 +702,6 @@ func (s *GardenServer) handleNetOut(w http.ResponseWriter, r *http.Request) {
 
 	s.bomberman.Pause(container.Handle())
 	defer s.bomberman.Unpause(container.Handle())
-
-	rule := garden.NetOutRule{
-		Protocol: protoc,
-		Networks: networks,
-		Ports:    ports,
-		ICMPs:    icmps,
-		Log:      request.GetLog(),
-	}
 
 	hLog.Debug("allowing-out", lager.Data{
 		"rule": rule,
@@ -770,7 +718,7 @@ func (s *GardenServer) handleNetOut(w http.ResponseWriter, r *http.Request) {
 		"rule": rule,
 	})
 
-	s.writeResponse(w, &protocol.NetOutResponse{})
+	s.writeSuccess(w)
 }
 
 func (s *GardenServer) handleGetProperty(w http.ResponseWriter, r *http.Request) {

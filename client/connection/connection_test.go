@@ -155,15 +155,7 @@ var _ = Describe("Connection", func() {
 			server.AppendHandlers(
 				ghttp.CombineHandlers(
 					ghttp.VerifyRequest("POST", "/containers"),
-					func(resp http.ResponseWriter, req *http.Request) {
-						defer GinkgoRecover()
-
-						decoder := json.NewDecoder(req.Body)
-						var received garden.ContainerSpec
-						decoder.Decode(&received)
-
-						Ω(received).Should(Equal(spec))
-					},
+					verifyRequestBody(spec),
 					ghttp.RespondWith(200, marshalProto(&struct{ Handle string }{"foohandle"}))))
 		})
 
@@ -504,14 +496,14 @@ var _ = Describe("Connection", func() {
 			server.AppendHandlers(
 				ghttp.CombineHandlers(
 					ghttp.VerifyRequest("POST", "/containers/foo-handle/net/in"),
-					verifyProtoBody(&protocol.NetInRequest{
-						Handle:        proto.String("foo-handle"),
-						HostPort:      proto.Uint32(8080),
-						ContainerPort: proto.Uint32(8081),
+					verifyRequestBody(map[string]interface{}{
+						"handle":         "foo-handle",
+						"host_port":      8080,
+						"container_port": 8081,
 					}),
-					ghttp.RespondWith(200, marshalProto(&protocol.NetInResponse{
-						HostPort:      proto.Uint32(1234),
-						ContainerPort: proto.Uint32(1235),
+					ghttp.RespondWith(200, marshalProto(map[string]interface{}{
+						"host_port":      1234,
+						"container_port": 1235,
 					}))))
 		})
 
@@ -525,167 +517,35 @@ var _ = Describe("Connection", func() {
 
 	Describe("NetOut", func() {
 		var (
-			handle           string
-			expectedProtocol protocol.NetOutRequest_Protocol
-			expectedNetworks []*protocol.NetOutRequest_IPRange
-			expectedPorts    []*protocol.NetOutRequest_PortRange
-			expectedICMPs    *protocol.NetOutRequest_ICMPControl
-			expectedLog      bool
+			rule   garden.NetOutRule
+			handle string
 		)
+
+		BeforeEach(func() {
+			handle = "foo-handle"
+		})
 
 		JustBeforeEach(func() {
 			server.AppendHandlers(
 				ghttp.CombineHandlers(
 					ghttp.VerifyRequest("POST", fmt.Sprintf("/containers/%s/net/out", handle)),
-					verifyProtoBody(&protocol.NetOutRequest{
-						Handle:   proto.String(handle),
-						Networks: expectedNetworks,
-						Ports:    expectedPorts,
-						Protocol: &expectedProtocol,
-						Icmps:    expectedICMPs,
-						Log:      proto.Bool(expectedLog),
-					}),
-					ghttp.RespondWith(200, marshalProto(&protocol.NetOutResponse{}))))
+					verifyRequestBody(rule),
+					ghttp.RespondWith(200, "{}")))
 		})
 
-		BeforeEach(func() {
-			expectedNetworks = nil
-			expectedPorts = nil
-			expectedICMPs = nil
-			expectedLog = false
-			expectedProtocol = protocol.NetOutRequest_ALL
-		})
-
-		Context("when a zero-value NetOutRule is passed", func() {
-			It("should send a nil network, portrange and icmpcontrol, logging false and TCP protocol", func() {
-				Ω(connection.NetOut(handle, garden.NetOutRule{})).Should(Succeed())
-			})
-		})
-
-		Context("when the network is zero-length", func() {
+		Context("when a NetOutRule is passed", func() {
 			BeforeEach(func() {
-				expectedNetworks = nil
-			})
-
-			It("should not send any networks", func() {
-				Ω(connection.NetOut(handle, garden.NetOutRule{
-					Networks: []garden.IPRange{},
-				})).Should(Succeed())
-			})
-		})
-
-		Context("when Network is not nil", func() {
-			BeforeEach(func() {
-				expectedNetworks = []*protocol.NetOutRequest_IPRange{
-					{
-						Start: proto.String("1.2.3.4"),
-						End:   proto.String("4.3.2.1"),
-					}, {
-						Start: proto.String("9.8.7.6"),
-						End:   proto.String("6.7.8.9"),
-					},
-				}
-			})
-
-			It("should send the networks IPs as strings", func() {
-				Ω(connection.NetOut(handle, garden.NetOutRule{
-					Networks: []garden.IPRange{
-						{
-							Start: net.ParseIP("1.2.3.4"),
-							End:   net.ParseIP("4.3.2.1"),
-						},
-						{
-							Start: net.ParseIP("9.8.7.6"),
-							End:   net.ParseIP("6.7.8.9"),
-						},
-					},
-				})).Should(Succeed())
-			})
-		})
-
-		Context("when Protocol is supplied", func() {
-			BeforeEach(func() {
-				expectedProtocol = protocol.NetOutRequest_ICMP
-			})
-
-			It("sends the protocol", func() {
-				Ω(connection.NetOut(handle, garden.NetOutRule{
+				rule = garden.NetOutRule{
 					Protocol: garden.ProtocolICMP,
-				})).Should(Succeed())
-			})
-
-			Context("but the passed protocol is unknown", func() {
-				It("returns an error", func() {
-					Ω(connection.NetOut(handle, garden.NetOutRule{
-						Protocol: garden.Protocol(44),
-					})).Should(MatchError("invalid protocol"))
-				})
-			})
-		})
-
-		Context("when Ports is not nil", func() {
-			BeforeEach(func() {
-				expectedPorts = []*protocol.NetOutRequest_PortRange{
-					{
-						Start: proto.Uint32(1),
-						End:   proto.Uint32(99),
-					},
-					{
-						Start: proto.Uint32(101),
-						End:   proto.Uint32(102),
-					},
+					Networks: []garden.IPRange{garden.IPRangeFromIP(net.ParseIP("1.2.3.4"))},
+					Ports:    []garden.PortRange{garden.PortRangeFromPort(2), garden.PortRangeFromPort(4)},
+					ICMPs:    &garden.ICMPControl{Type: 3, Code: garden.ICMPControlCode(3)},
+					Log:      true,
 				}
 			})
 
-			It("should send the ports as uint32s", func() {
-				Ω(connection.NetOut(handle, garden.NetOutRule{
-					Ports: []garden.PortRange{
-						{
-							Start: 1,
-							End:   99,
-						},
-						{
-							Start: 101,
-							End:   102,
-						},
-					},
-				})).Should(Succeed())
-			})
-		})
-
-		Context("when ICMPs is not nil", func() {
-			Context("and code is nil", func() {
-				BeforeEach(func() {
-					expectedICMPs = &protocol.NetOutRequest_ICMPControl{
-						Type: proto.Uint32(2),
-						Code: nil,
-					}
-				})
-
-				It("sends the type, and a nil code", func() {
-					Ω(connection.NetOut(handle, garden.NetOutRule{
-						ICMPs: &garden.ICMPControl{Type: 2},
-					})).Should(Succeed())
-				})
-			})
-
-			Context("and code is not nil", func() {
-				BeforeEach(func() {
-					expectedICMPs = &protocol.NetOutRequest_ICMPControl{
-						Type: proto.Uint32(2),
-						Code: proto.Int32(42),
-					}
-				})
-
-				It("sends the type and code", func() {
-					var code garden.ICMPCode = 42
-					Ω(connection.NetOut(handle, garden.NetOutRule{
-						ICMPs: &garden.ICMPControl{
-							Type: 2,
-							Code: &code,
-						},
-					})).Should(Succeed())
-				})
+			It("should send the rule over the wire", func() {
+				Ω(connection.NetOut(handle, rule)).Should(Succeed())
 			})
 		})
 	})
@@ -1536,6 +1396,27 @@ var _ = Describe("Connection", func() {
 		})
 	})
 })
+
+func verifyRequestBody(expectedBodyMessages ...interface{}) http.HandlerFunc {
+	return func(resp http.ResponseWriter, req *http.Request) {
+		defer GinkgoRecover()
+
+		decoder := json.NewDecoder(req.Body)
+
+		for _, msg := range expectedBodyMessages {
+			received := make(map[string]interface{})
+			err := decoder.Decode(&received)
+			Ω(err).ShouldNot(HaveOccurred())
+
+			encodedMsg, err := json.Marshal(msg)
+			Ω(err).ShouldNot(HaveOccurred())
+			var roundtrippedMsg map[string]interface{}
+			json.Unmarshal(encodedMsg, &roundtrippedMsg)
+
+			Ω(received).Should(Equal(roundtrippedMsg))
+		}
+	}
+}
 
 func verifyProtoBody(expectedBodyMessages ...proto.Message) http.HandlerFunc {
 	return func(resp http.ResponseWriter, req *http.Request) {
