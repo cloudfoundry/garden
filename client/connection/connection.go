@@ -618,101 +618,14 @@ func (c *connection) List(filterProperties garden.Properties) ([]string, error) 
 }
 
 func (c *connection) Info(handle string) (garden.ContainerInfo, error) {
-	res := &protocol.InfoResponse{}
+	res := garden.ContainerInfo{}
 
-	err := c.do(routes.Info, nil, res, rata.Params{"handle": handle}, nil)
+	err := c.do(routes.Info, nil, &res, rata.Params{"handle": handle}, nil)
 	if err != nil {
 		return garden.ContainerInfo{}, err
 	}
 
-	processIDs := []uint32{}
-	for _, pid := range res.GetProcessIds() {
-		processIDs = append(processIDs, uint32(pid))
-	}
-
-	properties := garden.Properties{}
-	for _, prop := range res.GetProperties() {
-		properties[prop.GetKey()] = prop.GetValue()
-	}
-
-	mappedPorts := []garden.PortMapping{}
-	for _, mapping := range res.GetMappedPorts() {
-		mappedPorts = append(mappedPorts, garden.PortMapping{
-			HostPort:      mapping.GetHostPort(),
-			ContainerPort: mapping.GetContainerPort(),
-		})
-	}
-
-	bandwidthStat := res.GetBandwidthStat()
-	cpuStat := res.GetCpuStat()
-	diskStat := res.GetDiskStat()
-	memoryStat := res.GetMemoryStat()
-
-	return garden.ContainerInfo{
-		State:  res.GetState(),
-		Events: res.GetEvents(),
-
-		HostIP:      res.GetHostIp(),
-		ContainerIP: res.GetContainerIp(),
-		ExternalIP:  res.GetExternalIp(),
-
-		ContainerPath: res.GetContainerPath(),
-
-		ProcessIDs: processIDs,
-
-		Properties: properties,
-
-		BandwidthStat: garden.ContainerBandwidthStat{
-			InRate:   bandwidthStat.GetInRate(),
-			InBurst:  bandwidthStat.GetInBurst(),
-			OutRate:  bandwidthStat.GetOutRate(),
-			OutBurst: bandwidthStat.GetOutBurst(),
-		},
-
-		CPUStat: garden.ContainerCPUStat{
-			Usage:  cpuStat.GetUsage(),
-			User:   cpuStat.GetUser(),
-			System: cpuStat.GetSystem(),
-		},
-
-		DiskStat: garden.ContainerDiskStat{
-			BytesUsed:  diskStat.GetBytesUsed(),
-			InodesUsed: diskStat.GetInodesUsed(),
-		},
-
-		MemoryStat: garden.ContainerMemoryStat{
-			Cache:                   memoryStat.GetCache(),
-			Rss:                     memoryStat.GetRss(),
-			MappedFile:              memoryStat.GetMappedFile(),
-			Pgpgin:                  memoryStat.GetPgpgin(),
-			Pgpgout:                 memoryStat.GetPgpgout(),
-			Swap:                    memoryStat.GetSwap(),
-			Pgfault:                 memoryStat.GetPgfault(),
-			Pgmajfault:              memoryStat.GetPgmajfault(),
-			InactiveAnon:            memoryStat.GetInactiveAnon(),
-			ActiveAnon:              memoryStat.GetActiveAnon(),
-			InactiveFile:            memoryStat.GetInactiveFile(),
-			ActiveFile:              memoryStat.GetActiveFile(),
-			Unevictable:             memoryStat.GetUnevictable(),
-			HierarchicalMemoryLimit: memoryStat.GetHierarchicalMemoryLimit(),
-			HierarchicalMemswLimit:  memoryStat.GetHierarchicalMemswLimit(),
-			TotalCache:              memoryStat.GetTotalCache(),
-			TotalRss:                memoryStat.GetTotalRss(),
-			TotalMappedFile:         memoryStat.GetTotalMappedFile(),
-			TotalPgpgin:             memoryStat.GetTotalPgpgin(),
-			TotalPgpgout:            memoryStat.GetTotalPgpgout(),
-			TotalSwap:               memoryStat.GetTotalSwap(),
-			TotalPgfault:            memoryStat.GetTotalPgfault(),
-			TotalPgmajfault:         memoryStat.GetTotalPgmajfault(),
-			TotalInactiveAnon:       memoryStat.GetTotalInactiveAnon(),
-			TotalActiveAnon:         memoryStat.GetTotalActiveAnon(),
-			TotalInactiveFile:       memoryStat.GetTotalInactiveFile(),
-			TotalActiveFile:         memoryStat.GetTotalActiveFile(),
-			TotalUnevictable:        memoryStat.GetTotalUnevictable(),
-		},
-
-		MappedPorts: mappedPorts,
-	}, nil
+	return res, nil
 }
 
 func convertEnvironmentVariables(environmentVariables []string) []*protocol.EnvironmentVariable {

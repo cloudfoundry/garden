@@ -35,9 +35,6 @@ func TypeForMessage(msg proto.Message) Message_Type {
 	case *ErrorResponse:
 		return Message_Error
 
-	case *InfoRequest, *InfoResponse:
-		return Message_Info
-
 	case *LimitMemoryRequest, *LimitMemoryResponse:
 		return Message_LimitMemory
 	case *LimitDiskRequest, *LimitDiskResponse:
@@ -54,8 +51,6 @@ func TypeForMessage(msg proto.Message) Message_Type {
 
 func RequestMessageForType(t Message_Type) proto.Message {
 	switch t {
-	case Message_Info:
-		return &InfoRequest{}
 
 	case Message_LimitMemory:
 		return &LimitMemoryRequest{}
@@ -73,8 +68,6 @@ func RequestMessageForType(t Message_Type) proto.Message {
 
 func ResponseMessageForType(t Message_Type) proto.Message {
 	switch t {
-	case Message_Info:
-		return &InfoResponse{}
 
 	case Message_LimitMemory:
 		return &LimitMemoryResponse{}

@@ -155,7 +155,7 @@ var _ = Describe("Connection", func() {
 			server.AppendHandlers(
 				ghttp.CombineHandlers(
 					ghttp.VerifyRequest("POST", "/containers"),
-					verifyRequestBody(spec),
+					verifyRequestBody(&spec, &garden.ContainerSpec{}),
 					ghttp.RespondWith(200, marshalProto(&struct{ Handle string }{"foohandle"}))))
 		})
 
@@ -244,7 +244,7 @@ var _ = Describe("Connection", func() {
 					ghttp.VerifyRequest("PUT", "/containers/foo/stop"),
 					verifyRequestBody(map[string]interface{}{
 						"kill": true,
-					}),
+					}, make(map[string]interface{})),
 					ghttp.RespondWith(200, "{}")))
 		})
 
@@ -497,9 +497,9 @@ var _ = Describe("Connection", func() {
 					ghttp.VerifyRequest("POST", "/containers/foo-handle/net/in"),
 					verifyRequestBody(map[string]interface{}{
 						"handle":         "foo-handle",
-						"host_port":      8080,
-						"container_port": 8081,
-					}),
+						"host_port":      float64(8080),
+						"container_port": float64(8081),
+					}, make(map[string]interface{})),
 					ghttp.RespondWith(200, marshalProto(map[string]interface{}{
 						"host_port":      1234,
 						"container_port": 1235,
@@ -528,7 +528,7 @@ var _ = Describe("Connection", func() {
 			server.AppendHandlers(
 				ghttp.CombineHandlers(
 					ghttp.VerifyRequest("POST", fmt.Sprintf("/containers/%s/net/out", handle)),
-					verifyRequestBody(rule),
+					verifyRequestBody(&rule, &garden.NetOutRule{}),
 					ghttp.RespondWith(200, "{}")))
 		})
 
@@ -570,152 +570,87 @@ var _ = Describe("Connection", func() {
 	})
 
 	Describe("Getting container info", func() {
-		BeforeEach(func() {
+		var infoResponse garden.ContainerInfo
+
+		JustBeforeEach(func() {
+			infoResponse = garden.ContainerInfo{
+				State: "chilling out",
+				Events: []string{
+					"maxing",
+					"relaxing all cool",
+				},
+				HostIP:        "host-ip",
+				ContainerIP:   "container-ip",
+				ContainerPath: "container-path",
+				ProcessIDs:    []uint32{1, 2},
+				Properties: garden.Properties{
+					"prop-key": "prop-value",
+				},
+				MemoryStat: garden.ContainerMemoryStat{
+					Cache:                   1,
+					Rss:                     2,
+					MappedFile:              3,
+					Pgpgin:                  4,
+					Pgpgout:                 5,
+					Swap:                    6,
+					Pgfault:                 7,
+					Pgmajfault:              8,
+					InactiveAnon:            9,
+					ActiveAnon:              10,
+					InactiveFile:            11,
+					ActiveFile:              12,
+					Unevictable:             13,
+					HierarchicalMemoryLimit: 14,
+					HierarchicalMemswLimit:  15,
+					TotalCache:              16,
+					TotalRss:                17,
+					TotalMappedFile:         18,
+					TotalPgpgin:             19,
+					TotalPgpgout:            20,
+					TotalSwap:               21,
+					TotalPgfault:            22,
+					TotalPgmajfault:         23,
+					TotalInactiveAnon:       24,
+					TotalActiveAnon:         25,
+					TotalInactiveFile:       26,
+					TotalActiveFile:         27,
+					TotalUnevictable:        28,
+				},
+				CPUStat: garden.ContainerCPUStat{
+					Usage:  1,
+					User:   2,
+					System: 3,
+				},
+
+				DiskStat: garden.ContainerDiskStat{
+					BytesUsed:  1,
+					InodesUsed: 2,
+				},
+
+				BandwidthStat: garden.ContainerBandwidthStat{
+					InRate:   1,
+					InBurst:  2,
+					OutRate:  3,
+					OutBurst: 4,
+				},
+
+				MappedPorts: []garden.PortMapping{
+					{HostPort: 1234, ContainerPort: 5678},
+					{HostPort: 1235, ContainerPort: 5679},
+				},
+			}
+
 			server.AppendHandlers(
 				ghttp.CombineHandlers(
 					ghttp.VerifyRequest("GET", "/containers/some-handle/info"),
-					ghttp.RespondWith(200, marshalProto(&protocol.InfoResponse{
-						State:         proto.String("chilling out"),
-						Events:        []string{"maxing", "relaxing all cool"},
-						HostIp:        proto.String("host-ip"),
-						ContainerIp:   proto.String("container-ip"),
-						ContainerPath: proto.String("container-path"), ProcessIds: []uint64{1, 2}, Properties: []*protocol.Property{
-							{
-								Key:   proto.String("prop-key"),
-								Value: proto.String("prop-value"),
-							},
-						},
-
-						MemoryStat: &protocol.InfoResponse_MemoryStat{
-							Cache:                   proto.Uint64(1),
-							Rss:                     proto.Uint64(2),
-							MappedFile:              proto.Uint64(3),
-							Pgpgin:                  proto.Uint64(4),
-							Pgpgout:                 proto.Uint64(5),
-							Swap:                    proto.Uint64(6),
-							Pgfault:                 proto.Uint64(7),
-							Pgmajfault:              proto.Uint64(8),
-							InactiveAnon:            proto.Uint64(9),
-							ActiveAnon:              proto.Uint64(10),
-							InactiveFile:            proto.Uint64(11),
-							ActiveFile:              proto.Uint64(12),
-							Unevictable:             proto.Uint64(13),
-							HierarchicalMemoryLimit: proto.Uint64(14),
-							HierarchicalMemswLimit:  proto.Uint64(15),
-							TotalCache:              proto.Uint64(16),
-							TotalRss:                proto.Uint64(17),
-							TotalMappedFile:         proto.Uint64(18),
-							TotalPgpgin:             proto.Uint64(19),
-							TotalPgpgout:            proto.Uint64(20),
-							TotalSwap:               proto.Uint64(21),
-							TotalPgfault:            proto.Uint64(22),
-							TotalPgmajfault:         proto.Uint64(23),
-							TotalInactiveAnon:       proto.Uint64(24),
-							TotalActiveAnon:         proto.Uint64(25),
-							TotalInactiveFile:       proto.Uint64(26),
-							TotalActiveFile:         proto.Uint64(27),
-							TotalUnevictable:        proto.Uint64(28),
-						},
-
-						CpuStat: &protocol.InfoResponse_CpuStat{
-							Usage:  proto.Uint64(1),
-							User:   proto.Uint64(2),
-							System: proto.Uint64(3),
-						},
-
-						DiskStat: &protocol.InfoResponse_DiskStat{
-							BytesUsed:  proto.Uint64(1),
-							InodesUsed: proto.Uint64(2),
-						},
-
-						BandwidthStat: &protocol.InfoResponse_BandwidthStat{
-							InRate:   proto.Uint64(1),
-							InBurst:  proto.Uint64(2),
-							OutRate:  proto.Uint64(3),
-							OutBurst: proto.Uint64(4),
-						},
-
-						MappedPorts: []*protocol.InfoResponse_PortMapping{
-							&protocol.InfoResponse_PortMapping{
-								HostPort:      proto.Uint32(1234),
-								ContainerPort: proto.Uint32(5678),
-							},
-							&protocol.InfoResponse_PortMapping{
-								HostPort:      proto.Uint32(1235),
-								ContainerPort: proto.Uint32(5679),
-							},
-						},
-					}))))
+					ghttp.RespondWith(200, marshalProto(infoResponse))))
 		})
 
 		It("should return the container's info", func() {
 			info, err := connection.Info("some-handle")
 			Ω(err).ShouldNot(HaveOccurred())
 
-			Ω(info.State).Should(Equal("chilling out"))
-			Ω(info.Events).Should(Equal([]string{"maxing", "relaxing all cool"}))
-			Ω(info.HostIP).Should(Equal("host-ip"))
-			Ω(info.ContainerIP).Should(Equal("container-ip"))
-			Ω(info.ContainerPath).Should(Equal("container-path"))
-			Ω(info.ProcessIDs).Should(Equal([]uint32{1, 2}))
-
-			Ω(info.Properties).Should(Equal(garden.Properties{
-				"prop-key": "prop-value",
-			}))
-
-			Ω(info.MemoryStat).Should(Equal(garden.ContainerMemoryStat{
-				Cache:                   1,
-				Rss:                     2,
-				MappedFile:              3,
-				Pgpgin:                  4,
-				Pgpgout:                 5,
-				Swap:                    6,
-				Pgfault:                 7,
-				Pgmajfault:              8,
-				InactiveAnon:            9,
-				ActiveAnon:              10,
-				InactiveFile:            11,
-				ActiveFile:              12,
-				Unevictable:             13,
-				HierarchicalMemoryLimit: 14,
-				HierarchicalMemswLimit:  15,
-				TotalCache:              16,
-				TotalRss:                17,
-				TotalMappedFile:         18,
-				TotalPgpgin:             19,
-				TotalPgpgout:            20,
-				TotalSwap:               21,
-				TotalPgfault:            22,
-				TotalPgmajfault:         23,
-				TotalInactiveAnon:       24,
-				TotalActiveAnon:         25,
-				TotalInactiveFile:       26,
-				TotalActiveFile:         27,
-				TotalUnevictable:        28,
-			}))
-
-			Ω(info.CPUStat).Should(Equal(garden.ContainerCPUStat{
-				Usage:  1,
-				User:   2,
-				System: 3,
-			}))
-
-			Ω(info.DiskStat).Should(Equal(garden.ContainerDiskStat{
-				BytesUsed:  1,
-				InodesUsed: 2,
-			}))
-
-			Ω(info.BandwidthStat).Should(Equal(garden.ContainerBandwidthStat{
-				InRate:   1,
-				InBurst:  2,
-				OutRate:  3,
-				OutBurst: 4,
-			}))
-
-			Ω(info.MappedPorts).Should(Equal([]garden.PortMapping{
-				{HostPort: 1234, ContainerPort: 5678},
-				{HostPort: 1235, ContainerPort: 5679},
-			}))
+			Ω(info).Should(Equal(infoResponse))
 		})
 	})
 
@@ -1396,24 +1331,17 @@ var _ = Describe("Connection", func() {
 	})
 })
 
-func verifyRequestBody(expectedBodyMessages ...interface{}) http.HandlerFunc {
+func verifyRequestBody(expectedMessage interface{}, emptyType interface{}) http.HandlerFunc {
 	return func(resp http.ResponseWriter, req *http.Request) {
 		defer GinkgoRecover()
 
 		decoder := json.NewDecoder(req.Body)
 
-		for _, msg := range expectedBodyMessages {
-			received := make(map[string]interface{})
-			err := decoder.Decode(&received)
-			Ω(err).ShouldNot(HaveOccurred())
+		received := emptyType
+		err := decoder.Decode(&received)
+		Ω(err).ShouldNot(HaveOccurred())
 
-			encodedMsg, err := json.Marshal(msg)
-			Ω(err).ShouldNot(HaveOccurred())
-			var roundtrippedMsg map[string]interface{}
-			json.Unmarshal(encodedMsg, &roundtrippedMsg)
-
-			Ω(received).Should(Equal(roundtrippedMsg))
-		}
+		Ω(received).Should(Equal(expectedMessage))
 	}
 }
 
