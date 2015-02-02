@@ -35,8 +35,6 @@ func TypeForMessage(msg proto.Message) Message_Type {
 	case *ErrorResponse:
 		return Message_Error
 
-	case *StopRequest, *StopResponse:
-		return Message_Stop
 	case *InfoRequest, *InfoResponse:
 		return Message_Info
 
@@ -56,8 +54,6 @@ func TypeForMessage(msg proto.Message) Message_Type {
 
 func RequestMessageForType(t Message_Type) proto.Message {
 	switch t {
-	case Message_Stop:
-		return &StopRequest{}
 	case Message_Info:
 		return &InfoRequest{}
 
@@ -77,8 +73,6 @@ func RequestMessageForType(t Message_Type) proto.Message {
 
 func ResponseMessageForType(t Message_Type) proto.Message {
 	switch t {
-	case Message_Stop:
-		return &StopResponse{}
 	case Message_Info:
 		return &InfoResponse{}
 

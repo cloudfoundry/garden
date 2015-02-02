@@ -141,11 +141,10 @@ func (c *connection) Create(spec garden.ContainerSpec) (string, error) {
 func (c *connection) Stop(handle string, kill bool) error {
 	return c.do(
 		routes.Stop,
-		&protocol.StopRequest{
-			Handle: proto.String(handle),
-			Kill:   proto.Bool(kill),
+		map[string]bool{
+			"kill": kill,
 		},
-		&protocol.StopResponse{},
+		&struct{}{},
 		rata.Params{
 			"handle": handle,
 		},

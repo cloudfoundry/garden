@@ -152,12 +152,12 @@ func (s *GardenServer) handleStop(w http.ResponseWriter, r *http.Request) {
 		"handle": handle,
 	})
 
-	var request protocol.StopRequest
+	var request struct {
+		Kill bool `json:"kill"`
+	}
 	if !s.readRequest(&request, w, r) {
 		return
 	}
-
-	kill := request.GetKill()
 
 	container, err := s.backend.Lookup(handle)
 	if err != nil {
@@ -170,7 +170,7 @@ func (s *GardenServer) handleStop(w http.ResponseWriter, r *http.Request) {
 
 	hLog.Debug("stopping")
 
-	err = container.Stop(kill)
+	err = container.Stop(request.Kill)
 	if err != nil {
 		s.writeError(w, err, hLog)
 		return
@@ -178,7 +178,7 @@ func (s *GardenServer) handleStop(w http.ResponseWriter, r *http.Request) {
 
 	hLog.Info("stopped")
 
-	s.writeResponse(w, &protocol.StopResponse{})
+	s.writeSuccess(w)
 }
 
 func (s *GardenServer) handleStreamIn(w http.ResponseWriter, r *http.Request) {

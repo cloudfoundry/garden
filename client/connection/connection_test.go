@@ -242,11 +242,10 @@ var _ = Describe("Connection", func() {
 			server.AppendHandlers(
 				ghttp.CombineHandlers(
 					ghttp.VerifyRequest("PUT", "/containers/foo/stop"),
-					verifyProtoBody(&protocol.StopRequest{
-						Handle: proto.String("foo"),
-						Kill:   proto.Bool(true),
+					verifyRequestBody(map[string]interface{}{
+						"kill": true,
 					}),
-					ghttp.RespondWith(200, marshalProto(&protocol.StopResponse{}))))
+					ghttp.RespondWith(200, "{}")))
 		})
 
 		It("should stop the container", func() {
