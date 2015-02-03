@@ -8,7 +8,7 @@ import (
 	"sync"
 
 	"github.com/cloudfoundry-incubator/garden"
-	protocol "github.com/cloudfoundry-incubator/garden/protocol"
+	"github.com/cloudfoundry-incubator/garden/transport"
 )
 
 type process struct {
@@ -86,7 +86,7 @@ func (p *process) streamPayloads(decoder *json.Decoder, processIO garden.Process
 	}
 
 	for {
-		payload := &protocol.ProcessPayload{}
+		payload := &transport.ProcessPayload{}
 
 		err := decoder.Decode(payload)
 		if err != nil {
@@ -95,23 +95,27 @@ func (p *process) streamPayloads(decoder *json.Decoder, processIO garden.Process
 		}
 
 		if payload.Error != nil {
-			p.exited(0, fmt.Errorf("process error: %s", payload.GetError()))
+			p.exited(0, fmt.Errorf("process error: %s", *payload.Error))
 			break
 		}
 
 		if payload.ExitStatus != nil {
-			p.exited(int(payload.GetExitStatus()), nil)
+			p.exited(int(*payload.ExitStatus), nil)
 			break
 		}
 
-		switch payload.GetSource() {
-		case protocol.ProcessPayload_stdout:
+		if payload.Source == nil {
+			continue
+		}
+
+		switch *payload.Source {
+		case transport.Stdout:
 			if processIO.Stdout != nil {
-				processIO.Stdout.Write([]byte(payload.GetData()))
+				processIO.Stdout.Write([]byte(*payload.Data))
 			}
-		case protocol.ProcessPayload_stderr:
+		case transport.Stderr:
 			if processIO.Stderr != nil {
-				processIO.Stderr.Write([]byte(payload.GetData()))
+				processIO.Stderr.Write([]byte(*payload.Data))
 			}
 		}
 	}

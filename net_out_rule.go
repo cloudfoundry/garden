@@ -3,11 +3,20 @@ package garden
 import "net"
 
 type NetOutRule struct {
-	Protocol Protocol     // the protocol to be whitelisted; default TCP
-	Networks []IPRange    // a list of ranges of IP addresses to whitelist; Start to End inclusive; default all
-	Ports    []PortRange  // a list of ranges of ports to whitelist; Start to End inclusive; ignored if Protocol is ICMP; default all
-	ICMPs    *ICMPControl // specifying which ICMP codes to whitelist; ignored if Protocol is not ICMP; default all
-	Log      bool         // if true, logging is enabled; ignored if Protocol is not TCP or All; default false
+	// the protocol to be whitelisted; default TCP
+	Protocol Protocol `json:"protocol,omitempty"`
+
+	// a list of ranges of IP addresses to whitelist; Start to End inclusive; default all
+	Networks []IPRange `json:"networks,omitempty"`
+
+	// a list of ranges of ports to whitelist; Start to End inclusive; ignored if Protocol is ICMP; default all
+	Ports []PortRange `json:"ports,omitempty"`
+
+	// specifying which ICMP codes to whitelist; ignored if Protocol is not ICMP; default all
+	ICMPs *ICMPControl `json:"icmps,omitempty"`
+
+	// if true, logging is enabled; ignored if Protocol is not TCP or All; default false
+	Log bool `json:"log,omitempty"`
 }
 
 type Protocol uint8
@@ -20,21 +29,21 @@ const (
 )
 
 type IPRange struct {
-	Start net.IP
-	End   net.IP
+	Start net.IP `json:"start,omitempty"`
+	End   net.IP `json:"end,omitempty"`
 }
 
 type PortRange struct {
-	Start uint16
-	End   uint16
+	Start uint16 `json:"start,omitempty"`
+	End   uint16 `json:"end,omitempty"`
 }
 
 type ICMPType uint8
 type ICMPCode uint8
 
 type ICMPControl struct {
-	Type ICMPType
-	Code *ICMPCode
+	Type ICMPType  `json:"type,omitempty"`
+	Code *ICMPCode `json:"code,omitempty"`
 }
 
 // IPRangeFromIP creates an IPRange containing a single IP

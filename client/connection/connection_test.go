@@ -19,7 +19,6 @@ import (
 
 	"github.com/cloudfoundry-incubator/garden"
 	. "github.com/cloudfoundry-incubator/garden/client/connection"
-	protocol "github.com/cloudfoundry-incubator/garden/protocol"
 	"github.com/cloudfoundry-incubator/garden/transport"
 )
 
@@ -82,12 +81,12 @@ var _ = Describe("Connection", func() {
 				server.AppendHandlers(
 					ghttp.CombineHandlers(
 						ghttp.VerifyRequest("GET", "/ping"),
-						ghttp.RespondWith(200, marshalProto(&protocol.PingResponse{})),
+						ghttp.RespondWith(200, "{}"),
 					),
 				)
 			})
 
-			It("should return the server's capacity", func() {
+			It("should ping the server", func() {
 				err := connection.Ping()
 				Ω(err).ShouldNot(HaveOccurred())
 			})
@@ -116,10 +115,10 @@ var _ = Describe("Connection", func() {
 				server.AppendHandlers(
 					ghttp.CombineHandlers(
 						ghttp.VerifyRequest("GET", "/capacity"),
-						ghttp.RespondWith(200, marshalProto(&protocol.CapacityResponse{
-							MemoryInBytes: proto.Uint64(1111),
-							DiskInBytes:   proto.Uint64(2222),
-							MaxContainers: proto.Uint64(42),
+						ghttp.RespondWith(200, marshalProto(&garden.Capacity{
+							MemoryInBytes: 1111,
+							DiskInBytes:   2222,
+							MaxContainers: 42,
 						}))))
 			})
 
@@ -149,81 +148,61 @@ var _ = Describe("Connection", func() {
 	})
 
 	Describe("Creating", func() {
-		BeforeEach(func() {
-			ro := protocol.CreateRequest_BindMount_RO
-			rw := protocol.CreateRequest_BindMount_RW
-			hostOrigin := protocol.CreateRequest_BindMount_Host
-			containerOrigin := protocol.CreateRequest_BindMount_Container
+		var spec garden.ContainerSpec
 
+		JustBeforeEach(func() {
 			server.AppendHandlers(
 				ghttp.CombineHandlers(
 					ghttp.VerifyRequest("POST", "/containers"),
-					verifyProtoBody(&protocol.CreateRequest{
-						Handle:     proto.String("some-handle"),
-						GraceTime:  proto.Uint32(10),
-						Rootfs:     proto.String("some-rootfs-path"),
-						Network:    proto.String("some-network"),
-						Privileged: proto.Bool(false),
-						BindMounts: []*protocol.CreateRequest_BindMount{
-							{
-								SrcPath: proto.String("/src-a"),
-								DstPath: proto.String("/dst-a"),
-								Mode:    &ro,
-								Origin:  &hostOrigin,
-							},
-							{
-								SrcPath: proto.String("/src-b"),
-								DstPath: proto.String("/dst-b"),
-								Mode:    &rw,
-								Origin:  &containerOrigin,
-							},
-						},
-						Properties: []*protocol.Property{
-							{
-								Key:   proto.String("foo"),
-								Value: proto.String("bar"),
-							},
-						},
-						Env: []*protocol.EnvironmentVariable{
-							{
-								Key:   proto.String("env1"),
-								Value: proto.String("env1Value1"),
-							},
-						},
-					}),
-					ghttp.RespondWith(200, marshalProto(&protocol.CreateResponse{
-						Handle: proto.String("foohandle"),
-					}))))
+					verifyRequestBody(&spec, &garden.ContainerSpec{}),
+					ghttp.RespondWith(200, marshalProto(&struct{ Handle string }{"foohandle"}))))
 		})
 
-		It("should create a container", func() {
-			handle, err := connection.Create(garden.ContainerSpec{
-				Handle:     "some-handle",
-				GraceTime:  10 * time.Second,
-				RootFSPath: "some-rootfs-path",
-				Network:    "some-network",
-				BindMounts: []garden.BindMount{
-					{
-						SrcPath: "/src-a",
-						DstPath: "/dst-a",
-						Mode:    garden.BindMountModeRO,
-						Origin:  garden.BindMountOriginHost,
-					},
-					{
-						SrcPath: "/src-b",
-						DstPath: "/dst-b",
-						Mode:    garden.BindMountModeRW,
-						Origin:  garden.BindMountOriginContainer,
-					},
-				},
-				Properties: map[string]string{
-					"foo": "bar",
-				},
-				Env: []string{"env1=env1Value1"},
+		Context("with an empty ContainerSpec", func() {
+			BeforeEach(func() {
+				spec = garden.ContainerSpec{}
 			})
 
-			Ω(err).ShouldNot(HaveOccurred())
-			Ω(handle).Should(Equal("foohandle"))
+			It("sends the ContainerSpec over the connection as JSON", func() {
+				handle, err := connection.Create(spec)
+				Ω(err).ShouldNot(HaveOccurred())
+				Ω(handle).Should(Equal("foohandle"))
+			})
+		})
+
+		Context("with a fully specified ContainerSpec", func() {
+			BeforeEach(func() {
+				spec = garden.ContainerSpec{
+					Handle:     "some-handle",
+					GraceTime:  10 * time.Second,
+					RootFSPath: "some-rootfs-path",
+					Network:    "some-network",
+					BindMounts: []garden.BindMount{
+						{
+							SrcPath: "/src-a",
+							DstPath: "/dst-a",
+							Mode:    garden.BindMountModeRO,
+							Origin:  garden.BindMountOriginHost,
+						},
+						{
+							SrcPath: "/src-b",
+							DstPath: "/dst-b",
+							Mode:    garden.BindMountModeRW,
+							Origin:  garden.BindMountOriginContainer,
+						},
+					},
+					Properties: map[string]string{
+						"foo": "bar",
+					},
+					Env: []string{"env1=env1Value1"},
+				}
+			})
+
+			It("sends the ContainerSpec over the connection as JSON", func() {
+				handle, err := connection.Create(spec)
+				Ω(err).ShouldNot(HaveOccurred())
+				Ω(handle).Should(Equal("foohandle"))
+			})
 		})
 	})
 
@@ -233,7 +212,7 @@ var _ = Describe("Connection", func() {
 				server.AppendHandlers(
 					ghttp.CombineHandlers(
 						ghttp.VerifyRequest("DELETE", "/containers/foo"),
-						ghttp.RespondWith(200, marshalProto(&protocol.DestroyResponse{}))))
+						ghttp.RespondWith(200, "{}")))
 			})
 
 			It("should stop the container", func() {
@@ -262,11 +241,10 @@ var _ = Describe("Connection", func() {
 			server.AppendHandlers(
 				ghttp.CombineHandlers(
 					ghttp.VerifyRequest("PUT", "/containers/foo/stop"),
-					verifyProtoBody(&protocol.StopRequest{
-						Handle: proto.String("foo"),
-						Kill:   proto.Bool(true),
-					}),
-					ghttp.RespondWith(200, marshalProto(&protocol.StopResponse{}))))
+					verifyRequestBody(map[string]interface{}{
+						"kill": true,
+					}, make(map[string]interface{})),
+					ghttp.RespondWith(200, "{}")))
 		})
 
 		It("should stop the container", func() {
@@ -281,12 +259,11 @@ var _ = Describe("Connection", func() {
 				server.AppendHandlers(
 					ghttp.CombineHandlers(
 						ghttp.VerifyRequest("PUT", "/containers/foo/limits/memory"),
-						verifyProtoBody(&protocol.LimitMemoryRequest{
-							Handle:       proto.String("foo"),
-							LimitInBytes: proto.Uint64(42),
-						}),
-						ghttp.RespondWith(200, marshalProto(&protocol.LimitMemoryResponse{
-							LimitInBytes: proto.Uint64(40),
+						verifyRequestBody(&garden.MemoryLimits{
+							LimitInBytes: 42,
+						}, &garden.MemoryLimits{}),
+						ghttp.RespondWith(200, marshalProto(&garden.MemoryLimits{
+							LimitInBytes: 40,
 						})),
 					),
 				)
@@ -307,9 +284,9 @@ var _ = Describe("Connection", func() {
 				server.AppendHandlers(
 					ghttp.CombineHandlers(
 						ghttp.VerifyRequest("GET", "/containers/foo/limits/memory"),
-						ghttp.RespondWith(200, marshalProto(&protocol.LimitMemoryResponse{
-							LimitInBytes: proto.Uint64(40),
-						})),
+						ghttp.RespondWith(200, marshalProto(&garden.MemoryLimits{
+							LimitInBytes: 40,
+						}, &garden.MemoryLimits{})),
 					),
 				)
 			})
@@ -328,12 +305,11 @@ var _ = Describe("Connection", func() {
 				server.AppendHandlers(
 					ghttp.CombineHandlers(
 						ghttp.VerifyRequest("PUT", "/containers/foo/limits/cpu"),
-						verifyProtoBody(&protocol.LimitCpuRequest{
-							Handle:        proto.String("foo"),
-							LimitInShares: proto.Uint64(42),
-						}),
-						ghttp.RespondWith(200, marshalProto(&protocol.LimitCpuResponse{
-							LimitInShares: proto.Uint64(40),
+						verifyRequestBody(&garden.CPULimits{
+							LimitInShares: 42,
+						}, &garden.CPULimits{}),
+						ghttp.RespondWith(200, marshalProto(&garden.CPULimits{
+							LimitInShares: 40,
 						})),
 					),
 				)
@@ -354,8 +330,8 @@ var _ = Describe("Connection", func() {
 				server.AppendHandlers(
 					ghttp.CombineHandlers(
 						ghttp.VerifyRequest("GET", "/containers/foo/limits/cpu"),
-						ghttp.RespondWith(200, marshalProto(&protocol.LimitCpuResponse{
-							LimitInShares: proto.Uint64(40),
+						ghttp.RespondWith(200, marshalProto(&garden.CPULimits{
+							LimitInShares: 40,
 						})),
 					),
 				)
@@ -376,14 +352,13 @@ var _ = Describe("Connection", func() {
 				server.AppendHandlers(
 					ghttp.CombineHandlers(
 						ghttp.VerifyRequest("PUT", "/containers/foo/limits/bandwidth"),
-						verifyProtoBody(&protocol.LimitBandwidthRequest{
-							Handle: proto.String("foo"),
-							Rate:   proto.Uint64(42),
-							Burst:  proto.Uint64(43),
-						}),
-						ghttp.RespondWith(200, marshalProto(&protocol.LimitBandwidthResponse{
-							Rate:  proto.Uint64(1),
-							Burst: proto.Uint64(2),
+						verifyRequestBody(&garden.BandwidthLimits{
+							RateInBytesPerSecond:      42,
+							BurstRateInBytesPerSecond: 43,
+						}, &garden.BandwidthLimits{}),
+						ghttp.RespondWith(200, marshalProto(&garden.BandwidthLimits{
+							RateInBytesPerSecond:      1,
+							BurstRateInBytesPerSecond: 2,
 						})),
 					),
 				)
@@ -406,9 +381,9 @@ var _ = Describe("Connection", func() {
 				server.AppendHandlers(
 					ghttp.CombineHandlers(
 						ghttp.VerifyRequest("GET", "/containers/foo/limits/bandwidth"),
-						ghttp.RespondWith(200, marshalProto(&protocol.LimitBandwidthResponse{
-							Rate:  proto.Uint64(1),
-							Burst: proto.Uint64(2),
+						ghttp.RespondWith(200, marshalProto(&garden.BandwidthLimits{
+							RateInBytesPerSecond:      1,
+							BurstRateInBytesPerSecond: 2,
 						})),
 					),
 				)
@@ -430,25 +405,21 @@ var _ = Describe("Connection", func() {
 				server.AppendHandlers(
 					ghttp.CombineHandlers(
 						ghttp.VerifyRequest("PUT", "/containers/foo/limits/disk"),
-						verifyProtoBody(&protocol.LimitDiskRequest{
-							Handle: proto.String("foo"),
-
-							BlockSoft: proto.Uint64(42),
-							BlockHard: proto.Uint64(42),
-
-							InodeSoft: proto.Uint64(42),
-							InodeHard: proto.Uint64(42),
-
-							ByteSoft: proto.Uint64(42),
-							ByteHard: proto.Uint64(42),
-						}),
-						ghttp.RespondWith(200, marshalProto(&protocol.LimitDiskResponse{
-							BlockSoft: proto.Uint64(3),
-							BlockHard: proto.Uint64(4),
-							InodeSoft: proto.Uint64(7),
-							InodeHard: proto.Uint64(8),
-							ByteSoft:  proto.Uint64(11),
-							ByteHard:  proto.Uint64(12),
+						verifyRequestBody(&garden.DiskLimits{
+							BlockSoft: 42,
+							BlockHard: 42,
+							InodeSoft: 42,
+							InodeHard: 42,
+							ByteSoft:  42,
+							ByteHard:  42,
+						}, &garden.DiskLimits{}),
+						ghttp.RespondWith(200, marshalProto(&garden.DiskLimits{
+							BlockSoft: 3,
+							BlockHard: 4,
+							InodeSoft: 7,
+							InodeHard: 8,
+							ByteSoft:  11,
+							ByteHard:  12,
 						})),
 					),
 				)
@@ -483,13 +454,13 @@ var _ = Describe("Connection", func() {
 				server.AppendHandlers(
 					ghttp.CombineHandlers(
 						ghttp.VerifyRequest("GET", "/containers/foo/limits/disk"),
-						ghttp.RespondWith(200, marshalProto(&protocol.LimitDiskResponse{
-							BlockSoft: proto.Uint64(3),
-							BlockHard: proto.Uint64(4),
-							InodeSoft: proto.Uint64(7),
-							InodeHard: proto.Uint64(8),
-							ByteSoft:  proto.Uint64(11),
-							ByteHard:  proto.Uint64(12),
+						ghttp.RespondWith(200, marshalProto(&garden.DiskLimits{
+							BlockSoft: 3,
+							BlockHard: 4,
+							InodeSoft: 7,
+							InodeHard: 8,
+							ByteSoft:  11,
+							ByteHard:  12,
 						})),
 					),
 				)
@@ -516,14 +487,14 @@ var _ = Describe("Connection", func() {
 			server.AppendHandlers(
 				ghttp.CombineHandlers(
 					ghttp.VerifyRequest("POST", "/containers/foo-handle/net/in"),
-					verifyProtoBody(&protocol.NetInRequest{
-						Handle:        proto.String("foo-handle"),
-						HostPort:      proto.Uint32(8080),
-						ContainerPort: proto.Uint32(8081),
-					}),
-					ghttp.RespondWith(200, marshalProto(&protocol.NetInResponse{
-						HostPort:      proto.Uint32(1234),
-						ContainerPort: proto.Uint32(1235),
+					verifyRequestBody(map[string]interface{}{
+						"handle":         "foo-handle",
+						"host_port":      float64(8080),
+						"container_port": float64(8081),
+					}, make(map[string]interface{})),
+					ghttp.RespondWith(200, marshalProto(map[string]interface{}{
+						"host_port":      1234,
+						"container_port": 1235,
 					}))))
 		})
 
@@ -537,167 +508,35 @@ var _ = Describe("Connection", func() {
 
 	Describe("NetOut", func() {
 		var (
-			handle           string
-			expectedProtocol protocol.NetOutRequest_Protocol
-			expectedNetworks []*protocol.NetOutRequest_IPRange
-			expectedPorts    []*protocol.NetOutRequest_PortRange
-			expectedICMPs    *protocol.NetOutRequest_ICMPControl
-			expectedLog      bool
+			rule   garden.NetOutRule
+			handle string
 		)
+
+		BeforeEach(func() {
+			handle = "foo-handle"
+		})
 
 		JustBeforeEach(func() {
 			server.AppendHandlers(
 				ghttp.CombineHandlers(
 					ghttp.VerifyRequest("POST", fmt.Sprintf("/containers/%s/net/out", handle)),
-					verifyProtoBody(&protocol.NetOutRequest{
-						Handle:   proto.String(handle),
-						Networks: expectedNetworks,
-						Ports:    expectedPorts,
-						Protocol: &expectedProtocol,
-						Icmps:    expectedICMPs,
-						Log:      proto.Bool(expectedLog),
-					}),
-					ghttp.RespondWith(200, marshalProto(&protocol.NetOutResponse{}))))
+					verifyRequestBody(&rule, &garden.NetOutRule{}),
+					ghttp.RespondWith(200, "{}")))
 		})
 
-		BeforeEach(func() {
-			expectedNetworks = nil
-			expectedPorts = nil
-			expectedICMPs = nil
-			expectedLog = false
-			expectedProtocol = protocol.NetOutRequest_ALL
-		})
-
-		Context("when a zero-value NetOutRule is passed", func() {
-			It("should send a nil network, portrange and icmpcontrol, logging false and TCP protocol", func() {
-				Ω(connection.NetOut(handle, garden.NetOutRule{})).Should(Succeed())
-			})
-		})
-
-		Context("when the network is zero-length", func() {
+		Context("when a NetOutRule is passed", func() {
 			BeforeEach(func() {
-				expectedNetworks = nil
-			})
-
-			It("should not send any networks", func() {
-				Ω(connection.NetOut(handle, garden.NetOutRule{
-					Networks: []garden.IPRange{},
-				})).Should(Succeed())
-			})
-		})
-
-		Context("when Network is not nil", func() {
-			BeforeEach(func() {
-				expectedNetworks = []*protocol.NetOutRequest_IPRange{
-					{
-						Start: proto.String("1.2.3.4"),
-						End:   proto.String("4.3.2.1"),
-					}, {
-						Start: proto.String("9.8.7.6"),
-						End:   proto.String("6.7.8.9"),
-					},
-				}
-			})
-
-			It("should send the networks IPs as strings", func() {
-				Ω(connection.NetOut(handle, garden.NetOutRule{
-					Networks: []garden.IPRange{
-						{
-							Start: net.ParseIP("1.2.3.4"),
-							End:   net.ParseIP("4.3.2.1"),
-						},
-						{
-							Start: net.ParseIP("9.8.7.6"),
-							End:   net.ParseIP("6.7.8.9"),
-						},
-					},
-				})).Should(Succeed())
-			})
-		})
-
-		Context("when Protocol is supplied", func() {
-			BeforeEach(func() {
-				expectedProtocol = protocol.NetOutRequest_ICMP
-			})
-
-			It("sends the protocol", func() {
-				Ω(connection.NetOut(handle, garden.NetOutRule{
+				rule = garden.NetOutRule{
 					Protocol: garden.ProtocolICMP,
-				})).Should(Succeed())
-			})
-
-			Context("but the passed protocol is unknown", func() {
-				It("returns an error", func() {
-					Ω(connection.NetOut(handle, garden.NetOutRule{
-						Protocol: garden.Protocol(44),
-					})).Should(MatchError("invalid protocol"))
-				})
-			})
-		})
-
-		Context("when Ports is not nil", func() {
-			BeforeEach(func() {
-				expectedPorts = []*protocol.NetOutRequest_PortRange{
-					{
-						Start: proto.Uint32(1),
-						End:   proto.Uint32(99),
-					},
-					{
-						Start: proto.Uint32(101),
-						End:   proto.Uint32(102),
-					},
+					Networks: []garden.IPRange{garden.IPRangeFromIP(net.ParseIP("1.2.3.4"))},
+					Ports:    []garden.PortRange{garden.PortRangeFromPort(2), garden.PortRangeFromPort(4)},
+					ICMPs:    &garden.ICMPControl{Type: 3, Code: garden.ICMPControlCode(3)},
+					Log:      true,
 				}
 			})
 
-			It("should send the ports as uint32s", func() {
-				Ω(connection.NetOut(handle, garden.NetOutRule{
-					Ports: []garden.PortRange{
-						{
-							Start: 1,
-							End:   99,
-						},
-						{
-							Start: 101,
-							End:   102,
-						},
-					},
-				})).Should(Succeed())
-			})
-		})
-
-		Context("when ICMPs is not nil", func() {
-			Context("and code is nil", func() {
-				BeforeEach(func() {
-					expectedICMPs = &protocol.NetOutRequest_ICMPControl{
-						Type: proto.Uint32(2),
-						Code: nil,
-					}
-				})
-
-				It("sends the type, and a nil code", func() {
-					Ω(connection.NetOut(handle, garden.NetOutRule{
-						ICMPs: &garden.ICMPControl{Type: 2},
-					})).Should(Succeed())
-				})
-			})
-
-			Context("and code is not nil", func() {
-				BeforeEach(func() {
-					expectedICMPs = &protocol.NetOutRequest_ICMPControl{
-						Type: proto.Uint32(2),
-						Code: proto.Int32(42),
-					}
-				})
-
-				It("sends the type and code", func() {
-					var code garden.ICMPCode = 42
-					Ω(connection.NetOut(handle, garden.NetOutRule{
-						ICMPs: &garden.ICMPControl{
-							Type: 2,
-							Code: &code,
-						},
-					})).Should(Succeed())
-				})
+			It("should send the rule over the wire", func() {
+				Ω(connection.NetOut(handle, rule)).Should(Succeed())
 			})
 		})
 	})
@@ -707,8 +546,10 @@ var _ = Describe("Connection", func() {
 			server.AppendHandlers(
 				ghttp.CombineHandlers(
 					ghttp.VerifyRequest("GET", "/containers", "foo=bar"),
-					ghttp.RespondWith(200, marshalProto(&protocol.ListResponse{
-						Handles: []string{"container1", "container2", "container3"},
+					ghttp.RespondWith(200, marshalProto(&struct {
+						Handles []string `json:"handles"`
+					}{
+						[]string{"container1", "container2", "container3"},
 					}))))
 		})
 
@@ -721,152 +562,87 @@ var _ = Describe("Connection", func() {
 	})
 
 	Describe("Getting container info", func() {
-		BeforeEach(func() {
+		var infoResponse garden.ContainerInfo
+
+		JustBeforeEach(func() {
+			infoResponse = garden.ContainerInfo{
+				State: "chilling out",
+				Events: []string{
+					"maxing",
+					"relaxing all cool",
+				},
+				HostIP:        "host-ip",
+				ContainerIP:   "container-ip",
+				ContainerPath: "container-path",
+				ProcessIDs:    []uint32{1, 2},
+				Properties: garden.Properties{
+					"prop-key": "prop-value",
+				},
+				MemoryStat: garden.ContainerMemoryStat{
+					Cache:                   1,
+					Rss:                     2,
+					MappedFile:              3,
+					Pgpgin:                  4,
+					Pgpgout:                 5,
+					Swap:                    6,
+					Pgfault:                 7,
+					Pgmajfault:              8,
+					InactiveAnon:            9,
+					ActiveAnon:              10,
+					InactiveFile:            11,
+					ActiveFile:              12,
+					Unevictable:             13,
+					HierarchicalMemoryLimit: 14,
+					HierarchicalMemswLimit:  15,
+					TotalCache:              16,
+					TotalRss:                17,
+					TotalMappedFile:         18,
+					TotalPgpgin:             19,
+					TotalPgpgout:            20,
+					TotalSwap:               21,
+					TotalPgfault:            22,
+					TotalPgmajfault:         23,
+					TotalInactiveAnon:       24,
+					TotalActiveAnon:         25,
+					TotalInactiveFile:       26,
+					TotalActiveFile:         27,
+					TotalUnevictable:        28,
+				},
+				CPUStat: garden.ContainerCPUStat{
+					Usage:  1,
+					User:   2,
+					System: 3,
+				},
+
+				DiskStat: garden.ContainerDiskStat{
+					BytesUsed:  1,
+					InodesUsed: 2,
+				},
+
+				BandwidthStat: garden.ContainerBandwidthStat{
+					InRate:   1,
+					InBurst:  2,
+					OutRate:  3,
+					OutBurst: 4,
+				},
+
+				MappedPorts: []garden.PortMapping{
+					{HostPort: 1234, ContainerPort: 5678},
+					{HostPort: 1235, ContainerPort: 5679},
+				},
+			}
+
 			server.AppendHandlers(
 				ghttp.CombineHandlers(
 					ghttp.VerifyRequest("GET", "/containers/some-handle/info"),
-					ghttp.RespondWith(200, marshalProto(&protocol.InfoResponse{
-						State:         proto.String("chilling out"),
-						Events:        []string{"maxing", "relaxing all cool"},
-						HostIp:        proto.String("host-ip"),
-						ContainerIp:   proto.String("container-ip"),
-						ContainerPath: proto.String("container-path"), ProcessIds: []uint64{1, 2}, Properties: []*protocol.Property{
-							{
-								Key:   proto.String("prop-key"),
-								Value: proto.String("prop-value"),
-							},
-						},
-
-						MemoryStat: &protocol.InfoResponse_MemoryStat{
-							Cache:                   proto.Uint64(1),
-							Rss:                     proto.Uint64(2),
-							MappedFile:              proto.Uint64(3),
-							Pgpgin:                  proto.Uint64(4),
-							Pgpgout:                 proto.Uint64(5),
-							Swap:                    proto.Uint64(6),
-							Pgfault:                 proto.Uint64(7),
-							Pgmajfault:              proto.Uint64(8),
-							InactiveAnon:            proto.Uint64(9),
-							ActiveAnon:              proto.Uint64(10),
-							InactiveFile:            proto.Uint64(11),
-							ActiveFile:              proto.Uint64(12),
-							Unevictable:             proto.Uint64(13),
-							HierarchicalMemoryLimit: proto.Uint64(14),
-							HierarchicalMemswLimit:  proto.Uint64(15),
-							TotalCache:              proto.Uint64(16),
-							TotalRss:                proto.Uint64(17),
-							TotalMappedFile:         proto.Uint64(18),
-							TotalPgpgin:             proto.Uint64(19),
-							TotalPgpgout:            proto.Uint64(20),
-							TotalSwap:               proto.Uint64(21),
-							TotalPgfault:            proto.Uint64(22),
-							TotalPgmajfault:         proto.Uint64(23),
-							TotalInactiveAnon:       proto.Uint64(24),
-							TotalActiveAnon:         proto.Uint64(25),
-							TotalInactiveFile:       proto.Uint64(26),
-							TotalActiveFile:         proto.Uint64(27),
-							TotalUnevictable:        proto.Uint64(28),
-						},
-
-						CpuStat: &protocol.InfoResponse_CpuStat{
-							Usage:  proto.Uint64(1),
-							User:   proto.Uint64(2),
-							System: proto.Uint64(3),
-						},
-
-						DiskStat: &protocol.InfoResponse_DiskStat{
-							BytesUsed:  proto.Uint64(1),
-							InodesUsed: proto.Uint64(2),
-						},
-
-						BandwidthStat: &protocol.InfoResponse_BandwidthStat{
-							InRate:   proto.Uint64(1),
-							InBurst:  proto.Uint64(2),
-							OutRate:  proto.Uint64(3),
-							OutBurst: proto.Uint64(4),
-						},
-
-						MappedPorts: []*protocol.InfoResponse_PortMapping{
-							&protocol.InfoResponse_PortMapping{
-								HostPort:      proto.Uint32(1234),
-								ContainerPort: proto.Uint32(5678),
-							},
-							&protocol.InfoResponse_PortMapping{
-								HostPort:      proto.Uint32(1235),
-								ContainerPort: proto.Uint32(5679),
-							},
-						},
-					}))))
+					ghttp.RespondWith(200, marshalProto(infoResponse))))
 		})
 
 		It("should return the container's info", func() {
 			info, err := connection.Info("some-handle")
 			Ω(err).ShouldNot(HaveOccurred())
 
-			Ω(info.State).Should(Equal("chilling out"))
-			Ω(info.Events).Should(Equal([]string{"maxing", "relaxing all cool"}))
-			Ω(info.HostIP).Should(Equal("host-ip"))
-			Ω(info.ContainerIP).Should(Equal("container-ip"))
-			Ω(info.ContainerPath).Should(Equal("container-path"))
-			Ω(info.ProcessIDs).Should(Equal([]uint32{1, 2}))
-
-			Ω(info.Properties).Should(Equal(garden.Properties{
-				"prop-key": "prop-value",
-			}))
-
-			Ω(info.MemoryStat).Should(Equal(garden.ContainerMemoryStat{
-				Cache:                   1,
-				Rss:                     2,
-				MappedFile:              3,
-				Pgpgin:                  4,
-				Pgpgout:                 5,
-				Swap:                    6,
-				Pgfault:                 7,
-				Pgmajfault:              8,
-				InactiveAnon:            9,
-				ActiveAnon:              10,
-				InactiveFile:            11,
-				ActiveFile:              12,
-				Unevictable:             13,
-				HierarchicalMemoryLimit: 14,
-				HierarchicalMemswLimit:  15,
-				TotalCache:              16,
-				TotalRss:                17,
-				TotalMappedFile:         18,
-				TotalPgpgin:             19,
-				TotalPgpgout:            20,
-				TotalSwap:               21,
-				TotalPgfault:            22,
-				TotalPgmajfault:         23,
-				TotalInactiveAnon:       24,
-				TotalActiveAnon:         25,
-				TotalInactiveFile:       26,
-				TotalActiveFile:         27,
-				TotalUnevictable:        28,
-			}))
-
-			Ω(info.CPUStat).Should(Equal(garden.ContainerCPUStat{
-				Usage:  1,
-				User:   2,
-				System: 3,
-			}))
-
-			Ω(info.DiskStat).Should(Equal(garden.ContainerDiskStat{
-				BytesUsed:  1,
-				InodesUsed: 2,
-			}))
-
-			Ω(info.BandwidthStat).Should(Equal(garden.ContainerBandwidthStat{
-				InRate:   1,
-				InBurst:  2,
-				OutRate:  3,
-				OutBurst: 4,
-			}))
-
-			Ω(info.MappedPorts).Should(Equal([]garden.PortMapping{
-				{HostPort: 1234, ContainerPort: 5678},
-				{HostPort: 1235, ContainerPort: 5679},
-			}))
+			Ω(info).Should(Equal(infoResponse))
 		})
 	})
 
@@ -986,40 +762,22 @@ var _ = Describe("Connection", func() {
 	})
 
 	Describe("Running", func() {
-		stdin := protocol.ProcessPayload_stdin
-		stdout := protocol.ProcessPayload_stdout
-		stderr := protocol.ProcessPayload_stderr
+		var spec garden.ProcessSpec
 
 		Context("when streaming succeeds to completion", func() {
 			BeforeEach(func() {
+				spec = garden.ProcessSpec{
+					Path:       "lol",
+					Args:       []string{"arg1", "arg2"},
+					Dir:        "/some/dir",
+					Privileged: true,
+					Limits:     resourceLimits,
+				}
+
 				server.AppendHandlers(
 					ghttp.CombineHandlers(
 						ghttp.VerifyRequest("POST", "/containers/foo-handle/processes"),
-						ghttp.VerifyJSONRepresenting(&protocol.RunRequest{
-							Handle:     proto.String("foo-handle"),
-							Path:       proto.String("lol"),
-							Args:       []string{"arg1", "arg2"},
-							Dir:        proto.String("/some/dir"),
-							Privileged: proto.Bool(true),
-							User:       proto.String(""),
-							Rlimits: &protocol.ResourceLimits{
-								As:         proto.Uint64(1),
-								Core:       proto.Uint64(2),
-								Cpu:        proto.Uint64(4),
-								Data:       proto.Uint64(5),
-								Fsize:      proto.Uint64(6),
-								Locks:      proto.Uint64(7),
-								Memlock:    proto.Uint64(8),
-								Msgqueue:   proto.Uint64(9),
-								Nice:       proto.Uint64(10),
-								Nofile:     proto.Uint64(11),
-								Nproc:      proto.Uint64(12),
-								Rss:        proto.Uint64(13),
-								Rtprio:     proto.Uint64(14),
-								Sigpending: proto.Uint64(15),
-								Stack:      proto.Uint64(16),
-							},
-						}),
+						ghttp.VerifyJSONRepresenting(spec),
 						func(w http.ResponseWriter, r *http.Request) {
 							w.WriteHeader(http.StatusOK)
 
@@ -1030,29 +788,30 @@ var _ = Describe("Connection", func() {
 
 							decoder := json.NewDecoder(br)
 
-							transport.WriteMessage(conn, &protocol.ProcessPayload{ProcessId: proto.Uint32(42)})
+							transport.WriteMessage(conn, map[string]interface{}{"process_id": 42})
+							transport.WriteMessage(conn, map[string]interface{}{"process_id": 42, "source": transport.Stdout, "data": "stdout data"})
+							transport.WriteMessage(conn, map[string]interface{}{"process_id": 42, "source": transport.Stderr, "data": "stderr data"})
 
-							transport.WriteMessage(conn, &protocol.ProcessPayload{ProcessId: proto.Uint32(42), Source: &stdout, Data: proto.String("stdout data")})
-
-							transport.WriteMessage(conn, &protocol.ProcessPayload{ProcessId: proto.Uint32(42), Source: &stderr, Data: proto.String("stderr data")})
-
-							var payload protocol.ProcessPayload
+							var payload map[string]interface{}
 							err = decoder.Decode(&payload)
 							Ω(err).ShouldNot(HaveOccurred())
 
-							Ω(payload).Should(Equal(protocol.ProcessPayload{
-								ProcessId: proto.Uint32(42),
-								Source:    &stdin,
-								Data:      proto.String("stdin data"),
+							Ω(payload).Should(Equal(map[string]interface{}{
+								"process_id": float64(42),
+								"source":     float64(transport.Stdin),
+								"data":       "stdin data",
 							}))
 
-							transport.WriteMessage(conn, &protocol.ProcessPayload{
-								ProcessId: proto.Uint32(42),
-								Source:    &stdout,
-								Data:      proto.String("roundtripped " + payload.GetData()),
+							transport.WriteMessage(conn, map[string]interface{}{
+								"process_id": 42,
+								"source":     transport.Stdout,
+								"data":       fmt.Sprintf("roundtripped %s", payload["data"]),
 							})
 
-							transport.WriteMessage(conn, &protocol.ProcessPayload{ProcessId: proto.Uint32(42), ExitStatus: proto.Uint32(3)})
+							transport.WriteMessage(conn, map[string]interface{}{
+								"process_id":  42,
+								"exit_status": 3,
+							})
 						},
 					),
 				)
@@ -1062,13 +821,7 @@ var _ = Describe("Connection", func() {
 				stdout := gbytes.NewBuffer()
 				stderr := gbytes.NewBuffer()
 
-				process, err := connection.Run("foo-handle", garden.ProcessSpec{
-					Path:       "lol",
-					Args:       []string{"arg1", "arg2"},
-					Dir:        "/some/dir",
-					Privileged: true,
-					Limits:     resourceLimits,
-				}, garden.ProcessIO{
+				process, err := connection.Run("foo-handle", spec, garden.ProcessIO{
 					Stdin:  bytes.NewBufferString("stdin data"),
 					Stdout: stdout,
 					Stderr: stderr,
@@ -1088,8 +841,6 @@ var _ = Describe("Connection", func() {
 		})
 
 		Context("when the process is terminated", func() {
-			termSignal := protocol.ProcessPayload_terminate
-
 			BeforeEach(func() {
 				server.AppendHandlers(
 					ghttp.CombineHandlers(
@@ -1104,18 +855,23 @@ var _ = Describe("Connection", func() {
 
 							decoder := json.NewDecoder(br)
 
-							transport.WriteMessage(conn, &protocol.ProcessPayload{ProcessId: proto.Uint32(42)})
+							transport.WriteMessage(conn, map[string]interface{}{
+								"process_id": 42,
+							})
 
-							var payload protocol.ProcessPayload
+							var payload map[string]interface{}
 							err = decoder.Decode(&payload)
 							Ω(err).ShouldNot(HaveOccurred())
 
-							Ω(payload).Should(Equal(protocol.ProcessPayload{
-								ProcessId: proto.Uint32(42),
-								Signal:    &termSignal,
+							Ω(payload).Should(Equal(map[string]interface{}{
+								"process_id": float64(42),
+								"signal":     float64(garden.SignalTerminate),
 							}))
 
-							transport.WriteMessage(conn, &protocol.ProcessPayload{ProcessId: proto.Uint32(42), ExitStatus: proto.Uint32(3)})
+							transport.WriteMessage(conn, map[string]interface{}{
+								"process_id":  42,
+								"exit_status": 3,
+							})
 						},
 					),
 				)
@@ -1137,8 +893,6 @@ var _ = Describe("Connection", func() {
 		})
 
 		Context("when the process is killed", func() {
-			killSignal := protocol.ProcessPayload_kill
-
 			BeforeEach(func() {
 				server.AppendHandlers(
 					ghttp.CombineHandlers(
@@ -1153,18 +907,23 @@ var _ = Describe("Connection", func() {
 
 							decoder := json.NewDecoder(br)
 
-							transport.WriteMessage(conn, &protocol.ProcessPayload{ProcessId: proto.Uint32(42)})
+							transport.WriteMessage(conn, map[string]interface{}{
+								"process_id": 42,
+							})
 
-							var payload protocol.ProcessPayload
+							var payload map[string]interface{}
 							err = decoder.Decode(&payload)
 							Ω(err).ShouldNot(HaveOccurred())
 
-							Ω(payload).Should(Equal(protocol.ProcessPayload{
-								ProcessId: proto.Uint32(42),
-								Signal:    &killSignal,
+							Ω(payload).Should(Equal(map[string]interface{}{
+								"process_id": float64(42),
+								"signal":     float64(garden.SignalKill),
 							}))
 
-							transport.WriteMessage(conn, &protocol.ProcessPayload{ProcessId: proto.Uint32(42), ExitStatus: proto.Uint32(3)})
+							transport.WriteMessage(conn, map[string]interface{}{
+								"process_id":  42,
+								"exit_status": 3,
+							})
 						},
 					),
 				)
@@ -1186,24 +945,23 @@ var _ = Describe("Connection", func() {
 		})
 
 		Context("when the process's window is resized", func() {
+			var spec garden.ProcessSpec
 			BeforeEach(func() {
+				spec = garden.ProcessSpec{
+					Path: "lol",
+					Args: []string{"arg1", "arg2"},
+					TTY: &garden.TTYSpec{
+						WindowSize: &garden.WindowSize{
+							Columns: 100,
+							Rows:    200,
+						},
+					},
+				}
+
 				server.AppendHandlers(
 					ghttp.CombineHandlers(
 						ghttp.VerifyRequest("POST", "/containers/foo-handle/processes"),
-						ghttp.VerifyJSONRepresenting(&protocol.RunRequest{
-							Handle:     proto.String("foo-handle"),
-							Path:       proto.String("lol"),
-							Args:       []string{"arg1", "arg2"},
-							Privileged: proto.Bool(false),
-							User:       proto.String(""),
-							Tty: &protocol.TTY{
-								WindowSize: &protocol.TTY_WindowSize{
-									Columns: proto.Uint32(100),
-									Rows:    proto.Uint32(200),
-								},
-							},
-							Rlimits: &protocol.ResourceLimits{},
-						}),
+						ghttp.VerifyJSONRepresenting(spec),
 						func(w http.ResponseWriter, r *http.Request) {
 							w.WriteHeader(http.StatusOK)
 
@@ -1214,39 +972,35 @@ var _ = Describe("Connection", func() {
 
 							decoder := json.NewDecoder(br)
 
-							transport.WriteMessage(conn, &protocol.ProcessPayload{ProcessId: proto.Uint32(42)})
+							transport.WriteMessage(conn, map[string]interface{}{
+								"process_id": 42,
+							})
 
-							var payload protocol.ProcessPayload
+							var payload map[string]interface{}
 							err = decoder.Decode(&payload)
 							Ω(err).ShouldNot(HaveOccurred())
 
-							Ω(payload).Should(Equal(protocol.ProcessPayload{
-								ProcessId: proto.Uint32(42),
-								Tty: &protocol.TTY{
-									WindowSize: &protocol.TTY_WindowSize{
-										Columns: proto.Uint32(80),
-										Rows:    proto.Uint32(24),
+							Ω(payload).Should(Equal(map[string]interface{}{
+								"process_id": float64(42),
+								"tty": map[string]interface{}{
+									"window_size": map[string]interface{}{
+										"columns": float64(80),
+										"rows":    float64(24),
 									},
 								},
 							}))
 
-							transport.WriteMessage(conn, &protocol.ProcessPayload{ProcessId: proto.Uint32(42), ExitStatus: proto.Uint32(3)})
+							transport.WriteMessage(conn, map[string]interface{}{
+								"process_id":  42,
+								"exit_status": 3,
+							})
 						},
 					),
 				)
 			})
 
 			It("sends the appropriate protocol message", func() {
-				process, err := connection.Run("foo-handle", garden.ProcessSpec{
-					Path: "lol",
-					Args: []string{"arg1", "arg2"},
-					TTY: &garden.TTYSpec{
-						WindowSize: &garden.WindowSize{
-							Columns: 100,
-							Rows:    200,
-						},
-					},
-				}, garden.ProcessIO{
+				process, err := connection.Run("foo-handle", spec, garden.ProcessIO{
 					Stdin:  bytes.NewBufferString("stdin data"),
 					Stdout: gbytes.NewBuffer(),
 					Stderr: gbytes.NewBuffer(),
@@ -1282,11 +1036,19 @@ var _ = Describe("Connection", func() {
 
 							defer conn.Close()
 
-							transport.WriteMessage(conn, &protocol.ProcessPayload{ProcessId: proto.Uint32(42)})
-
-							transport.WriteMessage(conn, &protocol.ProcessPayload{ProcessId: proto.Uint32(42), Source: &stdout, Data: proto.String("stdout data")})
-
-							transport.WriteMessage(conn, &protocol.ProcessPayload{ProcessId: proto.Uint32(42), Source: &stderr, Data: proto.String("stderr data")})
+							transport.WriteMessage(conn, map[string]interface{}{
+								"process_id": 42,
+							})
+							transport.WriteMessage(conn, map[string]interface{}{
+								"process_id": 42,
+								"source":     transport.Stdout,
+								"data":       "stdout data",
+							})
+							transport.WriteMessage(conn, map[string]interface{}{
+								"process_id": 42,
+								"source":     transport.Stderr,
+								"data":       "stderr data",
+							})
 						},
 					),
 				)
@@ -1313,11 +1075,24 @@ var _ = Describe("Connection", func() {
 				server.AppendHandlers(
 					ghttp.CombineHandlers(
 						ghttp.VerifyRequest("POST", "/containers/foo-handle/processes"),
-						ghttp.RespondWith(200, marshalProto(
-							&protocol.ProcessPayload{ProcessId: proto.Uint32(42)},
-							&protocol.ProcessPayload{ProcessId: proto.Uint32(42), Source: &stdout, Data: proto.String("stdout data")},
-							&protocol.ProcessPayload{ProcessId: proto.Uint32(42), Source: &stderr, Data: proto.String("stderr data")},
-							&protocol.ProcessPayload{ProcessId: proto.Uint32(42), Error: proto.String("oh no!")})),
+						ghttp.RespondWith(200, marshalProto(map[string]interface{}{
+							"process_id": 42,
+						},
+							map[string]interface{}{
+								"process_id": 42,
+								"source":     transport.Stdout,
+								"data":       "stdout data",
+							},
+							map[string]interface{}{
+								"process_id": 42,
+								"source":     transport.Stderr,
+								"data":       "stderr data",
+							},
+							map[string]interface{}{
+								"process_id": 42,
+								"error":      "oh no!",
+							},
+						)),
 					),
 				)
 			})
@@ -1341,10 +1116,6 @@ var _ = Describe("Connection", func() {
 	})
 
 	Describe("Attaching", func() {
-		stdin := protocol.ProcessPayload_stdin
-		stdout := protocol.ProcessPayload_stdout
-		stderr := protocol.ProcessPayload_stderr
-
 		Context("when streaming succeeds to completion", func() {
 			BeforeEach(func() {
 				server.AppendHandlers(
@@ -1358,27 +1129,38 @@ var _ = Describe("Connection", func() {
 
 							defer conn.Close()
 
-							transport.WriteMessage(conn, &protocol.ProcessPayload{ProcessId: proto.Uint32(42), Source: &stdout, Data: proto.String("stdout data")})
+							transport.WriteMessage(conn, map[string]interface{}{
+								"process_id": 42,
+								"source":     transport.Stdout,
+								"data":       "stdout data",
+							})
 
-							transport.WriteMessage(conn, &protocol.ProcessPayload{ProcessId: proto.Uint32(42), Source: &stderr, Data: proto.String("stderr data")})
+							transport.WriteMessage(conn, map[string]interface{}{
+								"process_id": 42,
+								"source":     transport.Stderr,
+								"data":       "stderr data",
+							})
 
-							var payload protocol.ProcessPayload
+							var payload map[string]interface{}
 							err = json.NewDecoder(br).Decode(&payload)
 							Ω(err).ShouldNot(HaveOccurred())
 
-							Ω(payload).Should(Equal(protocol.ProcessPayload{
-								ProcessId: proto.Uint32(42),
-								Source:    &stdin,
-								Data:      proto.String("stdin data"),
+							Ω(payload).Should(Equal(map[string]interface{}{
+								"process_id": float64(42),
+								"source":     float64(transport.Stdin),
+								"data":       "stdin data",
 							}))
 
-							transport.WriteMessage(conn, &protocol.ProcessPayload{
-								ProcessId: proto.Uint32(42),
-								Source:    &stdout,
-								Data:      proto.String("roundtripped " + payload.GetData()),
+							transport.WriteMessage(conn, map[string]interface{}{
+								"process_id": 42,
+								"source":     transport.Stdout,
+								"data":       fmt.Sprintf("roundtripped %s", payload["data"]),
 							})
 
-							transport.WriteMessage(conn, &protocol.ProcessPayload{ProcessId: proto.Uint32(42), ExitStatus: proto.Uint32(3)})
+							transport.WriteMessage(conn, map[string]interface{}{
+								"process_id":  42,
+								"exit_status": 3,
+							})
 						},
 					),
 				)
@@ -1423,17 +1205,17 @@ var _ = Describe("Connection", func() {
 							defer conn.Close()
 							decoder := json.NewDecoder(br)
 
-							var payload protocol.ProcessPayload
+							var payload map[string]interface{}
 							err = decoder.Decode(&payload)
 							Ω(err).ShouldNot(HaveOccurred())
 
-							Ω(payload).Should(Equal(protocol.ProcessPayload{
-								ProcessId: proto.Uint32(42),
-								Source:    &stdin,
-								Data:      proto.String("stdin data"),
+							Ω(payload).Should(Equal(map[string]interface{}{
+								"process_id": float64(42),
+								"source":     float64(transport.Stdin),
+								"data":       "stdin data",
 							}))
 
-							var payload2 protocol.ProcessPayload
+							var payload2 map[string]interface{}
 							err = decoder.Decode(&payload2)
 							Ω(err).Should(HaveOccurred())
 
@@ -1461,10 +1243,24 @@ var _ = Describe("Connection", func() {
 				server.AppendHandlers(
 					ghttp.CombineHandlers(
 						ghttp.VerifyRequest("GET", "/containers/foo-handle/processes/42"),
-						ghttp.RespondWith(200, marshalProto(
-							&protocol.ProcessPayload{ProcessId: proto.Uint32(42), Source: &stdout, Data: proto.String("stdout data")},
-							&protocol.ProcessPayload{ProcessId: proto.Uint32(42), Source: &stderr, Data: proto.String("stderr data")},
-							&protocol.ProcessPayload{ProcessId: proto.Uint32(42), Error: proto.String("oh no!")})),
+						ghttp.RespondWith(200, marshalProto(map[string]interface{}{
+							"process_id": 42,
+						},
+							map[string]interface{}{
+								"process_id": 42,
+								"source":     transport.Stdout,
+								"data":       "stdout data",
+							},
+							map[string]interface{}{
+								"process_id": 42,
+								"source":     transport.Stderr,
+								"data":       "stderr data",
+							},
+							map[string]interface{}{
+								"process_id": 42,
+								"error":      "oh no!",
+							},
+						)),
 					),
 				)
 			})
@@ -1496,9 +1292,17 @@ var _ = Describe("Connection", func() {
 
 							defer conn.Close()
 
-							transport.WriteMessage(conn, &protocol.ProcessPayload{ProcessId: proto.Uint32(42), Source: &stdout, Data: proto.String("stdout data")})
+							transport.WriteMessage(conn, map[string]interface{}{
+								"process_id": 42,
+								"source":     transport.Stdout,
+								"data":       "stdout data",
+							})
 
-							transport.WriteMessage(conn, &protocol.ProcessPayload{ProcessId: proto.Uint32(42), Source: &stderr, Data: proto.String("stderr data")})
+							transport.WriteMessage(conn, map[string]interface{}{
+								"process_id": 42,
+								"source":     transport.Stderr,
+								"data":       "stderr data",
+							})
 						},
 					),
 				)
@@ -1519,24 +1323,21 @@ var _ = Describe("Connection", func() {
 	})
 })
 
-func verifyProtoBody(expectedBodyMessages ...proto.Message) http.HandlerFunc {
+func verifyRequestBody(expectedMessage interface{}, emptyType interface{}) http.HandlerFunc {
 	return func(resp http.ResponseWriter, req *http.Request) {
 		defer GinkgoRecover()
 
 		decoder := json.NewDecoder(req.Body)
 
-		for _, msg := range expectedBodyMessages {
-			received := protocol.RequestMessageForType(protocol.TypeForMessage(msg))
+		received := emptyType
+		err := decoder.Decode(&received)
+		Ω(err).ShouldNot(HaveOccurred())
 
-			err := decoder.Decode(received)
-			Ω(err).ShouldNot(HaveOccurred())
-
-			Ω(received).Should(Equal(msg))
-		}
+		Ω(received).Should(Equal(expectedMessage))
 	}
 }
 
-func marshalProto(messages ...proto.Message) string {
+func marshalProto(messages ...interface{}) string {
 	result := new(bytes.Buffer)
 	for _, msg := range messages {
 		err := transport.WriteMessage(result, msg)

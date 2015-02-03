@@ -7,12 +7,8 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"time"
-
-	"github.com/gogo/protobuf/proto"
 
 	"github.com/cloudfoundry-incubator/garden"
-	protocol "github.com/cloudfoundry-incubator/garden/protocol"
 	"github.com/cloudfoundry-incubator/garden/transport"
 	"github.com/pivotal-golang/lager"
 )
@@ -30,7 +26,7 @@ func (s *GardenServer) handlePing(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s.writeResponse(w, &protocol.PingResponse{})
+	s.writeSuccess(w)
 }
 
 func (s *GardenServer) handleCapacity(w http.ResponseWriter, r *http.Request) {
@@ -42,60 +38,26 @@ func (s *GardenServer) handleCapacity(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s.writeResponse(w, &protocol.CapacityResponse{
-		MemoryInBytes: proto.Uint64(capacity.MemoryInBytes),
-		DiskInBytes:   proto.Uint64(capacity.DiskInBytes),
-		MaxContainers: proto.Uint64(capacity.MaxContainers),
-	})
+	s.writeResponse(w, capacity)
 }
 
 func (s *GardenServer) handleCreate(w http.ResponseWriter, r *http.Request) {
-	var request protocol.CreateRequest
-	if !s.readRequest(&request, w, r) {
+	var spec garden.ContainerSpec
+	if !s.readRequest(&spec, w, r) {
 		return
 	}
 
 	hLog := s.logger.Session("create", lager.Data{
-		"request": request,
+		"request": spec,
 	})
 
-	bindMounts := []garden.BindMount{}
-
-	for _, bm := range request.GetBindMounts() {
-		bindMount := garden.BindMount{
-			SrcPath: bm.GetSrcPath(),
-			DstPath: bm.GetDstPath(),
-			Mode:    garden.BindMountMode(bm.GetMode()),
-			Origin:  garden.BindMountOrigin(bm.GetOrigin()),
-		}
-
-		bindMounts = append(bindMounts, bindMount)
-	}
-
-	properties := map[string]string{}
-
-	for _, prop := range request.GetProperties() {
-		properties[prop.GetKey()] = prop.GetValue()
-	}
-
-	graceTime := s.containerGraceTime
-
-	if request.GraceTime != nil {
-		graceTime = time.Duration(request.GetGraceTime()) * time.Second
+	if spec.GraceTime == 0 {
+		spec.GraceTime = s.containerGraceTime
 	}
 
 	hLog.Debug("creating")
 
-	container, err := s.backend.Create(garden.ContainerSpec{
-		Handle:     request.GetHandle(),
-		GraceTime:  graceTime,
-		RootFSPath: request.GetRootfs(),
-		Network:    request.GetNetwork(),
-		BindMounts: bindMounts,
-		Properties: properties,
-		Env:        convertEnv(request.GetEnv()),
-		Privileged: request.GetPrivileged(),
-	})
+	container, err := s.backend.Create(spec)
 	if err != nil {
 		s.writeError(w, err, hLog)
 		return
@@ -105,8 +67,8 @@ func (s *GardenServer) handleCreate(w http.ResponseWriter, r *http.Request) {
 
 	s.bomberman.Strap(container)
 
-	s.writeResponse(w, &protocol.CreateResponse{
-		Handle: proto.String(container.Handle()),
+	s.writeResponse(w, &struct{ Handle string }{
+		Handle: container.Handle(),
 	})
 }
 
@@ -134,7 +96,7 @@ func (s *GardenServer) handleList(w http.ResponseWriter, r *http.Request) {
 		handles = append(handles, container.Handle())
 	}
 
-	s.writeResponse(w, &protocol.ListResponse{Handles: handles})
+	s.writeResponse(w, &struct{ Handles []string }{handles})
 }
 
 func (s *GardenServer) handleDestroy(w http.ResponseWriter, r *http.Request) {
@@ -177,7 +139,7 @@ func (s *GardenServer) handleDestroy(w http.ResponseWriter, r *http.Request) {
 
 	s.bomberman.Defuse(handle)
 
-	s.writeResponse(w, &protocol.DestroyResponse{})
+	s.writeSuccess(w)
 }
 
 func (s *GardenServer) handleStop(w http.ResponseWriter, r *http.Request) {
@@ -187,12 +149,12 @@ func (s *GardenServer) handleStop(w http.ResponseWriter, r *http.Request) {
 		"handle": handle,
 	})
 
-	var request protocol.StopRequest
+	var request struct {
+		Kill bool `json:"kill"`
+	}
 	if !s.readRequest(&request, w, r) {
 		return
 	}
-
-	kill := request.GetKill()
 
 	container, err := s.backend.Lookup(handle)
 	if err != nil {
@@ -205,7 +167,7 @@ func (s *GardenServer) handleStop(w http.ResponseWriter, r *http.Request) {
 
 	hLog.Debug("stopping")
 
-	err = container.Stop(kill)
+	err = container.Stop(request.Kill)
 	if err != nil {
 		s.writeError(w, err, hLog)
 		return
@@ -213,7 +175,7 @@ func (s *GardenServer) handleStop(w http.ResponseWriter, r *http.Request) {
 
 	hLog.Info("stopped")
 
-	s.writeResponse(w, &protocol.StopResponse{})
+	s.writeSuccess(w)
 }
 
 func (s *GardenServer) handleStreamIn(w http.ResponseWriter, r *http.Request) {
@@ -245,7 +207,11 @@ func (s *GardenServer) handleStreamIn(w http.ResponseWriter, r *http.Request) {
 
 	hLog.Info("streamed-in")
 
-	s.writeResponse(w, &protocol.StreamInResponse{})
+	s.writeSuccess(w)
+}
+
+func (s *GardenServer) writeSuccess(w http.ResponseWriter) {
+	s.writeResponse(w, &struct{}{})
 }
 
 func (s *GardenServer) handleStreamOut(w http.ResponseWriter, r *http.Request) {
@@ -294,7 +260,7 @@ func (s *GardenServer) handleStreamOut(w http.ResponseWriter, r *http.Request) {
 func (s *GardenServer) handleLimitBandwidth(w http.ResponseWriter, r *http.Request) {
 	handle := r.FormValue(":handle")
 
-	var request protocol.LimitBandwidthRequest
+	var request garden.BandwidthLimits
 	if !s.readRequest(&request, w, r) {
 		return
 	}
@@ -312,16 +278,11 @@ func (s *GardenServer) handleLimitBandwidth(w http.ResponseWriter, r *http.Reque
 	s.bomberman.Pause(container.Handle())
 	defer s.bomberman.Unpause(container.Handle())
 
-	requestedLimits := garden.BandwidthLimits{
-		RateInBytesPerSecond:      request.GetRate(),
-		BurstRateInBytesPerSecond: request.GetBurst(),
-	}
-
 	hLog.Debug("limiting", lager.Data{
-		"requested-limits": requestedLimits,
+		"requested-limits": request,
 	})
 
-	err = container.LimitBandwidth(requestedLimits)
+	err = container.LimitBandwidth(request)
 	if err != nil {
 		s.writeError(w, err, hLog)
 		return
@@ -337,10 +298,7 @@ func (s *GardenServer) handleLimitBandwidth(w http.ResponseWriter, r *http.Reque
 		"resulting-limits": limits,
 	})
 
-	s.writeResponse(w, &protocol.LimitBandwidthResponse{
-		Rate:  proto.Uint64(limits.RateInBytesPerSecond),
-		Burst: proto.Uint64(limits.BurstRateInBytesPerSecond),
-	})
+	s.writeResponse(w, limits)
 }
 
 func (s *GardenServer) handleCurrentBandwidthLimits(w http.ResponseWriter, r *http.Request) {
@@ -371,10 +329,7 @@ func (s *GardenServer) handleCurrentBandwidthLimits(w http.ResponseWriter, r *ht
 		"limits": limits,
 	})
 
-	s.writeResponse(w, &protocol.LimitBandwidthResponse{
-		Rate:  proto.Uint64(limits.RateInBytesPerSecond),
-		Burst: proto.Uint64(limits.BurstRateInBytesPerSecond),
-	})
+	s.writeResponse(w, limits)
 }
 
 func (s *GardenServer) handleLimitMemory(w http.ResponseWriter, r *http.Request) {
@@ -384,12 +339,10 @@ func (s *GardenServer) handleLimitMemory(w http.ResponseWriter, r *http.Request)
 		"handle": handle,
 	})
 
-	var request protocol.LimitMemoryRequest
+	var request garden.MemoryLimits
 	if !s.readRequest(&request, w, r) {
 		return
 	}
-
-	limitInBytes := request.GetLimitInBytes()
 
 	container, err := s.backend.Lookup(handle)
 	if err != nil {
@@ -400,16 +353,12 @@ func (s *GardenServer) handleLimitMemory(w http.ResponseWriter, r *http.Request)
 	s.bomberman.Pause(container.Handle())
 	defer s.bomberman.Unpause(container.Handle())
 
-	requestedLimits := garden.MemoryLimits{
-		LimitInBytes: limitInBytes,
-	}
-
-	if request.LimitInBytes != nil {
+	if request.LimitInBytes > 0 {
 		hLog.Debug("limiting", lager.Data{
-			"requested-limits": requestedLimits,
+			"requested-limits": request.LimitInBytes,
 		})
 
-		err = container.LimitMemory(requestedLimits)
+		err = container.LimitMemory(request)
 
 		if err != nil {
 			s.writeError(w, err, hLog)
@@ -427,9 +376,7 @@ func (s *GardenServer) handleLimitMemory(w http.ResponseWriter, r *http.Request)
 		"resulting-limits": limits,
 	})
 
-	s.writeResponse(w, &protocol.LimitMemoryResponse{
-		LimitInBytes: proto.Uint64(limits.LimitInBytes),
-	})
+	s.writeResponse(w, limits)
 }
 
 func (s *GardenServer) handleCurrentMemoryLimits(w http.ResponseWriter, r *http.Request) {
@@ -460,9 +407,7 @@ func (s *GardenServer) handleCurrentMemoryLimits(w http.ResponseWriter, r *http.
 		"limits": limits,
 	})
 
-	s.writeResponse(w, &protocol.LimitMemoryResponse{
-		LimitInBytes: proto.Uint64(limits.LimitInBytes),
-	})
+	s.writeResponse(w, limits)
 }
 
 func (s *GardenServer) handleLimitDisk(w http.ResponseWriter, r *http.Request) {
@@ -472,23 +417,15 @@ func (s *GardenServer) handleLimitDisk(w http.ResponseWriter, r *http.Request) {
 		"handle": handle,
 	})
 
-	var request protocol.LimitDiskRequest
+	var request garden.DiskLimits
 	if !s.readRequest(&request, w, r) {
 		return
 	}
 
-	blockSoft := request.GetBlockSoft()
-	blockHard := request.GetBlockHard()
-	inodeSoft := request.GetInodeSoft()
-	inodeHard := request.GetInodeHard()
-	byteSoft := request.GetByteSoft()
-	byteHard := request.GetByteHard()
-
 	settingLimit := false
-
-	if request.BlockSoft != nil || request.BlockHard != nil ||
-		request.InodeSoft != nil || request.InodeHard != nil ||
-		request.ByteSoft != nil || request.ByteHard != nil {
+	if request.BlockSoft > 0 || request.BlockHard > 0 ||
+		request.InodeSoft > 0 || request.InodeHard > 0 ||
+		request.ByteSoft > 0 || request.ByteHard > 0 {
 		settingLimit = true
 	}
 
@@ -501,21 +438,12 @@ func (s *GardenServer) handleLimitDisk(w http.ResponseWriter, r *http.Request) {
 	s.bomberman.Pause(container.Handle())
 	defer s.bomberman.Unpause(container.Handle())
 
-	requestedLimits := garden.DiskLimits{
-		BlockSoft: blockSoft,
-		BlockHard: blockHard,
-		InodeSoft: inodeSoft,
-		InodeHard: inodeHard,
-		ByteSoft:  byteSoft,
-		ByteHard:  byteHard,
-	}
-
 	if settingLimit {
 		hLog.Debug("limiting", lager.Data{
-			"requested-limits": requestedLimits,
+			"requested-limits": request,
 		})
 
-		err = container.LimitDisk(requestedLimits)
+		err = container.LimitDisk(request)
 		if err != nil {
 			s.writeError(w, err, hLog)
 			return
@@ -532,14 +460,7 @@ func (s *GardenServer) handleLimitDisk(w http.ResponseWriter, r *http.Request) {
 		"resulting-limits": limits,
 	})
 
-	s.writeResponse(w, &protocol.LimitDiskResponse{
-		BlockSoft: proto.Uint64(limits.BlockSoft),
-		BlockHard: proto.Uint64(limits.BlockHard),
-		InodeSoft: proto.Uint64(limits.InodeSoft),
-		InodeHard: proto.Uint64(limits.InodeHard),
-		ByteSoft:  proto.Uint64(limits.ByteSoft),
-		ByteHard:  proto.Uint64(limits.ByteHard),
-	})
+	s.writeResponse(w, limits)
 }
 
 func (s *GardenServer) handleCurrentDiskLimits(w http.ResponseWriter, r *http.Request) {
@@ -570,14 +491,7 @@ func (s *GardenServer) handleCurrentDiskLimits(w http.ResponseWriter, r *http.Re
 		"limits": limits,
 	})
 
-	s.writeResponse(w, &protocol.LimitDiskResponse{
-		BlockSoft: proto.Uint64(limits.BlockSoft),
-		BlockHard: proto.Uint64(limits.BlockHard),
-		InodeSoft: proto.Uint64(limits.InodeSoft),
-		InodeHard: proto.Uint64(limits.InodeHard),
-		ByteSoft:  proto.Uint64(limits.ByteSoft),
-		ByteHard:  proto.Uint64(limits.ByteHard),
-	})
+	s.writeResponse(w, limits)
 }
 
 func (s *GardenServer) handleLimitCPU(w http.ResponseWriter, r *http.Request) {
@@ -587,12 +501,10 @@ func (s *GardenServer) handleLimitCPU(w http.ResponseWriter, r *http.Request) {
 		"handle": handle,
 	})
 
-	var request protocol.LimitCpuRequest
+	var request garden.CPULimits
 	if !s.readRequest(&request, w, r) {
 		return
 	}
-
-	limitInShares := request.GetLimitInShares()
 
 	container, err := s.backend.Lookup(handle)
 	if err != nil {
@@ -603,16 +515,12 @@ func (s *GardenServer) handleLimitCPU(w http.ResponseWriter, r *http.Request) {
 	s.bomberman.Pause(container.Handle())
 	defer s.bomberman.Unpause(container.Handle())
 
-	requestedLimits := garden.CPULimits{
-		LimitInShares: limitInShares,
-	}
-
-	if request.LimitInShares != nil {
+	if request.LimitInShares > 0 {
 		hLog.Debug("limiting", lager.Data{
-			"requested-limits": requestedLimits,
+			"requested-limits": request,
 		})
 
-		err = container.LimitCPU(requestedLimits)
+		err = container.LimitCPU(request)
 		if err != nil {
 			s.writeError(w, err, hLog)
 			return
@@ -629,9 +537,7 @@ func (s *GardenServer) handleLimitCPU(w http.ResponseWriter, r *http.Request) {
 		"resulting-limits": limits,
 	})
 
-	s.writeResponse(w, &protocol.LimitCpuResponse{
-		LimitInShares: proto.Uint64(limits.LimitInShares),
-	})
+	s.writeResponse(w, limits)
 }
 
 func (s *GardenServer) handleCurrentCPULimits(w http.ResponseWriter, r *http.Request) {
@@ -662,9 +568,7 @@ func (s *GardenServer) handleCurrentCPULimits(w http.ResponseWriter, r *http.Req
 		"limits": limits,
 	})
 
-	s.writeResponse(w, &protocol.LimitCpuResponse{
-		LimitInShares: proto.Uint64(limits.LimitInShares),
-	})
+	s.writeResponse(w, limits)
 }
 
 func (s *GardenServer) handleNetIn(w http.ResponseWriter, r *http.Request) {
@@ -674,13 +578,13 @@ func (s *GardenServer) handleNetIn(w http.ResponseWriter, r *http.Request) {
 		"handle": handle,
 	})
 
-	var request protocol.NetInRequest
+	var request transport.NetInRequest
 	if !s.readRequest(&request, w, r) {
 		return
 	}
 
-	hostPort := request.GetHostPort()
-	containerPort := request.GetContainerPort()
+	hostPort := request.HostPort
+	containerPort := request.ContainerPort
 
 	container, err := s.backend.Lookup(handle)
 	if err != nil {
@@ -707,9 +611,9 @@ func (s *GardenServer) handleNetIn(w http.ResponseWriter, r *http.Request) {
 		"container-port": containerPort,
 	})
 
-	s.writeResponse(w, &protocol.NetInResponse{
-		HostPort:      proto.Uint32(hostPort),
-		ContainerPort: proto.Uint32(containerPort),
+	s.writeResponse(w, &transport.NetInResponse{
+		HostPort:      hostPort,
+		ContainerPort: containerPort,
 	})
 }
 
@@ -720,53 +624,9 @@ func (s *GardenServer) handleNetOut(w http.ResponseWriter, r *http.Request) {
 		"handle": handle,
 	})
 
-	var request protocol.NetOutRequest
-	if !s.readRequest(&request, w, r) {
+	var rule garden.NetOutRule
+	if !s.readRequest(&rule, w, r) {
 		return
-	}
-
-	var protoc garden.Protocol
-	switch request.GetProtocol() {
-	case protocol.NetOutRequest_TCP:
-		protoc = garden.ProtocolTCP
-	case protocol.NetOutRequest_ICMP:
-		protoc = garden.ProtocolICMP
-	case protocol.NetOutRequest_UDP:
-		protoc = garden.ProtocolUDP
-	case protocol.NetOutRequest_ALL:
-		protoc = garden.ProtocolAll
-	default:
-		err := fmt.Errorf("invalid protocol: %d", request.GetProtocol())
-		s.writeError(w, err, hLog)
-		return
-	}
-
-	var networks []garden.IPRange
-	for _, n := range request.GetNetworks() {
-		networks = append(networks, garden.IPRange{
-			Start: net.ParseIP(n.GetStart()),
-			End:   net.ParseIP(n.GetEnd()),
-		})
-	}
-
-	var ports []garden.PortRange
-	for _, p := range request.GetPorts() {
-		ports = append(ports, garden.PortRange{
-			uint16(p.GetStart()),
-			uint16(p.GetEnd()),
-		})
-	}
-
-	var icmps *garden.ICMPControl
-	if i := request.GetIcmps(); i != nil {
-		icmps = &garden.ICMPControl{
-			Type: garden.ICMPType(i.GetType()),
-		}
-
-		if gc := i.GetCode(); gc != -1 {
-			c := uint8(gc)
-			icmps.Code = (*garden.ICMPCode)(&c)
-		}
 	}
 
 	container, err := s.backend.Lookup(handle)
@@ -777,14 +637,6 @@ func (s *GardenServer) handleNetOut(w http.ResponseWriter, r *http.Request) {
 
 	s.bomberman.Pause(container.Handle())
 	defer s.bomberman.Unpause(container.Handle())
-
-	rule := garden.NetOutRule{
-		Protocol: protoc,
-		Networks: networks,
-		Ports:    ports,
-		ICMPs:    icmps,
-		Log:      request.GetLog(),
-	}
 
 	hLog.Debug("allowing-out", lager.Data{
 		"rule": rule,
@@ -801,22 +653,16 @@ func (s *GardenServer) handleNetOut(w http.ResponseWriter, r *http.Request) {
 		"rule": rule,
 	})
 
-	s.writeResponse(w, &protocol.NetOutResponse{})
+	s.writeSuccess(w)
 }
 
 func (s *GardenServer) handleGetProperty(w http.ResponseWriter, r *http.Request) {
 	handle := r.FormValue(":handle")
+	key := r.FormValue(":key")
 
 	hLog := s.logger.Session("get-property", lager.Data{
 		"handle": handle,
 	})
-
-	var request protocol.GetPropertyRequest
-	if !s.readRequest(&request, w, r) {
-		return
-	}
-
-	key := request.GetKey()
 
 	container, err := s.backend.Lookup(handle)
 	if err != nil {
@@ -842,8 +688,8 @@ func (s *GardenServer) handleGetProperty(w http.ResponseWriter, r *http.Request)
 		"value": value,
 	})
 
-	s.writeResponse(w, &protocol.GetPropertyResponse{
-		Value: proto.String(value),
+	s.writeResponse(w, map[string]string{
+		"value": value,
 	})
 }
 
@@ -855,12 +701,14 @@ func (s *GardenServer) handleSetProperty(w http.ResponseWriter, r *http.Request)
 		"handle": handle,
 	})
 
-	var request protocol.SetPropertyRequest
+	var request struct {
+		Value string `json:"value"`
+	}
 	if !s.readRequest(&request, w, r) {
 		return
 	}
 
-	value := request.GetValue()
+	value := request.Value
 
 	container, err := s.backend.Lookup(handle)
 	if err != nil {
@@ -887,22 +735,16 @@ func (s *GardenServer) handleSetProperty(w http.ResponseWriter, r *http.Request)
 		"value": value,
 	})
 
-	s.writeResponse(w, &protocol.SetPropertyResponse{})
+	s.writeSuccess(w)
 }
 
 func (s *GardenServer) handleRemoveProperty(w http.ResponseWriter, r *http.Request) {
 	handle := r.FormValue(":handle")
+	key := r.FormValue(":key")
 
 	hLog := s.logger.Session("remove-property", lager.Data{
 		"handle": handle,
 	})
-
-	var request protocol.RemovePropertyRequest
-	if !s.readRequest(&request, w, r) {
-		return
-	}
-
-	key := request.GetKey()
 
 	container, err := s.backend.Lookup(handle)
 	if err != nil {
@@ -927,7 +769,7 @@ func (s *GardenServer) handleRemoveProperty(w http.ResponseWriter, r *http.Reque
 		"key": key,
 	})
 
-	s.writeResponse(w, &protocol.RemovePropertyResponse{})
+	s.writeSuccess(w)
 }
 
 func (s *GardenServer) handleRun(w http.ResponseWriter, r *http.Request) {
@@ -937,18 +779,10 @@ func (s *GardenServer) handleRun(w http.ResponseWriter, r *http.Request) {
 		"handle": handle,
 	})
 
-	var request protocol.RunRequest
+	var request garden.ProcessSpec
 	if !s.readRequest(&request, w, r) {
 		return
 	}
-
-	path := request.GetPath()
-	args := request.GetArgs()
-	dir := request.GetDir()
-	privileged := request.GetPrivileged()
-	user := request.GetUser()
-	env := request.GetEnv()
-	tty := request.GetTty()
 
 	container, err := s.backend.Lookup(handle)
 	if err != nil {
@@ -959,22 +793,8 @@ func (s *GardenServer) handleRun(w http.ResponseWriter, r *http.Request) {
 	s.bomberman.Pause(container.Handle())
 	defer s.bomberman.Unpause(container.Handle())
 
-	processSpec := garden.ProcessSpec{
-		Path:       path,
-		Args:       args,
-		Dir:        dir,
-		Privileged: privileged,
-		User:       user,
-		Env:        convertEnv(env),
-		TTY:        ttySpecFrom(tty),
-	}
-
-	if request.Rlimits != nil {
-		processSpec.Limits = resourceLimits(request.Rlimits)
-	}
-
 	hLog.Debug("running", lager.Data{
-		"spec": processSpec,
+		"spec": request,
 	})
 
 	stdout := make(chan []byte, 1000)
@@ -988,14 +808,14 @@ func (s *GardenServer) handleRun(w http.ResponseWriter, r *http.Request) {
 		Stderr: &chanWriter{stderr},
 	}
 
-	process, err := container.Run(processSpec, processIO)
+	process, err := container.Run(request, processIO)
 	if err != nil {
 		s.writeError(w, err, hLog)
 		return
 	}
 
 	hLog.Info("spawned", lager.Data{
-		"spec": processSpec,
+		"spec": request,
 		"id":   process.ID(),
 	})
 
@@ -1011,8 +831,8 @@ func (s *GardenServer) handleRun(w http.ResponseWriter, r *http.Request) {
 
 	defer conn.Close()
 
-	transport.WriteMessage(conn, &protocol.ProcessPayload{
-		ProcessId: proto.Uint32(process.ID()),
+	transport.WriteMessage(conn, &transport.ProcessPayload{
+		ProcessID: process.ID(),
 	})
 
 	go s.streamInput(json.NewDecoder(br), stdinW, process)
@@ -1113,109 +933,7 @@ func (s *GardenServer) handleInfo(w http.ResponseWriter, r *http.Request) {
 
 	hLog.Info("got-info")
 
-	properties := []*protocol.Property{}
-	for key, val := range info.Properties {
-		properties = append(properties, &protocol.Property{
-			Key:   proto.String(key),
-			Value: proto.String(val),
-		})
-	}
-
-	processIDs := make([]uint64, len(info.ProcessIDs))
-	for i, processID := range info.ProcessIDs {
-		processIDs[i] = uint64(processID)
-	}
-
-	mappedPorts := []*protocol.InfoResponse_PortMapping{}
-	for _, mapping := range info.MappedPorts {
-		mappedPorts = append(mappedPorts, &protocol.InfoResponse_PortMapping{
-			HostPort:      proto.Uint32(mapping.HostPort),
-			ContainerPort: proto.Uint32(mapping.ContainerPort),
-		})
-	}
-
-	s.writeResponse(w, &protocol.InfoResponse{
-		State:         proto.String(info.State),
-		Events:        info.Events,
-		HostIp:        proto.String(info.HostIP),
-		ContainerIp:   proto.String(info.ContainerIP),
-		ExternalIp:    proto.String(info.ExternalIP),
-		ContainerPath: proto.String(info.ContainerPath),
-		ProcessIds:    processIDs,
-
-		Properties: properties,
-
-		MemoryStat: &protocol.InfoResponse_MemoryStat{
-			Cache:                   proto.Uint64(info.MemoryStat.Cache),
-			Rss:                     proto.Uint64(info.MemoryStat.Rss),
-			MappedFile:              proto.Uint64(info.MemoryStat.MappedFile),
-			Pgpgin:                  proto.Uint64(info.MemoryStat.Pgpgin),
-			Pgpgout:                 proto.Uint64(info.MemoryStat.Pgpgout),
-			Swap:                    proto.Uint64(info.MemoryStat.Swap),
-			Pgfault:                 proto.Uint64(info.MemoryStat.Pgfault),
-			Pgmajfault:              proto.Uint64(info.MemoryStat.Pgmajfault),
-			InactiveAnon:            proto.Uint64(info.MemoryStat.InactiveAnon),
-			ActiveAnon:              proto.Uint64(info.MemoryStat.ActiveAnon),
-			InactiveFile:            proto.Uint64(info.MemoryStat.InactiveFile),
-			ActiveFile:              proto.Uint64(info.MemoryStat.ActiveFile),
-			Unevictable:             proto.Uint64(info.MemoryStat.Unevictable),
-			HierarchicalMemoryLimit: proto.Uint64(info.MemoryStat.HierarchicalMemoryLimit),
-			HierarchicalMemswLimit:  proto.Uint64(info.MemoryStat.HierarchicalMemswLimit),
-			TotalCache:              proto.Uint64(info.MemoryStat.TotalCache),
-			TotalRss:                proto.Uint64(info.MemoryStat.TotalRss),
-			TotalMappedFile:         proto.Uint64(info.MemoryStat.TotalMappedFile),
-			TotalPgpgin:             proto.Uint64(info.MemoryStat.TotalPgpgin),
-			TotalPgpgout:            proto.Uint64(info.MemoryStat.TotalPgpgout),
-			TotalSwap:               proto.Uint64(info.MemoryStat.TotalSwap),
-			TotalPgfault:            proto.Uint64(info.MemoryStat.TotalPgfault),
-			TotalPgmajfault:         proto.Uint64(info.MemoryStat.TotalPgmajfault),
-			TotalInactiveAnon:       proto.Uint64(info.MemoryStat.TotalInactiveAnon),
-			TotalActiveAnon:         proto.Uint64(info.MemoryStat.TotalActiveAnon),
-			TotalInactiveFile:       proto.Uint64(info.MemoryStat.TotalInactiveFile),
-			TotalActiveFile:         proto.Uint64(info.MemoryStat.TotalActiveFile),
-			TotalUnevictable:        proto.Uint64(info.MemoryStat.TotalUnevictable),
-		},
-
-		CpuStat: &protocol.InfoResponse_CpuStat{
-			Usage:  proto.Uint64(info.CPUStat.Usage),
-			User:   proto.Uint64(info.CPUStat.User),
-			System: proto.Uint64(info.CPUStat.System),
-		},
-
-		DiskStat: &protocol.InfoResponse_DiskStat{
-			BytesUsed:  proto.Uint64(info.DiskStat.BytesUsed),
-			InodesUsed: proto.Uint64(info.DiskStat.InodesUsed),
-		},
-
-		BandwidthStat: &protocol.InfoResponse_BandwidthStat{
-			InRate:   proto.Uint64(info.BandwidthStat.InRate),
-			InBurst:  proto.Uint64(info.BandwidthStat.InBurst),
-			OutRate:  proto.Uint64(info.BandwidthStat.OutRate),
-			OutBurst: proto.Uint64(info.BandwidthStat.OutBurst),
-		},
-
-		MappedPorts: mappedPorts,
-	})
-}
-
-func resourceLimits(limits *protocol.ResourceLimits) garden.ResourceLimits {
-	return garden.ResourceLimits{
-		As:         limits.As,
-		Core:       limits.Core,
-		Cpu:        limits.Cpu,
-		Data:       limits.Data,
-		Fsize:      limits.Fsize,
-		Locks:      limits.Locks,
-		Memlock:    limits.Memlock,
-		Msgqueue:   limits.Msgqueue,
-		Nice:       limits.Nice,
-		Nofile:     limits.Nofile,
-		Nproc:      limits.Nproc,
-		Rss:        limits.Rss,
-		Rtprio:     limits.Rtprio,
-		Sigpending: limits.Sigpending,
-		Stack:      limits.Stack,
-	}
+	s.writeResponse(w, info)
 }
 
 func (s *GardenServer) writeError(w http.ResponseWriter, err error, logger lager.Logger) {
@@ -1231,12 +949,12 @@ func (s *GardenServer) writeError(w http.ResponseWriter, err error, logger lager
 	w.Write([]byte(err.Error()))
 }
 
-func (s *GardenServer) writeResponse(w http.ResponseWriter, msg proto.Message) {
+func (s *GardenServer) writeResponse(w http.ResponseWriter, msg interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	transport.WriteMessage(w, msg)
 }
 
-func (s *GardenServer) readRequest(msg proto.Message, w http.ResponseWriter, r *http.Request) bool {
+func (s *GardenServer) readRequest(msg interface{}, w http.ResponseWriter, r *http.Request) bool {
 	if r.Header.Get("Content-Type") != "application/json" {
 		s.writeError(w, ErrInvalidContentType, s.logger)
 		return false
@@ -1251,19 +969,9 @@ func (s *GardenServer) readRequest(msg proto.Message, w http.ResponseWriter, r *
 	return true
 }
 
-func convertEnv(env []*protocol.EnvironmentVariable) []string {
-	converted := []string{}
-
-	for _, e := range env {
-		converted = append(converted, e.GetKey()+"="+e.GetValue())
-	}
-
-	return converted
-}
-
 func (s *GardenServer) streamInput(decoder *json.Decoder, in *io.PipeWriter, process garden.Process) {
 	for {
-		var payload protocol.ProcessPayload
+		var payload transport.ProcessPayload
 		err := decoder.Decode(&payload)
 		if err != nil {
 			in.CloseWithError(errors.New("Connection closed"))
@@ -1271,25 +979,25 @@ func (s *GardenServer) streamInput(decoder *json.Decoder, in *io.PipeWriter, pro
 		}
 
 		switch {
-		case payload.Tty != nil:
-			process.SetTTY(*ttySpecFrom(payload.GetTty()))
+		case payload.TTY != nil:
+			process.SetTTY(*payload.TTY)
 
 		case payload.Source != nil:
 			if payload.Data == nil {
 				in.Close()
 				return
 			} else {
-				_, err := in.Write([]byte(payload.GetData()))
+				_, err := in.Write([]byte(*payload.Data))
 				if err != nil {
 					return
 				}
 			}
 
 		case payload.Signal != nil:
-			switch payload.GetSignal() {
-			case protocol.ProcessPayload_kill:
+			switch *payload.Signal {
+			case garden.SignalKill:
 				process.Signal(garden.SignalKill)
-			case protocol.ProcessPayload_terminate:
+			case garden.SignalTerminate:
 				process.Signal(garden.SignalTerminate)
 			default:
 				s.logger.Error("stream-input-unknown-process-payload-signal", nil, lager.Data{"payload": payload})
@@ -1327,31 +1035,33 @@ func (s *GardenServer) streamProcess(logger lager.Logger, conn net.Conn, process
 		}
 	}()
 
-	stdoutSource := protocol.ProcessPayload_stdout
-	stderrSource := protocol.ProcessPayload_stderr
+	stdoutSource := transport.Stdout
+	stderrSource := transport.Stderr
 
 	for {
 		select {
 		case data := <-stdout:
-			transport.WriteMessage(conn, &protocol.ProcessPayload{
-				ProcessId: proto.Uint32(process.ID()),
+			d := string(data)
+			transport.WriteMessage(conn, &transport.ProcessPayload{
+				ProcessID: process.ID(),
 				Source:    &stdoutSource,
-				Data:      proto.String(string(data)),
+				Data:      &d,
 			})
 
 		case data := <-stderr:
-			transport.WriteMessage(conn, &protocol.ProcessPayload{
-				ProcessId: proto.Uint32(process.ID()),
+			d := string(data)
+			transport.WriteMessage(conn, &transport.ProcessPayload{
+				ProcessID: process.ID(),
 				Source:    &stderrSource,
-				Data:      proto.String(string(data)),
+				Data:      &d,
 			})
 
 		case status := <-statusCh:
 			flushProcess(conn, process, stdout, stderr)
 
-			transport.WriteMessage(conn, &protocol.ProcessPayload{
-				ProcessId:  proto.Uint32(process.ID()),
-				ExitStatus: proto.Uint32(uint32(status)),
+			transport.WriteMessage(conn, &transport.ProcessPayload{
+				ProcessID:  process.ID(),
+				ExitStatus: &status,
 			})
 
 			stdinPipe.Close()
@@ -1360,9 +1070,10 @@ func (s *GardenServer) streamProcess(logger lager.Logger, conn net.Conn, process
 		case err := <-errCh:
 			flushProcess(conn, process, stdout, stderr)
 
-			transport.WriteMessage(conn, &protocol.ProcessPayload{
-				ProcessId: proto.Uint32(process.ID()),
-				Error:     proto.String(err.Error()),
+			e := err.Error()
+			transport.WriteMessage(conn, &transport.ProcessPayload{
+				ProcessID: process.ID(),
+				Error:     &e,
 			})
 
 			stdinPipe.Close()
@@ -1379,44 +1090,29 @@ func (s *GardenServer) streamProcess(logger lager.Logger, conn net.Conn, process
 }
 
 func flushProcess(conn net.Conn, process garden.Process, stdout <-chan []byte, stderr <-chan []byte) {
-	stdoutSource := protocol.ProcessPayload_stdout
-	stderrSource := protocol.ProcessPayload_stderr
+	stdoutSource := transport.Stdout
+	stderrSource := transport.Stderr
 
 	for {
 		select {
 		case data := <-stdout:
-			transport.WriteMessage(conn, &protocol.ProcessPayload{
-				ProcessId: proto.Uint32(process.ID()),
+			d := string(data)
+			transport.WriteMessage(conn, &transport.ProcessPayload{
+				ProcessID: process.ID(),
 				Source:    &stdoutSource,
-				Data:      proto.String(string(data)),
+				Data:      &d,
 			})
 
 		case data := <-stderr:
-			transport.WriteMessage(conn, &protocol.ProcessPayload{
-				ProcessId: proto.Uint32(process.ID()),
+			d := string(data)
+			transport.WriteMessage(conn, &transport.ProcessPayload{
+				ProcessID: process.ID(),
 				Source:    &stderrSource,
-				Data:      proto.String(string(data)),
+				Data:      &d,
 			})
 
 		default:
 			return
 		}
 	}
-}
-
-func ttySpecFrom(tty *protocol.TTY) *garden.TTYSpec {
-	var ttySpec *garden.TTYSpec
-	if tty != nil {
-		ttySpec = &garden.TTYSpec{}
-
-		windowSize := tty.GetWindowSize()
-		if windowSize != nil {
-			ttySpec.WindowSize = &garden.WindowSize{
-				Columns: int(windowSize.GetColumns()),
-				Rows:    int(windowSize.GetRows()),
-			}
-		}
-	}
-
-	return ttySpec
 }
