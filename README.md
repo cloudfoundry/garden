@@ -70,8 +70,6 @@ Make a directory to contain go code:
 $ mkdir ~/go
 ```
 
-From now on, we assume this directory is in `/root/go`.
-
 Install Go. For example, install [gvm](https://github.com/moovweb/gvm) and issue:
 ```
 $ gvm install go1.4.1
@@ -80,13 +78,15 @@ $ gvm use go1.4.1
 
 Make sure that your `$GOPATH` and `$PATH` are set. For example:
 ```
-$ export GOPATH=/root/go:$GOPATH
-$ export PATH=$PATH:/root/go/bin
+$ export GOPATH=~/go:$GOPATH
+$ export PATH=$PATH:~/go/bin
 ```
 
 Get garden and its dependencies:
 ```
 $ go get -t -u github.com/cloudfoundry-incubator/garden
+$ cd ~/go/src/github.com/cloudfoundry-incubator/garden
+$ go get -t -u ./...
 ```
 
 Install ginkgo (used to test garden):
