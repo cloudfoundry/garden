@@ -619,13 +619,6 @@ var _ = Describe("Connection", func() {
 					InodesUsed: 2,
 				},
 
-				BandwidthStat: garden.ContainerBandwidthStat{
-					InRate:   1,
-					InBurst:  2,
-					OutRate:  3,
-					OutBurst: 4,
-				},
-
 				MappedPorts: []garden.PortMapping{
 					{HostPort: 1234, ContainerPort: 5678},
 					{HostPort: 1235, ContainerPort: 5679},
