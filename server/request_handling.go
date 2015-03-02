@@ -683,7 +683,7 @@ func (s *GardenServer) handleGetProperty(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	hLog.Info("got-property", lager.Data{
+	hLog.Debug("got-property", lager.Data{
 		"key":   key,
 		"value": value,
 	})
@@ -730,7 +730,7 @@ func (s *GardenServer) handleSetProperty(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	hLog.Info("set-property-complete", lager.Data{
+	hLog.Debug("set-property-complete", lager.Data{
 		"key":   key,
 		"value": value,
 	})
