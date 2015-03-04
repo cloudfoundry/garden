@@ -62,6 +62,7 @@ type Connection interface {
 	NetOut(handle string, rule garden.NetOutRule) error
 
 	GetProperty(handle string, name string) (string, error)
+	GetProperties(handle string) (garden.Properties, error)
 	SetProperty(handle string, name string, value string) error
 	RemoveProperty(handle string, name string) error
 }
@@ -500,6 +501,12 @@ func (c *connection) List(filterProperties garden.Properties) ([]string, error) 
 	}
 
 	return res.Handles, nil
+}
+
+func (c *connection) GetProperties(handle string) (garden.Properties, error) {
+	res := make(garden.Properties)
+	err := c.do(routes.GetProperties, nil, &res, rata.Params{"handle": handle}, nil)
+	return res, err
 }
 
 func (c *connection) Info(handle string) (garden.ContainerInfo, error) {

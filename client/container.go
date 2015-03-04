@@ -109,6 +109,10 @@ func (container *container) NetOut(netOutRule garden.NetOutRule) error {
 	return container.connection.NetOut(container.handle, netOutRule)
 }
 
+func (container *container) GetProperties() (garden.Properties, error) {
+	return container.connection.GetProperties(container.handle)
+}
+
 func (container *container) GetProperty(name string) (string, error) {
 	return container.connection.GetProperty(container.handle, name)
 }

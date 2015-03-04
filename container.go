@@ -111,6 +111,9 @@ type Container interface {
 	// * processID does not refer to a running process.
 	Attach(processID uint32, io ProcessIO) (Process, error)
 
+	// GetProperties returns the current set of properties
+	GetProperties() (Properties, error)
+
 	// GetProperty returns the value of the property with the specified name.
 	//
 	// Errors:

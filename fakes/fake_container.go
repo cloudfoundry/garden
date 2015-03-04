@@ -147,6 +147,13 @@ type FakeContainer struct {
 		result1 garden.Process
 		result2 error
 	}
+	GetPropertiesStub        func() (garden.Properties, error)
+	getPropertiesMutex       sync.RWMutex
+	getPropertiesArgsForCall []struct{}
+	getPropertiesReturns struct {
+		result1 garden.Properties
+		result2 error
+	}
 	GetPropertyStub        func(name string) (string, error)
 	getPropertyMutex       sync.RWMutex
 	getPropertyArgsForCall []struct {
@@ -681,6 +688,31 @@ func (fake *FakeContainer) AttachReturns(result1 garden.Process, result2 error) 
 	fake.AttachStub = nil
 	fake.attachReturns = struct {
 		result1 garden.Process
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *FakeContainer) GetProperties() (garden.Properties, error) {
+	fake.getPropertiesMutex.Lock()
+	fake.getPropertiesArgsForCall = append(fake.getPropertiesArgsForCall, struct{}{})
+	fake.getPropertiesMutex.Unlock()
+	if fake.GetPropertiesStub != nil {
+		return fake.GetPropertiesStub()
+	} else {
+		return fake.getPropertiesReturns.result1, fake.getPropertiesReturns.result2
+	}
+}
+
+func (fake *FakeContainer) GetPropertiesCallCount() int {
+	fake.getPropertiesMutex.RLock()
+	defer fake.getPropertiesMutex.RUnlock()
+	return len(fake.getPropertiesArgsForCall)
+}
+
+func (fake *FakeContainer) GetPropertiesReturns(result1 garden.Properties, result2 error) {
+	fake.GetPropertiesStub = nil
+	fake.getPropertiesReturns = struct {
+		result1 garden.Properties
 		result2 error
 	}{result1, result2}
 }

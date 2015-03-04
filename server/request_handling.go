@@ -656,6 +656,33 @@ func (s *GardenServer) handleNetOut(w http.ResponseWriter, r *http.Request) {
 	s.writeSuccess(w)
 }
 
+func (s *GardenServer) handleGetProperties(w http.ResponseWriter, r *http.Request) {
+	handle := r.FormValue(":handle")
+
+	hLog := s.logger.Session("get-properties", lager.Data{
+		"handle": handle,
+	})
+
+	container, err := s.backend.Lookup(handle)
+	if err != nil {
+		s.writeError(w, err, hLog)
+		return
+	}
+
+	s.bomberman.Pause(container.Handle())
+	defer s.bomberman.Unpause(container.Handle())
+
+	properties, err := container.GetProperties()
+	if err != nil {
+		s.writeError(w, err, hLog)
+		return
+	}
+
+	hLog.Info("got-properties")
+
+	s.writeResponse(w, properties)
+}
+
 func (s *GardenServer) handleGetProperty(w http.ResponseWriter, r *http.Request) {
 	handle := r.FormValue(":handle")
 	key := r.FormValue(":key")

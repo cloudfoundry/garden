@@ -465,6 +465,43 @@ var _ = Describe("When a client connects", func() {
 		})
 
 		Describe("properties", func() {
+			Describe("getting all", func() {
+				Context("when getting the properties succeeds", func() {
+					BeforeEach(func() {
+						fakeContainer.GetPropertiesReturns(garden.Properties{"foo": "bar"}, nil)
+					})
+
+					It("returns the properties from the container", func() {
+						value, err := container.GetProperties()
+						Ω(err).ShouldNot(HaveOccurred())
+
+						Ω(value).Should(Equal(garden.Properties{"foo": "bar"}))
+					})
+
+					itResetsGraceTimeWhenHandling(func() {
+						_, err := container.GetProperties()
+						Ω(err).ShouldNot(HaveOccurred())
+					})
+
+					itFailsWhenTheContainerIsNotFound(func() {
+						_, err := container.GetProperties()
+						Ω(err).Should(HaveOccurred())
+					})
+				})
+
+				Context("when getting the properties fails", func() {
+					BeforeEach(func() {
+						fakeContainer.GetPropertiesReturns(nil, errors.New("o no"))
+					})
+
+					It("returns an error", func() {
+						properties, err := container.GetProperties()
+						Ω(err).Should(HaveOccurred())
+						Ω(properties).Should(BeEmpty())
+					})
+				})
+			})
+
 			Describe("getting", func() {
 				Context("when getting the property succeeds", func() {
 					BeforeEach(func() {

@@ -99,6 +99,33 @@ var _ = Describe("Container", func() {
 		})
 	})
 
+	Describe("GetProperties", func() {
+		Context("when getting properties succeeds", func() {
+			BeforeEach(func() {
+				fakeConnection.GetPropertiesReturns(garden.Properties{"Foo": "bar"}, nil)
+			})
+
+			It("returns the error", func() {
+				result, err := container.GetProperties()
+				Ω(err).ShouldNot(HaveOccurred())
+				Ω(result).Should(Equal(garden.Properties{"Foo": "bar"}))
+			})
+		})
+
+		Context("when getting properties fails", func() {
+			disaster := errors.New("oh no!")
+
+			BeforeEach(func() {
+				fakeConnection.GetPropertiesReturns(nil, disaster)
+			})
+
+			It("returns the error", func() {
+				_, err := container.GetProperties()
+				Ω(err).Should(Equal(disaster))
+			})
+		})
+	})
+
 	Describe("StreamIn", func() {
 		It("sends a stream in request", func() {
 			fakeConnection.StreamInStub = func(handle string, dst string, reader io.Reader) error {

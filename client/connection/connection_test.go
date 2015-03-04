@@ -561,6 +561,44 @@ var _ = Describe("Connection", func() {
 		})
 	})
 
+	Describe("Getting container properties", func() {
+		handle := "container-handle"
+		var status int
+
+		BeforeEach(func() {
+			status = 200
+		})
+
+		JustBeforeEach(func() {
+			server.AppendHandlers(
+				ghttp.CombineHandlers(
+					ghttp.VerifyRequest("GET", fmt.Sprintf("/containers/%s/properties", handle)),
+					ghttp.RespondWith(status, "{\"foo\": \"bar\"}")))
+		})
+
+		It("returns the map of properties", func() {
+			properties, err := connection.GetProperties(handle)
+
+			Ω(err).ShouldNot(HaveOccurred())
+			Ω(properties).Should(
+				Equal(garden.Properties{
+					"foo": "bar",
+				}),
+			)
+		})
+
+		Context("when getting container properties fails", func() {
+			BeforeEach(func() {
+				status = 400
+			})
+
+			It("returns an error", func() {
+				_, err := connection.GetProperties(handle)
+				Ω(err).Should(HaveOccurred())
+			})
+		})
+	})
+
 	Describe("Getting container info", func() {
 		var infoResponse garden.ContainerInfo
 
