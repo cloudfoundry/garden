@@ -111,6 +111,9 @@ type Container interface {
 	// * processID does not refer to a running process.
 	Attach(processID uint32, io ProcessIO) (Process, error)
 
+	// Metrics returns the current set of metrics for a container
+	Metrics() (Metrics, error)
+
 	// GetProperties returns the current set of properties
 	GetProperties() (Properties, error)
 
@@ -210,6 +213,12 @@ type ContainerInfo struct {
 	DiskStat      ContainerDiskStat   //
 	Properties    Properties          // List of properties defined for the container.
 	MappedPorts   []PortMapping       //
+}
+
+type Metrics struct {
+	MemoryStat ContainerMemoryStat
+	CPUStat    ContainerCPUStat
+	DiskStat   ContainerDiskStat
 }
 
 type ContainerMemoryStat struct {

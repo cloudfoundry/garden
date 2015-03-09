@@ -206,6 +206,15 @@ type FakeConnection struct {
 	netOutReturns struct {
 		result1 error
 	}
+	GetPropertiesStub        func(handle string) (garden.Properties, error)
+	getPropertiesMutex       sync.RWMutex
+	getPropertiesArgsForCall []struct {
+		handle string
+	}
+	getPropertiesReturns struct {
+		result1 garden.Properties
+		result2 error
+	}
 	GetPropertyStub        func(handle string, name string) (string, error)
 	getPropertyMutex       sync.RWMutex
 	getPropertyArgsForCall []struct {
@@ -214,15 +223,6 @@ type FakeConnection struct {
 	}
 	getPropertyReturns struct {
 		result1 string
-		result2 error
-	}
-	GetPropertiesStub        func(handle string) (garden.Properties, error)
-	getPropertiesMutex       sync.RWMutex
-	getPropertiesArgsForCall []struct {
-		handle string
-	}
-	getPropertiesReturns struct {
-		result1 garden.Properties
 		result2 error
 	}
 	SetPropertyStub        func(handle string, name string, value string) error
@@ -234,6 +234,15 @@ type FakeConnection struct {
 	}
 	setPropertyReturns struct {
 		result1 error
+	}
+	MetricsStub        func(handle string) (garden.Metrics, error)
+	metricsMutex       sync.RWMutex
+	metricsArgsForCall []struct {
+		handle string
+	}
+	metricsReturns struct {
+		result1 garden.Metrics
+		result2 error
 	}
 	RemovePropertyStub        func(handle string, name string) error
 	removePropertyMutex       sync.RWMutex
@@ -934,6 +943,39 @@ func (fake *FakeConnection) NetOutReturns(result1 error) {
 	}{result1}
 }
 
+func (fake *FakeConnection) GetProperties(handle string) (garden.Properties, error) {
+	fake.getPropertiesMutex.Lock()
+	fake.getPropertiesArgsForCall = append(fake.getPropertiesArgsForCall, struct {
+		handle string
+	}{handle})
+	fake.getPropertiesMutex.Unlock()
+	if fake.GetPropertiesStub != nil {
+		return fake.GetPropertiesStub(handle)
+	} else {
+		return fake.getPropertiesReturns.result1, fake.getPropertiesReturns.result2
+	}
+}
+
+func (fake *FakeConnection) GetPropertiesCallCount() int {
+	fake.getPropertiesMutex.RLock()
+	defer fake.getPropertiesMutex.RUnlock()
+	return len(fake.getPropertiesArgsForCall)
+}
+
+func (fake *FakeConnection) GetPropertiesArgsForCall(i int) string {
+	fake.getPropertiesMutex.RLock()
+	defer fake.getPropertiesMutex.RUnlock()
+	return fake.getPropertiesArgsForCall[i].handle
+}
+
+func (fake *FakeConnection) GetPropertiesReturns(result1 garden.Properties, result2 error) {
+	fake.GetPropertiesStub = nil
+	fake.getPropertiesReturns = struct {
+		result1 garden.Properties
+		result2 error
+	}{result1, result2}
+}
+
 func (fake *FakeConnection) GetProperty(handle string, name string) (string, error) {
 	fake.getPropertyMutex.Lock()
 	fake.getPropertyArgsForCall = append(fake.getPropertyArgsForCall, struct {
@@ -964,39 +1006,6 @@ func (fake *FakeConnection) GetPropertyReturns(result1 string, result2 error) {
 	fake.GetPropertyStub = nil
 	fake.getPropertyReturns = struct {
 		result1 string
-		result2 error
-	}{result1, result2}
-}
-
-func (fake *FakeConnection) GetProperties(handle string) (garden.Properties, error) {
-	fake.getPropertiesMutex.Lock()
-	fake.getPropertiesArgsForCall = append(fake.getPropertiesArgsForCall, struct {
-		handle string
-	}{handle})
-	fake.getPropertiesMutex.Unlock()
-	if fake.GetPropertiesStub != nil {
-		return fake.GetPropertiesStub(handle)
-	} else {
-		return fake.getPropertiesReturns.result1, fake.getPropertiesReturns.result2
-	}
-}
-
-func (fake *FakeConnection) GetPropertiesCallCount() int {
-	fake.getPropertiesMutex.RLock()
-	defer fake.getPropertiesMutex.RUnlock()
-	return len(fake.getPropertiesArgsForCall)
-}
-
-func (fake *FakeConnection) GetPropertiesArgsForCall(i int) string {
-	fake.getPropertiesMutex.RLock()
-	defer fake.getPropertiesMutex.RUnlock()
-	return fake.getPropertiesArgsForCall[i].handle
-}
-
-func (fake *FakeConnection) GetPropertiesReturns(result1 garden.Properties, result2 error) {
-	fake.GetPropertiesStub = nil
-	fake.getPropertiesReturns = struct {
-		result1 garden.Properties
 		result2 error
 	}{result1, result2}
 }
@@ -1033,6 +1042,39 @@ func (fake *FakeConnection) SetPropertyReturns(result1 error) {
 	fake.setPropertyReturns = struct {
 		result1 error
 	}{result1}
+}
+
+func (fake *FakeConnection) Metrics(handle string) (garden.Metrics, error) {
+	fake.metricsMutex.Lock()
+	fake.metricsArgsForCall = append(fake.metricsArgsForCall, struct {
+		handle string
+	}{handle})
+	fake.metricsMutex.Unlock()
+	if fake.MetricsStub != nil {
+		return fake.MetricsStub(handle)
+	} else {
+		return fake.metricsReturns.result1, fake.metricsReturns.result2
+	}
+}
+
+func (fake *FakeConnection) MetricsCallCount() int {
+	fake.metricsMutex.RLock()
+	defer fake.metricsMutex.RUnlock()
+	return len(fake.metricsArgsForCall)
+}
+
+func (fake *FakeConnection) MetricsArgsForCall(i int) string {
+	fake.metricsMutex.RLock()
+	defer fake.metricsMutex.RUnlock()
+	return fake.metricsArgsForCall[i].handle
+}
+
+func (fake *FakeConnection) MetricsReturns(result1 garden.Metrics, result2 error) {
+	fake.MetricsStub = nil
+	fake.metricsReturns = struct {
+		result1 garden.Metrics
+		result2 error
+	}{result1, result2}
 }
 
 func (fake *FakeConnection) RemoveProperty(handle string, name string) error {

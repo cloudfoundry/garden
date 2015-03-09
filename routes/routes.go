@@ -34,9 +34,12 @@ const (
 	Run    = "Run"
 	Attach = "Attach"
 
-	GetProperties  = "GetProperties"
-	GetProperty    = "GetProperty"
-	SetProperty    = "SetProperty"
+	GetProperties = "GetProperties"
+	GetProperty   = "GetProperty"
+	SetProperty   = "SetProperty"
+
+	Metrics = "Metrics"
+
 	RemoveProperty = "RemoveProperty"
 )
 
@@ -77,4 +80,6 @@ var Routes = rata.Routes{
 	{Path: "/containers/:handle/properties/:key", Method: "GET", Name: GetProperty},
 	{Path: "/containers/:handle/properties/:key", Method: "PUT", Name: SetProperty},
 	{Path: "/containers/:handle/properties/:key", Method: "DELETE", Name: RemoveProperty},
+
+	{Path: "/containers/:handle/metrics", Method: "GET", Name: Metrics},
 }

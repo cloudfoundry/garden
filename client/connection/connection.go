@@ -61,9 +61,11 @@ type Connection interface {
 	NetIn(handle string, hostPort, containerPort uint32) (uint32, uint32, error)
 	NetOut(handle string, rule garden.NetOutRule) error
 
-	GetProperty(handle string, name string) (string, error)
 	GetProperties(handle string) (garden.Properties, error)
+	GetProperty(handle string, name string) (string, error)
 	SetProperty(handle string, name string, value string) error
+
+	Metrics(handle string) (garden.Metrics, error)
 	RemoveProperty(handle string, name string) error
 }
 
@@ -506,6 +508,12 @@ func (c *connection) List(filterProperties garden.Properties) ([]string, error) 
 func (c *connection) GetProperties(handle string) (garden.Properties, error) {
 	res := make(garden.Properties)
 	err := c.do(routes.GetProperties, nil, &res, rata.Params{"handle": handle}, nil)
+	return res, err
+}
+
+func (c *connection) Metrics(handle string) (garden.Metrics, error) {
+	res := garden.Metrics{}
+	err := c.do(routes.Metrics, nil, &res, rata.Params{"handle": handle}, nil)
 	return res, err
 }
 

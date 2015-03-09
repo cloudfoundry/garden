@@ -147,6 +147,13 @@ type FakeContainer struct {
 		result1 garden.Process
 		result2 error
 	}
+	MetricsStub        func() (garden.Metrics, error)
+	metricsMutex       sync.RWMutex
+	metricsArgsForCall []struct{}
+	metricsReturns struct {
+		result1 garden.Metrics
+		result2 error
+	}
 	GetPropertiesStub        func() (garden.Properties, error)
 	getPropertiesMutex       sync.RWMutex
 	getPropertiesArgsForCall []struct{}
@@ -688,6 +695,31 @@ func (fake *FakeContainer) AttachReturns(result1 garden.Process, result2 error) 
 	fake.AttachStub = nil
 	fake.attachReturns = struct {
 		result1 garden.Process
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *FakeContainer) Metrics() (garden.Metrics, error) {
+	fake.metricsMutex.Lock()
+	fake.metricsArgsForCall = append(fake.metricsArgsForCall, struct{}{})
+	fake.metricsMutex.Unlock()
+	if fake.MetricsStub != nil {
+		return fake.MetricsStub()
+	} else {
+		return fake.metricsReturns.result1, fake.metricsReturns.result2
+	}
+}
+
+func (fake *FakeContainer) MetricsCallCount() int {
+	fake.metricsMutex.RLock()
+	defer fake.metricsMutex.RUnlock()
+	return len(fake.metricsArgsForCall)
+}
+
+func (fake *FakeContainer) MetricsReturns(result1 garden.Metrics, result2 error) {
+	fake.MetricsStub = nil
+	fake.metricsReturns = struct {
+		result1 garden.Metrics
 		result2 error
 	}{result1, result2}
 }

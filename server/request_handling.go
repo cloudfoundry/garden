@@ -656,6 +656,31 @@ func (s *GardenServer) handleNetOut(w http.ResponseWriter, r *http.Request) {
 	s.writeSuccess(w)
 }
 
+func (s *GardenServer) handleMetrics(w http.ResponseWriter, r *http.Request) {
+	handle := r.FormValue(":handle")
+
+	hLog := s.logger.Session("get-metrics", lager.Data{
+		"handle": handle,
+	})
+
+	container, err := s.backend.Lookup(handle)
+	if err != nil {
+		s.writeError(w, err, hLog)
+		return
+	}
+
+	s.bomberman.Pause(container.Handle())
+	defer s.bomberman.Unpause(container.Handle())
+
+	metrics, err := container.Metrics()
+	if err != nil {
+		s.writeError(w, err, hLog)
+		return
+	}
+
+	s.writeResponse(w, metrics)
+}
+
 func (s *GardenServer) handleGetProperties(w http.ResponseWriter, r *http.Request) {
 	handle := r.FormValue(":handle")
 

@@ -599,6 +599,82 @@ var _ = Describe("Connection", func() {
 		})
 	})
 
+	Describe("Getting container metrics", func() {
+		handle := "container-handle"
+		metrics := garden.Metrics{
+			MemoryStat: garden.ContainerMemoryStat{
+				Cache:                   1,
+				Rss:                     2,
+				MappedFile:              3,
+				Pgpgin:                  4,
+				Pgpgout:                 5,
+				Swap:                    6,
+				Pgfault:                 7,
+				Pgmajfault:              8,
+				InactiveAnon:            9,
+				ActiveAnon:              10,
+				InactiveFile:            11,
+				ActiveFile:              12,
+				Unevictable:             13,
+				HierarchicalMemoryLimit: 14,
+				HierarchicalMemswLimit:  15,
+				TotalCache:              16,
+				TotalRss:                17,
+				TotalMappedFile:         18,
+				TotalPgpgin:             19,
+				TotalPgpgout:            20,
+				TotalSwap:               21,
+				TotalPgfault:            22,
+				TotalPgmajfault:         23,
+				TotalInactiveAnon:       24,
+				TotalActiveAnon:         25,
+				TotalInactiveFile:       26,
+				TotalActiveFile:         27,
+				TotalUnevictable:        28,
+			},
+			CPUStat: garden.ContainerCPUStat{
+				Usage:  1,
+				User:   2,
+				System: 3,
+			},
+
+			DiskStat: garden.ContainerDiskStat{
+				BytesUsed:  1,
+				InodesUsed: 2,
+			},
+		}
+		var status int
+
+		BeforeEach(func() {
+			status = 200
+		})
+
+		JustBeforeEach(func() {
+			server.AppendHandlers(
+				ghttp.CombineHandlers(
+					ghttp.VerifyRequest("GET", fmt.Sprintf("/containers/%s/metrics", handle)),
+					ghttp.RespondWith(status, marshalProto(metrics))))
+		})
+
+		It("returns the MemoryStat, CPUStat and DiskStat", func() {
+			returnedMetrics, err := connection.Metrics(handle)
+
+			Ω(err).ShouldNot(HaveOccurred())
+			Ω(returnedMetrics).Should(Equal(metrics))
+		})
+
+		Context("when getting container metrics fails", func() {
+			BeforeEach(func() {
+				status = 400
+			})
+
+			It("returns an error", func() {
+				_, err := connection.Metrics(handle)
+				Ω(err).Should(HaveOccurred())
+			})
+		})
+	})
+
 	Describe("Getting container info", func() {
 		var infoResponse garden.ContainerInfo
 

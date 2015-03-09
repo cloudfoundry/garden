@@ -95,6 +95,7 @@ func New(
 		routes.Info:                   http.HandlerFunc(s.handleInfo),
 		routes.Run:                    http.HandlerFunc(s.handleRun),
 		routes.Attach:                 http.HandlerFunc(s.handleAttach),
+		routes.Metrics:                http.HandlerFunc(s.handleMetrics),
 		routes.GetProperties:          http.HandlerFunc(s.handleGetProperties),
 		routes.GetProperty:            http.HandlerFunc(s.handleGetProperty),
 		routes.SetProperty:            http.HandlerFunc(s.handleSetProperty),

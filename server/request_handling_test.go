@@ -38,6 +38,48 @@ var _ = Describe("When a client connects", func() {
 	var apiClient garden.Client
 	var isRunning bool
 
+	containerMetrics := garden.Metrics{
+		MemoryStat: garden.ContainerMemoryStat{
+			Cache:                   1,
+			Rss:                     2,
+			MappedFile:              3,
+			Pgpgin:                  4,
+			Pgpgout:                 5,
+			Swap:                    6,
+			Pgfault:                 7,
+			Pgmajfault:              8,
+			InactiveAnon:            9,
+			ActiveAnon:              10,
+			InactiveFile:            11,
+			ActiveFile:              12,
+			Unevictable:             13,
+			HierarchicalMemoryLimit: 14,
+			HierarchicalMemswLimit:  15,
+			TotalCache:              16,
+			TotalRss:                17,
+			TotalMappedFile:         18,
+			TotalPgpgin:             19,
+			TotalPgpgout:            20,
+			TotalSwap:               21,
+			TotalPgfault:            22,
+			TotalPgmajfault:         23,
+			TotalInactiveAnon:       24,
+			TotalActiveAnon:         25,
+			TotalInactiveFile:       26,
+			TotalActiveFile:         27,
+			TotalUnevictable:        28,
+		},
+		CPUStat: garden.ContainerCPUStat{
+			Usage:  1,
+			User:   2,
+			System: 3,
+		},
+		DiskStat: garden.ContainerDiskStat{
+			BytesUsed:  1,
+			InodesUsed: 2,
+		},
+	}
+
 	BeforeEach(func() {
 		logger = lagertest.NewTestLogger("test")
 
@@ -423,11 +465,11 @@ var _ = Describe("When a client connects", func() {
 			})
 		}
 
-		itFailsWhenTheContainerIsNotFound := func(example func()) {
+		itFailsWhenTheContainerIsNotFound := func(example func() error) {
 			Context("when the container is not found", func() {
 				It("fails", func() {
 					serverBackend.LookupReturns(nil, errors.New("not found"))
-					example()
+					Ω(example()).Should(MatchError("not found"))
 				})
 			})
 		}
@@ -440,9 +482,8 @@ var _ = Describe("When a client connects", func() {
 				Ω(fakeContainer.StopArgsForCall(0)).Should(Equal(true))
 			})
 
-			itFailsWhenTheContainerIsNotFound(func() {
-				err := container.Stop(true)
-				Ω(err).Should(HaveOccurred())
+			itFailsWhenTheContainerIsNotFound(func() error {
+				return container.Stop(true)
 			})
 
 			Context("when stopping the container fails", func() {
@@ -464,6 +505,46 @@ var _ = Describe("When a client connects", func() {
 			)
 		})
 
+		Describe("metrics", func() {
+			Context("when getting the metrics succeeds", func() {
+				BeforeEach(func() {
+					fakeContainer.MetricsReturns(
+						containerMetrics,
+						nil,
+					)
+				})
+
+				It("returns the metrics from the container", func() {
+					value, err := container.Metrics()
+					Ω(err).ShouldNot(HaveOccurred())
+
+					Ω(value).Should(Equal(containerMetrics))
+				})
+
+				itResetsGraceTimeWhenHandling(func() {
+					_, err := container.Metrics()
+					Ω(err).ShouldNot(HaveOccurred())
+				})
+
+				itFailsWhenTheContainerIsNotFound(func() error {
+					_, err := container.Metrics()
+					return err
+				})
+			})
+
+			Context("when getting the metrics fails", func() {
+				BeforeEach(func() {
+					fakeContainer.MetricsReturns(garden.Metrics{}, errors.New("o no"))
+				})
+
+				It("returns an error", func() {
+					metrics, err := container.Metrics()
+					Ω(err).Should(HaveOccurred())
+					Ω(metrics).Should(Equal(garden.Metrics{}))
+				})
+			})
+		})
+
 		Describe("properties", func() {
 			Describe("getting all", func() {
 				Context("when getting the properties succeeds", func() {
@@ -483,9 +564,9 @@ var _ = Describe("When a client connects", func() {
 						Ω(err).ShouldNot(HaveOccurred())
 					})
 
-					itFailsWhenTheContainerIsNotFound(func() {
+					itFailsWhenTheContainerIsNotFound(func() error {
 						_, err := container.GetProperties()
-						Ω(err).Should(HaveOccurred())
+						return err
 					})
 				})
 
@@ -525,9 +606,9 @@ var _ = Describe("When a client connects", func() {
 						Ω(err).ShouldNot(HaveOccurred())
 					})
 
-					itFailsWhenTheContainerIsNotFound(func() {
+					itFailsWhenTheContainerIsNotFound(func() error {
 						_, err := container.GetProperty("some-property")
-						Ω(err).Should(HaveOccurred())
+						return err
 					})
 				})
 
@@ -566,9 +647,8 @@ var _ = Describe("When a client connects", func() {
 						Ω(err).ShouldNot(HaveOccurred())
 					})
 
-					itFailsWhenTheContainerIsNotFound(func() {
-						err := container.SetProperty("some-property", "some-value")
-						Ω(err).Should(HaveOccurred())
+					itFailsWhenTheContainerIsNotFound(func() error {
+						return container.SetProperty("some-property", "some-value")
 					})
 				})
 
@@ -605,9 +685,8 @@ var _ = Describe("When a client connects", func() {
 						Ω(err).ShouldNot(HaveOccurred())
 					})
 
-					itFailsWhenTheContainerIsNotFound(func() {
-						err := container.RemoveProperty("some-property")
-						Ω(err).Should(HaveOccurred())
+					itFailsWhenTheContainerIsNotFound(func() error {
+						return container.RemoveProperty("some-property")
 					})
 				})
 
@@ -640,9 +719,8 @@ var _ = Describe("When a client connects", func() {
 				Ω(fakeContainer.StreamInCallCount()).Should(Equal(1))
 			})
 
-			itFailsWhenTheContainerIsNotFound(func() {
-				err := container.StreamIn("/dst/path", nil)
-				Ω(err).Should(HaveOccurred())
+			itFailsWhenTheContainerIsNotFound(func() error {
+				return container.StreamIn("/dst/path", nil)
 			})
 
 			Context("when copying in to the container fails", func() {
@@ -710,9 +788,9 @@ var _ = Describe("When a client connects", func() {
 				Ω(err).ShouldNot(HaveOccurred())
 			})
 
-			itFailsWhenTheContainerIsNotFound(func() {
+			itFailsWhenTheContainerIsNotFound(func() error {
 				_, err := container.StreamOut("/src/path")
-				Ω(err).Should(HaveOccurred())
+				return err
 			})
 
 			Context("when streaming out of the container fails", func() {
@@ -748,12 +826,11 @@ var _ = Describe("When a client connects", func() {
 				Ω(err).ShouldNot(HaveOccurred())
 			})
 
-			itFailsWhenTheContainerIsNotFound(func() {
-				err := container.LimitBandwidth(garden.BandwidthLimits{
+			itFailsWhenTheContainerIsNotFound(func() error {
+				return container.LimitBandwidth(garden.BandwidthLimits{
 					RateInBytesPerSecond:      123,
 					BurstRateInBytesPerSecond: 456,
 				})
-				Ω(err).Should(HaveOccurred())
 			})
 
 			Context("when limiting the bandwidth fails", func() {
@@ -813,9 +890,8 @@ var _ = Describe("When a client connects", func() {
 				Ω(err).ShouldNot(HaveOccurred())
 			})
 
-			itFailsWhenTheContainerIsNotFound(func() {
-				err := container.LimitMemory(garden.MemoryLimits{123})
-				Ω(err).Should(HaveOccurred())
+			itFailsWhenTheContainerIsNotFound(func() error {
+				return container.LimitMemory(garden.MemoryLimits{123})
 			})
 
 			Context("when limiting the memory fails", func() {
@@ -849,9 +925,9 @@ var _ = Describe("When a client connects", func() {
 				Ω(fakeContainer.LimitMemoryCallCount()).Should(BeZero())
 			})
 
-			itFailsWhenTheContainerIsNotFound(func() {
+			itFailsWhenTheContainerIsNotFound(func() error {
 				_, err := container.CurrentMemoryLimits()
-				Ω(err).Should(HaveOccurred())
+				return err
 			})
 
 			Context("when getting the current memory limits fails", func() {
@@ -894,9 +970,8 @@ var _ = Describe("When a client connects", func() {
 				Ω(err).ShouldNot(HaveOccurred())
 			})
 
-			itFailsWhenTheContainerIsNotFound(func() {
-				err := container.LimitDisk(garden.DiskLimits{})
-				Ω(err).Should(HaveOccurred())
+			itFailsWhenTheContainerIsNotFound(func() error {
+				return container.LimitDisk(garden.DiskLimits{})
 			})
 
 			Context("when limiting the disk fails", func() {
@@ -939,9 +1014,9 @@ var _ = Describe("When a client connects", func() {
 				Ω(fakeContainer.LimitDiskCallCount()).Should(BeZero())
 			})
 
-			itFailsWhenTheContainerIsNotFound(func() {
+			itFailsWhenTheContainerIsNotFound(func() error {
 				_, err := container.CurrentDiskLimits()
-				Ω(err).Should(HaveOccurred())
+				return err
 			})
 
 			Context("when getting the current disk limits fails", func() {
@@ -971,9 +1046,8 @@ var _ = Describe("When a client connects", func() {
 				Ω(err).ShouldNot(HaveOccurred())
 			})
 
-			itFailsWhenTheContainerIsNotFound(func() {
-				err := container.LimitCPU(setLimits)
-				Ω(err).Should(HaveOccurred())
+			itFailsWhenTheContainerIsNotFound(func() error {
+				return container.LimitCPU(setLimits)
 			})
 
 			Context("when limiting the CPU fails", func() {
@@ -1007,9 +1081,9 @@ var _ = Describe("When a client connects", func() {
 				Ω(fakeContainer.LimitCPUCallCount()).Should(BeZero())
 			})
 
-			itFailsWhenTheContainerIsNotFound(func() {
+			itFailsWhenTheContainerIsNotFound(func() error {
 				_, err := container.CurrentCPULimits()
-				Ω(err).Should(HaveOccurred())
+				return err
 			})
 
 			Context("when getting the current CPU limits fails", func() {
@@ -1044,9 +1118,9 @@ var _ = Describe("When a client connects", func() {
 				Ω(err).ShouldNot(HaveOccurred())
 			})
 
-			itFailsWhenTheContainerIsNotFound(func() {
+			itFailsWhenTheContainerIsNotFound(func() error {
 				_, _, err := container.NetIn(123, 456)
-				Ω(err).Should(HaveOccurred())
+				return err
 			})
 
 			Context("when mapping the port fails", func() {
@@ -1237,9 +1311,8 @@ var _ = Describe("When a client connects", func() {
 				Ω(err).ShouldNot(HaveOccurred())
 			})
 
-			itFailsWhenTheContainerIsNotFound(func() {
-				err := container.NetOut(garden.NetOutRule{})
-				Ω(err).Should(HaveOccurred())
+			itFailsWhenTheContainerIsNotFound(func() error {
+				return container.NetOut(garden.NetOutRule{})
 			})
 
 			Context("when permitting traffic fails", func() {
@@ -1267,45 +1340,9 @@ var _ = Describe("When a client connects", func() {
 					"foo": "bar",
 					"a":   "b",
 				},
-				MemoryStat: garden.ContainerMemoryStat{
-					Cache:                   1,
-					Rss:                     2,
-					MappedFile:              3,
-					Pgpgin:                  4,
-					Pgpgout:                 5,
-					Swap:                    6,
-					Pgfault:                 7,
-					Pgmajfault:              8,
-					InactiveAnon:            9,
-					ActiveAnon:              10,
-					InactiveFile:            11,
-					ActiveFile:              12,
-					Unevictable:             13,
-					HierarchicalMemoryLimit: 14,
-					HierarchicalMemswLimit:  15,
-					TotalCache:              16,
-					TotalRss:                17,
-					TotalMappedFile:         18,
-					TotalPgpgin:             19,
-					TotalPgpgout:            20,
-					TotalSwap:               21,
-					TotalPgfault:            22,
-					TotalPgmajfault:         23,
-					TotalInactiveAnon:       24,
-					TotalActiveAnon:         25,
-					TotalInactiveFile:       26,
-					TotalActiveFile:         27,
-					TotalUnevictable:        28,
-				},
-				CPUStat: garden.ContainerCPUStat{
-					Usage:  1,
-					User:   2,
-					System: 3,
-				},
-				DiskStat: garden.ContainerDiskStat{
-					BytesUsed:  1,
-					InodesUsed: 2,
-				},
+				MemoryStat: containerMetrics.MemoryStat,
+				CPUStat:    containerMetrics.CPUStat,
+				DiskStat:   containerMetrics.DiskStat,
 				MappedPorts: []garden.PortMapping{
 					{HostPort: 1234, ContainerPort: 5678},
 					{HostPort: 1235, ContainerPort: 5679},
@@ -1326,9 +1363,9 @@ var _ = Describe("When a client connects", func() {
 				Ω(err).ShouldNot(HaveOccurred())
 			})
 
-			itFailsWhenTheContainerIsNotFound(func() {
+			itFailsWhenTheContainerIsNotFound(func() error {
 				_, err := container.Info()
-				Ω(err).Should(HaveOccurred())
+				return err
 			})
 
 			Context("when getting container info fails", func() {
@@ -1417,9 +1454,12 @@ var _ = Describe("When a client connects", func() {
 				})
 			})
 
-			itFailsWhenTheContainerIsNotFound(func() {
-				_, err := container.Attach(123, garden.ProcessIO{})
-				Ω(err).Should(HaveOccurred())
+			Context("when the container is not found", func() {
+				It("fails", func() {
+					serverBackend.LookupReturns(nil, errors.New("not found"))
+					_, err := container.Attach(123, garden.ProcessIO{})
+					Ω(err).Should(HaveOccurred())
+				})
 			})
 
 			Context("when waiting on the process fails server-side", func() {
@@ -1721,9 +1761,12 @@ var _ = Describe("When a client connects", func() {
 				})
 			})
 
-			itFailsWhenTheContainerIsNotFound(func() {
-				_, err := container.Run(processSpec, garden.ProcessIO{})
-				Ω(err).Should(HaveOccurred())
+			Context("when the container is not found", func() {
+				It("fails", func() {
+					serverBackend.LookupReturns(nil, errors.New("not found"))
+					_, err := container.Run(processSpec, garden.ProcessIO{})
+					Ω(err).Should(HaveOccurred())
+				})
 			})
 
 			Context("when running fails", func() {
