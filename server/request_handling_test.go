@@ -38,48 +38,6 @@ var _ = Describe("When a client connects", func() {
 	var apiClient garden.Client
 	var isRunning bool
 
-	containerMetrics := garden.Metrics{
-		MemoryStat: garden.ContainerMemoryStat{
-			Cache:                   1,
-			Rss:                     2,
-			MappedFile:              3,
-			Pgpgin:                  4,
-			Pgpgout:                 5,
-			Swap:                    6,
-			Pgfault:                 7,
-			Pgmajfault:              8,
-			InactiveAnon:            9,
-			ActiveAnon:              10,
-			InactiveFile:            11,
-			ActiveFile:              12,
-			Unevictable:             13,
-			HierarchicalMemoryLimit: 14,
-			HierarchicalMemswLimit:  15,
-			TotalCache:              16,
-			TotalRss:                17,
-			TotalMappedFile:         18,
-			TotalPgpgin:             19,
-			TotalPgpgout:            20,
-			TotalSwap:               21,
-			TotalPgfault:            22,
-			TotalPgmajfault:         23,
-			TotalInactiveAnon:       24,
-			TotalActiveAnon:         25,
-			TotalInactiveFile:       26,
-			TotalActiveFile:         27,
-			TotalUnevictable:        28,
-		},
-		CPUStat: garden.ContainerCPUStat{
-			Usage:  1,
-			User:   2,
-			System: 3,
-		},
-		DiskStat: garden.ContainerDiskStat{
-			BytesUsed:  1,
-			InodesUsed: 2,
-		},
-	}
-
 	BeforeEach(func() {
 		logger = lagertest.NewTestLogger("test")
 
@@ -506,6 +464,49 @@ var _ = Describe("When a client connects", func() {
 		})
 
 		Describe("metrics", func() {
+
+			containerMetrics := garden.Metrics{
+				MemoryStat: garden.ContainerMemoryStat{
+					Cache:                   1,
+					Rss:                     2,
+					MappedFile:              3,
+					Pgpgin:                  4,
+					Pgpgout:                 5,
+					Swap:                    6,
+					Pgfault:                 7,
+					Pgmajfault:              8,
+					InactiveAnon:            9,
+					ActiveAnon:              10,
+					InactiveFile:            11,
+					ActiveFile:              12,
+					Unevictable:             13,
+					HierarchicalMemoryLimit: 14,
+					HierarchicalMemswLimit:  15,
+					TotalCache:              16,
+					TotalRss:                17,
+					TotalMappedFile:         18,
+					TotalPgpgin:             19,
+					TotalPgpgout:            20,
+					TotalSwap:               21,
+					TotalPgfault:            22,
+					TotalPgmajfault:         23,
+					TotalInactiveAnon:       24,
+					TotalActiveAnon:         25,
+					TotalInactiveFile:       26,
+					TotalActiveFile:         27,
+					TotalUnevictable:        28,
+				},
+				CPUStat: garden.ContainerCPUStat{
+					Usage:  1,
+					User:   2,
+					System: 3,
+				},
+				DiskStat: garden.ContainerDiskStat{
+					BytesUsed:  1,
+					InodesUsed: 2,
+				},
+			}
+
 			Context("when getting the metrics succeeds", func() {
 				BeforeEach(func() {
 					fakeContainer.MetricsReturns(
@@ -1340,9 +1341,6 @@ var _ = Describe("When a client connects", func() {
 					"foo": "bar",
 					"a":   "b",
 				},
-				MemoryStat: containerMetrics.MemoryStat,
-				CPUStat:    containerMetrics.CPUStat,
-				DiskStat:   containerMetrics.DiskStat,
 				MappedPorts: []garden.PortMapping{
 					{HostPort: 1234, ContainerPort: 5678},
 					{HostPort: 1235, ContainerPort: 5679},

@@ -201,18 +201,15 @@ type PortMapping struct {
 
 // ContainerInfo holds information about a container.
 type ContainerInfo struct {
-	State         string              // Either "active" or "stopped".
-	Events        []string            // List of events that occurred for the container. It currently includes only "oom" (Out Of Memory) event if it occurred.
-	HostIP        string              // The IP address of the gateway which controls the host side of the container's virtual ethernet pair.
-	ContainerIP   string              // The IP address of the container side of the container's virtual ethernet pair.
-	ExternalIP    string              //
-	ContainerPath string              // The path to the directory holding the container's files (both its control scripts and filesystem).
-	ProcessIDs    []uint32            // List of running processes.
-	MemoryStat    ContainerMemoryStat //
-	CPUStat       ContainerCPUStat    //
-	DiskStat      ContainerDiskStat   //
-	Properties    Properties          // List of properties defined for the container.
-	MappedPorts   []PortMapping       //
+	State         string        // Either "active" or "stopped".
+	Events        []string      // List of events that occurred for the container. It currently includes only "oom" (Out Of Memory) event if it occurred.
+	HostIP        string        // The IP address of the gateway which controls the host side of the container's virtual ethernet pair.
+	ContainerIP   string        // The IP address of the container side of the container's virtual ethernet pair.
+	ExternalIP    string        //
+	ContainerPath string        // The path to the directory holding the container's files (both its control scripts and filesystem).
+	ProcessIDs    []uint32      // List of running processes.
+	Properties    Properties    // List of properties defined for the container.
+	MappedPorts   []PortMapping //
 }
 
 type Metrics struct {
