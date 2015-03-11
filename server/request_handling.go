@@ -1048,9 +1048,15 @@ func (s *GardenServer) streamInput(decoder *json.Decoder, in *io.PipeWriter, pro
 		case payload.Signal != nil:
 			switch *payload.Signal {
 			case garden.SignalKill:
-				process.Signal(garden.SignalKill)
+				err = process.Signal(garden.SignalKill)
+                if err != nil {
+                    s.logger.Error("stream-input-process-signal-kill-failed", err, lager.Data{"payload": payload})
+                }
 			case garden.SignalTerminate:
-				process.Signal(garden.SignalTerminate)
+				err = process.Signal(garden.SignalTerminate)
+                if err != nil {
+                    s.logger.Error("stream-input-process-signal-terminate-failed", err, lager.Data{"payload": payload})
+                }
 			default:
 				s.logger.Error("stream-input-unknown-process-payload-signal", nil, lager.Data{"payload": payload})
 				in.Close()
