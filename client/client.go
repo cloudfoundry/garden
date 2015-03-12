@@ -60,6 +60,10 @@ func (client *client) Destroy(handle string) error {
 	return err
 }
 
+func (client *client) BulkInfo(handles []string) (map[string]garden.ContainerInfoEntry, error) {
+	return client.connection.BulkInfo(handles)
+}
+
 func (client *client) Lookup(handle string) (garden.Container, error) {
 	handles, err := client.connection.List(nil)
 	if err != nil {

@@ -1378,6 +1378,44 @@ var _ = Describe("When a client connects", func() {
 			})
 		})
 
+		Describe("BulkInfo", func() {
+
+			handles := []string{"handle1", "handle2"}
+
+			expectedBulkInfo := map[string]garden.ContainerInfoEntry{
+				"handle1": garden.ContainerInfoEntry{
+					Info: garden.ContainerInfo{
+						State: "container1state",
+					},
+				},
+				"handle2": garden.ContainerInfoEntry{
+					Info: garden.ContainerInfo{
+						State: "container2state",
+					},
+				},
+			}
+
+			It("reports information about containers by list of handles", func() {
+				serverBackend.BulkInfoReturns(expectedBulkInfo, nil)
+
+				bulkInfo, err := apiClient.BulkInfo(handles)
+				Ω(err).ShouldNot(HaveOccurred())
+				Ω(bulkInfo).To(Equal(expectedBulkInfo))
+			})
+
+			Context("when retrieving bulk info fails", func() {
+				It("returns the error", func() {
+					serverBackend.BulkInfoReturns(
+						make(map[string]garden.ContainerInfoEntry),
+						errors.New("Oh noes!"),
+					)
+
+					_, err := apiClient.BulkInfo(handles)
+					Ω(err).Should(MatchError("Oh noes!"))
+				})
+			})
+		})
+
 		Describe("attaching", func() {
 			Context("when attaching succeeds", func() {
 				BeforeEach(func() {

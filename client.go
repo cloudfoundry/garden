@@ -48,6 +48,9 @@ type Client interface {
 	// * None.
 	Containers(Properties) ([]Container, error)
 
+	// BulkInfo returns info or error for a list of containers.
+	BulkInfo(handles []string) (map[string]ContainerInfoEntry, error)
+
 	// Lookup returns the container with the specified handle.
 	//
 	// Errors:

@@ -212,6 +212,11 @@ type ContainerInfo struct {
 	MappedPorts   []PortMapping //
 }
 
+type ContainerInfoEntry struct {
+	Info ContainerInfo
+	Err  error
+}
+
 type Metrics struct {
 	MemoryStat ContainerMemoryStat
 	CPUStat    ContainerCPUStat

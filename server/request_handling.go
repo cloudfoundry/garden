@@ -7,6 +7,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"strings"
 
 	"github.com/cloudfoundry-incubator/garden"
 	"github.com/cloudfoundry-incubator/garden/transport"
@@ -986,6 +987,25 @@ func (s *GardenServer) handleInfo(w http.ResponseWriter, r *http.Request) {
 	hLog.Info("got-info")
 
 	s.writeResponse(w, info)
+}
+
+func (s *GardenServer) handleBulkInfo(w http.ResponseWriter, r *http.Request) {
+	handles := strings.Split(r.URL.Query()["handles"][0], ",")
+
+	hLog := s.logger.Session("bulk_info", lager.Data{
+		"handles": handles,
+	})
+	hLog.Debug("getting-bulkinfo")
+
+	bulkInfo, err := s.backend.BulkInfo(handles)
+	if err != nil {
+		s.writeError(w, err, hLog)
+		return
+	}
+
+	hLog.Info("got-bulkinfo")
+
+	s.writeResponse(w, bulkInfo)
 }
 
 func (s *GardenServer) writeError(w http.ResponseWriter, err error, logger lager.Logger) {

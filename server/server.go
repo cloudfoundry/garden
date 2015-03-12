@@ -93,6 +93,7 @@ func New(
 		routes.NetIn:                  http.HandlerFunc(s.handleNetIn),
 		routes.NetOut:                 http.HandlerFunc(s.handleNetOut),
 		routes.Info:                   http.HandlerFunc(s.handleInfo),
+		routes.BulkInfo:               http.HandlerFunc(s.handleBulkInfo),
 		routes.Run:                    http.HandlerFunc(s.handleRun),
 		routes.Attach:                 http.HandlerFunc(s.handleAttach),
 		routes.Metrics:                http.HandlerFunc(s.handleMetrics),

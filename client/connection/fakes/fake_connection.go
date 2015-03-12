@@ -67,6 +67,15 @@ type FakeConnection struct {
 		result1 garden.ContainerInfo
 		result2 error
 	}
+	BulkInfoStub        func(handles []string) (map[string]garden.ContainerInfoEntry, error)
+	bulkInfoMutex       sync.RWMutex
+	bulkInfoArgsForCall []struct {
+		handles []string
+	}
+	bulkInfoReturns struct {
+		result1 map[string]garden.ContainerInfoEntry
+		result2 error
+	}
 	StreamInStub        func(handle string, dstPath string, reader io.Reader) error
 	streamInMutex       sync.RWMutex
 	streamInArgsForCall []struct {
@@ -464,6 +473,39 @@ func (fake *FakeConnection) InfoReturns(result1 garden.ContainerInfo, result2 er
 	fake.InfoStub = nil
 	fake.infoReturns = struct {
 		result1 garden.ContainerInfo
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *FakeConnection) BulkInfo(handles []string) (map[string]garden.ContainerInfoEntry, error) {
+	fake.bulkInfoMutex.Lock()
+	fake.bulkInfoArgsForCall = append(fake.bulkInfoArgsForCall, struct {
+		handles []string
+	}{handles})
+	fake.bulkInfoMutex.Unlock()
+	if fake.BulkInfoStub != nil {
+		return fake.BulkInfoStub(handles)
+	} else {
+		return fake.bulkInfoReturns.result1, fake.bulkInfoReturns.result2
+	}
+}
+
+func (fake *FakeConnection) BulkInfoCallCount() int {
+	fake.bulkInfoMutex.RLock()
+	defer fake.bulkInfoMutex.RUnlock()
+	return len(fake.bulkInfoArgsForCall)
+}
+
+func (fake *FakeConnection) BulkInfoArgsForCall(i int) []string {
+	fake.bulkInfoMutex.RLock()
+	defer fake.bulkInfoMutex.RUnlock()
+	return fake.bulkInfoArgsForCall[i].handles
+}
+
+func (fake *FakeConnection) BulkInfoReturns(result1 map[string]garden.ContainerInfoEntry, result2 error) {
+	fake.BulkInfoStub = nil
+	fake.bulkInfoReturns = struct {
+		result1 map[string]garden.ContainerInfoEntry
 		result2 error
 	}{result1, result2}
 }

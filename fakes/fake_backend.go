@@ -48,6 +48,15 @@ type FakeBackend struct {
 		result1 []garden.Container
 		result2 error
 	}
+	BulkInfoStub        func(handles []string) (map[string]garden.ContainerInfoEntry, error)
+	bulkInfoMutex       sync.RWMutex
+	bulkInfoArgsForCall []struct {
+		handles []string
+	}
+	bulkInfoReturns struct {
+		result1 map[string]garden.ContainerInfoEntry
+		result2 error
+	}
 	LookupStub        func(handle string) (garden.Container, error)
 	lookupMutex       sync.RWMutex
 	lookupArgsForCall []struct {
@@ -219,6 +228,39 @@ func (fake *FakeBackend) ContainersReturns(result1 []garden.Container, result2 e
 	fake.ContainersStub = nil
 	fake.containersReturns = struct {
 		result1 []garden.Container
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *FakeBackend) BulkInfo(handles []string) (map[string]garden.ContainerInfoEntry, error) {
+	fake.bulkInfoMutex.Lock()
+	fake.bulkInfoArgsForCall = append(fake.bulkInfoArgsForCall, struct {
+		handles []string
+	}{handles})
+	fake.bulkInfoMutex.Unlock()
+	if fake.BulkInfoStub != nil {
+		return fake.BulkInfoStub(handles)
+	} else {
+		return fake.bulkInfoReturns.result1, fake.bulkInfoReturns.result2
+	}
+}
+
+func (fake *FakeBackend) BulkInfoCallCount() int {
+	fake.bulkInfoMutex.RLock()
+	defer fake.bulkInfoMutex.RUnlock()
+	return len(fake.bulkInfoArgsForCall)
+}
+
+func (fake *FakeBackend) BulkInfoArgsForCall(i int) []string {
+	fake.bulkInfoMutex.RLock()
+	defer fake.bulkInfoMutex.RUnlock()
+	return fake.bulkInfoArgsForCall[i].handles
+}
+
+func (fake *FakeBackend) BulkInfoReturns(result1 map[string]garden.ContainerInfoEntry, result2 error) {
+	fake.BulkInfoStub = nil
+	fake.bulkInfoReturns = struct {
+		result1 map[string]garden.ContainerInfoEntry
 		result2 error
 	}{result1, result2}
 }

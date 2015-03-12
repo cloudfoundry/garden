@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/cloudfoundry-incubator/garden"
@@ -41,6 +42,7 @@ type Connection interface {
 	Stop(handle string, kill bool) error
 
 	Info(handle string) (garden.ContainerInfo, error)
+	BulkInfo(handles []string) (map[string]garden.ContainerInfoEntry, error)
 
 	StreamIn(handle string, dstPath string, reader io.Reader) error
 	StreamOut(handle string, srcPath string) (io.ReadCloser, error)
@@ -526,6 +528,15 @@ func (c *connection) Info(handle string) (garden.ContainerInfo, error) {
 	}
 
 	return res, nil
+}
+
+func (c *connection) BulkInfo(handles []string) (map[string]garden.ContainerInfoEntry, error) {
+	res := make(map[string]garden.ContainerInfoEntry)
+	queryParams := url.Values{
+		"handles": []string{strings.Join(handles, ",")},
+	}
+	err := c.do(routes.BulkInfo, nil, &res, nil, queryParams)
+	return res, err
 }
 
 func (c *connection) do(

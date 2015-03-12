@@ -58,6 +58,46 @@ var _ = Describe("Client", func() {
 		})
 	})
 
+	Describe("BulkInfo", func() {
+		expectedBulkInfo := map[string]garden.ContainerInfoEntry{
+			"handle1": garden.ContainerInfoEntry{
+				Info: garden.ContainerInfo{
+					State: "container1State",
+				},
+			},
+			"handle2": garden.ContainerInfoEntry{
+				Info: garden.ContainerInfo{
+					State: "container1State",
+				},
+			},
+		}
+		handles := []string{"handle1", "handle2"}
+
+		It("gets info for the requested containers", func() {
+			fakeConnection.BulkInfoReturns(expectedBulkInfo, nil)
+
+			bulkInfo, err := client.BulkInfo(handles)
+			Ω(err).ShouldNot(HaveOccurred())
+
+			Ω(fakeConnection.BulkInfoCallCount()).Should(Equal(1))
+			Ω(fakeConnection.BulkInfoArgsForCall(0)).Should(Equal(handles))
+			Ω(bulkInfo).Should(Equal(expectedBulkInfo))
+		})
+
+		Context("when there is a error with the connection", func() {
+			expectedBulkInfo := map[string]garden.ContainerInfoEntry{}
+
+			BeforeEach(func() {
+				fakeConnection.BulkInfoReturns(expectedBulkInfo, errors.New("Oh noes!"))
+			})
+
+			It("returns the error", func() {
+				_, err := client.BulkInfo(handles)
+				Ω(err).Should(MatchError("Oh noes!"))
+			})
+		})
+	})
+
 	Describe("Create", func() {
 		It("sends a create request and returns a container", func() {
 			spec := garden.ContainerSpec{

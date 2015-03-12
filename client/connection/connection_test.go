@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gogo/protobuf/proto"
@@ -709,6 +710,56 @@ var _ = Describe("Connection", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 
 			Ω(info).Should(Equal(infoResponse))
+		})
+	})
+
+	Describe("BulkInfo", func() {
+
+		expectedBulkInfo := map[string]garden.ContainerInfoEntry{
+			"handle1": garden.ContainerInfoEntry{
+				Info: garden.ContainerInfo{
+					State: "container1state",
+				},
+			},
+			"handle2": garden.ContainerInfoEntry{
+				Info: garden.ContainerInfo{
+					State: "container2state",
+				},
+			},
+		}
+
+		handles := []string{"handle1", "handle2"}
+		queryParams := "handles=" + strings.Join(handles, "%2C")
+
+		Context("when the response is successful", func() {
+			JustBeforeEach(func() {
+				server.AppendHandlers(
+					ghttp.CombineHandlers(
+						ghttp.VerifyRequest("GET", "/containers/bulk_info", queryParams),
+						ghttp.RespondWith(200, marshalProto(expectedBulkInfo))))
+			})
+
+			It("returns info about containers", func() {
+				bulkInfo, err := connection.BulkInfo(handles)
+				Ω(err).ShouldNot(HaveOccurred())
+				Ω(bulkInfo).Should(Equal(expectedBulkInfo))
+			})
+		})
+
+		Context("when the request fails", func() {
+			JustBeforeEach(func() {
+				server.AppendHandlers(
+					ghttp.CombineHandlers(
+						ghttp.VerifyRequest("GET", "/containers/bulk_info", queryParams),
+						ghttp.RespondWith(500, ""),
+					),
+				)
+			})
+
+			It("returns the error", func() {
+				_, err := connection.BulkInfo(handles)
+				Ω(err).Should(HaveOccurred())
+			})
 		})
 	})
 

@@ -6,10 +6,11 @@ const (
 	Ping     = "Ping"
 	Capacity = "Capacity"
 
-	List    = "List"
-	Create  = "Create"
-	Info    = "Info"
-	Destroy = "Destroy"
+	List     = "List"
+	Create   = "Create"
+	Info     = "Info"
+	BulkInfo = "BulkInfo"
+	Destroy  = "Destroy"
 
 	Stop = "Stop"
 
@@ -51,6 +52,7 @@ var Routes = rata.Routes{
 	{Path: "/containers", Method: "POST", Name: Create},
 
 	{Path: "/containers/:handle/info", Method: "GET", Name: Info},
+	{Path: "/containers/bulk_info", Method: "GET", Name: BulkInfo},
 
 	{Path: "/containers/:handle", Method: "DELETE", Name: Destroy},
 	{Path: "/containers/:handle/stop", Method: "PUT", Name: Stop},
