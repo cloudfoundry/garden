@@ -11,13 +11,13 @@ type FakeClient struct {
 	PingStub        func() error
 	pingMutex       sync.RWMutex
 	pingArgsForCall []struct{}
-	pingReturns struct {
+	pingReturns     struct {
 		result1 error
 	}
 	CapacityStub        func() (garden.Capacity, error)
 	capacityMutex       sync.RWMutex
 	capacityArgsForCall []struct{}
-	capacityReturns struct {
+	capacityReturns     struct {
 		result1 garden.Capacity
 		result2 error
 	}
