@@ -12,13 +12,13 @@ type FakeBackend struct {
 	PingStub        func() error
 	pingMutex       sync.RWMutex
 	pingArgsForCall []struct{}
-	pingReturns struct {
+	pingReturns     struct {
 		result1 error
 	}
 	CapacityStub        func() (garden.Capacity, error)
 	capacityMutex       sync.RWMutex
 	capacityArgsForCall []struct{}
-	capacityReturns struct {
+	capacityReturns     struct {
 		result1 garden.Capacity
 		result2 error
 	}
@@ -78,12 +78,12 @@ type FakeBackend struct {
 	StartStub        func() error
 	startMutex       sync.RWMutex
 	startArgsForCall []struct{}
-	startReturns struct {
+	startReturns     struct {
 		result1 error
 	}
-	StopStub        func()
-	stopMutex       sync.RWMutex
-	stopArgsForCall []struct{}
+	StopStub             func()
+	stopMutex            sync.RWMutex
+	stopArgsForCall      []struct{}
 	GraceTimeStub        func(garden.Container) time.Duration
 	graceTimeMutex       sync.RWMutex
 	graceTimeArgsForCall []struct {
