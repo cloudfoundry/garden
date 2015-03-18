@@ -51,6 +51,9 @@ type Client interface {
 	// BulkInfo returns info or error for a list of containers.
 	BulkInfo(handles []string) (map[string]ContainerInfoEntry, error)
 
+	// BulkMetrics returns metrics or error for a list of containers.
+	BulkMetrics(handles []string) (map[string]ContainerMetricsEntry, error)
+
 	// Lookup returns the container with the specified handle.
 	//
 	// Errors:

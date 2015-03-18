@@ -11,13 +11,13 @@ type FakeProcess struct {
 	IDStub        func() uint32
 	iDMutex       sync.RWMutex
 	iDArgsForCall []struct{}
-	iDReturns     struct {
+	iDReturns struct {
 		result1 uint32
 	}
 	WaitStub        func() (int, error)
 	waitMutex       sync.RWMutex
 	waitArgsForCall []struct{}
-	waitReturns     struct {
+	waitReturns struct {
 		result1 int
 		result2 error
 	}

@@ -64,6 +64,10 @@ func (client *client) BulkInfo(handles []string) (map[string]garden.ContainerInf
 	return client.connection.BulkInfo(handles)
 }
 
+func (client *client) BulkMetrics(handles []string) (map[string]garden.ContainerMetricsEntry, error) {
+	return client.connection.BulkMetrics(handles)
+}
+
 func (client *client) Lookup(handle string) (garden.Container, error) {
 	handles, err := client.connection.List(nil)
 	if err != nil {

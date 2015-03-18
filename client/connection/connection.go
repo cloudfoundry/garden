@@ -43,6 +43,7 @@ type Connection interface {
 
 	Info(handle string) (garden.ContainerInfo, error)
 	BulkInfo(handles []string) (map[string]garden.ContainerInfoEntry, error)
+	BulkMetrics(handles []string) (map[string]garden.ContainerMetricsEntry, error)
 
 	StreamIn(handle string, dstPath string, reader io.Reader) error
 	StreamOut(handle string, srcPath string) (io.ReadCloser, error)
@@ -536,6 +537,15 @@ func (c *connection) BulkInfo(handles []string) (map[string]garden.ContainerInfo
 		"handles": []string{strings.Join(handles, ",")},
 	}
 	err := c.do(routes.BulkInfo, nil, &res, nil, queryParams)
+	return res, err
+}
+
+func (c *connection) BulkMetrics(handles []string) (map[string]garden.ContainerMetricsEntry, error) {
+	res := make(map[string]garden.ContainerMetricsEntry)
+	queryParams := url.Values{
+		"handles": []string{strings.Join(handles, ",")},
+	}
+	err := c.do(routes.BulkMetrics, nil, &res, nil, queryParams)
 	return res, err
 }
 

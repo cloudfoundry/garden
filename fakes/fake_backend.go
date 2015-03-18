@@ -12,13 +12,13 @@ type FakeBackend struct {
 	PingStub        func() error
 	pingMutex       sync.RWMutex
 	pingArgsForCall []struct{}
-	pingReturns     struct {
+	pingReturns struct {
 		result1 error
 	}
 	CapacityStub        func() (garden.Capacity, error)
 	capacityMutex       sync.RWMutex
 	capacityArgsForCall []struct{}
-	capacityReturns     struct {
+	capacityReturns struct {
 		result1 garden.Capacity
 		result2 error
 	}
@@ -57,6 +57,15 @@ type FakeBackend struct {
 		result1 map[string]garden.ContainerInfoEntry
 		result2 error
 	}
+	BulkMetricsStub        func(handles []string) (map[string]garden.ContainerMetricsEntry, error)
+	bulkMetricsMutex       sync.RWMutex
+	bulkMetricsArgsForCall []struct {
+		handles []string
+	}
+	bulkMetricsReturns struct {
+		result1 map[string]garden.ContainerMetricsEntry
+		result2 error
+	}
 	LookupStub        func(handle string) (garden.Container, error)
 	lookupMutex       sync.RWMutex
 	lookupArgsForCall []struct {
@@ -69,12 +78,12 @@ type FakeBackend struct {
 	StartStub        func() error
 	startMutex       sync.RWMutex
 	startArgsForCall []struct{}
-	startReturns     struct {
+	startReturns struct {
 		result1 error
 	}
-	StopStub             func()
-	stopMutex            sync.RWMutex
-	stopArgsForCall      []struct{}
+	StopStub        func()
+	stopMutex       sync.RWMutex
+	stopArgsForCall []struct{}
 	GraceTimeStub        func(garden.Container) time.Duration
 	graceTimeMutex       sync.RWMutex
 	graceTimeArgsForCall []struct {
@@ -261,6 +270,39 @@ func (fake *FakeBackend) BulkInfoReturns(result1 map[string]garden.ContainerInfo
 	fake.BulkInfoStub = nil
 	fake.bulkInfoReturns = struct {
 		result1 map[string]garden.ContainerInfoEntry
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *FakeBackend) BulkMetrics(handles []string) (map[string]garden.ContainerMetricsEntry, error) {
+	fake.bulkMetricsMutex.Lock()
+	fake.bulkMetricsArgsForCall = append(fake.bulkMetricsArgsForCall, struct {
+		handles []string
+	}{handles})
+	fake.bulkMetricsMutex.Unlock()
+	if fake.BulkMetricsStub != nil {
+		return fake.BulkMetricsStub(handles)
+	} else {
+		return fake.bulkMetricsReturns.result1, fake.bulkMetricsReturns.result2
+	}
+}
+
+func (fake *FakeBackend) BulkMetricsCallCount() int {
+	fake.bulkMetricsMutex.RLock()
+	defer fake.bulkMetricsMutex.RUnlock()
+	return len(fake.bulkMetricsArgsForCall)
+}
+
+func (fake *FakeBackend) BulkMetricsArgsForCall(i int) []string {
+	fake.bulkMetricsMutex.RLock()
+	defer fake.bulkMetricsMutex.RUnlock()
+	return fake.bulkMetricsArgsForCall[i].handles
+}
+
+func (fake *FakeBackend) BulkMetricsReturns(result1 map[string]garden.ContainerMetricsEntry, result2 error) {
+	fake.BulkMetricsStub = nil
+	fake.bulkMetricsReturns = struct {
+		result1 map[string]garden.ContainerMetricsEntry
 		result2 error
 	}{result1, result2}
 }

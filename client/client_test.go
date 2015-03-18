@@ -98,6 +98,50 @@ var _ = Describe("Client", func() {
 		})
 	})
 
+	Describe("BulkMetrics", func() {
+		expectedBulkMetrics := map[string]garden.ContainerMetricsEntry{
+			"handle1": garden.ContainerMetricsEntry{
+				Metrics: garden.Metrics{
+					DiskStat: garden.ContainerDiskStat{
+						InodesUsed: 1,
+					},
+				},
+			},
+			"handle2": garden.ContainerMetricsEntry{
+				Metrics: garden.Metrics{
+					DiskStat: garden.ContainerDiskStat{
+						InodesUsed: 1,
+					},
+				},
+			},
+		}
+		handles := []string{"handle1", "handle2"}
+
+		It("gets info for the requested containers", func() {
+			fakeConnection.BulkMetricsReturns(expectedBulkMetrics, nil)
+
+			bulkInfo, err := client.BulkMetrics(handles)
+			Ω(err).ShouldNot(HaveOccurred())
+
+			Ω(fakeConnection.BulkMetricsCallCount()).Should(Equal(1))
+			Ω(fakeConnection.BulkMetricsArgsForCall(0)).Should(Equal(handles))
+			Ω(bulkInfo).Should(Equal(expectedBulkMetrics))
+		})
+
+		Context("when there is a error with the connection", func() {
+			expectedBulkMetrics := map[string]garden.ContainerMetricsEntry{}
+
+			BeforeEach(func() {
+				fakeConnection.BulkMetricsReturns(expectedBulkMetrics, errors.New("Oh noes!"))
+			})
+
+			It("returns the error", func() {
+				_, err := client.BulkMetrics(handles)
+				Ω(err).Should(MatchError("Oh noes!"))
+			})
+		})
+	})
+
 	Describe("Create", func() {
 		It("sends a create request and returns a container", func() {
 			spec := garden.ContainerSpec{

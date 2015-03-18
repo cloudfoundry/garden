@@ -223,6 +223,11 @@ type Metrics struct {
 	DiskStat   ContainerDiskStat
 }
 
+type ContainerMetricsEntry struct {
+	Metrics Metrics
+	Err     error
+}
+
 type ContainerMemoryStat struct {
 	Cache                   uint64
 	Rss                     uint64

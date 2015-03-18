@@ -763,6 +763,60 @@ var _ = Describe("Connection", func() {
 		})
 	})
 
+	Describe("BulkMetrics", func() {
+
+		expectedBulkMetrics := map[string]garden.ContainerMetricsEntry{
+			"handle1": garden.ContainerMetricsEntry{
+				Metrics: garden.Metrics{
+					DiskStat: garden.ContainerDiskStat{
+						InodesUsed: 1,
+					},
+				},
+			},
+			"handle2": garden.ContainerMetricsEntry{
+				Metrics: garden.Metrics{
+					DiskStat: garden.ContainerDiskStat{
+						InodesUsed: 2,
+					},
+				},
+			},
+		}
+
+		handles := []string{"handle1", "handle2"}
+		queryParams := "handles=" + strings.Join(handles, "%2C")
+
+		Context("when the response is successful", func() {
+			JustBeforeEach(func() {
+				server.AppendHandlers(
+					ghttp.CombineHandlers(
+						ghttp.VerifyRequest("GET", "/containers/bulk_metrics", queryParams),
+						ghttp.RespondWith(200, marshalProto(expectedBulkMetrics))))
+			})
+
+			It("returns info about containers", func() {
+				bulkMetrics, err := connection.BulkMetrics(handles)
+				Ω(err).ShouldNot(HaveOccurred())
+				Ω(bulkMetrics).Should(Equal(expectedBulkMetrics))
+			})
+		})
+
+		Context("when the request fails", func() {
+			JustBeforeEach(func() {
+				server.AppendHandlers(
+					ghttp.CombineHandlers(
+						ghttp.VerifyRequest("GET", "/containers/bulk_metrics", queryParams),
+						ghttp.RespondWith(500, ""),
+					),
+				)
+			})
+
+			It("returns the error", func() {
+				_, err := connection.BulkMetrics(handles)
+				Ω(err).Should(HaveOccurred())
+			})
+		})
+	})
+
 	Describe("Streaming in", func() {
 		Context("when streaming in succeeds", func() {
 			BeforeEach(func() {

@@ -1008,6 +1008,25 @@ func (s *GardenServer) handleBulkInfo(w http.ResponseWriter, r *http.Request) {
 	s.writeResponse(w, bulkInfo)
 }
 
+func (s *GardenServer) handleBulkMetrics(w http.ResponseWriter, r *http.Request) {
+	handles := strings.Split(r.URL.Query()["handles"][0], ",")
+
+	hLog := s.logger.Session("bulk_metrics", lager.Data{
+		"handles": handles,
+	})
+	hLog.Debug("getting-bulkmetrics")
+
+	bulkMetrics, err := s.backend.BulkMetrics(handles)
+	if err != nil {
+		s.writeError(w, err, hLog)
+		return
+	}
+
+	hLog.Info("got-bulkinfo")
+
+	s.writeResponse(w, bulkMetrics)
+}
+
 func (s *GardenServer) writeError(w http.ResponseWriter, err error, logger lager.Logger) {
 	logger.Error("failed", err)
 
