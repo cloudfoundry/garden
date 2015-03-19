@@ -37,7 +37,8 @@ type GardenServer struct {
 	conns map[net.Conn]net.Conn
 	mu    sync.Mutex
 
-	stdouts map[uint32]chan []byte
+	stdouts      map[uint32]chan []byte
+	nextAttachID uint32
 
 	destroys  map[string]struct{}
 	destroysL *sync.Mutex

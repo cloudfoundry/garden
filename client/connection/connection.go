@@ -204,8 +204,9 @@ func (c *connection) Run(handle string, spec garden.ProcessSpec, processIO garde
 		routes.Stdout,
 		reqBody,
 		rata.Params{
-			"handle": handle,
-			"pid":    fmt.Sprintf("%d", firstResponse.ProcessID),
+			"handle":    handle,
+			"pid":       fmt.Sprintf("%d", firstResponse.ProcessID),
+			"attach_id": fmt.Sprintf("%d", firstResponse.AttachID),
 		},
 		nil,
 		"application/json",
@@ -234,16 +235,38 @@ func (c *connection) Attach(handle string, processID uint32, processIO garden.Pr
 		nil,
 		"",
 	)
-
 	if err != nil {
 		return nil, err
 	}
 
 	decoder := json.NewDecoder(br)
+	firstResponse := &transport.ProcessPayload{}
+	err = decoder.Decode(firstResponse)
+	if err != nil {
+		return nil, err
+	}
+
+	_, br, err = c.doHijack(
+		routes.Stdout,
+		reqBody,
+		rata.Params{
+			"handle":    handle,
+			"pid":       fmt.Sprintf("%d", processID),
+			"attach_id": fmt.Sprintf("%d", firstResponse.AttachID),
+		},
+		nil,
+		"application/json",
+	)
+	if err != nil {
+		return nil, err
+	}
 
 	p := newProcess(processID, conn)
-
 	go p.streamPayloads(decoder, processIO)
+
+	if processIO.Stdout != nil {
+		go io.Copy(processIO.Stdout, br)
+	}
 
 	return p, nil
 }

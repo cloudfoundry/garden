@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync/atomic"
 
 	"github.com/cloudfoundry-incubator/garden"
 	"github.com/cloudfoundry-incubator/garden/transport"
@@ -831,12 +832,13 @@ func (s *GardenServer) handleStdout(w http.ResponseWriter, r *http.Request) {
 	hLog := s.logger.Session("stdout", lager.Data{
 		"handle": handle,
 	})
-	pidInt, err := strconv.Atoi(r.FormValue(":pid"))
+
+	attachIDi, err := strconv.Atoi(r.FormValue(":attach_id"))
 	if err != nil {
 		s.writeError(w, err, hLog)
 		return
 	}
-	pid := uint32(pidInt)
+	attachID := uint32(attachIDi)
 
 	hLog.Info("stdout")
 
@@ -850,7 +852,7 @@ func (s *GardenServer) handleStdout(w http.ResponseWriter, r *http.Request) {
 
 	defer conn.Close()
 
-	stdOutCh := s.stdouts[pid]
+	stdOutCh := s.stdouts[attachID]
 	for {
 		if output, ok := <-stdOutCh; ok {
 			conn.Write(output)
@@ -906,7 +908,8 @@ func (s *GardenServer) handleRun(w http.ResponseWriter, r *http.Request) {
 		"id":   process.ID(),
 	})
 
-	s.stdouts[process.ID()] = stdout
+	attachID := atomic.AddUint32(&s.nextAttachID, 1)
+	s.stdouts[attachID] = stdout
 
 	w.WriteHeader(http.StatusCreated)
 	w.Header().Set("Content-Type", "application/json")
@@ -922,6 +925,7 @@ func (s *GardenServer) handleRun(w http.ResponseWriter, r *http.Request) {
 
 	transport.WriteMessage(conn, &transport.ProcessPayload{
 		ProcessID: process.ID(),
+		AttachID:  attachID,
 	})
 
 	go s.streamInput(json.NewDecoder(br), stdinW, process)
@@ -980,6 +984,9 @@ func (s *GardenServer) handleAttach(w http.ResponseWriter, r *http.Request) {
 		"id": process.ID(),
 	})
 
+	attachID := atomic.AddUint32(&s.nextAttachID, 1)
+	s.stdouts[attachID] = stdout
+
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
 
@@ -991,6 +998,11 @@ func (s *GardenServer) handleAttach(w http.ResponseWriter, r *http.Request) {
 	}
 
 	defer conn.Close()
+
+	transport.WriteMessage(conn, &transport.ProcessPayload{
+		ProcessID: process.ID(),
+		AttachID:  attachID,
+	})
 
 	go s.streamInput(json.NewDecoder(br), stdinW, process)
 
