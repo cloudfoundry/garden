@@ -85,7 +85,7 @@ $ export PATH=$PATH:~/go/bin
 Get garden and its dependencies:
 ```
 $ go get -t -u github.com/cloudfoundry-incubator/garden
-$ cd ~/go/src/github.com/cloudfoundry-incubator/garden
+$ cd $GOPATH/src/github.com/cloudfoundry-incubator/garden
 $ go get -t -u ./...
 ```
 
