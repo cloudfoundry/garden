@@ -7,6 +7,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/cloudfoundry-incubator/garden"
@@ -825,6 +826,40 @@ func (s *GardenServer) handleRemoveProperty(w http.ResponseWriter, r *http.Reque
 	s.writeSuccess(w)
 }
 
+func (s *GardenServer) handleStdout(w http.ResponseWriter, r *http.Request) {
+	handle := r.FormValue(":handle")
+	hLog := s.logger.Session("stdout", lager.Data{
+		"handle": handle,
+	})
+	pidInt, err := strconv.Atoi(r.FormValue(":pid"))
+	if err != nil {
+		s.writeError(w, err, hLog)
+		return
+	}
+	pid := uint32(pidInt)
+
+	hLog.Info("stdout")
+
+	w.WriteHeader(http.StatusOK)
+
+	conn, _, err := w.(http.Hijacker).Hijack()
+	if err != nil {
+		s.writeError(w, err, hLog)
+		return
+	}
+
+	defer conn.Close()
+
+	stdOutCh := s.stdouts[pid]
+	for {
+		if output, ok := <-stdOutCh; ok {
+			conn.Write(output)
+		} else {
+			return
+		}
+	}
+}
+
 func (s *GardenServer) handleRun(w http.ResponseWriter, r *http.Request) {
 	handle := r.FormValue(":handle")
 
@@ -866,11 +901,12 @@ func (s *GardenServer) handleRun(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, err, hLog)
 		return
 	}
-
 	hLog.Info("spawned", lager.Data{
 		"spec": request,
 		"id":   process.ID(),
 	})
+
+	s.stdouts[process.ID()] = stdout
 
 	w.WriteHeader(http.StatusCreated)
 	w.Header().Set("Content-Type", "application/json")
@@ -890,7 +926,8 @@ func (s *GardenServer) handleRun(w http.ResponseWriter, r *http.Request) {
 
 	go s.streamInput(json.NewDecoder(br), stdinW, process)
 
-	s.streamProcess(hLog, conn, process, stdout, stderr, stdinW)
+	s.streamProcess(hLog, conn, process, stderr, stdinW)
+	close(stdout)
 }
 
 func (s *GardenServer) handleAttach(w http.ResponseWriter, r *http.Request) {
@@ -957,7 +994,7 @@ func (s *GardenServer) handleAttach(w http.ResponseWriter, r *http.Request) {
 
 	go s.streamInput(json.NewDecoder(br), stdinW, process)
 
-	s.streamProcess(hLog, conn, process, stdout, stderr, stdinW)
+	s.streamProcess(hLog, conn, process, stderr, stdinW)
 }
 
 func (s *GardenServer) handleInfo(w http.ResponseWriter, r *http.Request) {
@@ -1110,7 +1147,7 @@ func (s *GardenServer) streamInput(decoder *json.Decoder, in *io.PipeWriter, pro
 	}
 }
 
-func (s *GardenServer) streamProcess(logger lager.Logger, conn net.Conn, process garden.Process, stdout <-chan []byte, stderr <-chan []byte, stdinPipe *io.PipeWriter) {
+func (s *GardenServer) streamProcess(logger lager.Logger, conn net.Conn, process garden.Process, stderr <-chan []byte, stdinPipe *io.PipeWriter) {
 	statusCh := make(chan int, 1)
 	errCh := make(chan error, 1)
 
@@ -1132,18 +1169,10 @@ func (s *GardenServer) streamProcess(logger lager.Logger, conn net.Conn, process
 		}
 	}()
 
-	stdoutSource := transport.Stdout
 	stderrSource := transport.Stderr
 
 	for {
 		select {
-		case data := <-stdout:
-			d := string(data)
-			transport.WriteMessage(conn, &transport.ProcessPayload{
-				ProcessID: process.ID(),
-				Source:    &stdoutSource,
-				Data:      &d,
-			})
 
 		case data := <-stderr:
 			d := string(data)
@@ -1154,7 +1183,7 @@ func (s *GardenServer) streamProcess(logger lager.Logger, conn net.Conn, process
 			})
 
 		case status := <-statusCh:
-			flushProcess(conn, process, stdout, stderr)
+			flushProcess(conn, process, stderr)
 
 			transport.WriteMessage(conn, &transport.ProcessPayload{
 				ProcessID:  process.ID(),
@@ -1165,7 +1194,7 @@ func (s *GardenServer) streamProcess(logger lager.Logger, conn net.Conn, process
 			return
 
 		case err := <-errCh:
-			flushProcess(conn, process, stdout, stderr)
+			flushProcess(conn, process, stderr)
 
 			e := err.Error()
 			transport.WriteMessage(conn, &transport.ProcessPayload{
@@ -1186,19 +1215,11 @@ func (s *GardenServer) streamProcess(logger lager.Logger, conn net.Conn, process
 	}
 }
 
-func flushProcess(conn net.Conn, process garden.Process, stdout <-chan []byte, stderr <-chan []byte) {
-	stdoutSource := transport.Stdout
+func flushProcess(conn net.Conn, process garden.Process, stderr <-chan []byte) {
 	stderrSource := transport.Stderr
 
 	for {
 		select {
-		case data := <-stdout:
-			d := string(data)
-			transport.WriteMessage(conn, &transport.ProcessPayload{
-				ProcessID: process.ID(),
-				Source:    &stdoutSource,
-				Data:      &d,
-			})
 
 		case data := <-stderr:
 			d := string(data)

@@ -109,10 +109,6 @@ func (p *process) streamPayloads(decoder *json.Decoder, processIO garden.Process
 		}
 
 		switch *payload.Source {
-		case transport.Stdout:
-			if processIO.Stdout != nil {
-				processIO.Stdout.Write([]byte(*payload.Data))
-			}
 		case transport.Stderr:
 			if processIO.Stderr != nil {
 				processIO.Stderr.Write([]byte(*payload.Data))

@@ -37,6 +37,8 @@ type GardenServer struct {
 	conns map[net.Conn]net.Conn
 	mu    sync.Mutex
 
+	stdouts map[uint32]chan []byte
+
 	destroys  map[string]struct{}
 	destroysL *sync.Mutex
 }
@@ -69,6 +71,8 @@ func New(
 		handling: new(sync.WaitGroup),
 		conns:    make(map[net.Conn]net.Conn),
 
+		stdouts: make(map[uint32]chan []byte),
+
 		destroys:  make(map[string]struct{}),
 		destroysL: new(sync.Mutex),
 	}
@@ -96,6 +100,7 @@ func New(
 		routes.BulkInfo:               http.HandlerFunc(s.handleBulkInfo),
 		routes.BulkMetrics:            http.HandlerFunc(s.handleBulkMetrics),
 		routes.Run:                    http.HandlerFunc(s.handleRun),
+		routes.Stdout:                 http.HandlerFunc(s.handleStdout),
 		routes.Attach:                 http.HandlerFunc(s.handleAttach),
 		routes.Metrics:                http.HandlerFunc(s.handleMetrics),
 		routes.GetProperties:          http.HandlerFunc(s.handleGetProperties),

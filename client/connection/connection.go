@@ -200,6 +200,24 @@ func (c *connection) Run(handle string, spec garden.ProcessSpec, processIO garde
 
 	go p.streamPayloads(decoder, processIO)
 
+	_, br, err = c.doHijack(
+		routes.Stdout,
+		reqBody,
+		rata.Params{
+			"handle": handle,
+			"pid":    fmt.Sprintf("%d", firstResponse.ProcessID),
+		},
+		nil,
+		"application/json",
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	if processIO.Stdout != nil {
+		go io.Copy(processIO.Stdout, br)
+	}
+
 	return p, nil
 }
 
