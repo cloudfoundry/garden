@@ -200,23 +200,9 @@ func (c *connection) Run(handle string, spec garden.ProcessSpec, processIO garde
 
 	go p.streamPayloads(decoder, processIO)
 
-	_, br, err = c.doHijack(
-		routes.Stdout,
-		reqBody,
-		rata.Params{
-			"handle":    handle,
-			"pid":       fmt.Sprintf("%d", firstResponse.ProcessID),
-			"attach_id": fmt.Sprintf("%d", firstResponse.AttachID),
-		},
-		nil,
-		"application/json",
-	)
-	if err != nil {
+	s := &ioStream{c, handle, firstResponse.ProcessID, firstResponse.StreamID}
+	if err := s.attach(processIO.Stdout, processIO.Stderr); err != nil {
 		return nil, err
-	}
-
-	if processIO.Stdout != nil {
-		go io.Copy(processIO.Stdout, br)
 	}
 
 	return p, nil
@@ -246,26 +232,12 @@ func (c *connection) Attach(handle string, processID uint32, processIO garden.Pr
 		return nil, err
 	}
 
-	_, br, err = c.doHijack(
-		routes.Stdout,
-		reqBody,
-		rata.Params{
-			"handle":    handle,
-			"pid":       fmt.Sprintf("%d", processID),
-			"attach_id": fmt.Sprintf("%d", firstResponse.AttachID),
-		},
-		nil,
-		"application/json",
-	)
-	if err != nil {
-		return nil, err
-	}
-
 	p := newProcess(processID, conn)
 	go p.streamPayloads(decoder, processIO)
 
-	if processIO.Stdout != nil {
-		go io.Copy(processIO.Stdout, br)
+	s := &ioStream{c, handle, processID, firstResponse.StreamID}
+	if err := s.attach(processIO.Stdout, processIO.Stderr); err != nil {
+		return nil, err
 	}
 
 	return p, nil

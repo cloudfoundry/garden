@@ -12,7 +12,7 @@ const (
 
 type ProcessPayload struct {
 	ProcessID  uint32          `json:"process_id,omitempty"`
-	AttachID   uint32          `json:"attach_id,omitempty"`
+	StreamID   uint32          `json:"stream_id,omitempty"`
 	Source     *Source         `json:"source,omitempty"`
 	Data       *string         `json:"data,omitempty"`
 	ExitStatus *int            `json:"exit_status,omitempty"`

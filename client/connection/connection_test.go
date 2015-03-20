@@ -963,8 +963,10 @@ var _ = Describe("Connection", func() {
 
 							decoder := json.NewDecoder(br)
 
-							transport.WriteMessage(conn, map[string]interface{}{"process_id": 42, "attach_id": 1001})
-							transport.WriteMessage(conn, map[string]interface{}{"process_id": 42, "source": transport.Stderr, "data": "stderr data"})
+							transport.WriteMessage(conn, map[string]interface{}{
+								"process_id": 42,
+								"stream_id":  123,
+							})
 
 							var payload map[string]interface{}
 							err = decoder.Decode(&payload)
@@ -983,22 +985,13 @@ var _ = Describe("Connection", func() {
 							})
 						},
 					),
-					ghttp.CombineHandlers(
-						ghttp.VerifyRequest("GET", "/containers/foo-handle/processes/42/attaches/1001/stdout"),
-						func(w http.ResponseWriter, r *http.Request) {
-							w.WriteHeader(http.StatusOK)
-
-							conn, _, err := w.(http.Hijacker).Hijack()
-							Ω(err).ShouldNot(HaveOccurred())
-							defer conn.Close()
-
-							_, err = conn.Write([]byte("stdout data"))
-							Ω(err).ShouldNot(HaveOccurred())
-
-							_, err = conn.Write([]byte(fmt.Sprintf("roundtripped %s", <-stdInContent)))
-							Ω(err).ShouldNot(HaveOccurred())
-						},
-					),
+					stdoutStream("foo-handle", 42, 123, func(conn net.Conn) {
+						conn.Write([]byte("stdout data"))
+						conn.Write([]byte(fmt.Sprintf("roundtripped %s", <-stdInContent)))
+					}),
+					stderrStream("foo-handle", 42, 123, func(conn net.Conn) {
+						conn.Write([]byte("stderr data"))
+					}),
 				)
 			})
 
@@ -1042,6 +1035,7 @@ var _ = Describe("Connection", func() {
 
 							transport.WriteMessage(conn, map[string]interface{}{
 								"process_id": 42,
+								"stream_id":  123,
 							})
 
 							var payload map[string]interface{}
@@ -1059,22 +1053,11 @@ var _ = Describe("Connection", func() {
 							})
 						},
 					),
-					ghttp.CombineHandlers(
-						ghttp.VerifyRequest("GET", "/containers/foo-handle/processes/42/attaches/0/stdout"),
-						func(w http.ResponseWriter, r *http.Request) {
-							w.WriteHeader(http.StatusOK)
-
-							conn, _, err := w.(http.Hijacker).Hijack()
-							Ω(err).ShouldNot(HaveOccurred())
-							defer conn.Close()
-
-							_, err = conn.Write([]byte("stdout data"))
-							Ω(err).ShouldNot(HaveOccurred())
-
-							_, err = conn.Write([]byte(fmt.Sprintf("roundtripped %s", <-stdInContent)))
-							Ω(err).ShouldNot(HaveOccurred())
-						},
-					),
+					stdoutStream("foo-handle", 42, 123, func(conn net.Conn) {
+						conn.Write([]byte("stdout data"))
+						conn.Write([]byte(fmt.Sprintf("roundtripped %s", <-stdInContent)))
+					}),
+					emptyStderrStream("foo-handle", 42, 123),
 				)
 			})
 
@@ -1110,6 +1093,7 @@ var _ = Describe("Connection", func() {
 
 							transport.WriteMessage(conn, map[string]interface{}{
 								"process_id": 42,
+								"stream_id":  123,
 							})
 
 							var payload map[string]interface{}
@@ -1127,16 +1111,9 @@ var _ = Describe("Connection", func() {
 							})
 						},
 					),
-					ghttp.CombineHandlers(
-						ghttp.VerifyRequest("GET", "/containers/foo-handle/processes/42/attaches/0/stdout"),
-						func(w http.ResponseWriter, r *http.Request) {
-							w.WriteHeader(http.StatusOK)
-
-							conn, _, err := w.(http.Hijacker).Hijack()
-							Ω(err).ShouldNot(HaveOccurred())
-							defer conn.Close()
-						},
-					))
+					emptyStdoutStream("foo-handle", 42, 123),
+					emptyStderrStream("foo-handle", 42, 123),
+				)
 			})
 
 			It("sends the appropriate protocol message", func() {
@@ -1184,6 +1161,7 @@ var _ = Describe("Connection", func() {
 
 							transport.WriteMessage(conn, map[string]interface{}{
 								"process_id": 42,
+								"stream_id":  123,
 							})
 
 							// the stdin data may come in before or after the tty message
@@ -1209,16 +1187,8 @@ var _ = Describe("Connection", func() {
 							})
 						},
 					),
-					ghttp.CombineHandlers(
-						ghttp.VerifyRequest("GET", "/containers/foo-handle/processes/42/attaches/0/stdout"),
-						func(w http.ResponseWriter, r *http.Request) {
-							w.WriteHeader(http.StatusOK)
-
-							conn, _, err := w.(http.Hijacker).Hijack()
-							Ω(err).ShouldNot(HaveOccurred())
-							defer conn.Close()
-						},
-					),
+					emptyStdoutStream("foo-handle", 42, 123),
+					emptyStderrStream("foo-handle", 42, 123),
 				)
 			})
 
@@ -1261,29 +1231,13 @@ var _ = Describe("Connection", func() {
 
 							transport.WriteMessage(conn, map[string]interface{}{
 								"process_id": 42,
-							})
-							transport.WriteMessage(conn, map[string]interface{}{
-								"process_id": 42,
-								"source":     transport.Stdout,
-								"data":       "stdout data",
-							})
-							transport.WriteMessage(conn, map[string]interface{}{
-								"process_id": 42,
-								"source":     transport.Stderr,
-								"data":       "stderr data",
+								"stream_id":  123,
 							})
 						},
 					),
-					ghttp.CombineHandlers(
-						ghttp.VerifyRequest("GET", "/containers/foo-handle/processes/42/attaches/0/stdout"),
-						func(w http.ResponseWriter, r *http.Request) {
-							w.WriteHeader(http.StatusOK)
-
-							conn, _, err := w.(http.Hijacker).Hijack()
-							Ω(err).ShouldNot(HaveOccurred())
-							defer conn.Close()
-						},
-					))
+					emptyStdoutStream("foo-handle", 42, 123),
+					emptyStderrStream("foo-handle", 42, 123),
+				)
 			})
 
 			Describe("waiting on the process", func() {
@@ -1309,12 +1263,8 @@ var _ = Describe("Connection", func() {
 						ghttp.VerifyRequest("POST", "/containers/foo-handle/processes"),
 						ghttp.RespondWith(200, marshalProto(map[string]interface{}{
 							"process_id": 42,
+							"stream_id":  123,
 						},
-							map[string]interface{}{
-								"process_id": 42,
-								"source":     transport.Stdout,
-								"data":       "stdout data",
-							},
 							map[string]interface{}{
 								"process_id": 42,
 								"source":     transport.Stderr,
@@ -1326,16 +1276,8 @@ var _ = Describe("Connection", func() {
 							},
 						)),
 					),
-					ghttp.CombineHandlers(
-						ghttp.VerifyRequest("GET", "/containers/foo-handle/processes/42/attaches/0/stdout"),
-						func(w http.ResponseWriter, r *http.Request) {
-							w.WriteHeader(http.StatusOK)
-
-							conn, _, err := w.(http.Hijacker).Hijack()
-							Ω(err).ShouldNot(HaveOccurred())
-							defer conn.Close()
-						},
-					),
+					emptyStdoutStream("foo-handle", 42, 123),
+					emptyStderrStream("foo-handle", 42, 123),
 				)
 			})
 
@@ -1359,7 +1301,6 @@ var _ = Describe("Connection", func() {
 
 	Describe("Attaching", func() {
 		Context("when streaming succeeds to completion", func() {
-
 			BeforeEach(func() {
 				expectedRoundtrip := make(chan string)
 				server.AppendHandlers(
@@ -1374,13 +1315,7 @@ var _ = Describe("Connection", func() {
 							defer conn.Close()
 
 							transport.WriteMessage(conn, map[string]interface{}{
-								"attach_id": 123,
-							})
-
-							transport.WriteMessage(conn, map[string]interface{}{
-								"process_id": 42,
-								"source":     transport.Stderr,
-								"data":       "stderr data",
+								"stream_id": 123,
 							})
 
 							var payload map[string]interface{}
@@ -1400,19 +1335,13 @@ var _ = Describe("Connection", func() {
 							})
 						},
 					),
-					ghttp.CombineHandlers(
-						ghttp.VerifyRequest("GET", "/containers/foo-handle/processes/42/attaches/123/stdout"),
-						func(w http.ResponseWriter, r *http.Request) {
-							w.WriteHeader(http.StatusOK)
-
-							conn, _, err := w.(http.Hijacker).Hijack()
-							Ω(err).ShouldNot(HaveOccurred())
-							defer conn.Close()
-
-							conn.Write([]byte("stdout data"))
-							conn.Write([]byte(fmt.Sprintf("roundtripped %s", <-expectedRoundtrip)))
-						},
-					),
+					stdoutStream("foo-handle", 42, 123, func(conn net.Conn) {
+						conn.Write([]byte("stdout data"))
+						conn.Write([]byte(fmt.Sprintf("roundtripped %s", <-expectedRoundtrip)))
+					}),
+					stderrStream("foo-handle", 42, 123, func(conn net.Conn) {
+						conn.Write([]byte("stderr data"))
+					}),
 				)
 			})
 
@@ -1454,7 +1383,7 @@ var _ = Describe("Connection", func() {
 							defer conn.Close()
 
 							transport.WriteMessage(conn, map[string]interface{}{
-								"attach_id": 123,
+								"stream_id": 123,
 							})
 
 							decoder := json.NewDecoder(br)
@@ -1476,16 +1405,8 @@ var _ = Describe("Connection", func() {
 							close(finishedReq)
 						},
 					),
-					ghttp.CombineHandlers(
-						ghttp.VerifyRequest("GET", "/containers/foo-handle/processes/42/attaches/123/stdout"),
-						func(w http.ResponseWriter, r *http.Request) {
-							w.WriteHeader(http.StatusOK)
-
-							conn, _, err := w.(http.Hijacker).Hijack()
-							Ω(err).ShouldNot(HaveOccurred())
-							conn.Close()
-						},
-					),
+					emptyStdoutStream("foo-handle", 42, 123),
+					emptyStderrStream("foo-handle", 42, 123),
 				)
 
 				stdinR, stdinW := io.Pipe()
@@ -1508,7 +1429,7 @@ var _ = Describe("Connection", func() {
 					ghttp.CombineHandlers(
 						ghttp.VerifyRequest("GET", "/containers/foo-handle/processes/42"),
 						ghttp.RespondWith(200, marshalProto(map[string]interface{}{
-							"attach_id": 123,
+							"stream_id": 123,
 						},
 							map[string]interface{}{
 								"process_id": 42,
@@ -1529,16 +1450,8 @@ var _ = Describe("Connection", func() {
 							},
 						)),
 					),
-					ghttp.CombineHandlers(
-						ghttp.VerifyRequest("GET", "/containers/foo-handle/processes/42/attaches/123/stdout"),
-						func(w http.ResponseWriter, r *http.Request) {
-							w.WriteHeader(http.StatusOK)
-
-							conn, _, err := w.(http.Hijacker).Hijack()
-							Ω(err).ShouldNot(HaveOccurred())
-							conn.Close()
-						},
-					),
+					emptyStdoutStream("foo-handle", 42, 123),
+					emptyStderrStream("foo-handle", 42, 123),
 				)
 			})
 
@@ -1570,7 +1483,7 @@ var _ = Describe("Connection", func() {
 							defer conn.Close()
 
 							transport.WriteMessage(conn, map[string]interface{}{
-								"attach_id": 123,
+								"stream_id": 123,
 							})
 
 							transport.WriteMessage(conn, map[string]interface{}{
@@ -1586,16 +1499,8 @@ var _ = Describe("Connection", func() {
 							})
 						},
 					),
-					ghttp.CombineHandlers(
-						ghttp.VerifyRequest("GET", "/containers/foo-handle/processes/42/attaches/123/stdout"),
-						func(w http.ResponseWriter, r *http.Request) {
-							w.WriteHeader(http.StatusOK)
-
-							conn, _, err := w.(http.Hijacker).Hijack()
-							Ω(err).ShouldNot(HaveOccurred())
-							conn.Close()
-						},
-					),
+					emptyStdoutStream("foo-handle", 42, 123),
+					emptyStderrStream("foo-handle", 42, 123),
 				)
 			})
 
@@ -1636,4 +1541,42 @@ func marshalProto(messages ...interface{}) string {
 	}
 
 	return result.String()
+}
+
+func emptyStdoutStream(handle string, processid, attachid int) http.HandlerFunc {
+	return stdoutStream(handle, processid, attachid, func(net.Conn) {})
+}
+
+func emptyStderrStream(handle string, processid, attachid int) http.HandlerFunc {
+	return stderrStream(handle, processid, attachid, func(net.Conn) {})
+}
+
+func stderrStream(handle string, processid, attachid int, fn func(net.Conn)) http.HandlerFunc {
+	return stream(handle, "stderr", processid, attachid, fn)
+}
+
+func stdoutStream(handle string, processid, attachid int, fn func(net.Conn)) http.HandlerFunc {
+	return stream(handle, "stdout", processid, attachid, fn)
+}
+
+func stream(handle string, route string, processid, attachid int, fn func(net.Conn)) http.HandlerFunc {
+	return ghttp.CombineHandlers(
+		ghttp.VerifyRequest("GET",
+			fmt.Sprintf("/containers/%s/processes/%d/attaches/%d/%s",
+				handle,
+				processid,
+				attachid,
+				route,
+			)),
+
+		func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+
+			conn, _, err := w.(http.Hijacker).Hijack()
+			Ω(err).ShouldNot(HaveOccurred())
+			defer conn.Close()
+
+			fn(conn)
+		},
+	)
 }

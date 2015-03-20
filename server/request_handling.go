@@ -7,9 +7,7 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"strconv"
 	"strings"
-	"sync/atomic"
 
 	"github.com/cloudfoundry-incubator/garden"
 	"github.com/cloudfoundry-incubator/garden/transport"
@@ -827,41 +825,6 @@ func (s *GardenServer) handleRemoveProperty(w http.ResponseWriter, r *http.Reque
 	s.writeSuccess(w)
 }
 
-func (s *GardenServer) handleStdout(w http.ResponseWriter, r *http.Request) {
-	handle := r.FormValue(":handle")
-	hLog := s.logger.Session("stdout", lager.Data{
-		"handle": handle,
-	})
-
-	attachIDi, err := strconv.Atoi(r.FormValue(":attach_id"))
-	if err != nil {
-		s.writeError(w, err, hLog)
-		return
-	}
-	attachID := uint32(attachIDi)
-
-	hLog.Info("stdout")
-
-	w.WriteHeader(http.StatusOK)
-
-	conn, _, err := w.(http.Hijacker).Hijack()
-	if err != nil {
-		s.writeError(w, err, hLog)
-		return
-	}
-
-	defer conn.Close()
-
-	stdOutCh := s.stdouts[attachID]
-	for {
-		if output, ok := <-stdOutCh; ok {
-			conn.Write(output)
-		} else {
-			return
-		}
-	}
-}
-
 func (s *GardenServer) handleRun(w http.ResponseWriter, r *http.Request) {
 	handle := r.FormValue(":handle")
 
@@ -908,8 +871,7 @@ func (s *GardenServer) handleRun(w http.ResponseWriter, r *http.Request) {
 		"id":   process.ID(),
 	})
 
-	attachID := atomic.AddUint32(&s.nextAttachID, 1)
-	s.stdouts[attachID] = stdout
+	streamID := s.streamer.stream(stdout, stderr)
 
 	w.WriteHeader(http.StatusCreated)
 	w.Header().Set("Content-Type", "application/json")
@@ -925,13 +887,14 @@ func (s *GardenServer) handleRun(w http.ResponseWriter, r *http.Request) {
 
 	transport.WriteMessage(conn, &transport.ProcessPayload{
 		ProcessID: process.ID(),
-		AttachID:  attachID,
+		StreamID:  streamID,
 	})
 
 	go s.streamInput(json.NewDecoder(br), stdinW, process)
 
 	s.streamProcess(hLog, conn, process, stderr, stdinW)
 	close(stdout)
+	close(stderr)
 }
 
 func (s *GardenServer) handleAttach(w http.ResponseWriter, r *http.Request) {
@@ -984,8 +947,7 @@ func (s *GardenServer) handleAttach(w http.ResponseWriter, r *http.Request) {
 		"id": process.ID(),
 	})
 
-	attachID := atomic.AddUint32(&s.nextAttachID, 1)
-	s.stdouts[attachID] = stdout
+	streamID := s.streamer.stream(stdout, stderr)
 
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
@@ -1001,7 +963,7 @@ func (s *GardenServer) handleAttach(w http.ResponseWriter, r *http.Request) {
 
 	transport.WriteMessage(conn, &transport.ProcessPayload{
 		ProcessID: process.ID(),
-		AttachID:  attachID,
+		StreamID:  streamID,
 	})
 
 	go s.streamInput(json.NewDecoder(br), stdinW, process)
@@ -1181,22 +1143,10 @@ func (s *GardenServer) streamProcess(logger lager.Logger, conn net.Conn, process
 		}
 	}()
 
-	stderrSource := transport.Stderr
-
 	for {
 		select {
 
-		case data := <-stderr:
-			d := string(data)
-			transport.WriteMessage(conn, &transport.ProcessPayload{
-				ProcessID: process.ID(),
-				Source:    &stderrSource,
-				Data:      &d,
-			})
-
 		case status := <-statusCh:
-			flushProcess(conn, process, stderr)
-
 			transport.WriteMessage(conn, &transport.ProcessPayload{
 				ProcessID:  process.ID(),
 				ExitStatus: &status,
@@ -1206,8 +1156,6 @@ func (s *GardenServer) streamProcess(logger lager.Logger, conn net.Conn, process
 			return
 
 		case err := <-errCh:
-			flushProcess(conn, process, stderr)
-
 			e := err.Error()
 			transport.WriteMessage(conn, &transport.ProcessPayload{
 				ProcessID: process.ID(),
@@ -1222,26 +1170,6 @@ func (s *GardenServer) streamProcess(logger lager.Logger, conn net.Conn, process
 				"id": process.ID(),
 			})
 
-			return
-		}
-	}
-}
-
-func flushProcess(conn net.Conn, process garden.Process, stderr <-chan []byte) {
-	stderrSource := transport.Stderr
-
-	for {
-		select {
-
-		case data := <-stderr:
-			d := string(data)
-			transport.WriteMessage(conn, &transport.ProcessPayload{
-				ProcessID: process.ID(),
-				Source:    &stderrSource,
-				Data:      &d,
-			})
-
-		default:
 			return
 		}
 	}
