@@ -7,54 +7,29 @@ import (
 )
 
 type StreamServer struct {
-	mu      sync.RWMutex
-	streams map[uint32]source
-	nextID  uint32
+	mu     sync.RWMutex
+	nextID uint32
+
+	stdouts map[uint32]chan []byte
+	stderrs map[uint32]chan []byte
 }
 
 func NewSteamServer() *StreamServer {
 	return &StreamServer{
-		streams: make(map[uint32]source),
+		stdouts: make(map[uint32]chan []byte),
+		stderrs: make(map[uint32]chan []byte),
 	}
-}
-
-type source struct {
-	Stdout chan []byte
-	Stderr chan []byte
 }
 
 func (m *StreamServer) handleStdout(w http.ResponseWriter, r *http.Request) {
-	streamid, err := strconv.Atoi(r.FormValue(":streamid"))
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	stream := uint32(streamid)
-
-	w.WriteHeader(http.StatusOK)
-
-	conn, _, err := w.(http.Hijacker).Hijack()
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	defer conn.Close()
-
-	m.mu.RLock()
-	stdoutCh := m.streams[stream].Stdout
-	m.mu.RUnlock()
-
-	for {
-		if output, ok := <-stdoutCh; ok {
-			conn.Write(output)
-		} else {
-			return
-		}
-	}
+	m.handleStream(w, r, m.stdouts)
 }
 
 func (m *StreamServer) handleStderr(w http.ResponseWriter, r *http.Request) {
+	m.handleStream(w, r, m.stderrs)
+}
+
+func (m *StreamServer) handleStream(w http.ResponseWriter, r *http.Request, streams map[uint32]chan []byte) {
 	streamid, err := strconv.Atoi(r.FormValue(":streamid"))
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -73,13 +48,16 @@ func (m *StreamServer) handleStderr(w http.ResponseWriter, r *http.Request) {
 	defer conn.Close()
 
 	m.mu.RLock()
-	stderrCh := m.streams[stream].Stderr
+	ch := streams[stream]
 	m.mu.RUnlock()
 
 	for {
-		if output, ok := <-stderrCh; ok {
+		if output, ok := <-ch; ok {
 			conn.Write(output)
 		} else {
+			m.mu.Lock()
+			defer m.mu.Unlock()
+			delete(streams, stream)
 			return
 		}
 	}
@@ -90,10 +68,8 @@ func (m *StreamServer) stream(stdout, stderr chan []byte) uint32 {
 	streamID := m.nextID
 	m.nextID++
 
-	m.streams[streamID] = source{
-		Stdout: stdout,
-		Stderr: stderr,
-	}
+	m.stdouts[streamID] = stdout
+	m.stderrs[streamID] = stderr
 	m.mu.Unlock()
 
 	return streamID

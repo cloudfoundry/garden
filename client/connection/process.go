@@ -22,6 +22,11 @@ type process struct {
 	doneL      *sync.Cond
 }
 
+type attacher interface {
+	attach(stdout, stderr io.Writer) error
+	wait()
+}
+
 func newProcess(id uint32, netConn net.Conn) *process {
 	return &process{
 		id: id,
@@ -69,15 +74,14 @@ func (p *process) exited(exitStatus int, err error) {
 	p.doneL.Broadcast()
 }
 
-func (p *process) streamPayloads(decoder *json.Decoder, processIO garden.ProcessIO) {
+func (p *process) streamPayloads(decoder *json.Decoder, stream attacher, processIO garden.ProcessIO) {
 	defer p.stream.Close()
 
 	if processIO.Stdin != nil {
 		writer := &stdinWriter{p.stream}
 
 		go func() {
-			_, err := io.Copy(writer, processIO.Stdin)
-			if err == nil {
+			if _, err := io.Copy(writer, processIO.Stdin); err == nil {
 				writer.Close()
 			} else {
 				p.stream.Close()
@@ -85,34 +89,28 @@ func (p *process) streamPayloads(decoder *json.Decoder, processIO garden.Process
 		}()
 	}
 
+	stream.attach(processIO.Stdout, processIO.Stderr)
+
 	for {
 		payload := &transport.ProcessPayload{}
 
 		err := decoder.Decode(payload)
 		if err != nil {
+			stream.wait()
 			p.exited(0, err)
 			break
 		}
 
 		if payload.Error != nil {
+			stream.wait()
 			p.exited(0, fmt.Errorf("process error: %s", *payload.Error))
 			break
 		}
 
 		if payload.ExitStatus != nil {
+			stream.wait()
 			p.exited(int(*payload.ExitStatus), nil)
 			break
-		}
-
-		if payload.Source == nil {
-			continue
-		}
-
-		switch *payload.Source {
-		case transport.Stderr:
-			if processIO.Stderr != nil {
-				processIO.Stderr.Write([]byte(*payload.Data))
-			}
 		}
 	}
 }

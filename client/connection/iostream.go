@@ -3,6 +3,7 @@ package connection
 import (
 	"fmt"
 	"io"
+	"sync"
 
 	"github.com/cloudfoundry-incubator/garden/routes"
 	"github.com/tedsuo/rata"
@@ -13,6 +14,17 @@ type ioStream struct {
 	containerHandle string
 	processID       uint32
 	streamID        uint32
+
+	wg *sync.WaitGroup
+}
+
+func (conn *connection) newIOStream(handle string, processID, streamID uint32) *ioStream {
+	return &ioStream{
+		connection:      conn,
+		containerHandle: handle,
+		processID:       processID,
+		streamID:        streamID,
+	}
 }
 
 // attaches to the stdout and stderr endpoints for a running process
@@ -40,13 +52,26 @@ func (a *ioStream) attach(stdoutW, stderrW io.Writer) error {
 		"application/json",
 	)
 
+	a.wg = new(sync.WaitGroup)
 	if stdoutW != nil {
-		go io.Copy(stdoutW, stdout)
+		a.wg.Add(1)
+		go func() {
+			io.Copy(stdoutW, stdout)
+			a.wg.Done()
+		}()
 	}
 
 	if stderrW != nil {
-		go io.Copy(stderrW, stderr)
+		a.wg.Add(1)
+		go func() {
+			io.Copy(stderrW, stderr)
+			a.wg.Done()
+		}()
 	}
 
 	return err
+}
+
+func (a *ioStream) wait() {
+	a.wg.Wait()
 }

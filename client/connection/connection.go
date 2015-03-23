@@ -188,24 +188,7 @@ func (c *connection) Run(handle string, spec garden.ProcessSpec, processIO garde
 		return nil, err
 	}
 
-	decoder := json.NewDecoder(br)
-
-	firstResponse := &transport.ProcessPayload{}
-	err = decoder.Decode(firstResponse)
-	if err != nil {
-		return nil, err
-	}
-
-	p := newProcess(firstResponse.ProcessID, conn)
-
-	go p.streamPayloads(decoder, processIO)
-
-	s := &ioStream{c, handle, firstResponse.ProcessID, firstResponse.StreamID}
-	if err := s.attach(processIO.Stdout, processIO.Stderr); err != nil {
-		return nil, err
-	}
-
-	return p, nil
+	return c.streamProcess(handle, processIO, conn, br)
 }
 
 func (c *connection) Attach(handle string, processID uint32, processIO garden.ProcessIO) (garden.Process, error) {
@@ -225,20 +208,20 @@ func (c *connection) Attach(handle string, processID uint32, processIO garden.Pr
 		return nil, err
 	}
 
-	decoder := json.NewDecoder(br)
+	return c.streamProcess(handle, processIO, conn, br)
+}
+
+func (c *connection) streamProcess(handle string, processIO garden.ProcessIO, to net.Conn, from *bufio.Reader) (garden.Process, error) {
+	decoder := json.NewDecoder(from)
+
 	firstResponse := &transport.ProcessPayload{}
-	err = decoder.Decode(firstResponse)
+	err := decoder.Decode(firstResponse)
 	if err != nil {
 		return nil, err
 	}
 
-	p := newProcess(processID, conn)
-	go p.streamPayloads(decoder, processIO)
-
-	s := &ioStream{c, handle, processID, firstResponse.StreamID}
-	if err := s.attach(processIO.Stdout, processIO.Stderr); err != nil {
-		return nil, err
-	}
+	p := newProcess(firstResponse.ProcessID, to)
+	go p.streamPayloads(decoder, c.newIOStream(handle, firstResponse.ProcessID, firstResponse.StreamID), processIO)
 
 	return p, nil
 }

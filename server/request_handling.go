@@ -884,6 +884,8 @@ func (s *GardenServer) handleRun(w http.ResponseWriter, r *http.Request) {
 	}
 
 	defer conn.Close()
+	defer close(stdout)
+	defer close(stderr)
 
 	transport.WriteMessage(conn, &transport.ProcessPayload{
 		ProcessID: process.ID(),
@@ -893,8 +895,6 @@ func (s *GardenServer) handleRun(w http.ResponseWriter, r *http.Request) {
 	go s.streamInput(json.NewDecoder(br), stdinW, process)
 
 	s.streamProcess(hLog, conn, process, stderr, stdinW)
-	close(stdout)
-	close(stderr)
 }
 
 func (s *GardenServer) handleAttach(w http.ResponseWriter, r *http.Request) {
@@ -960,6 +960,8 @@ func (s *GardenServer) handleAttach(w http.ResponseWriter, r *http.Request) {
 	}
 
 	defer conn.Close()
+	defer close(stdout)
+	defer close(stderr)
 
 	transport.WriteMessage(conn, &transport.ProcessPayload{
 		ProcessID: process.ID(),
@@ -969,6 +971,7 @@ func (s *GardenServer) handleAttach(w http.ResponseWriter, r *http.Request) {
 	go s.streamInput(json.NewDecoder(br), stdinW, process)
 
 	s.streamProcess(hLog, conn, process, stderr, stdinW)
+
 }
 
 func (s *GardenServer) handleInfo(w http.ResponseWriter, r *http.Request) {
