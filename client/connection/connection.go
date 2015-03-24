@@ -15,7 +15,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cloudfoundry-incubator/cf-lager"
 	"github.com/cloudfoundry-incubator/garden"
 	"github.com/cloudfoundry-incubator/garden/routes"
 	"github.com/cloudfoundry-incubator/garden/transport"
@@ -94,7 +93,7 @@ func (err Error) Error() string {
 }
 
 func New(network, address string) Connection {
-	return NewWithLogger(network, address, cf_lager.New("garden-connection"))
+	return NewWithLogger(network, address, lager.NewLogger("garden-connection"))
 }
 
 func NewWithLogger(network, address string, log lager.Logger) Connection {
