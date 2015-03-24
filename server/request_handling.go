@@ -872,6 +872,7 @@ func (s *GardenServer) handleRun(w http.ResponseWriter, r *http.Request) {
 	})
 
 	streamID := s.streamer.stream(stdout, stderr)
+	defer s.streamer.stop(streamID)
 
 	w.WriteHeader(http.StatusCreated)
 	w.Header().Set("Content-Type", "application/json")
@@ -884,8 +885,6 @@ func (s *GardenServer) handleRun(w http.ResponseWriter, r *http.Request) {
 	}
 
 	defer conn.Close()
-	defer close(stdout)
-	defer close(stderr)
 
 	transport.WriteMessage(conn, &transport.ProcessPayload{
 		ProcessID: process.ID(),
@@ -948,6 +947,7 @@ func (s *GardenServer) handleAttach(w http.ResponseWriter, r *http.Request) {
 	})
 
 	streamID := s.streamer.stream(stdout, stderr)
+	defer s.streamer.stop(streamID)
 
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
@@ -960,8 +960,6 @@ func (s *GardenServer) handleAttach(w http.ResponseWriter, r *http.Request) {
 	}
 
 	defer conn.Close()
-	defer close(stdout)
-	defer close(stderr)
 
 	transport.WriteMessage(conn, &transport.ProcessPayload{
 		ProcessID: process.ID(),

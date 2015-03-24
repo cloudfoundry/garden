@@ -12,12 +12,14 @@ type StreamServer struct {
 
 	stdouts map[uint32]chan []byte
 	stderrs map[uint32]chan []byte
+	done    map[uint32]chan struct{}
 }
 
 func NewSteamServer() *StreamServer {
 	return &StreamServer{
 		stdouts: make(map[uint32]chan []byte),
 		stderrs: make(map[uint32]chan []byte),
+		done:    make(map[uint32]chan struct{}),
 	}
 }
 
@@ -49,16 +51,25 @@ func (m *StreamServer) handleStream(w http.ResponseWriter, r *http.Request, stre
 
 	m.mu.RLock()
 	ch := streams[stream]
+	done := m.done[stream]
 	m.mu.RUnlock()
 
 	for {
-		if output, ok := <-ch; ok {
+		select {
+		case output := <-ch:
 			conn.Write(output)
-		} else {
-			m.mu.Lock()
-			defer m.mu.Unlock()
-			delete(streams, stream)
-			return
+		case <-done:
+			for {
+				select {
+				case output := <-ch:
+					conn.Write(output)
+				default:
+					m.mu.Lock()
+					defer m.mu.Unlock()
+					delete(streams, stream)
+					return
+				}
+			}
 		}
 	}
 }
@@ -70,7 +81,15 @@ func (m *StreamServer) stream(stdout, stderr chan []byte) uint32 {
 
 	m.stdouts[streamID] = stdout
 	m.stderrs[streamID] = stderr
+	m.done[streamID] = make(chan struct{})
 	m.mu.Unlock()
 
 	return streamID
+}
+
+func (m *StreamServer) stop(id uint32) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	close(m.done[id])
 }
