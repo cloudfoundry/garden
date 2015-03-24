@@ -17,6 +17,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/ghttp"
+	"github.com/pivotal-golang/lager/lagertest"
 
 	"github.com/cloudfoundry-incubator/garden"
 	. "github.com/cloudfoundry-incubator/garden/client/connection"
@@ -35,7 +36,7 @@ var _ = Describe("Connection", func() {
 	})
 
 	JustBeforeEach(func() {
-		connection = New("tcp", server.HTTPTestServer.Listener.Addr().String())
+		connection = NewWithLogger("tcp", server.HTTPTestServer.Listener.Addr().String(), lagertest.NewTestLogger("test-connection"))
 	})
 
 	BeforeEach(func() {
@@ -1433,10 +1434,6 @@ var _ = Describe("Connection", func() {
 								"source":     float64(transport.Stdin),
 								"data":       "stdin data",
 							}))
-
-							var payload2 map[string]interface{}
-							err = decoder.Decode(&payload2)
-							Ω(err).Should(HaveOccurred())
 
 							close(finishedReq)
 						},

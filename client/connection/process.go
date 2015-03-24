@@ -9,6 +9,7 @@ import (
 
 	"github.com/cloudfoundry-incubator/garden"
 	"github.com/cloudfoundry-incubator/garden/transport"
+	"github.com/pivotal-golang/lager"
 )
 
 type process struct {
@@ -74,7 +75,7 @@ func (p *process) exited(exitStatus int, err error) {
 	p.doneL.Broadcast()
 }
 
-func (p *process) streamPayloads(decoder *json.Decoder, stream attacher, processIO garden.ProcessIO) {
+func (p *process) streamPayloads(log lager.Logger, decoder *json.Decoder, stream attacher, processIO garden.ProcessIO) {
 	defer p.stream.Close()
 
 	if processIO.Stdin != nil {
@@ -84,7 +85,7 @@ func (p *process) streamPayloads(decoder *json.Decoder, stream attacher, process
 			if _, err := io.Copy(writer, processIO.Stdin); err == nil {
 				writer.Close()
 			} else {
-				p.stream.Close()
+				log.Error("streaming-stdin-payload", err)
 			}
 		}()
 	}
@@ -93,7 +94,6 @@ func (p *process) streamPayloads(decoder *json.Decoder, stream attacher, process
 
 	for {
 		payload := &transport.ProcessPayload{}
-
 		err := decoder.Decode(payload)
 		if err != nil {
 			stream.wait()

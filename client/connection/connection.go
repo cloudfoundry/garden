@@ -15,9 +15,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cloudfoundry-incubator/cf-lager"
 	"github.com/cloudfoundry-incubator/garden"
 	"github.com/cloudfoundry-incubator/garden/routes"
 	"github.com/cloudfoundry-incubator/garden/transport"
+	"github.com/pivotal-golang/lager"
 	"github.com/tedsuo/rata"
 )
 
@@ -79,6 +81,7 @@ type connection struct {
 
 	httpClient        *http.Client
 	noKeepaliveClient *http.Client
+	log               lager.Logger
 }
 
 type Error struct {
@@ -91,6 +94,10 @@ func (err Error) Error() string {
 }
 
 func New(network, address string) Connection {
+	return NewWithLogger(network, address, cf_lager.New("garden-connection"))
+}
+
+func NewWithLogger(network, address string, log lager.Logger) Connection {
 	dialer := func(string, string) (net.Conn, error) {
 		return net.DialTimeout(network, address, time.Second)
 	}
@@ -111,6 +118,8 @@ func New(network, address string) Connection {
 				DisableKeepAlives: true,
 			},
 		},
+
+		log: log,
 	}
 }
 
@@ -221,7 +230,7 @@ func (c *connection) streamProcess(handle string, processIO garden.ProcessIO, to
 	}
 
 	p := newProcess(firstResponse.ProcessID, to)
-	go p.streamPayloads(decoder, c.newIOStream(handle, firstResponse.ProcessID, firstResponse.StreamID), processIO)
+	go p.streamPayloads(c.log, decoder, c.newIOStream(handle, firstResponse.ProcessID, firstResponse.StreamID), processIO)
 
 	return p, nil
 }
