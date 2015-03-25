@@ -67,7 +67,7 @@ See [REST API examples](doc/garden-api.md) for more.
 
 Make a directory to contain go code:
 ```
-$ mkdir ~/go
+$ mkdir ~/go #or any other directory of your choice
 ```
 
 Install Go. For example, install [gvm](https://github.com/moovweb/gvm) and issue:
@@ -78,8 +78,8 @@ $ gvm use go1.4.1
 
 Make sure that your `$GOPATH` and `$PATH` are set. For example:
 ```
-$ export GOPATH=~/go:$GOPATH
-$ export PATH=$PATH:~/go/bin
+$ export GOPATH=~/go #or whichever directory you installed this go version in
+$ export PATH=$PATH:$GOPATH/bin
 ```
 
 Get garden and its dependencies:
