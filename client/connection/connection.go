@@ -78,7 +78,6 @@ type connection struct {
 
 	dialer func(string, string) (net.Conn, error)
 
-	httpClient        *http.Client
 	noKeepaliveClient *http.Client
 	log               lager.Logger
 }
@@ -106,11 +105,6 @@ func NewWithLogger(network, address string, log lager.Logger) Connection {
 
 		dialer: dialer,
 
-		httpClient: &http.Client{
-			Transport: &http.Transport{
-				Dial: dialer,
-			},
-		},
 		noKeepaliveClient: &http.Client{
 			Transport: &http.Transport{
 				Dial:              dialer,
