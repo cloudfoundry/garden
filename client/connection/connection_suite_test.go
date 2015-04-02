@@ -11,3 +11,7 @@ func TestConnection(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Connection Suite")
 }
+
+func uint64ptr(n uint64) *uint64 {
+	return &n
+}

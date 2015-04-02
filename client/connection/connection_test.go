@@ -12,7 +12,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gogo/protobuf/proto"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
@@ -41,21 +40,21 @@ var _ = Describe("Connection", func() {
 
 	BeforeEach(func() {
 		rlimits := &garden.ResourceLimits{
-			As:         proto.Uint64(1),
-			Core:       proto.Uint64(2),
-			Cpu:        proto.Uint64(4),
-			Data:       proto.Uint64(5),
-			Fsize:      proto.Uint64(6),
-			Locks:      proto.Uint64(7),
-			Memlock:    proto.Uint64(8),
-			Msgqueue:   proto.Uint64(9),
-			Nice:       proto.Uint64(10),
-			Nofile:     proto.Uint64(11),
-			Nproc:      proto.Uint64(12),
-			Rss:        proto.Uint64(13),
-			Rtprio:     proto.Uint64(14),
-			Sigpending: proto.Uint64(15),
-			Stack:      proto.Uint64(16),
+			As:         uint64ptr(1),
+			Core:       uint64ptr(2),
+			Cpu:        uint64ptr(4),
+			Data:       uint64ptr(5),
+			Fsize:      uint64ptr(6),
+			Locks:      uint64ptr(7),
+			Memlock:    uint64ptr(8),
+			Msgqueue:   uint64ptr(9),
+			Nice:       uint64ptr(10),
+			Nofile:     uint64ptr(11),
+			Nproc:      uint64ptr(12),
+			Rss:        uint64ptr(13),
+			Rtprio:     uint64ptr(14),
+			Sigpending: uint64ptr(15),
+			Stack:      uint64ptr(16),
 		}
 
 		resourceLimits = garden.ResourceLimits{

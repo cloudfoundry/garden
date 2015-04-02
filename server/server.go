@@ -11,7 +11,6 @@ import (
 	"github.com/cloudfoundry-incubator/garden"
 	"github.com/cloudfoundry-incubator/garden/routes"
 	"github.com/cloudfoundry-incubator/garden/server/bomberman"
-	"github.com/gogo/protobuf/proto"
 	"github.com/pivotal-golang/lager"
 	"github.com/tedsuo/rata"
 )
@@ -41,14 +40,6 @@ type GardenServer struct {
 
 	destroys  map[string]struct{}
 	destroysL *sync.Mutex
-}
-
-type UnhandledRequestError struct {
-	Request proto.Message
-}
-
-func (e UnhandledRequestError) Error() string {
-	return fmt.Sprintf("unhandled request type: %T", e.Request)
 }
 
 func New(
