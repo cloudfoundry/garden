@@ -36,40 +36,44 @@ func (a *ioStream) attach(stdoutW, stderrW io.Writer) error {
 		"streamid": fmt.Sprintf("%d", a.streamID),
 	}
 
-	_, stdout, err := a.doHijack(
-		routes.Stdout,
-		nil,
-		params,
-		nil,
-		"application/json",
-	)
-
-	_, stderr, err := a.doHijack(
-		routes.Stderr,
-		nil,
-		params,
-		nil,
-		"application/json",
-	)
-
 	a.wg = new(sync.WaitGroup)
+
 	if stdoutW != nil {
-		a.wg.Add(1)
-		go func() {
-			io.Copy(stdoutW, stdout)
-			a.wg.Done()
-		}()
+		err := a.copyStream(params, stdoutW, routes.Stdout)
+		if err != nil {
+			return err
+		}
 	}
 
 	if stderrW != nil {
-		a.wg.Add(1)
-		go func() {
-			io.Copy(stderrW, stderr)
-			a.wg.Done()
-		}()
+		err := a.copyStream(params, stderrW, routes.Stderr)
+		if err != nil {
+			return err
+		}
 	}
 
-	return err
+	return nil
+}
+
+func (a *ioStream) copyStream(params rata.Params, target io.Writer, route string) error {
+	_, source, err := a.doHijack(
+		route,
+		nil,
+		params,
+		nil,
+		"application/json",
+	)
+	if err != nil {
+		return fmt.Errorf("Failed to hijack stream %s: %s", route, err)
+	}
+
+	a.wg.Add(1)
+	go func() {
+		io.Copy(target, source)
+		a.wg.Done()
+	}()
+
+	return nil
 }
 
 func (a *ioStream) wait() {
