@@ -1043,7 +1043,9 @@ func (s *GardenServer) writeError(w http.ResponseWriter, err error, logger lager
 	logger.Error("failed", err)
 
 	statusCode := http.StatusInternalServerError
-	if _, ok := err.(garden.ContainerNotFoundError); ok {
+	if _, ok := err.(garden.FailedToFetchError); ok {
+		statusCode = 412
+	} else if _, ok := err.(garden.ContainerNotFoundError); ok {
 		statusCode = http.StatusNotFound
 	}
 
