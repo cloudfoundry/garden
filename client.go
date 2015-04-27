@@ -69,13 +69,18 @@ func (err ContainerNotFoundError) Error() string {
 	return fmt.Sprintf("unknown handle: %s", err.Handle)
 }
 
-type FailedToFetchError struct {
-	Cause error
+func NewServiceUnavailableError(cause string) error {
+	return &ServiceUnavailableError{
+		Cause: cause,
+	}
 }
 
-func (err FailedToFetchError) Error() string {
-	//	return fmt.Sprintf("could not fetch: %s image from %s registry: %s", err.Reponame, err.Hostname, err.Cause.Error())
-	return err.Cause.Error()
+type ServiceUnavailableError struct {
+	Cause string
+}
+
+func (err *ServiceUnavailableError) Error() string {
+	return err.Cause
 }
 
 // ContainerSpec specifies the parameters for creating a container. All parameters are optional.

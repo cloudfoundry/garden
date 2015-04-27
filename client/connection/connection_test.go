@@ -109,19 +109,25 @@ var _ = Describe("Connection", func() {
 			})
 		})
 
-		Context("when the request fails with special error code 412", func() {
+		Context("when the request fails with special error code http.StatusServiceUnavailable", func() {
 			BeforeEach(func() {
 				server.AppendHandlers(
 					ghttp.CombineHandlers(
 						ghttp.VerifyRequest("GET", "/ping"),
-						ghttp.RespondWith(412, "Special Error Message"),
+						ghttp.RespondWith(http.StatusServiceUnavailable, "Special Error Message"),
 					),
 				)
 			})
 
-			It("should return an error sans http info in the error message", func() {
+			It("should return an error without the http info in the error message", func() {
 				err := connection.Ping()
 				Ω(err).Should(MatchError("Special Error Message"))
+			})
+
+			It("should return an error of the appropriate type", func() {
+				err := connection.Ping()
+				_, ok := err.(*garden.ServiceUnavailableError)
+				Ω(ok).Should(BeTrue())
 			})
 		})
 	})
