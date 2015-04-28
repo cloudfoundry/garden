@@ -113,12 +113,12 @@ func (container *container) Metrics() (garden.Metrics, error) {
 	return container.connection.Metrics(container.handle)
 }
 
-func (container *container) GetProperties() (garden.Properties, error) {
-	return container.connection.GetProperties(container.handle)
+func (container *container) Properties() (garden.Properties, error) {
+	return container.connection.Properties(container.handle)
 }
 
-func (container *container) GetProperty(name string) (string, error) {
-	return container.connection.GetProperty(container.handle, name)
+func (container *container) Property(name string) (string, error) {
+	return container.connection.Property(container.handle, name)
 }
 
 func (container *container) SetProperty(name string, value string) error {

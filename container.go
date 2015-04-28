@@ -114,14 +114,14 @@ type Container interface {
 	// Metrics returns the current set of metrics for a container
 	Metrics() (Metrics, error)
 
-	// GetProperties returns the current set of properties
-	GetProperties() (Properties, error)
+	// Properties returns the current set of properties
+	Properties() (Properties, error)
 
-	// GetProperty returns the value of the property with the specified name.
+	// Property returns the value of the property with the specified name.
 	//
 	// Errors:
 	// * When the property does not exist on the container.
-	GetProperty(name string) (string, error)
+	Property(name string) (string, error)
 
 	// Set a named property on a container to a specified value.
 	//

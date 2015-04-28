@@ -99,14 +99,14 @@ var _ = Describe("Container", func() {
 		})
 	})
 
-	Describe("GetProperties", func() {
+	Describe("Properties", func() {
 		Context("when getting properties succeeds", func() {
 			BeforeEach(func() {
-				fakeConnection.GetPropertiesReturns(garden.Properties{"Foo": "bar"}, nil)
+				fakeConnection.PropertiesReturns(garden.Properties{"Foo": "bar"}, nil)
 			})
 
-			It("returns the error", func() {
-				result, err := container.GetProperties()
+			It("returns the properties map", func() {
+				result, err := container.Properties()
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(result).Should(Equal(garden.Properties{"Foo": "bar"}))
 			})
@@ -116,11 +116,42 @@ var _ = Describe("Container", func() {
 			disaster := errors.New("oh no!")
 
 			BeforeEach(func() {
-				fakeConnection.GetPropertiesReturns(nil, disaster)
+				fakeConnection.PropertiesReturns(nil, disaster)
 			})
 
 			It("returns the error", func() {
-				_, err := container.GetProperties()
+				_, err := container.Properties()
+				Ω(err).Should(Equal(disaster))
+			})
+		})
+	})
+
+	Describe("Property", func() {
+
+		propertyName := "propertyName"
+		propertyValue := "propertyValue"
+
+		Context("when getting property succeeds", func() {
+			BeforeEach(func() {
+				fakeConnection.PropertyReturns(propertyValue, nil)
+			})
+
+			It("returns the value", func() {
+				result, err := container.Property(propertyName)
+				Ω(err).ShouldNot(HaveOccurred())
+				Ω(result).Should(Equal(propertyValue))
+			})
+		})
+
+		Context("when getting property fails", func() {
+			disaster := errors.New("oh no!")
+
+			BeforeEach(func() {
+				fakeConnection.PropertyReturns("", disaster)
+			})
+
+			It("returns the error", func() {
+				_, err := container.Property(propertyName)
 				Ω(err).Should(Equal(disaster))
 			})
 		})

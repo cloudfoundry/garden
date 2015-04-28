@@ -571,34 +571,34 @@ var _ = Describe("When a client connects", func() {
 			Describe("getting all", func() {
 				Context("when getting the properties succeeds", func() {
 					BeforeEach(func() {
-						fakeContainer.GetPropertiesReturns(garden.Properties{"foo": "bar"}, nil)
+						fakeContainer.PropertiesReturns(garden.Properties{"foo": "bar"}, nil)
 					})
 
 					It("returns the properties from the container", func() {
-						value, err := container.GetProperties()
+						value, err := container.Properties()
 						Ω(err).ShouldNot(HaveOccurred())
 
 						Ω(value).Should(Equal(garden.Properties{"foo": "bar"}))
 					})
 
 					itResetsGraceTimeWhenHandling(func() {
-						_, err := container.GetProperties()
+						_, err := container.Properties()
 						Ω(err).ShouldNot(HaveOccurred())
 					})
 
 					itFailsWhenTheContainerIsNotFound(func() error {
-						_, err := container.GetProperties()
+						_, err := container.Properties()
 						return err
 					})
 				})
 
 				Context("when getting the properties fails", func() {
 					BeforeEach(func() {
-						fakeContainer.GetPropertiesReturns(nil, errors.New("o no"))
+						fakeContainer.PropertiesReturns(nil, errors.New("o no"))
 					})
 
 					It("returns an error", func() {
-						properties, err := container.GetProperties()
+						properties, err := container.Properties()
 						Ω(err).Should(HaveOccurred())
 						Ω(properties).Should(BeEmpty())
 					})
@@ -608,39 +608,39 @@ var _ = Describe("When a client connects", func() {
 			Describe("getting", func() {
 				Context("when getting the property succeeds", func() {
 					BeforeEach(func() {
-						fakeContainer.GetPropertyReturns("some-property-value", nil)
+						fakeContainer.PropertyReturns("some-property-value", nil)
 					})
 
 					It("returns the property from the container", func() {
-						value, err := container.GetProperty("some-property")
+						value, err := container.Property("some-property")
 						Ω(err).ShouldNot(HaveOccurred())
 
 						Ω(value).Should(Equal("some-property-value"))
 
-						Ω(fakeContainer.GetPropertyCallCount()).Should(Equal(1))
+						Ω(fakeContainer.PropertyCallCount()).Should(Equal(1))
 
-						name := fakeContainer.GetPropertyArgsForCall(0)
+						name := fakeContainer.PropertyArgsForCall(0)
 						Ω(name).Should(Equal("some-property"))
 					})
 
 					itResetsGraceTimeWhenHandling(func() {
-						_, err := container.GetProperty("some-property")
+						_, err := container.Property("some-property")
 						Ω(err).ShouldNot(HaveOccurred())
 					})
 
 					itFailsWhenTheContainerIsNotFound(func() error {
-						_, err := container.GetProperty("some-property")
+						_, err := container.Property("some-property")
 						return err
 					})
 				})
 
 				Context("when getting the property fails", func() {
 					BeforeEach(func() {
-						fakeContainer.GetPropertyReturns("", errors.New("oh no!"))
+						fakeContainer.PropertyReturns("", errors.New("oh no!"))
 					})
 
 					It("returns an error", func() {
-						value, err := container.GetProperty("some-property")
+						value, err := container.Property("some-property")
 						Ω(err).Should(HaveOccurred())
 						Ω(value).Should(BeZero())
 					})

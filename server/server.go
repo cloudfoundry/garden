@@ -95,8 +95,8 @@ func New(
 		routes.Stderr:                 http.HandlerFunc(s.streamer.handleStderr),
 		routes.Attach:                 http.HandlerFunc(s.handleAttach),
 		routes.Metrics:                http.HandlerFunc(s.handleMetrics),
-		routes.GetProperties:          http.HandlerFunc(s.handleGetProperties),
-		routes.GetProperty:            http.HandlerFunc(s.handleGetProperty),
+		routes.Properties:             http.HandlerFunc(s.handleProperties),
+		routes.Property:               http.HandlerFunc(s.handleProperty),
 		routes.SetProperty:            http.HandlerFunc(s.handleSetProperty),
 		routes.RemoveProperty:         http.HandlerFunc(s.handleRemoveProperty),
 	}

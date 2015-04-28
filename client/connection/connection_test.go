@@ -600,7 +600,7 @@ var _ = Describe("Connection", func() {
 		})
 
 		It("returns the map of properties", func() {
-			properties, err := connection.GetProperties(handle)
+			properties, err := connection.Properties(handle)
 
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(properties).Should(
@@ -616,10 +616,48 @@ var _ = Describe("Connection", func() {
 			})
 
 			It("returns an error", func() {
-				_, err := connection.GetProperties(handle)
+				_, err := connection.Properties(handle)
 				Ω(err).Should(HaveOccurred())
 			})
 		})
+	})
+
+	Describe("Get container property", func() {
+
+		handle := "container-handle"
+		propertyName := "property_name"
+		propertyValue := "property_value"
+		var status int
+
+		BeforeEach(func() {
+			status = 200
+		})
+
+		JustBeforeEach(func() {
+			server.AppendHandlers(
+				ghttp.CombineHandlers(
+					ghttp.VerifyRequest("GET", fmt.Sprintf("/containers/%s/properties/%s", handle, propertyName)),
+					ghttp.RespondWith(status, fmt.Sprintf("{\"value\": \"%s\"}", propertyValue))))
+		})
+
+		It("returns the property", func() {
+			property, err := connection.Property(handle, propertyName)
+
+			Ω(err).ShouldNot(HaveOccurred())
+			Ω(property).Should(Equal(propertyValue))
+		})
+
+		Context("when getting container property fails", func() {
+			BeforeEach(func() {
+				status = 400
+			})
+
+			It("returns an error", func() {
+				_, err := connection.Property(handle, propertyName)
+				Ω(err).Should(HaveOccurred())
+			})
+		})
+
 	})
 
 	Describe("Getting container metrics", func() {

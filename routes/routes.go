@@ -39,9 +39,9 @@ const (
 	Run    = "Run"
 	Attach = "Attach"
 
-	GetProperties = "GetProperties"
-	GetProperty   = "GetProperty"
-	SetProperty   = "SetProperty"
+	Properties  = "Properties"
+	Property    = "Property"
+	SetProperty = "SetProperty"
 
 	Metrics = "Metrics"
 
@@ -85,8 +85,8 @@ var Routes = rata.Routes{
 	{Path: "/containers/:handle/processes", Method: "POST", Name: Run},
 	{Path: "/containers/:handle/processes/:pid", Method: "GET", Name: Attach},
 
-	{Path: "/containers/:handle/properties", Method: "GET", Name: GetProperties},
-	{Path: "/containers/:handle/properties/:key", Method: "GET", Name: GetProperty},
+	{Path: "/containers/:handle/properties", Method: "GET", Name: Properties},
+	{Path: "/containers/:handle/properties/:key", Method: "GET", Name: Property},
 	{Path: "/containers/:handle/properties/:key", Method: "PUT", Name: SetProperty},
 	{Path: "/containers/:handle/properties/:key", Method: "DELETE", Name: RemoveProperty},
 

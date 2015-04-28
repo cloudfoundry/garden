@@ -65,8 +65,8 @@ type Connection interface {
 	NetIn(handle string, hostPort, containerPort uint32) (uint32, uint32, error)
 	NetOut(handle string, rule garden.NetOutRule) error
 
-	GetProperties(handle string) (garden.Properties, error)
-	GetProperty(handle string, name string) (string, error)
+	Properties(handle string) (garden.Properties, error)
+	Property(handle string, name string) (string, error)
 	SetProperty(handle string, name string, value string) error
 
 	Metrics(handle string) (garden.Metrics, error)
@@ -264,13 +264,13 @@ func (c *connection) NetOut(handle string, rule garden.NetOutRule) error {
 	)
 }
 
-func (c *connection) GetProperty(handle string, name string) (string, error) {
+func (c *connection) Property(handle string, name string) (string, error) {
 	var res struct {
 		Value string `json:"value"`
 	}
 
 	err := c.do(
-		routes.GetProperty,
+		routes.Property,
 		nil,
 		&res,
 		rata.Params{
@@ -506,9 +506,9 @@ func (c *connection) List(filterProperties garden.Properties) ([]string, error) 
 	return res.Handles, nil
 }
 
-func (c *connection) GetProperties(handle string) (garden.Properties, error) {
+func (c *connection) Properties(handle string) (garden.Properties, error) {
 	res := make(garden.Properties)
-	err := c.do(routes.GetProperties, nil, &res, rata.Params{"handle": handle}, nil)
+	err := c.do(routes.Properties, nil, &res, rata.Params{"handle": handle}, nil)
 	return res, err
 }
 

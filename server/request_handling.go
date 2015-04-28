@@ -682,7 +682,7 @@ func (s *GardenServer) handleMetrics(w http.ResponseWriter, r *http.Request) {
 	s.writeResponse(w, metrics)
 }
 
-func (s *GardenServer) handleGetProperties(w http.ResponseWriter, r *http.Request) {
+func (s *GardenServer) handleProperties(w http.ResponseWriter, r *http.Request) {
 	handle := r.FormValue(":handle")
 
 	hLog := s.logger.Session("get-properties", lager.Data{
@@ -698,7 +698,7 @@ func (s *GardenServer) handleGetProperties(w http.ResponseWriter, r *http.Reques
 	s.bomberman.Pause(container.Handle())
 	defer s.bomberman.Unpause(container.Handle())
 
-	properties, err := container.GetProperties()
+	properties, err := container.Properties()
 	if err != nil {
 		s.writeError(w, err, hLog)
 		return
@@ -709,7 +709,7 @@ func (s *GardenServer) handleGetProperties(w http.ResponseWriter, r *http.Reques
 	s.writeResponse(w, properties)
 }
 
-func (s *GardenServer) handleGetProperty(w http.ResponseWriter, r *http.Request) {
+func (s *GardenServer) handleProperty(w http.ResponseWriter, r *http.Request) {
 	handle := r.FormValue(":handle")
 	key := r.FormValue(":key")
 
@@ -730,7 +730,7 @@ func (s *GardenServer) handleGetProperty(w http.ResponseWriter, r *http.Request)
 		"key": key,
 	})
 
-	value, err := container.GetProperty(key)
+	value, err := container.Property(key)
 	if err != nil {
 		s.writeError(w, err, hLog)
 		return
