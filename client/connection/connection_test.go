@@ -821,6 +821,31 @@ var _ = Describe("Connection", func() {
 				Ω(err).Should(HaveOccurred())
 			})
 		})
+
+		Context("when a container is in error state", func() {
+			It("returns the error for the container", func() {
+
+				expectedBulkInfo := map[string]garden.ContainerInfoEntry{
+					"error": garden.ContainerInfoEntry{
+						Err: garden.NewError("Oopps"),
+					},
+					"success": garden.ContainerInfoEntry{
+						Info: garden.ContainerInfo{
+							State: "container2state",
+						},
+					},
+				}
+
+				server.AppendHandlers(
+					ghttp.CombineHandlers(
+						ghttp.VerifyRequest("GET", "/containers/bulk_info", queryParams),
+						ghttp.RespondWith(200, marshalProto(expectedBulkInfo))))
+
+				bulkInfo, err := connection.BulkInfo(handles)
+				Ω(err).ShouldNot(HaveOccurred())
+				Ω(bulkInfo).Should(Equal(expectedBulkInfo))
+			})
+		})
 	})
 
 	Describe("BulkMetrics", func() {
@@ -873,6 +898,33 @@ var _ = Describe("Connection", func() {
 			It("returns the error", func() {
 				_, err := connection.BulkMetrics(handles)
 				Ω(err).Should(HaveOccurred())
+			})
+		})
+
+		Context("when a container has an error", func() {
+			It("returns the error for the container", func() {
+
+				errorBulkMetrics := map[string]garden.ContainerMetricsEntry{
+					"error": garden.ContainerMetricsEntry{
+						Err: garden.NewError("Oh noes!"),
+					},
+					"success": garden.ContainerMetricsEntry{
+						Metrics: garden.Metrics{
+							DiskStat: garden.ContainerDiskStat{
+								InodesUsed: 1,
+							},
+						},
+					},
+				}
+
+				server.AppendHandlers(
+					ghttp.CombineHandlers(
+						ghttp.VerifyRequest("GET", "/containers/bulk_metrics", queryParams),
+						ghttp.RespondWith(200, marshalProto(errorBulkMetrics))))
+
+				bulkMetrics, err := connection.BulkMetrics(handles)
+				Ω(err).ShouldNot(HaveOccurred())
+				Ω(bulkMetrics).To(Equal(errorBulkMetrics))
 			})
 		})
 	})

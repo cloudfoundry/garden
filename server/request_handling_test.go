@@ -1435,6 +1435,28 @@ var _ = Describe("When a client connects", func() {
 					Ω(err).Should(MatchError("Oh noes!"))
 				})
 			})
+
+			Context("when a container is in error state", func() {
+				It("return single container error", func() {
+
+					expectedBulkInfo := map[string]garden.ContainerInfoEntry{
+						"error": garden.ContainerInfoEntry{
+							Err: garden.NewError("Oopps!"),
+						},
+						"success": garden.ContainerInfoEntry{
+							Info: garden.ContainerInfo{
+								State: "container2state",
+							},
+						},
+					}
+
+					serverBackend.BulkInfoReturns(expectedBulkInfo, nil)
+
+					bulkInfo, err := apiClient.BulkInfo(handles)
+					Ω(err).ShouldNot(HaveOccurred())
+					Ω(bulkInfo).To(Equal(expectedBulkInfo))
+				})
+			})
 		})
 
 		Describe("BulkMetrics", func() {
@@ -1475,6 +1497,30 @@ var _ = Describe("When a client connects", func() {
 
 					_, err := apiClient.BulkMetrics(handles)
 					Ω(err).Should(MatchError("Oh noes!"))
+				})
+			})
+
+			Context("when a container has an error", func() {
+				It("returns the error for the container", func() {
+
+					errorBulkMetrics := map[string]garden.ContainerMetricsEntry{
+						"error": garden.ContainerMetricsEntry{
+							Err: garden.NewError("Oh noes!"),
+						},
+						"success": garden.ContainerMetricsEntry{
+							Metrics: garden.Metrics{
+								DiskStat: garden.ContainerDiskStat{
+									InodesUsed: 1,
+								},
+							},
+						},
+					}
+
+					serverBackend.BulkMetricsReturns(errorBulkMetrics, nil)
+
+					bulkMetrics, err := apiClient.BulkMetrics(handles)
+					Ω(err).ShouldNot(HaveOccurred())
+					Ω(bulkMetrics).To(Equal(errorBulkMetrics))
 				})
 			})
 		})

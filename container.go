@@ -1,6 +1,8 @@
 package garden
 
-import "io"
+import (
+	"io"
+)
 
 //go:generate counterfeiter . Container
 
@@ -212,9 +214,21 @@ type ContainerInfo struct {
 	MappedPorts   []PortMapping //
 }
 
+func NewError(msg string) *Error {
+	return &Error{msg}
+}
+
+type Error struct {
+	ErrorMsg string `json:"error_msg"`
+}
+
+func (e *Error) Error() string {
+	return e.ErrorMsg
+}
+
 type ContainerInfoEntry struct {
 	Info ContainerInfo
-	Err  error
+	Err  *Error
 }
 
 type Metrics struct {
@@ -225,7 +239,7 @@ type Metrics struct {
 
 type ContainerMetricsEntry struct {
 	Metrics Metrics
-	Err     error
+	Err     *Error
 }
 
 type ContainerMemoryStat struct {
