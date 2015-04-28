@@ -229,9 +229,10 @@ type ContainerInfoEntry struct {
 }
 
 type Metrics struct {
-	MemoryStat ContainerMemoryStat
-	CPUStat    ContainerCPUStat
-	DiskStat   ContainerDiskStat
+	MemoryStat  ContainerMemoryStat
+	CPUStat     ContainerCPUStat
+	DiskStat    ContainerDiskStat
+	NetworkStat ContainerNetworkStat
 }
 
 type ContainerMetricsEntry struct {
@@ -289,6 +290,11 @@ type ContainerBandwidthStat struct {
 	InBurst  uint64
 	OutRate  uint64
 	OutBurst uint64
+}
+
+type ContainerNetworkStat struct {
+	RxBytes   uint64
+	TxBytes   uint64
 }
 
 type BandwidthLimits struct {
