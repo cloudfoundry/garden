@@ -108,6 +108,22 @@ var _ = Describe("Connection", func() {
 				Ω(err).Should(HaveOccurred())
 			})
 		})
+
+		Context("when the request fails with special error code 412", func() {
+			BeforeEach(func() {
+				server.AppendHandlers(
+					ghttp.CombineHandlers(
+						ghttp.VerifyRequest("GET", "/ping"),
+						ghttp.RespondWith(412, "Special Error Message"),
+					),
+				)
+			})
+
+			It("should return an error sans http info in the error message", func() {
+				err := connection.Ping()
+				Ω(err).Should(MatchError("Special Error Message"))
+			})
+		})
 	})
 
 	Describe("Getting capacity", func() {

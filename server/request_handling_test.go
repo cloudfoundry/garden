@@ -244,6 +244,20 @@ var _ = Describe("When a client connects", func() {
 				Ω(err).Should(HaveOccurred())
 			})
 		})
+		Context("when creating the container fails for special error type", func() {
+			BeforeEach(func() {
+				serverBackend.CreateReturns(nil, garden.FailedToFetchError{
+					errors.New("special error"),
+				})
+			})
+
+			It("client returns an error with a well formed error msg", func() {
+				_, err := apiClient.Create(garden.ContainerSpec{
+					Handle: "some-handle",
+				})
+				Ω(err).Should(MatchError("special error"))
+			})
+		})
 	})
 
 	Context("and the client sends a destroy request", func() {

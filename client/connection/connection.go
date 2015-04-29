@@ -619,6 +619,11 @@ func (c *connection) doStream(
 			return nil, fmt.Errorf("bad response: %s", httpResp.Status)
 		}
 
+		if httpResp.StatusCode == 412 {
+			//the body has the actual error string formed at the server
+			return nil, errors.New(string(errResponse))
+		}
+
 		return nil, Error{httpResp.StatusCode, string(errResponse)}
 	}
 
