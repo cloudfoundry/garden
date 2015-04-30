@@ -92,7 +92,8 @@ func (p *process) streamPayloads(log lager.Logger, decoder *json.Decoder, stream
 
 	err := stream.attach(processIO.Stdout, processIO.Stderr)
 	if err != nil {
-		log.Error("connection: Failed to attach: ", err)
+		p.exited(0, fmt.Errorf("connection: attach to streams: %s", err))
+		log.Error("attach-to-stream-failed", err)
 		return
 	}
 

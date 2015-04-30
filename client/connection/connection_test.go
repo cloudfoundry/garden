@@ -1344,6 +1344,57 @@ var _ = Describe("Connection", func() {
 			})
 		})
 
+		Context("when the connection breaks while attaching to the streams", func() {
+			BeforeEach(func() {
+				server.AppendHandlers(
+					ghttp.CombineHandlers(
+						ghttp.VerifyRequest("POST", "/containers/foo-handle/processes"),
+						func(w http.ResponseWriter, r *http.Request) {
+							w.WriteHeader(http.StatusOK)
+
+							conn, _, err := w.(http.Hijacker).Hijack()
+							Ω(err).ShouldNot(HaveOccurred())
+
+							defer conn.Close()
+
+							transport.WriteMessage(conn, map[string]interface{}{
+								"process_id": 42,
+								"stream_id":  123,
+							})
+						},
+					),
+					ghttp.CombineHandlers(
+						ghttp.VerifyRequest("GET", "/containers/foo-handle/processes/42/attaches/123/stdout"),
+
+						func(w http.ResponseWriter, r *http.Request) {
+							w.WriteHeader(http.StatusInternalServerError)
+
+							conn, _, err := w.(http.Hijacker).Hijack()
+							Ω(err).ShouldNot(HaveOccurred())
+							defer conn.Close()
+						},
+					),
+				)
+			})
+
+			Describe("waiting on the process", func() {
+				It("returns an error", func(done Done) {
+					process, err := connection.Run("foo-handle", garden.ProcessSpec{
+						Path: "lol",
+						Args: []string{"arg1", "arg2"},
+						Dir:  "/some/dir",
+					}, garden.ProcessIO{Stdout: GinkgoWriter})
+
+					Ω(err).ShouldNot(HaveOccurred())
+
+					_, err = process.Wait()
+					Ω(err).Should(MatchError(ContainSubstring("connection: attach to streams:")))
+
+					close(done)
+				})
+			})
+		})
+
 		Context("when the connection breaks before an exit status is received", func() {
 			BeforeEach(func() {
 				server.AppendHandlers(
