@@ -1660,7 +1660,7 @@ var _ = Describe("When a client connects", func() {
 					"FLAVOR=chocolate",
 					"TOPPINGS=sprinkles",
 				},
-				Privileged: true,
+				User: "root",
 				Limits: garden.ResourceLimits{
 					As:         uint64ptr(1),
 					Core:       uint64ptr(2),

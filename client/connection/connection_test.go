@@ -1053,11 +1053,11 @@ var _ = Describe("Connection", func() {
 		Context("when streaming succeeds to completion", func() {
 			BeforeEach(func() {
 				spec = garden.ProcessSpec{
-					Path:       "lol",
-					Args:       []string{"arg1", "arg2"},
-					Dir:        "/some/dir",
-					Privileged: true,
-					Limits:     resourceLimits,
+					Path:   "lol",
+					Args:   []string{"arg1", "arg2"},
+					Dir:    "/some/dir",
+					User:   "root",
+					Limits: resourceLimits,
 				}
 				stdInContent = make(chan string)
 

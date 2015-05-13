@@ -100,7 +100,6 @@ type Container interface {
 
 	// Run a script inside a container.
 	//
-	// The 'privileged' flag remains for backwards compatibility, but the 'user' flag is preferred.
 	// The root user will be mapped to a non-root UID in the host unless the container (not this process) was created with 'privileged' true.
 	//
 	// Errors:
@@ -152,10 +151,7 @@ type ProcessSpec struct {
 	// Working directory (default: home directory).
 	Dir string `json:"dir,omitempty"`
 
-	// Whether to run the script as root or not. Can be overriden by 'user', if specified.
-	Privileged bool `json:"privileged,omitempty"`
-
-	// The name of a user in the container to run the process as. If not specified defaults to 'root' for privileged processes, and 'vcap' for unprivileged processes.
+	// The name of a user in the container to run the process as.
 	User string `json:"user,omitempty"`
 
 	// Resource limits
