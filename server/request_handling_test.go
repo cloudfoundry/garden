@@ -516,6 +516,7 @@ var _ = Describe("When a client connects", func() {
 					TotalInactiveFile:       26,
 					TotalActiveFile:         27,
 					TotalUnevictable:        28,
+					TotalUsageTowardLimit:   7, // TotalRss+(TotalCache-TotalInactiveFile)
 				},
 				CPUStat: garden.ContainerCPUStat{
 					Usage:  1,
