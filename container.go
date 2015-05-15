@@ -267,6 +267,9 @@ type ContainerMemoryStat struct {
 	TotalInactiveFile       uint64
 	TotalActiveFile         uint64
 	TotalUnevictable        uint64
+	// A memory usage total which reports memory usage in the same way that limits are enforced.
+	// This value includes memory consumed by nested containers.
+	TotalUsageTowardLimit uint64
 }
 
 type ContainerCPUStat struct {
