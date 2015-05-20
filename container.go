@@ -58,6 +58,7 @@ type Container interface {
 	//
 	// TODO: explain how disk management works.
 	LimitDisk(limits DiskLimits) error
+
 	CurrentDiskLimits() (DiskLimits, error)
 
 	// Limits the memory usage for a container.
