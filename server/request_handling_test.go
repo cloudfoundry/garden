@@ -1765,6 +1765,15 @@ var _ = Describe("When a client connects", func() {
 				})
 			})
 
+			Context("when the backend returns an error", func() {
+
+				It("returns the error message", func() {
+					fakeContainer.RunReturns(nil, errors.New("o no!"))
+					_, err := container.Run(garden.ProcessSpec{}, garden.ProcessIO{})
+					Expect(err).To(MatchError(ContainSubstring("o no!")))
+				})
+			})
+
 			Describe("when the server is shut down while there is a process running", func() {
 				BeforeEach(func() {
 					fakeContainer.RunStub = func(spec garden.ProcessSpec, io garden.ProcessIO) (garden.Process, error) {

@@ -663,8 +663,12 @@ func (c *connection) doHijack(
 	}
 
 	if httpResp.StatusCode < 200 || httpResp.StatusCode > 299 {
-		httpResp.Body.Close()
-		return nil, nil, fmt.Errorf("bad response: %s", httpResp.Status)
+		errRespBytes, err := ioutil.ReadAll(httpResp.Body)
+		if err != nil {
+			return nil, nil, fmt.Errorf("Backend error: Exit status: %d, error reading response body: %s", httpResp.StatusCode, err)
+		}
+		defer httpResp.Body.Close()
+		return nil, nil, fmt.Errorf("Backend error: Exit status: %d, message: %s", httpResp.StatusCode, errRespBytes)
 	}
 
 	conn, br := client.Hijack()

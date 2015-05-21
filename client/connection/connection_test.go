@@ -1477,6 +1477,25 @@ var _ = Describe("Connection", func() {
 				})
 			})
 		})
+
+		Context("when the connection returns an error status", func() {
+			BeforeEach(func() {
+				server.AppendHandlers(ghttp.CombineHandlers(
+					ghttp.VerifyRequest("POST", "/containers/foo-handle/processes"),
+					ghttp.RespondWith(500, "an error occurred!"),
+				))
+			})
+
+			It("returns an error", func() {
+				_, err := connection.Run("foo-handle", garden.ProcessSpec{
+					Path: "lol",
+					Args: []string{"arg1", "arg2"},
+					Dir:  "/some/dir",
+				}, garden.ProcessIO{})
+
+				Ω(err).Should(MatchError(ContainSubstring("an error occurred!")))
+			})
+		})
 	})
 
 	Describe("Attaching", func() {
