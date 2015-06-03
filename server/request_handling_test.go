@@ -970,9 +970,6 @@ var _ = Describe("When a client connects", func() {
 
 			BeforeEach(func() {
 				setLimits = garden.DiskLimits{
-					BlockSoft: 111,
-					BlockHard: 222,
-
 					InodeSoft: 333,
 					InodeHard: 444,
 
@@ -1011,9 +1008,6 @@ var _ = Describe("When a client connects", func() {
 
 		Describe("getting the current disk limits", func() {
 			currentLimits := garden.DiskLimits{
-				BlockSoft: 1111,
-				BlockHard: 2222,
-
 				InodeSoft: 3333,
 				InodeHard: 4444,
 

@@ -424,8 +424,7 @@ func (s *GardenServer) handleLimitDisk(w http.ResponseWriter, r *http.Request) {
 	}
 
 	settingLimit := false
-	if request.BlockSoft > 0 || request.BlockHard > 0 ||
-		request.InodeSoft > 0 || request.InodeHard > 0 ||
+	if request.InodeSoft > 0 || request.InodeHard > 0 ||
 		request.ByteSoft > 0 || request.ByteHard > 0 {
 		settingLimit = true
 	}

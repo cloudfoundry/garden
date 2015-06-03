@@ -429,16 +429,12 @@ var _ = Describe("Connection", func() {
 					ghttp.CombineHandlers(
 						ghttp.VerifyRequest("PUT", "/containers/foo/limits/disk"),
 						verifyRequestBody(&garden.DiskLimits{
-							BlockSoft: 42,
-							BlockHard: 42,
 							InodeSoft: 42,
 							InodeHard: 42,
 							ByteSoft:  42,
 							ByteHard:  42,
 						}, &garden.DiskLimits{}),
 						ghttp.RespondWith(200, marshalProto(&garden.DiskLimits{
-							BlockSoft: 3,
-							BlockHard: 4,
 							InodeSoft: 7,
 							InodeHard: 8,
 							ByteSoft:  11,
@@ -450,9 +446,6 @@ var _ = Describe("Connection", func() {
 
 			It("should limit disk", func() {
 				newLimits, err := connection.LimitDisk("foo", garden.DiskLimits{
-					BlockSoft: 42,
-					BlockHard: 42,
-
 					InodeSoft: 42,
 					InodeHard: 42,
 
@@ -462,8 +455,6 @@ var _ = Describe("Connection", func() {
 
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(newLimits).Should(Equal(garden.DiskLimits{
-					BlockSoft: 3,
-					BlockHard: 4,
 					InodeSoft: 7,
 					InodeHard: 8,
 					ByteSoft:  11,
@@ -478,8 +469,6 @@ var _ = Describe("Connection", func() {
 					ghttp.CombineHandlers(
 						ghttp.VerifyRequest("GET", "/containers/foo/limits/disk"),
 						ghttp.RespondWith(200, marshalProto(&garden.DiskLimits{
-							BlockSoft: 3,
-							BlockHard: 4,
 							InodeSoft: 7,
 							InodeHard: 8,
 							ByteSoft:  11,
@@ -494,8 +483,6 @@ var _ = Describe("Connection", func() {
 				Ω(err).ShouldNot(HaveOccurred())
 
 				Ω(limits).Should(Equal(garden.DiskLimits{
-					BlockSoft: 3,
-					BlockHard: 4,
 					InodeSoft: 7,
 					InodeHard: 8,
 					ByteSoft:  11,

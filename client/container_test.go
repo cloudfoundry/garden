@@ -380,8 +380,6 @@ var _ = Describe("Container", func() {
 	Describe("CurrentDiskLimits", func() {
 		It("sends an empty limit request and returns its response", func() {
 			limitsToReturn := garden.DiskLimits{
-				BlockSoft: 3,
-				BlockHard: 4,
 				InodeSoft: 7,
 				InodeHard: 8,
 				ByteSoft:  11,

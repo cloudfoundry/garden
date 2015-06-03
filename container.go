@@ -297,16 +297,10 @@ type BandwidthLimits struct {
 }
 
 type DiskLimits struct {
-	BlockSoft uint64 `json:"block_soft,omitempty"`
-	BlockHard uint64 `json:"block_hard,omitempty"`
-
 	InodeSoft uint64 `json:"inode_soft,omitempty"`
 	InodeHard uint64 `json:"inode_hard,omitempty"`
 
-	// New soft block limit specified in bytes. Only has effect when BlockSoft is not specified.
 	ByteSoft uint64 `json:"byte_soft,omitempty"`
-
-	// New hard block limit specified in bytes. Only has effect when BlockHard is not specified.
 	ByteHard uint64 `json:"byte_hard,omitempty"`
 }
 
