@@ -32,7 +32,12 @@ func (a *ioStream) doAttach(streamWriter io.Writer, stdtype string) error {
 		return nil
 	}
 
-	if err := a.copyStream(streamWriter, stdtype); err != nil {
+	source, err := a.connect(stdtype)
+	if err != nil {
+		return err
+	}
+
+	if err := a.copyStream(streamWriter, source); err != nil {
 		return err
 	}
 
@@ -55,7 +60,7 @@ func (a *ioStream) attach(stdoutW, stderrW io.Writer) error {
 	return nil
 }
 
-func (a *ioStream) copyStream(target io.Writer, route string) error {
+func (a *ioStream) connect(route string) (io.Reader, error) {
 	params := rata.Params{
 		"handle":   a.containerHandle,
 		"pid":      fmt.Sprintf("%d", a.processID),
@@ -68,10 +73,15 @@ func (a *ioStream) copyStream(target io.Writer, route string) error {
 		nil,
 		"application/json",
 	)
+
 	if err != nil {
-		return fmt.Errorf("Failed to hijack stream %s: %s", route, err)
+		return nil, fmt.Errorf("Failed to hijack stream %s: %s", route, err)
 	}
 
+	return source, nil
+}
+
+func (a *ioStream) copyStream(target io.Writer, source io.Reader) error {
 	a.wg.Add(1)
 	go func() {
 		io.Copy(target, source)
