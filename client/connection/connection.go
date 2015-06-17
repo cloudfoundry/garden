@@ -224,7 +224,7 @@ func (c *connection) streamProcess(handle string, processIO garden.ProcessIO, hi
 	process := newProcess(payload.ProcessID, hijackedConn)
 	streamHandler := newStreamHandler(c, handle, payload.ProcessID, payload.StreamID)
 
-	go process.streamIn(c.log, processIO.Stdin)
+	go streamHandler.streamIn(process.processInputStream, processIO.Stdin, c.log)
 	process.streamOut(routes.Stdout, processIO.Stdout, streamHandler, c.log)
 	process.streamOut(routes.Stderr, processIO.Stderr, streamHandler, c.log)
 	go process.wait(decoder, streamHandler)

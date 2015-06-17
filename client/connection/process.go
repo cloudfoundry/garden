@@ -76,17 +76,6 @@ func (p *process) exited(exitStatus int, err error) {
 	p.doneL.Broadcast()
 }
 
-func (p *process) streamIn(log lager.Logger, stdin io.Reader) {
-	if stdin != nil {
-		processInputStreamWriter := &stdinWriter{p.processInputStream}
-		if _, err := io.Copy(processInputStreamWriter, stdin); err == nil {
-			processInputStreamWriter.Close()
-		} else {
-			log.Error("streaming-stdin-payload", err)
-		}
-	}
-}
-
 func (p *process) streamOut(streamType string, streamWriter io.Writer, streamHandler attacher, log lager.Logger) {
 	errorf := func(err error, streamType string, log lager.Logger) {
 		connectionErr := fmt.Errorf("connection: attach to stream %s: %s", streamType, err)

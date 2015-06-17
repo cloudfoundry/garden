@@ -5,6 +5,7 @@ import (
 	"io"
 	"sync"
 
+	"github.com/pivotal-golang/lager"
 	"github.com/tedsuo/rata"
 )
 
@@ -24,6 +25,17 @@ func newStreamHandler(conn *connection, handle string, processID, streamID uint3
 		processID:       processID,
 		streamID:        streamID,
 		wg:              new(sync.WaitGroup),
+	}
+}
+
+func (p *streamHandler) streamIn(inputStream *processStream, stdin io.Reader, log lager.Logger) {
+	if stdin != nil {
+		processInputStreamWriter := &stdinWriter{inputStream}
+		if _, err := io.Copy(processInputStreamWriter, stdin); err == nil {
+			processInputStreamWriter.Close()
+		} else {
+			log.Error("streaming-stdin-payload", err)
+		}
 	}
 }
 
