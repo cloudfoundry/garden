@@ -27,35 +27,40 @@ func newIOStream(conn *connection, handle string, processID, streamID uint32) *i
 	}
 }
 
-// attaches to the stdout and stderr endpoints for a running process
-// and copies output to a local io.writers
-func (a *ioStream) attach(stdoutW, stderrW io.Writer) error {
-	params := rata.Params{
-		"handle":   a.containerHandle,
-		"pid":      fmt.Sprintf("%d", a.processID),
-		"streamid": fmt.Sprintf("%d", a.streamID),
+func (a *ioStream) doAttach(streamWriter io.Writer, stdtype string) error {
+	if streamWriter == nil {
+		return nil
 	}
 
-	a.wg = new(sync.WaitGroup)
-
-	if stdoutW != nil {
-		err := a.copyStream(params, stdoutW, routes.Stdout)
-		if err != nil {
-			return err
-		}
-	}
-
-	if stderrW != nil {
-		err := a.copyStream(params, stderrW, routes.Stderr)
-		if err != nil {
-			return err
-		}
+	if err := a.copyStream(streamWriter, stdtype); err != nil {
+		return err
 	}
 
 	return nil
 }
 
-func (a *ioStream) copyStream(params rata.Params, target io.Writer, route string) error {
+// attaches to the stdout and stderr endpoints for a running process
+// and copies output to a local io.writers
+func (a *ioStream) attach(stdoutW, stderrW io.Writer) error {
+	a.wg = new(sync.WaitGroup)
+
+	if err := a.doAttach(stdoutW, routes.Stdout); err != nil {
+		return err
+	}
+
+	if err := a.doAttach(stderrW, routes.Stderr); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (a *ioStream) copyStream(target io.Writer, route string) error {
+	params := rata.Params{
+		"handle":   a.containerHandle,
+		"pid":      fmt.Sprintf("%d", a.processID),
+		"streamid": fmt.Sprintf("%d", a.streamID),
+	}
 	_, source, err := a.conn.doHijack(
 		route,
 		nil,
