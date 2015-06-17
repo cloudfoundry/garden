@@ -9,7 +9,6 @@ import (
 
 	"github.com/cloudfoundry-incubator/garden"
 	"github.com/cloudfoundry-incubator/garden/transport"
-	"github.com/pivotal-golang/lager"
 )
 
 type process struct {
@@ -74,23 +73,6 @@ func (p *process) exited(exitStatus int, err error) {
 	p.doneL.L.Unlock()
 
 	p.doneL.Broadcast()
-}
-
-func (p *process) streamOut(streamType string, streamWriter io.Writer, streamHandler attacher, log lager.Logger) {
-	errorf := func(err error, streamType string, log lager.Logger) {
-		connectionErr := fmt.Errorf("connection: attach to stream %s: %s", streamType, err)
-		p.exited(0, connectionErr)
-		log.Error("attach-to-stream-failed", connectionErr)
-	}
-
-	if streamWriter != nil {
-		stdout, err := streamHandler.attach(streamType)
-		if err != nil {
-			errorf(err, streamType, log)
-			return
-		}
-		go streamHandler.copyStream(streamWriter, stdout)
-	}
 }
 
 func (p *process) wait(decoder *json.Decoder, streamHandler attacher) {

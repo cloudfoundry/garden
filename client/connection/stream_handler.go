@@ -39,6 +39,22 @@ func (p *streamHandler) streamIn(inputStream *processStream, stdin io.Reader, lo
 	}
 }
 
+func (sh *streamHandler) streamOut(streamType string, streamWriter io.Writer, streamHandler attacher, log lager.Logger) error {
+	if streamWriter == nil {
+		return nil
+	}
+
+	if stdout, err := sh.attach(streamType); err != nil {
+		err := fmt.Errorf("connection: attach to stream %s: %s", streamType, err)
+		log.Error("attach-to-stream-failed", err)
+		return err
+	} else {
+		go sh.copyStream(streamWriter, stdout)
+	}
+
+	return nil
+}
+
 // attaches to the given standard stream endpoint for a running process
 // and copies output to a local io.writer
 func (sh *streamHandler) attach(streamType string) (io.Reader, error) {

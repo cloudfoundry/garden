@@ -225,8 +225,15 @@ func (c *connection) streamProcess(handle string, processIO garden.ProcessIO, hi
 	streamHandler := newStreamHandler(c, handle, payload.ProcessID, payload.StreamID)
 
 	go streamHandler.streamIn(process.processInputStream, processIO.Stdin, c.log)
-	process.streamOut(routes.Stdout, processIO.Stdout, streamHandler, c.log)
-	process.streamOut(routes.Stderr, processIO.Stderr, streamHandler, c.log)
+
+	if err := streamHandler.streamOut(routes.Stdout, processIO.Stdout, streamHandler, c.log); err != nil {
+		process.exited(0, err)
+	}
+
+	if err := streamHandler.streamOut(routes.Stderr, processIO.Stderr, streamHandler, c.log); err != nil {
+		process.exited(0, err)
+	}
+
 	go process.wait(decoder, streamHandler)
 
 	return process, nil
