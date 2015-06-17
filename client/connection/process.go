@@ -11,7 +11,6 @@ type process struct {
 	id uint32
 
 	processInputStream *processStream
-	conn               net.Conn
 	done               bool
 	exitStatus         int
 	exitErr            error
@@ -20,8 +19,7 @@ type process struct {
 
 func newProcess(id uint32, netConn net.Conn) *process {
 	return &process{
-		id:   id,
-		conn: netConn,
+		id: id,
 		processInputStream: &processStream{
 			id:   id,
 			conn: netConn,
