@@ -76,10 +76,10 @@ func (p *process) exited(exitStatus int, err error) {
 	p.doneL.Broadcast()
 }
 
-func (p *process) streamIn(log lager.Logger, processIO garden.ProcessIO) {
-	if processIO.Stdin != nil {
+func (p *process) streamIn(log lager.Logger, stdin io.Reader) {
+	if stdin != nil {
 		processInputStreamWriter := &stdinWriter{p.processInputStream}
-		if _, err := io.Copy(processInputStreamWriter, processIO.Stdin); err == nil {
+		if _, err := io.Copy(processInputStreamWriter, stdin); err == nil {
 			processInputStreamWriter.Close()
 		} else {
 			log.Error("streaming-stdin-payload", err)
