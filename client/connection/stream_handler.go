@@ -1,10 +1,12 @@
 package connection
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"sync"
 
+	"github.com/cloudfoundry-incubator/garden/transport"
 	"github.com/pivotal-golang/lager"
 	"github.com/tedsuo/rata"
 )
@@ -39,7 +41,7 @@ func (p *streamHandler) streamIn(inputStream *processStream, stdin io.Reader, lo
 	}
 }
 
-func (sh *streamHandler) streamOut(streamType string, streamWriter io.Writer, streamHandler attacher, log lager.Logger) error {
+func (sh *streamHandler) streamOut(streamType string, streamWriter io.Writer, log lager.Logger) error {
 	if streamWriter == nil {
 		return nil
 	}
@@ -93,6 +95,26 @@ func (sh *streamHandler) copyStream(target io.Writer, source io.Reader) {
 	sh.wg.Done()
 }
 
-func (sh *streamHandler) wait() {
-	sh.wg.Wait()
+func (sh *streamHandler) wait(decoder *json.Decoder) (int, error) {
+	for {
+		payload := &transport.ProcessPayload{}
+		err := decoder.Decode(payload)
+		if err != nil {
+			sh.wg.Wait()
+			return 0, fmt.Errorf("connection: decode failed: %s", err)
+		}
+
+		if payload.Error != nil {
+			sh.wg.Wait()
+			return 0, fmt.Errorf("connection: process error: %s", *payload.Error)
+		}
+
+		if payload.ExitStatus != nil {
+			sh.wg.Wait()
+			status := int(*payload.ExitStatus)
+			return status, nil
+		}
+
+		// discard other payloads
+	}
 }

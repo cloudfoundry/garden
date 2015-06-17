@@ -1,14 +1,11 @@
 package connection
 
 import (
-	"encoding/json"
-	"fmt"
 	"io"
 	"net"
 	"sync"
 
 	"github.com/cloudfoundry-incubator/garden"
-	"github.com/cloudfoundry-incubator/garden/transport"
 )
 
 type process struct {
@@ -73,32 +70,4 @@ func (p *process) exited(exitStatus int, err error) {
 	p.doneL.L.Unlock()
 
 	p.doneL.Broadcast()
-}
-
-func (p *process) wait(decoder *json.Decoder, streamHandler attacher) {
-	defer p.conn.Close()
-
-	for {
-		payload := &transport.ProcessPayload{}
-		err := decoder.Decode(payload)
-		if err != nil {
-			streamHandler.wait()
-			p.exited(0, fmt.Errorf("connection: decode failed: %s", err))
-			break
-		}
-
-		if payload.Error != nil {
-			streamHandler.wait()
-			p.exited(0, fmt.Errorf("connection: process error: %s", *payload.Error))
-			break
-		}
-
-		if payload.ExitStatus != nil {
-			streamHandler.wait()
-			p.exited(int(*payload.ExitStatus), nil)
-			break
-		}
-
-		// discard other payloads
-	}
 }

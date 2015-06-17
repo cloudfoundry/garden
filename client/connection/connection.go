@@ -226,15 +226,19 @@ func (c *connection) streamProcess(handle string, processIO garden.ProcessIO, hi
 
 	go streamHandler.streamIn(process.processInputStream, processIO.Stdin, c.log)
 
-	if err := streamHandler.streamOut(routes.Stdout, processIO.Stdout, streamHandler, c.log); err != nil {
+	if err := streamHandler.streamOut(routes.Stdout, processIO.Stdout, c.log); err != nil {
 		process.exited(0, err)
 	}
 
-	if err := streamHandler.streamOut(routes.Stderr, processIO.Stderr, streamHandler, c.log); err != nil {
+	if err := streamHandler.streamOut(routes.Stderr, processIO.Stderr, c.log); err != nil {
 		process.exited(0, err)
 	}
 
-	go process.wait(decoder, streamHandler)
+	go func() {
+		defer hijackedConn.Close()
+		exitCode, err := streamHandler.wait(decoder)
+		process.exited(exitCode, err)
+	}()
 
 	return process, nil
 }
