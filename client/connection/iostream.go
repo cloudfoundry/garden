@@ -37,10 +37,8 @@ func (a *ioStream) doAttach(streamWriter io.Writer, stdtype string) error {
 		return err
 	}
 
-	if err := a.copyStream(streamWriter, source); err != nil {
-		return err
-	}
-
+	a.wg.Add(1)
+	go a.copyStream(streamWriter, source)
 	return nil
 }
 
@@ -81,14 +79,9 @@ func (a *ioStream) connect(route string) (io.Reader, error) {
 	return source, nil
 }
 
-func (a *ioStream) copyStream(target io.Writer, source io.Reader) error {
-	a.wg.Add(1)
-	go func() {
-		io.Copy(target, source)
-		a.wg.Done()
-	}()
-
-	return nil
+func (a *ioStream) copyStream(target io.Writer, source io.Reader) {
+	io.Copy(target, source)
+	a.wg.Done()
 }
 
 func (a *ioStream) wait() {
