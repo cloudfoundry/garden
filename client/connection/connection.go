@@ -216,19 +216,20 @@ func (c *connection) Attach(handle string, processID uint32, processIO garden.Pr
 func (c *connection) streamProcess(handle string, processIO garden.ProcessIO, hijackedConn net.Conn, hijackedResponseReader *bufio.Reader) (garden.Process, error) {
 	decoder := json.NewDecoder(hijackedResponseReader)
 
-	firstResponse := &transport.ProcessPayload{}
-	err := decoder.Decode(firstResponse)
-	if err != nil {
+	payload := &transport.ProcessPayload{}
+	if err := decoder.Decode(payload); err != nil {
 		return nil, err
 	}
 
-	p := newProcess(firstResponse.ProcessID, hijackedConn)
-	attachStream := newStreamHandler(c, handle, firstResponse.ProcessID, firstResponse.StreamID)
+	process := newProcess(payload.ProcessID, hijackedConn)
+	streamHandler := newStreamHandler(c, handle, payload.ProcessID, payload.StreamID)
 
-	go p.streamIn(c.log, processIO)
-	go p.streamOutErr(c.log, decoder, attachStream, processIO)
+	go process.streamIn(c.log, processIO)
+	process.streamOut(routes.Stdout, processIO.Stdout, streamHandler, c.log)
+	process.streamOut(routes.Stderr, processIO.Stderr, streamHandler, c.log)
+	go process.wait(decoder, streamHandler)
 
-	return p, nil
+	return process, nil
 }
 
 func (c *connection) NetIn(handle string, hostPort, containerPort uint32) (uint32, uint32, error) {

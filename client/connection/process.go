@@ -8,7 +8,6 @@ import (
 	"sync"
 
 	"github.com/cloudfoundry-incubator/garden"
-	"github.com/cloudfoundry-incubator/garden/routes"
 	"github.com/cloudfoundry-incubator/garden/transport"
 	"github.com/pivotal-golang/lager"
 )
@@ -25,7 +24,7 @@ type process struct {
 }
 
 type attacher interface {
-	attach(stdtype string) (io.Reader, error)
+	attach(streamType string) (io.Reader, error)
 	copyStream(target io.Writer, source io.Reader)
 	wait()
 }
@@ -88,31 +87,25 @@ func (p *process) streamIn(log lager.Logger, processIO garden.ProcessIO) {
 	}
 }
 
-func (p *process) streamOutErr(log lager.Logger, decoder *json.Decoder, streamHandler attacher, processIO garden.ProcessIO) {
+func (p *process) streamOut(streamType string, streamWriter io.Writer, streamHandler attacher, log lager.Logger) {
+	errorf := func(err error, streamType string, log lager.Logger) {
+		connectionErr := fmt.Errorf("connection: attach to stream %s: %s", streamType, err)
+		p.exited(0, connectionErr)
+		log.Error("attach-to-stream-failed", connectionErr)
+	}
+
+	if streamWriter != nil {
+		stdout, err := streamHandler.attach(streamType)
+		if err != nil {
+			errorf(err, streamType, log)
+			return
+		}
+		go streamHandler.copyStream(streamWriter, stdout)
+	}
+}
+
+func (p *process) wait(decoder *json.Decoder, streamHandler attacher) {
 	defer p.conn.Close()
-	errorf := func(err error, stdtype string) {
-		werr := fmt.Errorf("connection: attach to stream %s: %s", stdtype, err)
-		p.exited(0, werr)
-		log.Error("attach-to-stream-failed", werr)
-	}
-
-	if processIO.Stdout != nil {
-		if stdout, err := streamHandler.attach(routes.Stdout); err != nil {
-			errorf(err, routes.Stdout)
-			return
-		} else {
-			go streamHandler.copyStream(processIO.Stdout, stdout)
-		}
-	}
-
-	if processIO.Stderr != nil {
-		if stderr, err := streamHandler.attach(routes.Stderr); err != nil {
-			errorf(err, routes.Stderr)
-			return
-		} else {
-			go streamHandler.copyStream(processIO.Stderr, stderr)
-		}
-	}
 
 	for {
 		payload := &transport.ProcessPayload{}

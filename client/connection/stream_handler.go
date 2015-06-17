@@ -29,8 +29,8 @@ func newStreamHandler(conn *connection, handle string, processID, streamID uint3
 
 // attaches to the given standard stream endpoint for a running process
 // and copies output to a local io.writer
-func (sh *streamHandler) attach(stdtype string) (io.Reader, error) {
-	source, err := sh.connect(stdtype)
+func (sh *streamHandler) attach(streamType string) (io.Reader, error) {
+	source, err := sh.connect(streamType)
 	if err != nil {
 		return nil, err
 	}
