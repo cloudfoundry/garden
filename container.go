@@ -293,8 +293,8 @@ type ContainerBandwidthStat struct {
 }
 
 type ContainerNetworkStat struct {
-	RxBytes   uint64
-	TxBytes   uint64
+	RxBytes uint64
+	TxBytes uint64
 }
 
 type BandwidthLimits struct {
