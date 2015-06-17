@@ -5,7 +5,6 @@ import (
 	"io"
 	"sync"
 
-	"github.com/cloudfoundry-incubator/garden/routes"
 	"github.com/tedsuo/rata"
 )
 
@@ -24,10 +23,13 @@ func newStreamHandler(conn *connection, handle string, processID, streamID uint3
 		containerHandle: handle,
 		processID:       processID,
 		streamID:        streamID,
+		wg:              new(sync.WaitGroup),
 	}
 }
 
-func (sh *streamHandler) doAttach(streamWriter io.Writer, stdtype string) error {
+// attaches to the given standard stream endpoint for a running process
+// and copies output to a local io.writer
+func (sh *streamHandler) attach(stdtype string, streamWriter io.Writer) error {
 	if streamWriter == nil {
 		return nil
 	}
@@ -39,21 +41,6 @@ func (sh *streamHandler) doAttach(streamWriter io.Writer, stdtype string) error 
 
 	sh.wg.Add(1)
 	go sh.copyStream(streamWriter, source)
-	return nil
-}
-
-// attaches to the stdout and stderr endpoints for a running process
-// and copies output to a local io.writers
-func (sh *streamHandler) attach(stdoutW, stderrW io.Writer) error {
-	sh.wg = new(sync.WaitGroup)
-
-	if err := sh.doAttach(stdoutW, routes.Stdout); err != nil {
-		return err
-	}
-
-	if err := sh.doAttach(stderrW, routes.Stderr); err != nil {
-		return err
-	}
 
 	return nil
 }

@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/cloudfoundry-incubator/garden"
+	"github.com/cloudfoundry-incubator/garden/routes"
 	"github.com/cloudfoundry-incubator/garden/transport"
 	"github.com/pivotal-golang/lager"
 )
@@ -24,7 +25,7 @@ type process struct {
 }
 
 type attacher interface {
-	attach(stdout, stderr io.Writer) error
+	attach(stdtype string, stdwriter io.Writer) error
 	wait()
 }
 
@@ -88,11 +89,19 @@ func (p *process) streamIn(log lager.Logger, processIO garden.ProcessIO) {
 
 func (p *process) streamOutErr(log lager.Logger, decoder *json.Decoder, attachStream attacher, processIO garden.ProcessIO) {
 	defer p.conn.Close()
+	errorf := func(err error, stdtype string) {
+		werr := fmt.Errorf("connection: attach to stream %s: %s", stdtype, err)
+		p.exited(0, werr)
+		log.Error("attach-to-stream-failed", werr)
+	}
 
-	err := attachStream.attach(processIO.Stdout, processIO.Stderr)
-	if err != nil {
-		p.exited(0, fmt.Errorf("connection: attach to streams: %s", err))
-		log.Error("attach-to-stream-failed", err)
+	if err := attachStream.attach(routes.Stdout, processIO.Stdout); err != nil {
+		errorf(err, routes.Stdout)
+		return
+	}
+
+	if err := attachStream.attach(routes.Stderr, processIO.Stderr); err != nil {
+		errorf(err, routes.Stderr)
 		return
 	}
 

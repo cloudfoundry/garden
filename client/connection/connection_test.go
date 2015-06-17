@@ -1376,7 +1376,7 @@ var _ = Describe("Connection", func() {
 					Ω(err).ShouldNot(HaveOccurred())
 
 					_, err = process.Wait()
-					Ω(err).Should(MatchError(ContainSubstring("connection: attach to streams:")))
+					Ω(err).Should(MatchError(ContainSubstring("connection: attach to stream ")))
 
 					close(done)
 				})
