@@ -10,7 +10,7 @@ import (
 )
 
 type ioStream struct {
-	*connection
+	conn            *connection
 	containerHandle string
 	processID       uint32
 	streamID        uint32
@@ -18,9 +18,9 @@ type ioStream struct {
 	wg *sync.WaitGroup
 }
 
-func (conn *connection) newIOStream(handle string, processID, streamID uint32) *ioStream {
+func newIOStream(conn *connection, handle string, processID, streamID uint32) *ioStream {
 	return &ioStream{
-		connection:      conn,
+		conn:            conn,
 		containerHandle: handle,
 		processID:       processID,
 		streamID:        streamID,
@@ -56,7 +56,7 @@ func (a *ioStream) attach(stdoutW, stderrW io.Writer) error {
 }
 
 func (a *ioStream) copyStream(params rata.Params, target io.Writer, route string) error {
-	_, source, err := a.doHijack(
+	_, source, err := a.conn.doHijack(
 		route,
 		nil,
 		params,

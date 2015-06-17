@@ -16,11 +16,11 @@ type process struct {
 	id uint32
 
 	processInputStream *processStream
-	conn net.Conn
-	done       bool
-	exitStatus int
-	exitErr    error
-	doneL      *sync.Cond
+	conn               net.Conn
+	done               bool
+	exitStatus         int
+	exitErr            error
+	doneL              *sync.Cond
 }
 
 type attacher interface {
@@ -30,7 +30,7 @@ type attacher interface {
 
 func newProcess(id uint32, netConn net.Conn) *process {
 	return &process{
-		id: id,
+		id:   id,
 		conn: netConn,
 		processInputStream: &processStream{
 			id:   id,
@@ -75,18 +75,19 @@ func (p *process) exited(exitStatus int, err error) {
 	p.doneL.Broadcast()
 }
 
-func (p *process) streamPayloads(log lager.Logger, decoder *json.Decoder, attachStream attacher, processIO garden.ProcessIO) {
-	defer p.conn.Close()
+func (p *process) streamIn(log lager.Logger, processIO garden.ProcessIO) {
 	if processIO.Stdin != nil {
-		go func(processInputStream *processStream) {
-			processInputStreamWriter := &stdinWriter{processInputStream}
-			if _, err := io.Copy(processInputStreamWriter, processIO.Stdin); err == nil {
-				processInputStreamWriter.Close()
-			} else {
-				log.Error("streaming-stdin-payload", err)
-			}
-		}(p.processInputStream)
+		processInputStreamWriter := &stdinWriter{p.processInputStream}
+		if _, err := io.Copy(processInputStreamWriter, processIO.Stdin); err == nil {
+			processInputStreamWriter.Close()
+		} else {
+			log.Error("streaming-stdin-payload", err)
+		}
 	}
+}
+
+func (p *process) streamOutErr(log lager.Logger, decoder *json.Decoder, attachStream attacher, processIO garden.ProcessIO) {
+	defer p.conn.Close()
 
 	err := attachStream.attach(processIO.Stdout, processIO.Stderr)
 	if err != nil {
