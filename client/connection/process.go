@@ -25,7 +25,8 @@ type process struct {
 }
 
 type attacher interface {
-	attach(stdtype string, stdwriter io.Writer) error
+	attach(stdtype string) (io.Reader, error)
+	copyStream(target io.Writer, source io.Reader)
 	wait()
 }
 
@@ -87,7 +88,7 @@ func (p *process) streamIn(log lager.Logger, processIO garden.ProcessIO) {
 	}
 }
 
-func (p *process) streamOutErr(log lager.Logger, decoder *json.Decoder, attachStream attacher, processIO garden.ProcessIO) {
+func (p *process) streamOutErr(log lager.Logger, decoder *json.Decoder, streamHandler attacher, processIO garden.ProcessIO) {
 	defer p.conn.Close()
 	errorf := func(err error, stdtype string) {
 		werr := fmt.Errorf("connection: attach to stream %s: %s", stdtype, err)
@@ -95,35 +96,45 @@ func (p *process) streamOutErr(log lager.Logger, decoder *json.Decoder, attachSt
 		log.Error("attach-to-stream-failed", werr)
 	}
 
-	if err := attachStream.attach(routes.Stdout, processIO.Stdout); err != nil {
-		errorf(err, routes.Stdout)
-		return
+	if processIO.Stdout != nil {
+		if stdout, err := streamHandler.attach(routes.Stdout); err != nil {
+			errorf(err, routes.Stdout)
+			return
+		} else {
+			go streamHandler.copyStream(processIO.Stdout, stdout)
+		}
 	}
 
-	if err := attachStream.attach(routes.Stderr, processIO.Stderr); err != nil {
-		errorf(err, routes.Stderr)
-		return
+	if processIO.Stderr != nil {
+		if stderr, err := streamHandler.attach(routes.Stderr); err != nil {
+			errorf(err, routes.Stderr)
+			return
+		} else {
+			go streamHandler.copyStream(processIO.Stderr, stderr)
+		}
 	}
 
 	for {
 		payload := &transport.ProcessPayload{}
 		err := decoder.Decode(payload)
 		if err != nil {
-			attachStream.wait()
+			streamHandler.wait()
 			p.exited(0, fmt.Errorf("connection: decode failed: %s", err))
 			break
 		}
 
 		if payload.Error != nil {
-			attachStream.wait()
+			streamHandler.wait()
 			p.exited(0, fmt.Errorf("connection: process error: %s", *payload.Error))
 			break
 		}
 
 		if payload.ExitStatus != nil {
-			attachStream.wait()
+			streamHandler.wait()
 			p.exited(int(*payload.ExitStatus), nil)
 			break
 		}
+
+		// discard other payloads
 	}
 }
