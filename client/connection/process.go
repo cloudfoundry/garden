@@ -1,7 +1,6 @@
 package connection
 
 import (
-	"io"
 	"net"
 	"sync"
 
@@ -17,12 +16,6 @@ type process struct {
 	exitStatus         int
 	exitErr            error
 	doneL              *sync.Cond
-}
-
-type attacher interface {
-	attach(streamType string) (io.Reader, error)
-	copyStream(target io.Writer, source io.Reader)
-	wait()
 }
 
 func newProcess(id uint32, netConn net.Conn) *process {
