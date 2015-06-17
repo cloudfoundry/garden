@@ -177,7 +177,7 @@ func (c *connection) Run(handle string, spec garden.ProcessSpec, processIO garde
 		return nil, err
 	}
 
-	conn, br, err := c.doHijack(
+	hijackedConn, hijackedResponseReader, err := c.doHijack(
 		routes.Run,
 		reqBody,
 		rata.Params{
@@ -190,7 +190,7 @@ func (c *connection) Run(handle string, spec garden.ProcessSpec, processIO garde
 		return nil, err
 	}
 
-	return c.streamProcess(handle, processIO, conn, br)
+	return c.streamProcess(handle, processIO, hijackedConn, hijackedResponseReader)
 }
 
 func (c *connection) Attach(handle string, processID uint32, processIO garden.ProcessIO) (garden.Process, error) {
@@ -213,8 +213,8 @@ func (c *connection) Attach(handle string, processID uint32, processIO garden.Pr
 	return c.streamProcess(handle, processIO, conn, br)
 }
 
-func (c *connection) streamProcess(handle string, processIO garden.ProcessIO, to net.Conn, from *bufio.Reader) (garden.Process, error) {
-	decoder := json.NewDecoder(from)
+func (c *connection) streamProcess(handle string, processIO garden.ProcessIO, hijackedConn net.Conn, hijackedResponseReader *bufio.Reader) (garden.Process, error) {
+	decoder := json.NewDecoder(hijackedResponseReader)
 
 	firstResponse := &transport.ProcessPayload{}
 	err := decoder.Decode(firstResponse)
@@ -222,7 +222,7 @@ func (c *connection) streamProcess(handle string, processIO garden.ProcessIO, to
 		return nil, err
 	}
 
-	p := newProcess(firstResponse.ProcessID, to)
+	p := newProcess(firstResponse.ProcessID, hijackedConn)
 	go p.streamPayloads(c.log, decoder, c.newIOStream(handle, firstResponse.ProcessID, firstResponse.StreamID), processIO)
 
 	return p, nil
@@ -672,7 +672,7 @@ func (c *connection) doHijack(
 		return nil, nil, fmt.Errorf("Backend error: Exit status: %d, message: %s", httpResp.StatusCode, errRespBytes)
 	}
 
-	conn, br := client.Hijack()
+	hijackedConn, hijackedResponseReader := client.Hijack()
 
-	return conn, br, nil
+	return hijackedConn, hijackedResponseReader, nil
 }

@@ -47,10 +47,6 @@ func (s *processStream) Signal(signal garden.Signal) error {
 	})
 }
 
-func (s *processStream) Close() error {
-	return s.conn.Close()
-}
-
 func (s *processStream) sendPayload(payload interface{}) error {
 	s.Lock()
 

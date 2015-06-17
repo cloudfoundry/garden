@@ -15,8 +15,8 @@ import (
 type process struct {
 	id uint32
 
-	stream *processStream
-
+	processInputStream *processStream
+	conn net.Conn
 	done       bool
 	exitStatus int
 	exitErr    error
@@ -31,8 +31,8 @@ type attacher interface {
 func newProcess(id uint32, netConn net.Conn) *process {
 	return &process{
 		id: id,
-
-		stream: &processStream{
+		conn: netConn,
+		processInputStream: &processStream{
 			id:   id,
 			conn: netConn,
 		},
@@ -58,11 +58,11 @@ func (p *process) Wait() (int, error) {
 }
 
 func (p *process) SetTTY(tty garden.TTYSpec) error {
-	return p.stream.SetTTY(tty)
+	return p.processInputStream.SetTTY(tty)
 }
 
 func (p *process) Signal(signal garden.Signal) error {
-	return p.stream.Signal(signal)
+	return p.processInputStream.Signal(signal)
 }
 
 func (p *process) exited(exitStatus int, err error) {
@@ -75,22 +75,20 @@ func (p *process) exited(exitStatus int, err error) {
 	p.doneL.Broadcast()
 }
 
-func (p *process) streamPayloads(log lager.Logger, decoder *json.Decoder, stream attacher, processIO garden.ProcessIO) {
-	defer p.stream.Close()
-
+func (p *process) streamPayloads(log lager.Logger, decoder *json.Decoder, attachStream attacher, processIO garden.ProcessIO) {
+	defer p.conn.Close()
 	if processIO.Stdin != nil {
-		writer := &stdinWriter{p.stream}
-
-		go func() {
-			if _, err := io.Copy(writer, processIO.Stdin); err == nil {
-				writer.Close()
+		go func(processInputStream *processStream) {
+			processInputStreamWriter := &stdinWriter{processInputStream}
+			if _, err := io.Copy(processInputStreamWriter, processIO.Stdin); err == nil {
+				processInputStreamWriter.Close()
 			} else {
 				log.Error("streaming-stdin-payload", err)
 			}
-		}()
+		}(p.processInputStream)
 	}
 
-	err := stream.attach(processIO.Stdout, processIO.Stderr)
+	err := attachStream.attach(processIO.Stdout, processIO.Stderr)
 	if err != nil {
 		p.exited(0, fmt.Errorf("connection: attach to streams: %s", err))
 		log.Error("attach-to-stream-failed", err)
@@ -101,19 +99,19 @@ func (p *process) streamPayloads(log lager.Logger, decoder *json.Decoder, stream
 		payload := &transport.ProcessPayload{}
 		err := decoder.Decode(payload)
 		if err != nil {
-			stream.wait()
-			p.exited(0, err)
+			attachStream.wait()
+			p.exited(0, fmt.Errorf("connection: decode failed: %s", err))
 			break
 		}
 
 		if payload.Error != nil {
-			stream.wait()
-			p.exited(0, fmt.Errorf("process error: %s", *payload.Error))
+			attachStream.wait()
+			p.exited(0, fmt.Errorf("connection: process error: %s", *payload.Error))
 			break
 		}
 
 		if payload.ExitStatus != nil {
-			stream.wait()
+			attachStream.wait()
 			p.exited(int(*payload.ExitStatus), nil)
 			break
 		}
