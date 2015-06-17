@@ -223,7 +223,7 @@ func (c *connection) streamProcess(handle string, processIO garden.ProcessIO, hi
 	}
 
 	p := newProcess(firstResponse.ProcessID, hijackedConn)
-	attachStream := newIOStream(c, handle, firstResponse.ProcessID, firstResponse.StreamID)
+	attachStream := newStreamHandler(c, handle, firstResponse.ProcessID, firstResponse.StreamID)
 
 	go p.streamIn(c.log, processIO)
 	go p.streamOutErr(c.log, decoder, attachStream, processIO)
