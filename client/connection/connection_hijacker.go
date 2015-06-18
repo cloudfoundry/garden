@@ -25,7 +25,7 @@ func newHijacker(dialer func(string, string) (net.Conn, error)) *connectionHijac
 	}
 }
 
-func (h *connectionHijacker) hijack(
+func (h *connectionHijacker) Hijack(
 	handler string,
 	body io.Reader,
 	params rata.Params,

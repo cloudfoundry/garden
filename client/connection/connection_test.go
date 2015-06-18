@@ -28,14 +28,21 @@ var _ = Describe("Connection", func() {
 		connection     Connection
 		resourceLimits garden.ResourceLimits
 		server         *ghttp.Server
+		hijacker       Hijacker
+		dialer         func(string, string) (net.Conn, error)
+		network        string
+		address        string
 	)
 
 	BeforeEach(func() {
 		server = ghttp.NewServer()
+		network = "tcp"
+		address = server.HTTPTestServer.Listener.Addr().String()
+		hijacker, dialer = NewHijackerWithDialer(network, address)
 	})
 
 	JustBeforeEach(func() {
-		connection = NewWithLogger("tcp", server.HTTPTestServer.Listener.Addr().String(), lagertest.NewTestLogger("test-connection"))
+		connection = NewWithHijacker(network, address, dialer, hijacker, lagertest.NewTestLogger("test-connection"))
 	})
 
 	BeforeEach(func() {

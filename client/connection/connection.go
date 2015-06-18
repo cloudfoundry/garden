@@ -72,8 +72,9 @@ type Connection interface {
 	RemoveProperty(handle string, name string) error
 }
 
-type hijacker interface {
-	hijack(handler string, body io.Reader, params rata.Params, query url.Values, contentType string) (net.Conn, *bufio.Reader, error)
+//go:generate counterfeiter . Hijacker
+type Hijacker interface {
+	Hijack(handler string, body io.Reader, params rata.Params, query url.Values, contentType string) (net.Conn, *bufio.Reader, error)
 }
 
 type connection struct {
@@ -81,7 +82,7 @@ type connection struct {
 
 	dialer func(string, string) (net.Conn, error)
 
-	hijacker hijacker
+	hijacker Hijacker
 
 	noKeepaliveClient *http.Client
 	log               lager.Logger
@@ -101,13 +102,20 @@ func New(network, address string) Connection {
 }
 
 func NewWithLogger(network, address string, log lager.Logger) Connection {
+	hijacker, dialer := NewHijackerWithDialer(network, address)
+
+	return NewWithHijacker(network, address, dialer, hijacker, log)
+}
+
+func NewHijackerWithDialer(network, address string) (Hijacker, func(string, string) (net.Conn, error)) {
 	dialer := func(string, string) (net.Conn, error) {
 		return net.DialTimeout(network, address, time.Second)
 	}
-	return NewWithHijacker(network, address, dialer, newHijacker(dialer), log)
+
+	return newHijacker(dialer), dialer
 }
 
-func NewWithHijacker(network, address string, dialer func(string, string) (net.Conn, error), hijacker hijacker, log lager.Logger) Connection {
+func NewWithHijacker(network, address string, dialer func(string, string) (net.Conn, error), hijacker Hijacker, log lager.Logger) Connection {
 	req := rata.NewRequestGenerator("http://api", routes.Routes)
 
 	return &connection{
@@ -189,7 +197,7 @@ func (c *connection) Run(handle string, spec garden.ProcessSpec, processIO garde
 		return nil, err
 	}
 
-	hijackedConn, hijackedResponseReader, err := c.hijacker.hijack(
+	hijackedConn, hijackedResponseReader, err := c.hijacker.Hijack(
 		routes.Run,
 		reqBody,
 		rata.Params{
@@ -208,7 +216,7 @@ func (c *connection) Run(handle string, spec garden.ProcessSpec, processIO garde
 func (c *connection) Attach(handle string, processID uint32, processIO garden.ProcessIO) (garden.Process, error) {
 	reqBody := new(bytes.Buffer)
 
-	hijackedConn, hijackedResponseReader, err := c.hijacker.hijack(
+	hijackedConn, hijackedResponseReader, err := c.hijacker.Hijack(
 		routes.Attach,
 		reqBody,
 		rata.Params{
@@ -245,7 +253,7 @@ func (c *connection) streamProcess(handle string, processIO garden.ProcessIO, hi
 			"streamid": fmt.Sprintf("%d", payload.StreamID),
 		}
 
-		return c.hijacker.hijack(
+		return c.hijacker.Hijack(
 			streamType,
 			nil,
 			params,
