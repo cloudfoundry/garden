@@ -4,29 +4,32 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"sync"
 
 	"github.com/cloudfoundry-incubator/garden/transport"
 	"github.com/pivotal-golang/lager"
-	"github.com/tedsuo/rata"
 )
+
+type hijackFunc func(streamID uint32, streamType string) (net.Conn, io.Reader, error)
 
 type streamHandler struct {
 	conn            *connection
 	containerHandle string
 	processPipeline *processStream
 	streamID        uint32
-
-	wg *sync.WaitGroup
+	hijack          hijackFunc
+	wg              *sync.WaitGroup
 }
 
-func newStreamHandler(processPipeline *processStream, conn *connection, handle string, streamID uint32) *streamHandler {
+func newStreamHandler(processPipeline *processStream, conn *connection, handle string, streamID uint32, hijack hijackFunc) *streamHandler {
 	return &streamHandler{
 		conn:            conn,
 		containerHandle: handle,
 		processPipeline: processPipeline,
 		streamID:        streamID,
 		wg:              new(sync.WaitGroup),
+		hijack:          hijack,
 	}
 }
 
@@ -74,18 +77,7 @@ func (sh *streamHandler) attach(streamType string) (io.Reader, error) {
 }
 
 func (sh *streamHandler) connect(route string) (io.Reader, error) {
-	params := rata.Params{
-		"handle":   sh.containerHandle,
-		"pid":      fmt.Sprintf("%d", sh.processPipeline.ProcessID()),
-		"streamid": fmt.Sprintf("%d", sh.streamID),
-	}
-	_, source, err := sh.conn.doHijack(
-		route,
-		nil,
-		params,
-		nil,
-		"application/json",
-	)
+	_, source, err := sh.hijack(sh.streamID, route)
 
 	if err != nil {
 		return nil, fmt.Errorf("Failed to hijack stream %s: %s", route, err)

@@ -226,8 +226,24 @@ func (c *connection) streamProcess(handle string, processIO garden.ProcessIO, hi
 		conn:      hijackedConn,
 	}
 
+	hijack := func(streamID uint32, streamType string) (net.Conn, io.Reader, error) {
+		params := rata.Params{
+			"handle":   handle,
+			"pid":      fmt.Sprintf("%d", processPipeline.ProcessID()),
+			"streamid": fmt.Sprintf("%d", streamID),
+		}
+
+		return c.doHijack(
+			streamType,
+			nil,
+			params,
+			nil,
+			"application/json",
+		)
+	}
+
 	process := newProcess(payload.ProcessID, processPipeline)
-	streamHandler := newStreamHandler(processPipeline, c, handle, payload.StreamID)
+	streamHandler := newStreamHandler(processPipeline, c, handle, payload.StreamID, hijack)
 
 	streamHandler.streamIn(processIO.Stdin)
 
