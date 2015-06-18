@@ -14,23 +14,23 @@ import (
 type streamHandler struct {
 	conn            *connection
 	containerHandle string
-	processID       uint32
+	processPipeline *processStream
 	streamID        uint32
 
 	wg *sync.WaitGroup
 }
 
-func newStreamHandler(conn *connection, handle string, processID, streamID uint32) *streamHandler {
+func newStreamHandler(processPipeline *processStream, conn *connection, handle string, streamID uint32) *streamHandler {
 	return &streamHandler{
 		conn:            conn,
 		containerHandle: handle,
-		processID:       processID,
+		processPipeline: processPipeline,
 		streamID:        streamID,
 		wg:              new(sync.WaitGroup),
 	}
 }
 
-func (sh *streamHandler) streamIn(inputStream *processStream, stdin io.Reader) {
+func (sh *streamHandler) streamIn(stdin io.Reader) {
 	if stdin == nil {
 		return
 	}
@@ -42,7 +42,7 @@ func (sh *streamHandler) streamIn(inputStream *processStream, stdin io.Reader) {
 		} else {
 			log.Error("streaming-stdin-payload", err)
 		}
-	}(inputStream, stdin, sh.conn.log)
+	}(sh.processPipeline, stdin, sh.conn.log)
 }
 
 func (sh *streamHandler) streamOut(streamType string, streamWriter io.Writer) error {
@@ -76,7 +76,7 @@ func (sh *streamHandler) attach(streamType string) (io.Reader, error) {
 func (sh *streamHandler) connect(route string) (io.Reader, error) {
 	params := rata.Params{
 		"handle":   sh.containerHandle,
-		"pid":      fmt.Sprintf("%d", sh.processID),
+		"pid":      fmt.Sprintf("%d", sh.processPipeline.ProcessID()),
 		"streamid": fmt.Sprintf("%d", sh.streamID),
 	}
 	_, source, err := sh.conn.doHijack(

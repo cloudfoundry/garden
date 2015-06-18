@@ -1,7 +1,6 @@
 package connection
 
 import (
-	"net"
 	"sync"
 
 	"github.com/cloudfoundry-incubator/garden"
@@ -17,15 +16,11 @@ type process struct {
 	doneL              *sync.Cond
 }
 
-func newProcess(id uint32, netConn net.Conn) *process {
+func newProcess(id uint32, processInputStream *processStream) *process {
 	return &process{
-		id: id,
-		processInputStream: &processStream{
-			id:   id,
-			conn: netConn,
-		},
-
-		doneL: sync.NewCond(&sync.Mutex{}),
+		id:                 id,
+		processInputStream: processInputStream,
+		doneL:              sync.NewCond(&sync.Mutex{}),
 	}
 }
 

@@ -221,10 +221,15 @@ func (c *connection) streamProcess(handle string, processIO garden.ProcessIO, hi
 		return nil, err
 	}
 
-	process := newProcess(payload.ProcessID, hijackedConn)
-	streamHandler := newStreamHandler(c, handle, payload.ProcessID, payload.StreamID)
+	processPipeline := &processStream{
+		processID: payload.ProcessID,
+		conn:      hijackedConn,
+	}
 
-	streamHandler.streamIn(process.processInputStream, processIO.Stdin)
+	process := newProcess(payload.ProcessID, processPipeline)
+	streamHandler := newStreamHandler(processPipeline, c, handle, payload.StreamID)
+
+	streamHandler.streamIn(processIO.Stdin)
 
 	if err := streamHandler.streamOut(routes.Stdout, processIO.Stdout); err != nil {
 		process.exited(0, err)

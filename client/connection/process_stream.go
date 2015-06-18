@@ -9,8 +9,8 @@ import (
 )
 
 type processStream struct {
-	id   uint32
-	conn net.Conn
+	processID uint32
+	conn      net.Conn
 
 	sync.Mutex
 }
@@ -19,7 +19,7 @@ func (s *processStream) WriteStdin(data []byte) error {
 	d := string(data)
 	stdin := transport.Stdin
 	return s.sendPayload(transport.ProcessPayload{
-		ProcessID: s.id,
+		ProcessID: s.processID,
 		Source:    &stdin,
 		Data:      &d,
 	})
@@ -28,21 +28,21 @@ func (s *processStream) WriteStdin(data []byte) error {
 func (s *processStream) CloseStdin() error {
 	stdin := transport.Stdin
 	return s.sendPayload(transport.ProcessPayload{
-		ProcessID: s.id,
+		ProcessID: s.processID,
 		Source:    &stdin,
 	})
 }
 
 func (s *processStream) SetTTY(spec garden.TTYSpec) error {
 	return s.sendPayload(&transport.ProcessPayload{
-		ProcessID: s.id,
+		ProcessID: s.processID,
 		TTY:       &spec,
 	})
 }
 
 func (s *processStream) Signal(signal garden.Signal) error {
 	return s.sendPayload(&transport.ProcessPayload{
-		ProcessID: s.id,
+		ProcessID: s.processID,
 		Signal:    &signal,
 	})
 }
@@ -59,4 +59,8 @@ func (s *processStream) sendPayload(payload interface{}) error {
 	s.Unlock()
 
 	return nil
+}
+
+func (s *processStream) ProcessID() uint32 {
+	return s.processID
 }
