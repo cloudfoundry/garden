@@ -42,20 +42,9 @@ func (sh *streamHandler) streamIn(stdin io.Reader) {
 	}(sh.processPipeline, stdin, sh.log)
 }
 
-func (sh *streamHandler) streamOut(streamType string, streamWriter io.Writer, hijack hijackFunc) error {
-	if streamWriter == nil {
-		return nil
-	}
-
-	if stdout, err := sh.attach(streamType, hijack); err != nil {
-		err := fmt.Errorf("connection: attach to stream %s: %s", streamType, err)
-		sh.log.Error("attach-to-stream-failed", err)
-		return err
-	} else {
-		go sh.copyStream(streamWriter, stdout)
-	}
-
-	return nil
+func (sh *streamHandler) streamOut(streamWriter io.Writer, streamReader io.Reader) {
+	sh.wg.Add(1)
+	go sh.copyStream(streamWriter, streamReader)
 }
 
 // attaches to the given standard stream endpoint for a running process
@@ -64,10 +53,9 @@ func (sh *streamHandler) attach(streamType string, hijack hijackFunc) (io.Reader
 	_, source, err := hijack(streamType)
 
 	if err != nil {
-		return nil, fmt.Errorf("Failed to hijack stream %s: %s", streamType, err)
+		return nil, fmt.Errorf("connection: failed to hijack stream %s: %s", streamType, err)
 	}
 
-	sh.wg.Add(1)
 	return source, nil
 }
 

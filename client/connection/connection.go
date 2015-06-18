@@ -247,16 +247,24 @@ func (c *connection) streamProcess(handle string, processIO garden.ProcessIO, hi
 
 	streamHandler.streamIn(processIO.Stdin)
 
-	if err := streamHandler.streamOut(routes.Stdout, processIO.Stdout, hijack); err != nil {
-		process.exited(0, err)
-		hijackedConn.Close()
-		return process, nil
+	if processIO.Stdout != nil {
+		stdout, err := streamHandler.attach(routes.Stdout, hijack)
+		if err != nil {
+			process.exited(0, err)
+			hijackedConn.Close()
+			return process, nil
+		}
+		streamHandler.streamOut(processIO.Stdout, stdout)
 	}
 
-	if err := streamHandler.streamOut(routes.Stderr, processIO.Stderr, hijack); err != nil {
-		process.exited(0, err)
-		hijackedConn.Close()
-		return process, nil
+	if processIO.Stderr != nil {
+		stderr, err := streamHandler.attach(routes.Stderr, hijack)
+		if err != nil {
+			process.exited(0, err)
+			hijackedConn.Close()
+			return process, nil
+		}
+		streamHandler.streamOut(processIO.Stderr, stderr)
 	}
 
 	go func() {
