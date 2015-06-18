@@ -6,17 +6,20 @@ import (
 	"io"
 	"io/ioutil"
 	"net"
+	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"time"
 
+	"github.com/cloudfoundry-incubator/garden"
 	"github.com/cloudfoundry-incubator/garden/routes"
 	"github.com/tedsuo/rata"
 )
 
 type connectionHijacker struct {
-	req    *rata.RequestGenerator
-	dialer func(string, string) (net.Conn, error)
+	req               *rata.RequestGenerator
+	noKeepaliveClient *http.Client
+	dialer            func(string, string) (net.Conn, error)
 }
 
 func NewHijackerWithDialer(network, address string) (Hijacker, func(string, string) (net.Conn, error)) {
@@ -31,16 +34,16 @@ func newHijacker(dialer func(string, string) (net.Conn, error)) *connectionHijac
 	return &connectionHijacker{
 		req:    rata.NewRequestGenerator("http://api", routes.Routes),
 		dialer: dialer,
+		noKeepaliveClient: &http.Client{
+			Transport: &http.Transport{
+				Dial:              dialer,
+				DisableKeepAlives: true,
+			},
+		},
 	}
 }
 
-func (h *connectionHijacker) Hijack(
-	handler string,
-	body io.Reader,
-	params rata.Params,
-	query url.Values,
-	contentType string,
-) (net.Conn, *bufio.Reader, error) {
+func (h *connectionHijacker) Hijack(handler string, body io.Reader, params rata.Params, query url.Values, contentType string) (net.Conn, *bufio.Reader, error) {
 	request, err := h.req.CreateRequest(handler, params, body)
 	if err != nil {
 		return nil, nil, err
@@ -79,4 +82,41 @@ func (h *connectionHijacker) Hijack(
 	hijackedConn, hijackedResponseReader := client.Hijack()
 
 	return hijackedConn, hijackedResponseReader, nil
+}
+
+func (c *connectionHijacker) Stream(handler string, body io.Reader, params rata.Params, query url.Values, contentType string) (io.ReadCloser, error) {
+	request, err := c.req.CreateRequest(handler, params, body)
+	if err != nil {
+		return nil, err
+	}
+
+	if contentType != "" {
+		request.Header.Set("Content-Type", contentType)
+	}
+
+	if query != nil {
+		request.URL.RawQuery = query.Encode()
+	}
+
+	httpResp, err := c.noKeepaliveClient.Do(request)
+	if err != nil {
+		return nil, err
+	}
+
+	if httpResp.StatusCode < 200 || httpResp.StatusCode > 299 {
+		errResponse, err := ioutil.ReadAll(httpResp.Body)
+		httpResp.Body.Close()
+		if err != nil {
+			return nil, fmt.Errorf("bad response: %s", httpResp.Status)
+		}
+
+		if httpResp.StatusCode == http.StatusServiceUnavailable {
+			// The body has the actual error string formed at the server.
+			return nil, garden.NewServiceUnavailableError(string(errResponse))
+		}
+
+		return nil, Error{httpResp.StatusCode, string(errResponse)}
+	}
+
+	return httpResp.Body, nil
 }

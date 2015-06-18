@@ -7,9 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
-	"net/http"
 	"net/url"
 	"strings"
 
@@ -74,15 +72,12 @@ type Connection interface {
 //go:generate counterfeiter . Hijacker
 type Hijacker interface {
 	Hijack(handler string, body io.Reader, params rata.Params, query url.Values, contentType string) (net.Conn, *bufio.Reader, error)
+	Stream(handler string, body io.Reader, params rata.Params, query url.Values, contentType string) (io.ReadCloser, error)
 }
 
 type connection struct {
-	req *rata.RequestGenerator
-
 	hijacker Hijacker
-
-	noKeepaliveClient *http.Client
-	log               lager.Logger
+	log      lager.Logger
 }
 
 type Error struct {
@@ -99,27 +94,14 @@ func New(network, address string) Connection {
 }
 
 func NewWithLogger(network, address string, log lager.Logger) Connection {
-	hijacker, dialer := NewHijackerWithDialer(network, address)
-
-	return NewWithHijacker(network, address, dialer, hijacker, log)
+	hijacker, _ := NewHijackerWithDialer(network, address)
+	return NewWithHijacker(network, address, hijacker, log)
 }
 
-func NewWithHijacker(network, address string, dialer func(string, string) (net.Conn, error), hijacker Hijacker, log lager.Logger) Connection {
-	req := rata.NewRequestGenerator("http://api", routes.Routes)
-
+func NewWithHijacker(network, address string, hijacker Hijacker, log lager.Logger) Connection {
 	return &connection{
-		req: req,
-
 		hijacker: hijacker,
-
-		noKeepaliveClient: &http.Client{
-			Transport: &http.Transport{
-				Dial:              dialer,
-				DisableKeepAlives: true,
-			},
-		},
-
-		log: log,
+		log:      log,
 	}
 }
 
@@ -525,7 +507,7 @@ func (c *connection) CurrentMemoryLimits(handle string) (garden.MemoryLimits, er
 }
 
 func (c *connection) StreamIn(handle string, dstPath string, reader io.Reader) error {
-	body, err := c.doStream(
+	body, err := c.hijacker.Stream(
 		routes.StreamIn,
 		reader,
 		rata.Params{
@@ -544,7 +526,7 @@ func (c *connection) StreamIn(handle string, dstPath string, reader io.Reader) e
 }
 
 func (c *connection) StreamOut(handle string, srcPath string) (io.ReadCloser, error) {
-	return c.doStream(
+	return c.hijacker.Stream(
 		routes.StreamOut,
 		nil,
 		rata.Params{
@@ -645,7 +627,7 @@ func (c *connection) do(
 		contentType = "application/json"
 	}
 
-	response, err := c.doStream(
+	response, err := c.hijacker.Stream(
 		handler,
 		body,
 		params,
@@ -659,47 +641,4 @@ func (c *connection) do(
 	defer response.Close()
 
 	return json.NewDecoder(response).Decode(res)
-}
-
-func (c *connection) doStream(
-	handler string,
-	body io.Reader,
-	params rata.Params,
-	query url.Values,
-	contentType string,
-) (io.ReadCloser, error) {
-	request, err := c.req.CreateRequest(handler, params, body)
-	if err != nil {
-		return nil, err
-	}
-
-	if contentType != "" {
-		request.Header.Set("Content-Type", contentType)
-	}
-
-	if query != nil {
-		request.URL.RawQuery = query.Encode()
-	}
-
-	httpResp, err := c.noKeepaliveClient.Do(request)
-	if err != nil {
-		return nil, err
-	}
-
-	if httpResp.StatusCode < 200 || httpResp.StatusCode > 299 {
-		errResponse, err := ioutil.ReadAll(httpResp.Body)
-		httpResp.Body.Close()
-		if err != nil {
-			return nil, fmt.Errorf("bad response: %s", httpResp.Status)
-		}
-
-		if httpResp.StatusCode == http.StatusServiceUnavailable {
-			// The body has the actual error string formed at the server.
-			return nil, garden.NewServiceUnavailableError(string(errResponse))
-		}
-
-		return nil, Error{httpResp.StatusCode, string(errResponse)}
-	}
-
-	return httpResp.Body, nil
 }

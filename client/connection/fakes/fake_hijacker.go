@@ -27,6 +27,19 @@ type FakeHijacker struct {
 		result2 *bufio.Reader
 		result3 error
 	}
+	StreamStub        func(handler string, body io.Reader, params rata.Params, query url.Values, contentType string) (io.ReadCloser, error)
+	streamMutex       sync.RWMutex
+	streamArgsForCall []struct {
+		handler     string
+		body        io.Reader
+		params      rata.Params
+		query       url.Values
+		contentType string
+	}
+	streamReturns struct {
+		result1 io.ReadCloser
+		result2 error
+	}
 }
 
 func (fake *FakeHijacker) Hijack(handler string, body io.Reader, params rata.Params, query url.Values, contentType string) (net.Conn, *bufio.Reader, error) {
@@ -65,6 +78,43 @@ func (fake *FakeHijacker) HijackReturns(result1 net.Conn, result2 *bufio.Reader,
 		result2 *bufio.Reader
 		result3 error
 	}{result1, result2, result3}
+}
+
+func (fake *FakeHijacker) Stream(handler string, body io.Reader, params rata.Params, query url.Values, contentType string) (io.ReadCloser, error) {
+	fake.streamMutex.Lock()
+	fake.streamArgsForCall = append(fake.streamArgsForCall, struct {
+		handler     string
+		body        io.Reader
+		params      rata.Params
+		query       url.Values
+		contentType string
+	}{handler, body, params, query, contentType})
+	fake.streamMutex.Unlock()
+	if fake.StreamStub != nil {
+		return fake.StreamStub(handler, body, params, query, contentType)
+	} else {
+		return fake.streamReturns.result1, fake.streamReturns.result2
+	}
+}
+
+func (fake *FakeHijacker) StreamCallCount() int {
+	fake.streamMutex.RLock()
+	defer fake.streamMutex.RUnlock()
+	return len(fake.streamArgsForCall)
+}
+
+func (fake *FakeHijacker) StreamArgsForCall(i int) (string, io.Reader, rata.Params, url.Values, string) {
+	fake.streamMutex.RLock()
+	defer fake.streamMutex.RUnlock()
+	return fake.streamArgsForCall[i].handler, fake.streamArgsForCall[i].body, fake.streamArgsForCall[i].params, fake.streamArgsForCall[i].query, fake.streamArgsForCall[i].contentType
+}
+
+func (fake *FakeHijacker) StreamReturns(result1 io.ReadCloser, result2 error) {
+	fake.StreamStub = nil
+	fake.streamReturns = struct {
+		result1 io.ReadCloser
+		result2 error
+	}{result1, result2}
 }
 
 var _ connection.Hijacker = new(FakeHijacker)
