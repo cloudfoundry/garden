@@ -226,11 +226,11 @@ func (c *connection) streamProcess(handle string, processIO garden.ProcessIO, hi
 		conn:      hijackedConn,
 	}
 
-	hijack := func(streamID uint32, streamType string) (net.Conn, io.Reader, error) {
+	hijack := func(streamType string) (net.Conn, io.Reader, error) {
 		params := rata.Params{
 			"handle":   handle,
 			"pid":      fmt.Sprintf("%d", processPipeline.ProcessID()),
-			"streamid": fmt.Sprintf("%d", streamID),
+			"streamid": fmt.Sprintf("%d", payload.StreamID),
 		}
 
 		return c.doHijack(
@@ -247,13 +247,13 @@ func (c *connection) streamProcess(handle string, processIO garden.ProcessIO, hi
 
 	streamHandler.streamIn(processIO.Stdin)
 
-	if err := streamHandler.streamOut(payload.StreamID, routes.Stdout, processIO.Stdout, hijack); err != nil {
+	if err := streamHandler.streamOut(routes.Stdout, processIO.Stdout, hijack); err != nil {
 		process.exited(0, err)
 		hijackedConn.Close()
 		return process, nil
 	}
 
-	if err := streamHandler.streamOut(payload.StreamID, routes.Stderr, processIO.Stderr, hijack); err != nil {
+	if err := streamHandler.streamOut(routes.Stderr, processIO.Stderr, hijack); err != nil {
 		process.exited(0, err)
 		hijackedConn.Close()
 		return process, nil

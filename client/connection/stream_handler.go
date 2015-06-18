@@ -11,7 +11,7 @@ import (
 	"github.com/pivotal-golang/lager"
 )
 
-type hijackFunc func(streamID uint32, streamType string) (net.Conn, io.Reader, error)
+type hijackFunc func(streamType string) (net.Conn, io.Reader, error)
 
 type streamHandler struct {
 	processPipeline *processStream
@@ -42,12 +42,12 @@ func (sh *streamHandler) streamIn(stdin io.Reader) {
 	}(sh.processPipeline, stdin, sh.log)
 }
 
-func (sh *streamHandler) streamOut(streamID uint32, streamType string, streamWriter io.Writer, hijack hijackFunc) error {
+func (sh *streamHandler) streamOut(streamType string, streamWriter io.Writer, hijack hijackFunc) error {
 	if streamWriter == nil {
 		return nil
 	}
 
-	if stdout, err := sh.attach(streamID, streamType, hijack); err != nil {
+	if stdout, err := sh.attach(streamType, hijack); err != nil {
 		err := fmt.Errorf("connection: attach to stream %s: %s", streamType, err)
 		sh.log.Error("attach-to-stream-failed", err)
 		return err
@@ -60,8 +60,8 @@ func (sh *streamHandler) streamOut(streamID uint32, streamType string, streamWri
 
 // attaches to the given standard stream endpoint for a running process
 // and copies output to a local io.writer
-func (sh *streamHandler) attach(streamID uint32, streamType string, hijack hijackFunc) (io.Reader, error) {
-	_, source, err := hijack(streamID, streamType)
+func (sh *streamHandler) attach(streamType string, hijack hijackFunc) (io.Reader, error) {
+	_, source, err := hijack(streamType)
 
 	if err != nil {
 		return nil, fmt.Errorf("Failed to hijack stream %s: %s", streamType, err)
