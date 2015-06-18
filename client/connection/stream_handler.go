@@ -44,24 +44,10 @@ func (sh *streamHandler) streamIn(stdin io.Reader) {
 
 func (sh *streamHandler) streamOut(streamWriter io.Writer, streamReader io.Reader) {
 	sh.wg.Add(1)
-	go sh.copyStream(streamWriter, streamReader)
-}
-
-// attaches to the given standard stream endpoint for a running process
-// and copies output to a local io.writer
-func (sh *streamHandler) attach(streamType string, hijack hijackFunc) (io.Reader, error) {
-	_, source, err := hijack(streamType)
-
-	if err != nil {
-		return nil, fmt.Errorf("connection: failed to hijack stream %s: %s", streamType, err)
-	}
-
-	return source, nil
-}
-
-func (sh *streamHandler) copyStream(target io.Writer, source io.Reader) {
-	io.Copy(target, source)
-	sh.wg.Done()
+	go func() {
+		io.Copy(streamWriter, streamReader)
+		sh.wg.Done()
+	}()
 }
 
 func (sh *streamHandler) wait(decoder *json.Decoder) (int, error) {
