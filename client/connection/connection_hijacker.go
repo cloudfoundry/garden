@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http/httputil"
 	"net/url"
+	"time"
 
 	"github.com/cloudfoundry-incubator/garden/routes"
 	"github.com/tedsuo/rata"
@@ -16,6 +17,14 @@ import (
 type connectionHijacker struct {
 	req    *rata.RequestGenerator
 	dialer func(string, string) (net.Conn, error)
+}
+
+func NewHijackerWithDialer(network, address string) (Hijacker, func(string, string) (net.Conn, error)) {
+	dialer := func(string, string) (net.Conn, error) {
+		return net.DialTimeout(network, address, time.Second)
+	}
+
+	return newHijacker(dialer), dialer
 }
 
 func newHijacker(dialer func(string, string) (net.Conn, error)) *connectionHijacker {

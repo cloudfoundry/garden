@@ -12,7 +12,6 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-	"time"
 
 	"github.com/cloudfoundry-incubator/garden"
 	"github.com/cloudfoundry-incubator/garden/routes"
@@ -80,8 +79,6 @@ type Hijacker interface {
 type connection struct {
 	req *rata.RequestGenerator
 
-	dialer func(string, string) (net.Conn, error)
-
 	hijacker Hijacker
 
 	noKeepaliveClient *http.Client
@@ -107,21 +104,11 @@ func NewWithLogger(network, address string, log lager.Logger) Connection {
 	return NewWithHijacker(network, address, dialer, hijacker, log)
 }
 
-func NewHijackerWithDialer(network, address string) (Hijacker, func(string, string) (net.Conn, error)) {
-	dialer := func(string, string) (net.Conn, error) {
-		return net.DialTimeout(network, address, time.Second)
-	}
-
-	return newHijacker(dialer), dialer
-}
-
 func NewWithHijacker(network, address string, dialer func(string, string) (net.Conn, error), hijacker Hijacker, log lager.Logger) Connection {
 	req := rata.NewRequestGenerator("http://api", routes.Routes)
 
 	return &connection{
 		req: req,
-
-		dialer: dialer,
 
 		hijacker: hijacker,
 
