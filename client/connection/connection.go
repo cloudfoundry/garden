@@ -10,7 +10,6 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
-	"net/http/httputil"
 	"net/url"
 	"strings"
 	"time"
@@ -73,10 +72,16 @@ type Connection interface {
 	RemoveProperty(handle string, name string) error
 }
 
+type hijacker interface {
+	hijack(handler string, body io.Reader, params rata.Params, query url.Values, contentType string) (net.Conn, *bufio.Reader, error)
+}
+
 type connection struct {
 	req *rata.RequestGenerator
 
 	dialer func(string, string) (net.Conn, error)
+
+	hijacker hijacker
 
 	noKeepaliveClient *http.Client
 	log               lager.Logger
@@ -99,11 +104,18 @@ func NewWithLogger(network, address string, log lager.Logger) Connection {
 	dialer := func(string, string) (net.Conn, error) {
 		return net.DialTimeout(network, address, time.Second)
 	}
+	return NewWithHijacker(network, address, dialer, newHijacker(dialer), log)
+}
+
+func NewWithHijacker(network, address string, dialer func(string, string) (net.Conn, error), hijacker hijacker, log lager.Logger) Connection {
+	req := rata.NewRequestGenerator("http://api", routes.Routes)
 
 	return &connection{
-		req: rata.NewRequestGenerator("http://api", routes.Routes),
+		req: req,
 
 		dialer: dialer,
+
+		hijacker: hijacker,
 
 		noKeepaliveClient: &http.Client{
 			Transport: &http.Transport{
@@ -177,7 +189,7 @@ func (c *connection) Run(handle string, spec garden.ProcessSpec, processIO garde
 		return nil, err
 	}
 
-	hijackedConn, hijackedResponseReader, err := c.doHijack(
+	hijackedConn, hijackedResponseReader, err := c.hijacker.hijack(
 		routes.Run,
 		reqBody,
 		rata.Params{
@@ -196,7 +208,7 @@ func (c *connection) Run(handle string, spec garden.ProcessSpec, processIO garde
 func (c *connection) Attach(handle string, processID uint32, processIO garden.ProcessIO) (garden.Process, error) {
 	reqBody := new(bytes.Buffer)
 
-	hijackedConn, hijackedResponseReader, err := c.doHijack(
+	hijackedConn, hijackedResponseReader, err := c.hijacker.hijack(
 		routes.Attach,
 		reqBody,
 		rata.Params{
@@ -233,7 +245,7 @@ func (c *connection) streamProcess(handle string, processIO garden.ProcessIO, hi
 			"streamid": fmt.Sprintf("%d", payload.StreamID),
 		}
 
-		return c.doHijack(
+		return c.hijacker.hijack(
 			streamType,
 			nil,
 			params,
@@ -266,11 +278,13 @@ func (c *connection) streamProcess(handle string, processIO garden.ProcessIO, hi
 			hijackedConn.Close()
 			return process, nil
 		}
+		//
 		streamHandler.streamOut(processIO.Stderr, stderr)
 	}
 
 	go func() {
 		defer hijackedConn.Close()
+
 		exitCode, err := streamHandler.wait(decoder)
 		process.exited(exitCode, err)
 	}()
@@ -678,51 +692,4 @@ func (c *connection) doStream(
 	}
 
 	return httpResp.Body, nil
-}
-
-func (c *connection) doHijack(
-	handler string,
-	body io.Reader,
-	params rata.Params,
-	query url.Values,
-	contentType string,
-) (net.Conn, *bufio.Reader, error) {
-	request, err := c.req.CreateRequest(handler, params, body)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	if contentType != "" {
-		request.Header.Set("Content-Type", contentType)
-	}
-
-	if query != nil {
-		request.URL.RawQuery = query.Encode()
-	}
-
-	conn, err := c.dialer("tcp", "api") // net/addr don't matter here
-	if err != nil {
-		return nil, nil, err
-	}
-
-	client := httputil.NewClientConn(conn, nil)
-
-	httpResp, err := client.Do(request)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	if httpResp.StatusCode < 200 || httpResp.StatusCode > 299 {
-		defer httpResp.Body.Close()
-
-		errRespBytes, err := ioutil.ReadAll(httpResp.Body)
-		if err != nil {
-			return nil, nil, fmt.Errorf("Backend error: Exit status: %d, error reading response body: %s", httpResp.StatusCode, err)
-		}
-		return nil, nil, fmt.Errorf("Backend error: Exit status: %d, message: %s", httpResp.StatusCode, errRespBytes)
-	}
-
-	hijackedConn, hijackedResponseReader := client.Hijack()
-
-	return hijackedConn, hijackedResponseReader, nil
 }
