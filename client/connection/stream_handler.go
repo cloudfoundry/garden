@@ -14,22 +14,20 @@ import (
 type hijackFunc func(streamID uint32, streamType string) (net.Conn, io.Reader, error)
 
 type streamHandler struct {
-	conn            *connection
-	containerHandle string
 	processPipeline *processStream
 	streamID        uint32
 	hijack          hijackFunc
+	log             lager.Logger
 	wg              *sync.WaitGroup
 }
 
-func newStreamHandler(processPipeline *processStream, conn *connection, handle string, streamID uint32, hijack hijackFunc) *streamHandler {
+func newStreamHandler(processPipeline *processStream, streamID uint32, hijack hijackFunc, log lager.Logger) *streamHandler {
 	return &streamHandler{
-		conn:            conn,
-		containerHandle: handle,
 		processPipeline: processPipeline,
 		streamID:        streamID,
-		wg:              new(sync.WaitGroup),
 		hijack:          hijack,
+		log:             log,
+		wg:              new(sync.WaitGroup),
 	}
 }
 
@@ -45,7 +43,7 @@ func (sh *streamHandler) streamIn(stdin io.Reader) {
 		} else {
 			log.Error("streaming-stdin-payload", err)
 		}
-	}(sh.processPipeline, stdin, sh.conn.log)
+	}(sh.processPipeline, stdin, sh.log)
 }
 
 func (sh *streamHandler) streamOut(streamType string, streamWriter io.Writer) error {
@@ -55,7 +53,7 @@ func (sh *streamHandler) streamOut(streamType string, streamWriter io.Writer) er
 
 	if stdout, err := sh.attach(streamType); err != nil {
 		err := fmt.Errorf("connection: attach to stream %s: %s", streamType, err)
-		sh.conn.log.Error("attach-to-stream-failed", err)
+		sh.log.Error("attach-to-stream-failed", err)
 		return err
 	} else {
 		go sh.copyStream(streamWriter, stdout)

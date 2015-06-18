@@ -243,7 +243,7 @@ func (c *connection) streamProcess(handle string, processIO garden.ProcessIO, hi
 	}
 
 	process := newProcess(payload.ProcessID, processPipeline)
-	streamHandler := newStreamHandler(processPipeline, c, handle, payload.StreamID, hijack)
+	streamHandler := newStreamHandler(processPipeline, payload.StreamID, hijack, c.log)
 
 	streamHandler.streamIn(processIO.Stdin)
 
