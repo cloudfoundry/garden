@@ -196,7 +196,7 @@ func (c *connection) Run(handle string, spec garden.ProcessSpec, processIO garde
 func (c *connection) Attach(handle string, processID uint32, processIO garden.ProcessIO) (garden.Process, error) {
 	reqBody := new(bytes.Buffer)
 
-	conn, br, err := c.doHijack(
+	hijackedConn, hijackedResponseReader, err := c.doHijack(
 		routes.Attach,
 		reqBody,
 		rata.Params{
@@ -210,7 +210,7 @@ func (c *connection) Attach(handle string, processID uint32, processIO garden.Pr
 		return nil, err
 	}
 
-	return c.streamProcess(handle, processIO, conn, br)
+	return c.streamProcess(handle, processIO, hijackedConn, hijackedResponseReader)
 }
 
 func (c *connection) streamProcess(handle string, processIO garden.ProcessIO, hijackedConn net.Conn, hijackedResponseReader *bufio.Reader) (garden.Process, error) {
