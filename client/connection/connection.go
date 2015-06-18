@@ -254,8 +254,13 @@ func (c *connection) streamProcess(handle string, processIO garden.ProcessIO, hi
 
 	streamHandler.streamIn(processIO.Stdin)
 
+	var stdoutConn net.Conn
 	if processIO.Stdout != nil {
-		_, stdout, err := hijack(routes.Stdout)
+		var (
+			stdout io.Reader
+			err    error
+		)
+		stdoutConn, stdout, err = hijack(routes.Stdout)
 		if err != nil {
 			werr := fmt.Errorf("connection: failed to hijack stream %s: %s", routes.Stdout, err)
 			process.exited(0, werr)
@@ -265,20 +270,30 @@ func (c *connection) streamProcess(handle string, processIO garden.ProcessIO, hi
 		streamHandler.streamOut(processIO.Stdout, stdout)
 	}
 
+	var stderrConn net.Conn
 	if processIO.Stderr != nil {
-		_, stderr, err := hijack(routes.Stderr)
+		var (
+			stderr io.Reader
+			err    error
+		)
+		stderrConn, stderr, err = hijack(routes.Stderr)
 		if err != nil {
 			werr := fmt.Errorf("connection: failed to hijack stream %s: %s", routes.Stderr, err)
 			process.exited(0, werr)
 			hijackedConn.Close()
 			return process, nil
 		}
-		//
 		streamHandler.streamOut(processIO.Stderr, stderr)
 	}
 
 	go func() {
 		defer hijackedConn.Close()
+		if stdoutConn != nil {
+			defer stdoutConn.Close()
+		}
+		if stderrConn != nil {
+			defer stderrConn.Close()
+		}
 
 		exitCode, err := streamHandler.wait(decoder)
 		process.exited(exitCode, err)

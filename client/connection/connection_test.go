@@ -1,6 +1,7 @@
 package connection_test
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
 	"errors"
@@ -9,6 +10,7 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -17,9 +19,11 @@ import (
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/ghttp"
 	"github.com/pivotal-golang/lager/lagertest"
+	"github.com/tedsuo/rata"
 
 	"github.com/cloudfoundry-incubator/garden"
 	. "github.com/cloudfoundry-incubator/garden/client/connection"
+	"github.com/cloudfoundry-incubator/garden/client/connection/fakes"
 	"github.com/cloudfoundry-incubator/garden/transport"
 )
 
@@ -1138,6 +1142,47 @@ var _ = Describe("Connection", func() {
 				process.Wait()
 				Ω(stdout).Should(gbytes.Say("roundtripped stdin data"))
 				Ω(stderr).Should(gbytes.Say("stderr data"))
+			})
+
+			Describe("connection leak avoidance", func() {
+				var fakeHijacker *fakes.FakeHijacker
+				var wrappedConnections []*wrappedConnection
+
+				BeforeEach(func() {
+					wrappedConnections = []*wrappedConnection{}
+					netHijacker := hijacker
+					fakeHijacker = new(fakes.FakeHijacker)
+					fakeHijacker.HijackStub = func(handler string, body io.Reader, params rata.Params, query url.Values, contentType string) (net.Conn, *bufio.Reader, error) {
+						conn, resp, err := netHijacker.Hijack(handler, body, params, query, contentType)
+						wc := &wrappedConnection{Conn: conn}
+						wrappedConnections = append(wrappedConnections, wc)
+						return wc, resp, err
+					}
+
+					hijacker = fakeHijacker
+				})
+
+				AfterEach(func() {
+					for _, wc := range wrappedConnections {
+						Expect(wc.isClosed()).To(BeTrue())
+					}
+				})
+
+				It("should not leak net.Conn from Run", func() {
+					stdout := gbytes.NewBuffer()
+					stderr := gbytes.NewBuffer()
+
+					process, err := connection.Run("foo-handle", spec, garden.ProcessIO{
+						Stdin:  bytes.NewBufferString("stdin data"),
+						Stdout: stdout,
+						Stderr: stderr,
+					})
+					Ω(err).ShouldNot(HaveOccurred())
+
+					process.Wait()
+					Ω(stdout).Should(gbytes.Say("roundtripped stdin data"))
+					Ω(stderr).Should(gbytes.Say("stderr data"))
+				})
 			})
 		})
 
