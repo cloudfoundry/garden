@@ -243,17 +243,17 @@ func (c *connection) streamProcess(handle string, processIO garden.ProcessIO, hi
 	}
 
 	process := newProcess(payload.ProcessID, processPipeline)
-	streamHandler := newStreamHandler(processPipeline, payload.StreamID, hijack, c.log)
+	streamHandler := newStreamHandler(processPipeline, c.log)
 
 	streamHandler.streamIn(processIO.Stdin)
 
-	if err := streamHandler.streamOut(routes.Stdout, processIO.Stdout); err != nil {
+	if err := streamHandler.streamOut(payload.StreamID, routes.Stdout, processIO.Stdout, hijack); err != nil {
 		process.exited(0, err)
 		hijackedConn.Close()
 		return process, nil
 	}
 
-	if err := streamHandler.streamOut(routes.Stderr, processIO.Stderr); err != nil {
+	if err := streamHandler.streamOut(payload.StreamID, routes.Stderr, processIO.Stderr, hijack); err != nil {
 		process.exited(0, err)
 		hijackedConn.Close()
 		return process, nil

@@ -15,17 +15,13 @@ type hijackFunc func(streamID uint32, streamType string) (net.Conn, io.Reader, e
 
 type streamHandler struct {
 	processPipeline *processStream
-	streamID        uint32
-	hijack          hijackFunc
 	log             lager.Logger
 	wg              *sync.WaitGroup
 }
 
-func newStreamHandler(processPipeline *processStream, streamID uint32, hijack hijackFunc, log lager.Logger) *streamHandler {
+func newStreamHandler(processPipeline *processStream, log lager.Logger) *streamHandler {
 	return &streamHandler{
 		processPipeline: processPipeline,
-		streamID:        streamID,
-		hijack:          hijack,
 		log:             log,
 		wg:              new(sync.WaitGroup),
 	}
@@ -46,12 +42,12 @@ func (sh *streamHandler) streamIn(stdin io.Reader) {
 	}(sh.processPipeline, stdin, sh.log)
 }
 
-func (sh *streamHandler) streamOut(streamType string, streamWriter io.Writer) error {
+func (sh *streamHandler) streamOut(streamID uint32, streamType string, streamWriter io.Writer, hijack hijackFunc) error {
 	if streamWriter == nil {
 		return nil
 	}
 
-	if stdout, err := sh.attach(streamType); err != nil {
+	if stdout, err := sh.attach(streamID, streamType, hijack); err != nil {
 		err := fmt.Errorf("connection: attach to stream %s: %s", streamType, err)
 		sh.log.Error("attach-to-stream-failed", err)
 		return err
@@ -64,23 +60,14 @@ func (sh *streamHandler) streamOut(streamType string, streamWriter io.Writer) er
 
 // attaches to the given standard stream endpoint for a running process
 // and copies output to a local io.writer
-func (sh *streamHandler) attach(streamType string) (io.Reader, error) {
-	source, err := sh.connect(streamType)
+func (sh *streamHandler) attach(streamID uint32, streamType string, hijack hijackFunc) (io.Reader, error) {
+	_, source, err := hijack(streamID, streamType)
+
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Failed to hijack stream %s: %s", streamType, err)
 	}
 
 	sh.wg.Add(1)
-	return source, nil
-}
-
-func (sh *streamHandler) connect(route string) (io.Reader, error) {
-	_, source, err := sh.hijack(sh.streamID, route)
-
-	if err != nil {
-		return nil, fmt.Errorf("Failed to hijack stream %s: %s", route, err)
-	}
-
 	return source, nil
 }
 
