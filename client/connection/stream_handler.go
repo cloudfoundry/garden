@@ -30,25 +30,29 @@ func newStreamHandler(conn *connection, handle string, processID, streamID uint3
 	}
 }
 
-func (p *streamHandler) streamIn(inputStream *processStream, stdin io.Reader, log lager.Logger) {
-	if stdin != nil {
-		processInputStreamWriter := &stdinWriter{inputStream}
+func (sh *streamHandler) streamIn(inputStream *processStream, stdin io.Reader) {
+	if stdin == nil {
+		return
+	}
+
+	go func(processInputStream *processStream, stdin io.Reader, log lager.Logger) {
+		processInputStreamWriter := &stdinWriter{processInputStream}
 		if _, err := io.Copy(processInputStreamWriter, stdin); err == nil {
 			processInputStreamWriter.Close()
 		} else {
 			log.Error("streaming-stdin-payload", err)
 		}
-	}
+	}(inputStream, stdin, sh.conn.log)
 }
 
-func (sh *streamHandler) streamOut(streamType string, streamWriter io.Writer, log lager.Logger) error {
+func (sh *streamHandler) streamOut(streamType string, streamWriter io.Writer) error {
 	if streamWriter == nil {
 		return nil
 	}
 
 	if stdout, err := sh.attach(streamType); err != nil {
 		err := fmt.Errorf("connection: attach to stream %s: %s", streamType, err)
-		log.Error("attach-to-stream-failed", err)
+		sh.conn.log.Error("attach-to-stream-failed", err)
 		return err
 	} else {
 		go sh.copyStream(streamWriter, stdout)
