@@ -16,18 +16,18 @@ import (
 	"github.com/tedsuo/rata"
 )
 
-type connectionHijacker struct {
+type hijackable struct {
 	req               *rata.RequestGenerator
 	noKeepaliveClient *http.Client
 	dialer            func(string, string) (net.Conn, error)
 }
 
-func NewHijacker(network, address string) Hijacker {
+func NewHijackStreamer(network, address string) HijackStreamer {
 	dialer := func(string, string) (net.Conn, error) {
 		return net.DialTimeout(network, address, time.Second)
 	}
 
-	return &connectionHijacker{
+	return &hijackable{
 		req:    rata.NewRequestGenerator("http://api", routes.Routes),
 		dialer: dialer,
 		noKeepaliveClient: &http.Client{
@@ -39,7 +39,7 @@ func NewHijacker(network, address string) Hijacker {
 	}
 }
 
-func (h *connectionHijacker) Hijack(handler string, body io.Reader, params rata.Params, query url.Values, contentType string) (net.Conn, *bufio.Reader, error) {
+func (h *hijackable) Hijack(handler string, body io.Reader, params rata.Params, query url.Values, contentType string) (net.Conn, *bufio.Reader, error) {
 	request, err := h.req.CreateRequest(handler, params, body)
 	if err != nil {
 		return nil, nil, err
@@ -80,7 +80,7 @@ func (h *connectionHijacker) Hijack(handler string, body io.Reader, params rata.
 	return hijackedConn, hijackedResponseReader, nil
 }
 
-func (c *connectionHijacker) Stream(handler string, body io.Reader, params rata.Params, query url.Values, contentType string) (io.ReadCloser, error) {
+func (c *hijackable) Stream(handler string, body io.Reader, params rata.Params, query url.Values, contentType string) (io.ReadCloser, error) {
 	request, err := c.req.CreateRequest(handler, params, body)
 	if err != nil {
 		return nil, err

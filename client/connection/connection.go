@@ -69,14 +69,14 @@ type Connection interface {
 	RemoveProperty(handle string, name string) error
 }
 
-//go:generate counterfeiter . Hijacker
-type Hijacker interface {
-	Hijack(handler string, body io.Reader, params rata.Params, query url.Values, contentType string) (net.Conn, *bufio.Reader, error)
+//go:generate counterfeiter . HijackStreamer
+type HijackStreamer interface {
 	Stream(handler string, body io.Reader, params rata.Params, query url.Values, contentType string) (io.ReadCloser, error)
+	Hijack(handler string, body io.Reader, params rata.Params, query url.Values, contentType string) (net.Conn, *bufio.Reader, error)
 }
 
 type connection struct {
-	hijacker Hijacker
+	hijacker HijackStreamer
 	log      lager.Logger
 }
 
@@ -94,11 +94,11 @@ func New(network, address string) Connection {
 }
 
 func NewWithLogger(network, address string, log lager.Logger) Connection {
-	hijacker := NewHijacker(network, address)
+	hijacker := NewHijackStreamer(network, address)
 	return NewWithHijacker(network, address, hijacker, log)
 }
 
-func NewWithHijacker(network, address string, hijacker Hijacker, log lager.Logger) Connection {
+func NewWithHijacker(network, address string, hijacker HijackStreamer, log lager.Logger) Connection {
 	return &connection{
 		hijacker: hijacker,
 		log:      log,

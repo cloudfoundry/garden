@@ -32,7 +32,7 @@ var _ = Describe("Connection", func() {
 		connection     Connection
 		resourceLimits garden.ResourceLimits
 		server         *ghttp.Server
-		hijacker       Hijacker
+		hijacker       HijackStreamer
 		network        string
 		address        string
 	)
@@ -41,7 +41,7 @@ var _ = Describe("Connection", func() {
 		server = ghttp.NewServer()
 		network = "tcp"
 		address = server.HTTPTestServer.Listener.Addr().String()
-		hijacker = NewHijacker(network, address)
+		hijacker = NewHijackStreamer(network, address)
 	})
 
 	JustBeforeEach(func() {
@@ -1144,13 +1144,13 @@ var _ = Describe("Connection", func() {
 			})
 
 			Describe("connection leak avoidance", func() {
-				var fakeHijacker *fakes.FakeHijacker
+				var fakeHijacker *fakes.FakeHijackStreamer
 				var wrappedConnections []*wrappedConnection
 
 				BeforeEach(func() {
 					wrappedConnections = []*wrappedConnection{}
 					netHijacker := hijacker
-					fakeHijacker = new(fakes.FakeHijacker)
+					fakeHijacker = new(fakes.FakeHijackStreamer)
 					fakeHijacker.HijackStub = func(handler string, body io.Reader, params rata.Params, query url.Values, contentType string) (net.Conn, *bufio.Reader, error) {
 						conn, resp, err := netHijacker.Hijack(handler, body, params, query, contentType)
 						wc := &wrappedConnection{Conn: conn}
