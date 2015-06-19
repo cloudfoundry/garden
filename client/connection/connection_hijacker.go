@@ -22,15 +22,11 @@ type connectionHijacker struct {
 	dialer            func(string, string) (net.Conn, error)
 }
 
-func NewHijackerWithDialer(network, address string) (Hijacker, func(string, string) (net.Conn, error)) {
+func NewHijacker(network, address string) Hijacker {
 	dialer := func(string, string) (net.Conn, error) {
 		return net.DialTimeout(network, address, time.Second)
 	}
 
-	return newHijacker(dialer), dialer
-}
-
-func newHijacker(dialer func(string, string) (net.Conn, error)) *connectionHijacker {
 	return &connectionHijacker{
 		req:    rata.NewRequestGenerator("http://api", routes.Routes),
 		dialer: dialer,

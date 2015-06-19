@@ -94,7 +94,7 @@ func New(network, address string) Connection {
 }
 
 func NewWithLogger(network, address string, log lager.Logger) Connection {
-	hijacker, _ := NewHijackerWithDialer(network, address)
+	hijacker := NewHijacker(network, address)
 	return NewWithHijacker(network, address, hijacker, log)
 }
 
