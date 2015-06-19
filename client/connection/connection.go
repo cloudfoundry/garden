@@ -232,9 +232,8 @@ func (c *connection) streamProcess(handle string, processIO garden.ProcessIO, hi
 	}
 
 	process := newProcess(payload.ProcessID, processPipeline)
-	streamHandler := newStreamHandler(processPipeline, c.log)
-
-	streamHandler.streamIn(processIO.Stdin)
+	streamHandler := newStreamHandler(c.log)
+	streamHandler.streamIn(processPipeline, processIO.Stdin)
 
 	var stdoutConn net.Conn
 	if processIO.Stdout != nil {

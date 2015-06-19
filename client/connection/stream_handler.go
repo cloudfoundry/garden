@@ -14,32 +14,29 @@ import (
 type hijackFunc func(streamType string) (net.Conn, io.Reader, error)
 
 type streamHandler struct {
-	processPipeline *processStream
-	log             lager.Logger
-	wg              *sync.WaitGroup
+	log lager.Logger
+	wg  *sync.WaitGroup
 }
 
-func newStreamHandler(processPipeline *processStream, log lager.Logger) *streamHandler {
+func newStreamHandler(log lager.Logger) *streamHandler {
 	return &streamHandler{
-		processPipeline: processPipeline,
-		log:             log,
-		wg:              new(sync.WaitGroup),
+		log: log,
+		wg:  new(sync.WaitGroup),
 	}
 }
 
-func (sh *streamHandler) streamIn(stdin io.Reader) {
+func (sh *streamHandler) streamIn(processWriter io.WriteCloser, stdin io.Reader) {
 	if stdin == nil {
 		return
 	}
 
-	go func(processInputStream *processStream, stdin io.Reader, log lager.Logger) {
-		processInputStreamWriter := &stdinWriter{processInputStream}
-		if _, err := io.Copy(processInputStreamWriter, stdin); err == nil {
-			processInputStreamWriter.Close()
+	go func(processInputStream io.WriteCloser, stdin io.Reader, log lager.Logger) {
+		if _, err := io.Copy(processInputStream, stdin); err == nil {
+			processInputStream.Close()
 		} else {
 			log.Error("streaming-stdin-payload", err)
 		}
-	}(sh.processPipeline, stdin, sh.log)
+	}(processWriter, stdin, sh.log)
 }
 
 func (sh *streamHandler) streamOut(streamWriter io.Writer, streamReader io.Reader) {

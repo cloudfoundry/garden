@@ -15,17 +15,17 @@ type processStream struct {
 	sync.Mutex
 }
 
-func (s *processStream) WriteStdin(data []byte) error {
+func (s *processStream) Write(data []byte) (int, error) {
 	d := string(data)
 	stdin := transport.Stdin
-	return s.sendPayload(transport.ProcessPayload{
+	return len(data), s.sendPayload(transport.ProcessPayload{
 		ProcessID: s.processID,
 		Source:    &stdin,
 		Data:      &d,
 	})
 }
 
-func (s *processStream) CloseStdin() error {
+func (s *processStream) Close() error {
 	stdin := transport.Stdin
 	return s.sendPayload(transport.ProcessPayload{
 		ProcessID: s.processID,
