@@ -33,13 +33,13 @@ type Container interface {
 	//
 	// Errors:
 	// *  TODO.
-	StreamIn(dstPath string, tarStream io.Reader) error
+	StreamIn(spec StreamInSpec) error
 
 	// StreamOut streams a file out of a container.
 	//
 	// Errors:
 	// * TODO.
-	StreamOut(srcPath string) (io.ReadCloser, error)
+	StreamOut(spec StreamOutSpec) (io.ReadCloser, error)
 
 	// Limits the network bandwidth for a container.
 	LimitBandwidth(limits BandwidthLimits) error
@@ -196,6 +196,17 @@ const (
 type PortMapping struct {
 	HostPort      uint32
 	ContainerPort uint32
+}
+
+type StreamInSpec struct {
+	Path      string
+	User      string
+	TarStream io.Reader
+}
+
+type StreamOutSpec struct {
+	Path string
+	User string
 }
 
 // ContainerInfo holds information about a container.

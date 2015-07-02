@@ -200,7 +200,10 @@ func (s *GardenServer) handleStreamIn(w http.ResponseWriter, r *http.Request) {
 
 	hLog.Debug("streaming-in")
 
-	err = container.StreamIn(dstPath, r.Body)
+	err = container.StreamIn(garden.StreamInSpec{
+		Path:      dstPath,
+		TarStream: r.Body,
+	})
 	if err != nil {
 		s.writeError(w, err, hLog)
 		return
@@ -236,7 +239,9 @@ func (s *GardenServer) handleStreamOut(w http.ResponseWriter, r *http.Request) {
 
 	hLog.Debug("streaming-out")
 
-	reader, err := container.StreamOut(srcPath)
+	reader, err := container.StreamOut(garden.StreamOutSpec{
+		Path: srcPath,
+	})
 	if err != nil {
 		s.writeError(w, err, hLog)
 		return

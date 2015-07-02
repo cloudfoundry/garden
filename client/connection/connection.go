@@ -22,7 +22,6 @@ var ErrDisconnected = errors.New("disconnected")
 var ErrInvalidMessage = errors.New("invalid message payload")
 
 //go:generate counterfeiter . Connection
-
 type Connection interface {
 	Ping() error
 
@@ -42,8 +41,8 @@ type Connection interface {
 	BulkInfo(handles []string) (map[string]garden.ContainerInfoEntry, error)
 	BulkMetrics(handles []string) (map[string]garden.ContainerMetricsEntry, error)
 
-	StreamIn(handle string, dstPath string, reader io.Reader) error
-	StreamOut(handle string, srcPath string) (io.ReadCloser, error)
+	StreamIn(handle string, spec garden.StreamInSpec) error
+	StreamOut(handle string, spec garden.StreamOutSpec) (io.ReadCloser, error)
 
 	LimitBandwidth(handle string, limits garden.BandwidthLimits) (garden.BandwidthLimits, error)
 	LimitCPU(handle string, limits garden.CPULimits) (garden.CPULimits, error)
@@ -505,15 +504,15 @@ func (c *connection) CurrentMemoryLimits(handle string) (garden.MemoryLimits, er
 	return res, err
 }
 
-func (c *connection) StreamIn(handle string, dstPath string, reader io.Reader) error {
+func (c *connection) StreamIn(handle string, spec garden.StreamInSpec) error {
 	body, err := c.hijacker.Stream(
 		routes.StreamIn,
-		reader,
+		spec.TarStream,
 		rata.Params{
 			"handle": handle,
 		},
 		url.Values{
-			"destination": []string{dstPath},
+			"destination": []string{spec.Path},
 		},
 		"application/x-tar",
 	)
@@ -524,7 +523,7 @@ func (c *connection) StreamIn(handle string, dstPath string, reader io.Reader) e
 	return body.Close()
 }
 
-func (c *connection) StreamOut(handle string, srcPath string) (io.ReadCloser, error) {
+func (c *connection) StreamOut(handle string, spec garden.StreamOutSpec) (io.ReadCloser, error) {
 	return c.hijacker.Stream(
 		routes.StreamOut,
 		nil,
@@ -532,7 +531,7 @@ func (c *connection) StreamOut(handle string, srcPath string) (io.ReadCloser, er
 			"handle": handle,
 		},
 		url.Values{
-			"source": []string{srcPath},
+			"source": []string{spec.Path},
 		},
 		"",
 	)

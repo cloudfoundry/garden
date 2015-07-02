@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"net"
 	"strings"
@@ -159,17 +158,20 @@ var _ = Describe("Container", func() {
 
 	Describe("StreamIn", func() {
 		It("sends a stream in request", func() {
-			fakeConnection.StreamInStub = func(handle string, dst string, reader io.Reader) error {
-				Ω(dst).Should(Equal("to"))
+			fakeConnection.StreamInStub = func(handle string, spec garden.StreamInSpec) error {
+				Ω(spec.Path).Should(Equal("to"))
 
-				content, err := ioutil.ReadAll(reader)
+				content, err := ioutil.ReadAll(spec.TarStream)
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(string(content)).Should(Equal("stuff"))
 
 				return nil
 			}
 
-			err := container.StreamIn("to", bytes.NewBufferString("stuff"))
+			err := container.StreamIn(garden.StreamInSpec{
+				Path:      "to",
+				TarStream: bytes.NewBufferString("stuff"),
+			})
 			Ω(err).ShouldNot(HaveOccurred())
 		})
 
@@ -182,7 +184,9 @@ var _ = Describe("Container", func() {
 			})
 
 			It("returns the error", func() {
-				err := container.StreamIn("to", nil)
+				err := container.StreamIn(garden.StreamInSpec{
+					Path: "to",
+				})
 				Ω(err).Should(Equal(disaster))
 			})
 		})
@@ -192,14 +196,16 @@ var _ = Describe("Container", func() {
 		It("sends a stream out request", func() {
 			fakeConnection.StreamOutReturns(ioutil.NopCloser(strings.NewReader("kewl")), nil)
 
-			reader, err := container.StreamOut("from")
+			reader, err := container.StreamOut(garden.StreamOutSpec{
+				Path: "from",
+			})
 			bytes, err := ioutil.ReadAll(reader)
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(string(bytes)).Should(Equal("kewl"))
 
-			handle, src := fakeConnection.StreamOutArgsForCall(0)
+			handle, spec := fakeConnection.StreamOutArgsForCall(0)
 			Ω(handle).Should(Equal("some-handle"))
-			Ω(src).Should(Equal("from"))
+			Ω(spec.Path).Should(Equal("from"))
 		})
 
 		Context("when streaming out fails", func() {
@@ -210,7 +216,9 @@ var _ = Describe("Container", func() {
 			})
 
 			It("returns the error", func() {
-				_, err := container.StreamOut("from")
+				_, err := container.StreamOut(garden.StreamOutSpec{
+					Path: "from",
+				})
 				Ω(err).Should(Equal(disaster))
 			})
 		})

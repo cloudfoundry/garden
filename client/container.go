@@ -33,12 +33,12 @@ func (container *container) Info() (garden.ContainerInfo, error) {
 	return container.connection.Info(container.handle)
 }
 
-func (container *container) StreamIn(dstPath string, reader io.Reader) error {
-	return container.connection.StreamIn(container.handle, dstPath, reader)
+func (container *container) StreamIn(spec garden.StreamInSpec) error {
+	return container.connection.StreamIn(container.handle, spec)
 }
 
-func (container *container) StreamOut(srcPath string) (io.ReadCloser, error) {
-	return container.connection.StreamOut(container.handle, srcPath)
+func (container *container) StreamOut(spec garden.StreamOutSpec) (io.ReadCloser, error) {
+	return container.connection.StreamOut(container.handle, spec)
 }
 
 func (container *container) LimitBandwidth(limits garden.BandwidthLimits) error {

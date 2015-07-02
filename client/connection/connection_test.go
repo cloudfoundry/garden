@@ -946,7 +946,7 @@ var _ = Describe("Connection", func() {
 			It("tells garden.to stream, and then streams the content as a series of chunks", func() {
 				buffer := bytes.NewBufferString("chunk-1chunk-2")
 
-				err := connection.StreamIn("foo-handle", "/bar", buffer)
+				err := connection.StreamIn("foo-handle", garden.StreamInSpec{Path: "/bar", TarStream: buffer})
 				Ω(err).ShouldNot(HaveOccurred())
 
 				Ω(server.ReceivedRequests()).Should(HaveLen(1))
@@ -965,7 +965,7 @@ var _ = Describe("Connection", func() {
 
 			It("returns an error on close", func() {
 				buffer := bytes.NewBufferString("chunk-1chunk-2")
-				err := connection.StreamIn("foo-handle", "/bar", buffer)
+				err := connection.StreamIn("foo-handle", garden.StreamInSpec{Path: "/bar", TarStream: buffer})
 				Ω(err).Should(HaveOccurred())
 
 				Ω(server.ReceivedRequests()).Should(HaveLen(1))
@@ -988,7 +988,7 @@ var _ = Describe("Connection", func() {
 			It("returns an error on close", func() {
 				buffer := bytes.NewBufferString("chunk-1chunk-2")
 
-				err := connection.StreamIn("foo-handle", "/bar", buffer)
+				err := connection.StreamIn("foo-handle", garden.StreamInSpec{Path: "/bar", TarStream: buffer})
 				Ω(err).Should(HaveOccurred())
 
 				Ω(server.ReceivedRequests()).Should(HaveLen(1))
@@ -1008,7 +1008,7 @@ var _ = Describe("Connection", func() {
 			})
 
 			It("asks garden.for the given file, then reads its content", func() {
-				reader, err := connection.StreamOut("foo-handle", "/bar")
+				reader, err := connection.StreamOut("foo-handle", garden.StreamOutSpec{Path: "/bar"})
 				Ω(err).ShouldNot(HaveOccurred())
 
 				readBytes, err := ioutil.ReadAll(reader)
@@ -1032,7 +1032,7 @@ var _ = Describe("Connection", func() {
 			})
 
 			It("asks garden.for the given file, then reads its content", func() {
-				reader, err := connection.StreamOut("foo-handle", "/bar")
+				reader, err := connection.StreamOut("foo-handle", garden.StreamOutSpec{Path: "/bar"})
 				Ω(err).ShouldNot(HaveOccurred())
 
 				_, err = ioutil.ReadAll(reader)

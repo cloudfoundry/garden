@@ -85,21 +85,20 @@ type FakeConnection struct {
 		result1 map[string]garden.ContainerMetricsEntry
 		result2 error
 	}
-	StreamInStub        func(handle string, dstPath string, reader io.Reader) error
+	StreamInStub        func(handle string, spec garden.StreamInSpec) error
 	streamInMutex       sync.RWMutex
 	streamInArgsForCall []struct {
-		handle  string
-		dstPath string
-		reader  io.Reader
+		handle string
+		spec   garden.StreamInSpec
 	}
 	streamInReturns struct {
 		result1 error
 	}
-	StreamOutStub        func(handle string, srcPath string) (io.ReadCloser, error)
+	StreamOutStub        func(handle string, spec garden.StreamOutSpec) (io.ReadCloser, error)
 	streamOutMutex       sync.RWMutex
 	streamOutArgsForCall []struct {
-		handle  string
-		srcPath string
+		handle string
+		spec   garden.StreamOutSpec
 	}
 	streamOutReturns struct {
 		result1 io.ReadCloser
@@ -552,16 +551,15 @@ func (fake *FakeConnection) BulkMetricsReturns(result1 map[string]garden.Contain
 	}{result1, result2}
 }
 
-func (fake *FakeConnection) StreamIn(handle string, dstPath string, reader io.Reader) error {
+func (fake *FakeConnection) StreamIn(handle string, spec garden.StreamInSpec) error {
 	fake.streamInMutex.Lock()
 	fake.streamInArgsForCall = append(fake.streamInArgsForCall, struct {
-		handle  string
-		dstPath string
-		reader  io.Reader
-	}{handle, dstPath, reader})
+		handle string
+		spec   garden.StreamInSpec
+	}{handle, spec})
 	fake.streamInMutex.Unlock()
 	if fake.StreamInStub != nil {
-		return fake.StreamInStub(handle, dstPath, reader)
+		return fake.StreamInStub(handle, spec)
 	} else {
 		return fake.streamInReturns.result1
 	}
@@ -573,10 +571,10 @@ func (fake *FakeConnection) StreamInCallCount() int {
 	return len(fake.streamInArgsForCall)
 }
 
-func (fake *FakeConnection) StreamInArgsForCall(i int) (string, string, io.Reader) {
+func (fake *FakeConnection) StreamInArgsForCall(i int) (string, garden.StreamInSpec) {
 	fake.streamInMutex.RLock()
 	defer fake.streamInMutex.RUnlock()
-	return fake.streamInArgsForCall[i].handle, fake.streamInArgsForCall[i].dstPath, fake.streamInArgsForCall[i].reader
+	return fake.streamInArgsForCall[i].handle, fake.streamInArgsForCall[i].spec
 }
 
 func (fake *FakeConnection) StreamInReturns(result1 error) {
@@ -586,15 +584,15 @@ func (fake *FakeConnection) StreamInReturns(result1 error) {
 	}{result1}
 }
 
-func (fake *FakeConnection) StreamOut(handle string, srcPath string) (io.ReadCloser, error) {
+func (fake *FakeConnection) StreamOut(handle string, spec garden.StreamOutSpec) (io.ReadCloser, error) {
 	fake.streamOutMutex.Lock()
 	fake.streamOutArgsForCall = append(fake.streamOutArgsForCall, struct {
-		handle  string
-		srcPath string
-	}{handle, srcPath})
+		handle string
+		spec   garden.StreamOutSpec
+	}{handle, spec})
 	fake.streamOutMutex.Unlock()
 	if fake.StreamOutStub != nil {
-		return fake.StreamOutStub(handle, srcPath)
+		return fake.StreamOutStub(handle, spec)
 	} else {
 		return fake.streamOutReturns.result1, fake.streamOutReturns.result2
 	}
@@ -606,10 +604,10 @@ func (fake *FakeConnection) StreamOutCallCount() int {
 	return len(fake.streamOutArgsForCall)
 }
 
-func (fake *FakeConnection) StreamOutArgsForCall(i int) (string, string) {
+func (fake *FakeConnection) StreamOutArgsForCall(i int) (string, garden.StreamOutSpec) {
 	fake.streamOutMutex.RLock()
 	defer fake.streamOutMutex.RUnlock()
-	return fake.streamOutArgsForCall[i].handle, fake.streamOutArgsForCall[i].srcPath
+	return fake.streamOutArgsForCall[i].handle, fake.streamOutArgsForCall[i].spec
 }
 
 func (fake *FakeConnection) StreamOutReturns(result1 io.ReadCloser, result2 error) {
