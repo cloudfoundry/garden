@@ -512,6 +512,7 @@ func (c *connection) StreamIn(handle string, spec garden.StreamInSpec) error {
 			"handle": handle,
 		},
 		url.Values{
+			"user":        []string{spec.User},
 			"destination": []string{spec.Path},
 		},
 		"application/x-tar",
@@ -531,6 +532,7 @@ func (c *connection) StreamOut(handle string, spec garden.StreamOutSpec) (io.Rea
 			"handle": handle,
 		},
 		url.Values{
+			"user":   []string{spec.User},
 			"source": []string{spec.Path},
 		},
 		"",

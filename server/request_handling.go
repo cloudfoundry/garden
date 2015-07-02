@@ -182,10 +182,12 @@ func (s *GardenServer) handleStop(w http.ResponseWriter, r *http.Request) {
 func (s *GardenServer) handleStreamIn(w http.ResponseWriter, r *http.Request) {
 	handle := r.FormValue(":handle")
 
+	user := r.URL.Query().Get("user")
 	dstPath := r.URL.Query().Get("destination")
 
 	hLog := s.logger.Session("stream-in", lager.Data{
 		"handle":      handle,
+		"user":        user,
 		"destination": dstPath,
 	})
 
@@ -201,6 +203,7 @@ func (s *GardenServer) handleStreamIn(w http.ResponseWriter, r *http.Request) {
 	hLog.Debug("streaming-in")
 
 	err = container.StreamIn(garden.StreamInSpec{
+		User:      user,
 		Path:      dstPath,
 		TarStream: r.Body,
 	})
@@ -221,10 +224,12 @@ func (s *GardenServer) writeSuccess(w http.ResponseWriter) {
 func (s *GardenServer) handleStreamOut(w http.ResponseWriter, r *http.Request) {
 	handle := r.FormValue(":handle")
 
+	user := r.URL.Query().Get("user")
 	srcPath := r.URL.Query().Get("source")
 
 	hLog := s.logger.Session("stream-out", lager.Data{
 		"handle": handle,
+		"user":   user,
 		"source": srcPath,
 	})
 
@@ -240,6 +245,7 @@ func (s *GardenServer) handleStreamOut(w http.ResponseWriter, r *http.Request) {
 	hLog.Debug("streaming-out")
 
 	reader, err := container.StreamOut(garden.StreamOutSpec{
+		User: user,
 		Path: srcPath,
 	})
 	if err != nil {

@@ -732,11 +732,12 @@ var _ = Describe("When a client connects", func() {
 
 				fakeContainer.StreamInStub = func(spec garden.StreamInSpec) error {
 					Ω(spec.Path).Should(Equal("/dst/path"))
+					Ω(spec.User).Should(Equal("frank"))
 					Ω(ioutil.ReadAll(spec.TarStream)).Should(Equal([]byte("chunk-1;chunk-2;chunk-3;")))
 					return nil
 				}
 
-				err := container.StreamIn(garden.StreamInSpec{Path: "/dst/path", TarStream: data})
+				err := container.StreamIn(garden.StreamInSpec{User: "frank", Path: "/dst/path", TarStream: data})
 				Ω(err).ShouldNot(HaveOccurred())
 
 				Ω(fakeContainer.StreamInCallCount()).Should(Equal(1))
@@ -752,7 +753,7 @@ var _ = Describe("When a client connects", func() {
 				})
 
 				It("fails", func() {
-					err := container.StreamIn(garden.StreamInSpec{Path: "/dst/path"})
+					err := container.StreamIn(garden.StreamInSpec{User: "bob", Path: "/dst/path"})
 					Ω(err).Should(HaveOccurred())
 				})
 			})
@@ -770,7 +771,7 @@ var _ = Describe("When a client connects", func() {
 			})
 
 			It("streams the bits out and succeeds", func() {
-				reader, err := container.StreamOut(garden.StreamOutSpec{Path: "/src/path"})
+				reader, err := container.StreamOut(garden.StreamOutSpec{User: "frank", Path: "/src/path"})
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(reader).ShouldNot(BeZero())
 
@@ -779,7 +780,7 @@ var _ = Describe("When a client connects", func() {
 
 				Ω(string(streamedContent)).Should(Equal("hello-world!"))
 
-				Ω(fakeContainer.StreamOutArgsForCall(0)).Should(Equal(garden.StreamOutSpec{Path: "/src/path"}))
+				Ω(fakeContainer.StreamOutArgsForCall(0)).Should(Equal(garden.StreamOutSpec{User: "frank", Path: "/src/path"}))
 			})
 
 			Context("when the connection dies as we're streaming", func() {
@@ -792,7 +793,7 @@ var _ = Describe("When a client connects", func() {
 				})
 
 				It("closes the backend's stream", func() {
-					reader, err := container.StreamOut(garden.StreamOutSpec{Path: "/src/path"})
+					reader, err := container.StreamOut(garden.StreamOutSpec{User: "frank", Path: "/src/path"})
 					Ω(err).ShouldNot(HaveOccurred())
 
 					err = reader.Close()
@@ -803,7 +804,7 @@ var _ = Describe("When a client connects", func() {
 			})
 
 			itResetsGraceTimeWhenHandling(func() {
-				reader, err := container.StreamOut(garden.StreamOutSpec{Path: "/src/path"})
+				reader, err := container.StreamOut(garden.StreamOutSpec{User: "frank", Path: "/src/path"})
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(reader).ShouldNot(BeZero())
 
@@ -812,7 +813,7 @@ var _ = Describe("When a client connects", func() {
 			})
 
 			itFailsWhenTheContainerIsNotFound(func() error {
-				_, err := container.StreamOut(garden.StreamOutSpec{Path: "/src/path"})
+				_, err := container.StreamOut(garden.StreamOutSpec{User: "frank", Path: "/src/path"})
 				return err
 			})
 
@@ -822,7 +823,7 @@ var _ = Describe("When a client connects", func() {
 				})
 
 				It("returns an error", func() {
-					_, err := container.StreamOut(garden.StreamOutSpec{Path: "/src/path"})
+					_, err := container.StreamOut(garden.StreamOutSpec{User: "frank", Path: "/src/path"})
 					Ω(err).Should(HaveOccurred())
 				})
 			})

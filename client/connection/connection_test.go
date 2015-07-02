@@ -932,7 +932,7 @@ var _ = Describe("Connection", func() {
 			BeforeEach(func() {
 				server.AppendHandlers(
 					ghttp.CombineHandlers(
-						ghttp.VerifyRequest("PUT", "/containers/foo-handle/files", "destination=%2Fbar"),
+						ghttp.VerifyRequest("PUT", "/containers/foo-handle/files", "user=alice&destination=%2Fbar"),
 						func(w http.ResponseWriter, r *http.Request) {
 							body, err := ioutil.ReadAll(r.Body)
 							Ω(err).ShouldNot(HaveOccurred())
@@ -946,7 +946,7 @@ var _ = Describe("Connection", func() {
 			It("tells garden.to stream, and then streams the content as a series of chunks", func() {
 				buffer := bytes.NewBufferString("chunk-1chunk-2")
 
-				err := connection.StreamIn("foo-handle", garden.StreamInSpec{Path: "/bar", TarStream: buffer})
+				err := connection.StreamIn("foo-handle", garden.StreamInSpec{User: "alice", Path: "/bar", TarStream: buffer})
 				Ω(err).ShouldNot(HaveOccurred())
 
 				Ω(server.ReceivedRequests()).Should(HaveLen(1))
@@ -957,7 +957,7 @@ var _ = Describe("Connection", func() {
 			BeforeEach(func() {
 				server.AppendHandlers(
 					ghttp.CombineHandlers(
-						ghttp.VerifyRequest("PUT", "/containers/foo-handle/files", "destination=%2Fbar"),
+						ghttp.VerifyRequest("PUT", "/containers/foo-handle/files", "user=bob&destination=%2Fbar"),
 						ghttp.RespondWith(http.StatusInternalServerError, "no."),
 					),
 				)
@@ -965,7 +965,7 @@ var _ = Describe("Connection", func() {
 
 			It("returns an error on close", func() {
 				buffer := bytes.NewBufferString("chunk-1chunk-2")
-				err := connection.StreamIn("foo-handle", garden.StreamInSpec{Path: "/bar", TarStream: buffer})
+				err := connection.StreamIn("foo-handle", garden.StreamInSpec{User: "bob", Path: "/bar", TarStream: buffer})
 				Ω(err).Should(HaveOccurred())
 
 				Ω(server.ReceivedRequests()).Should(HaveLen(1))
@@ -976,7 +976,7 @@ var _ = Describe("Connection", func() {
 			BeforeEach(func() {
 				server.AppendHandlers(
 					ghttp.CombineHandlers(
-						ghttp.VerifyRequest("PUT", "/containers/foo-handle/files", "destination=%2Fbar"),
+						ghttp.VerifyRequest("PUT", "/containers/foo-handle/files", "user=bob&destination=%2Fbar"),
 						ghttp.RespondWith(http.StatusInternalServerError, "no."),
 						func(w http.ResponseWriter, r *http.Request) {
 							server.CloseClientConnections()
@@ -988,7 +988,7 @@ var _ = Describe("Connection", func() {
 			It("returns an error on close", func() {
 				buffer := bytes.NewBufferString("chunk-1chunk-2")
 
-				err := connection.StreamIn("foo-handle", garden.StreamInSpec{Path: "/bar", TarStream: buffer})
+				err := connection.StreamIn("foo-handle", garden.StreamInSpec{User: "bob", Path: "/bar", TarStream: buffer})
 				Ω(err).Should(HaveOccurred())
 
 				Ω(server.ReceivedRequests()).Should(HaveLen(1))
@@ -1001,14 +1001,14 @@ var _ = Describe("Connection", func() {
 			BeforeEach(func() {
 				server.AppendHandlers(
 					ghttp.CombineHandlers(
-						ghttp.VerifyRequest("GET", "/containers/foo-handle/files", "source=%2Fbar"),
+						ghttp.VerifyRequest("GET", "/containers/foo-handle/files", "user=frank&source=%2Fbar"),
 						ghttp.RespondWith(200, "hello-world!"),
 					),
 				)
 			})
 
 			It("asks garden.for the given file, then reads its content", func() {
-				reader, err := connection.StreamOut("foo-handle", garden.StreamOutSpec{Path: "/bar"})
+				reader, err := connection.StreamOut("foo-handle", garden.StreamOutSpec{User: "frank", Path: "/bar"})
 				Ω(err).ShouldNot(HaveOccurred())
 
 				readBytes, err := ioutil.ReadAll(reader)
@@ -1023,7 +1023,7 @@ var _ = Describe("Connection", func() {
 			BeforeEach(func() {
 				server.AppendHandlers(
 					ghttp.CombineHandlers(
-						ghttp.VerifyRequest("GET", "/containers/foo-handle/files", "source=%2Fbar"),
+						ghttp.VerifyRequest("GET", "/containers/foo-handle/files", "user=deandra&source=%2Fbar"),
 						func(w http.ResponseWriter, r *http.Request) {
 							w.Header().Set("Content-Length", "500")
 						},
@@ -1032,7 +1032,7 @@ var _ = Describe("Connection", func() {
 			})
 
 			It("asks garden.for the given file, then reads its content", func() {
-				reader, err := connection.StreamOut("foo-handle", garden.StreamOutSpec{Path: "/bar"})
+				reader, err := connection.StreamOut("foo-handle", garden.StreamOutSpec{User: "deandra", Path: "/bar"})
 				Ω(err).ShouldNot(HaveOccurred())
 
 				_, err = ioutil.ReadAll(reader)

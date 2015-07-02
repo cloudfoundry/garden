@@ -160,6 +160,7 @@ var _ = Describe("Container", func() {
 		It("sends a stream in request", func() {
 			fakeConnection.StreamInStub = func(handle string, spec garden.StreamInSpec) error {
 				Ω(spec.Path).Should(Equal("to"))
+				Ω(spec.User).Should(Equal("frank"))
 
 				content, err := ioutil.ReadAll(spec.TarStream)
 				Ω(err).ShouldNot(HaveOccurred())
@@ -169,6 +170,7 @@ var _ = Describe("Container", func() {
 			}
 
 			err := container.StreamIn(garden.StreamInSpec{
+				User:      "frank",
 				Path:      "to",
 				TarStream: bytes.NewBufferString("stuff"),
 			})
@@ -197,6 +199,7 @@ var _ = Describe("Container", func() {
 			fakeConnection.StreamOutReturns(ioutil.NopCloser(strings.NewReader("kewl")), nil)
 
 			reader, err := container.StreamOut(garden.StreamOutSpec{
+				User: "deandra",
 				Path: "from",
 			})
 			bytes, err := ioutil.ReadAll(reader)
@@ -206,6 +209,7 @@ var _ = Describe("Container", func() {
 			handle, spec := fakeConnection.StreamOutArgsForCall(0)
 			Ω(handle).Should(Equal("some-handle"))
 			Ω(spec.Path).Should(Equal("from"))
+			Ω(spec.User).Should(Equal("deandra"))
 		})
 
 		Context("when streaming out fails", func() {
