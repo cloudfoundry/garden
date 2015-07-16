@@ -53,7 +53,7 @@ curl http://127.0.0.1:7777/containers
 # curl will choke here as the protocol is hijacked, but...it probably worked.
 curl -H "Content-Type: application/json" \
   -XPOST http://127.0.0.1:7777/containers/${handle}/processes \
-  -d '{"path":"sleep","args":["10"]}'
+  -d '{"path":"sleep","args":["10"],"user":"vcap"}'
 ```
 
 See [REST API examples](doc/garden-api.md) for more.
