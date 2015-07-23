@@ -698,8 +698,10 @@ var _ = Describe("Connection", func() {
 			},
 
 			DiskStat: garden.ContainerDiskStat{
-				BytesUsed:  1,
-				InodesUsed: 2,
+				TotalBytesUsed:      11,
+				TotalInodesUsed:     12,
+				ExclusiveBytesUsed:  13,
+				ExclusiveInodesUsed: 14,
 			},
 		}
 		var status int
@@ -852,14 +854,20 @@ var _ = Describe("Connection", func() {
 			"handle1": garden.ContainerMetricsEntry{
 				Metrics: garden.Metrics{
 					DiskStat: garden.ContainerDiskStat{
-						InodesUsed: 1,
+						TotalInodesUsed:     4,
+						TotalBytesUsed:      3,
+						ExclusiveBytesUsed:  2,
+						ExclusiveInodesUsed: 1,
 					},
 				},
 			},
 			"handle2": garden.ContainerMetricsEntry{
 				Metrics: garden.Metrics{
 					DiskStat: garden.ContainerDiskStat{
-						InodesUsed: 2,
+						TotalInodesUsed:     5,
+						TotalBytesUsed:      6,
+						ExclusiveBytesUsed:  7,
+						ExclusiveInodesUsed: 8,
 					},
 				},
 			},
@@ -909,7 +917,7 @@ var _ = Describe("Connection", func() {
 					"success": garden.ContainerMetricsEntry{
 						Metrics: garden.Metrics{
 							DiskStat: garden.ContainerDiskStat{
-								InodesUsed: 1,
+								TotalInodesUsed: 1,
 							},
 						},
 					},

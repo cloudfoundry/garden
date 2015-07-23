@@ -103,14 +103,20 @@ var _ = Describe("Client", func() {
 			"handle1": garden.ContainerMetricsEntry{
 				Metrics: garden.Metrics{
 					DiskStat: garden.ContainerDiskStat{
-						InodesUsed: 1,
+						TotalInodesUsed:     1,
+						TotalBytesUsed:      2,
+						ExclusiveBytesUsed:  3,
+						ExclusiveInodesUsed: 4,
 					},
 				},
 			},
 			"handle2": garden.ContainerMetricsEntry{
 				Metrics: garden.Metrics{
 					DiskStat: garden.ContainerDiskStat{
-						InodesUsed: 1,
+						TotalInodesUsed:     5,
+						TotalBytesUsed:      6,
+						ExclusiveBytesUsed:  7,
+						ExclusiveInodesUsed: 8,
 					},
 				},
 			},

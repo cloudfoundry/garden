@@ -524,8 +524,8 @@ var _ = Describe("When a client connects", func() {
 					System: 3,
 				},
 				DiskStat: garden.ContainerDiskStat{
-					BytesUsed:  1,
-					InodesUsed: 2,
+					TotalBytesUsed:  1,
+					TotalInodesUsed: 2,
 				},
 			}
 
@@ -1463,14 +1463,14 @@ var _ = Describe("When a client connects", func() {
 				"handle1": garden.ContainerMetricsEntry{
 					Metrics: garden.Metrics{
 						DiskStat: garden.ContainerDiskStat{
-							InodesUsed: 1,
+							TotalInodesUsed: 1,
 						},
 					},
 				},
 				"handle2": garden.ContainerMetricsEntry{
 					Metrics: garden.Metrics{
 						DiskStat: garden.ContainerDiskStat{
-							InodesUsed: 2,
+							TotalInodesUsed: 2,
 						},
 					},
 				},
@@ -1506,7 +1506,7 @@ var _ = Describe("When a client connects", func() {
 						"success": garden.ContainerMetricsEntry{
 							Metrics: garden.Metrics{
 								DiskStat: garden.ContainerDiskStat{
-									InodesUsed: 1,
+									TotalInodesUsed: 1,
 								},
 							},
 						},

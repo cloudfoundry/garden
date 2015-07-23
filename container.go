@@ -292,8 +292,10 @@ type ContainerCPUStat struct {
 }
 
 type ContainerDiskStat struct {
-	BytesUsed  uint64
-	InodesUsed uint64
+	TotalBytesUsed      uint64
+	TotalInodesUsed     uint64
+	ExclusiveBytesUsed  uint64
+	ExclusiveInodesUsed uint64
 }
 
 type ContainerBandwidthStat struct {
