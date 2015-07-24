@@ -443,12 +443,14 @@ var _ = Describe("Connection", func() {
 							InodeHard: 42,
 							ByteSoft:  42,
 							ByteHard:  42,
+							Scope:     garden.DiskLimitScopeTotal,
 						}, &garden.DiskLimits{}),
 						ghttp.RespondWith(200, marshalProto(&garden.DiskLimits{
 							InodeSoft: 7,
 							InodeHard: 8,
 							ByteSoft:  11,
 							ByteHard:  12,
+							Scope:     garden.DiskLimitScopeExclusive,
 						})),
 					),
 				)
@@ -461,6 +463,7 @@ var _ = Describe("Connection", func() {
 
 					ByteSoft: 42,
 					ByteHard: 42,
+					Scope:    garden.DiskLimitScopeTotal,
 				})
 
 				Ω(err).ShouldNot(HaveOccurred())
@@ -469,6 +472,7 @@ var _ = Describe("Connection", func() {
 					InodeHard: 8,
 					ByteSoft:  11,
 					ByteHard:  12,
+					Scope:     garden.DiskLimitScopeExclusive,
 				}))
 			})
 		})
@@ -483,6 +487,7 @@ var _ = Describe("Connection", func() {
 							InodeHard: 8,
 							ByteSoft:  11,
 							ByteHard:  12,
+							Scope:     garden.DiskLimitScopeExclusive,
 						})),
 					),
 				)
@@ -497,6 +502,7 @@ var _ = Describe("Connection", func() {
 					InodeHard: 8,
 					ByteSoft:  11,
 					ByteHard:  12,
+					Scope:     garden.DiskLimitScopeExclusive,
 				}))
 			})
 		})

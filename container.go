@@ -321,6 +321,8 @@ type DiskLimits struct {
 
 	ByteSoft uint64 `json:"byte_soft,omitempty"`
 	ByteHard uint64 `json:"byte_hard,omitempty"`
+
+	Scope DiskLimitScope `json:"scope,omitempty"`
 }
 
 type MemoryLimits struct {
@@ -353,3 +355,8 @@ type ResourceLimits struct {
 	Sigpending *uint64 `json:"sigpending,omitempty"`
 	Stack      *uint64 `json:"stack,omitempty"`
 }
+
+type DiskLimitScope uint8
+
+const DiskLimitScopeTotal DiskLimitScope = 0
+const DiskLimitScopeExclusive DiskLimitScope = 1

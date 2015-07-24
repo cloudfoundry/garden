@@ -396,6 +396,7 @@ var _ = Describe("Container", func() {
 				InodeHard: 8,
 				ByteSoft:  11,
 				ByteHard:  12,
+				Scope:     garden.DiskLimitScopeExclusive,
 			}
 
 			fakeConnection.CurrentDiskLimitsReturns(limitsToReturn, nil)
