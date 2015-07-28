@@ -76,7 +76,6 @@ func (h *hijackable) Hijack(handler string, body io.Reader, params rata.Params, 
 	}
 
 	hijackedConn, hijackedResponseReader := client.Hijack()
-
 	return hijackedConn, hijackedResponseReader, nil
 }
 
