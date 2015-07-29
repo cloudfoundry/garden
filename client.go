@@ -165,6 +165,16 @@ type ContainerSpec struct {
 	// is the same as the root user in the host. Otherwise, the container has a user namespace and the root
 	// user in the container is mapped to a non-root user in the host. Defaults to false.
 	Privileged bool `json:"privileged,omitempty"`
+
+	// Limits to be applied to the newly created container.
+	Limits Limits `json:"limits,omitempty"`
+}
+
+type Limits struct {
+	Bandwidth BandwidthLimits `json:"bandwidth_limits,omitempty"`
+	CPU       CPULimits       `json:"cpu_limits,omitempty"`
+	Disk      DiskLimits      `json:"disk_limits,omitempty"`
+	Memory    MemoryLimits    `json:"memory_limits,omitempty"`
 }
 
 // BindMount specifies parameters for a single mount point.
