@@ -173,6 +173,12 @@ var _ = Describe("When a client connects", func() {
 					"prop-b": "val-b",
 				},
 				Env: []string{"env1=env1Value", "env2=env2Value"},
+				Limits: garden.Limits{
+					Bandwidth: garden.BandwidthLimits{
+						RateInBytesPerSecond:      42,
+						BurstRateInBytesPerSecond: 68,
+					},
+				},
 			})
 			Ω(err).ShouldNot(HaveOccurred())
 
@@ -194,6 +200,38 @@ var _ = Describe("When a client connects", func() {
 					"prop-b": "val-b",
 				},
 				Env: []string{"env1=env1Value", "env2=env2Value"},
+				Limits: garden.Limits{
+					Bandwidth: garden.BandwidthLimits{
+						RateInBytesPerSecond:      42,
+						BurstRateInBytesPerSecond: 68,
+					},
+				},
+
+				// type DiskLimits struct {
+				// 	InodeSoft uint64 `json:"inode_soft,omitempty"`
+				// 	InodeHard uint64 `json:"inode_hard,omitempty"`
+
+				// 	ByteSoft uint64 `json:"byte_soft,omitempty"`
+				// 	ByteHard uint64 `json:"byte_hard,omitempty"`
+
+				// 	Scope DiskLimitScope `json:"scope,omitempty"`
+				// }
+
+				// type MemoryLimits struct {
+				// 	//	Memory usage limit in bytes.
+				// 	LimitInBytes uint64 `json:"limit_in_bytes,omitempty"`
+				// }
+
+				// type CPULimits struct {
+				// 	LimitInShares uint64 `json:"limit_in_shares,omitempty"`
+				// }
+
+				// 	} `json:"bandwidth_limits,omitempty"`
+				// CPU       CPULimits       `json:"cpu_limits,omitempty"`
+				// Disk      DiskLimits      `json:"disk_limits,omitempty"`
+				// Memory    MemoryLimits    `json:"memory_limits,omitempty"`
+
+				//				}
 			}))
 		})
 
