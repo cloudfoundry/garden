@@ -178,6 +178,19 @@ var _ = Describe("When a client connects", func() {
 						RateInBytesPerSecond:      42,
 						BurstRateInBytesPerSecond: 68,
 					},
+					Disk: garden.DiskLimits{
+						InodeSoft: 1,
+						InodeHard: 2,
+						ByteSoft:  3,
+						ByteHard:  4,
+						Scope:     garden.DiskLimitScopeExclusive,
+					},
+					Memory: garden.MemoryLimits{
+						LimitInBytes: 1024,
+					},
+					CPU: garden.CPULimits{
+						LimitInShares: 5,
+					},
 				},
 			})
 			Ω(err).ShouldNot(HaveOccurred())
@@ -205,33 +218,20 @@ var _ = Describe("When a client connects", func() {
 						RateInBytesPerSecond:      42,
 						BurstRateInBytesPerSecond: 68,
 					},
+					Disk: garden.DiskLimits{
+						InodeSoft: 1,
+						InodeHard: 2,
+						ByteSoft:  3,
+						ByteHard:  4,
+						Scope:     garden.DiskLimitScopeExclusive,
+					},
+					Memory: garden.MemoryLimits{
+						LimitInBytes: 1024,
+					},
+					CPU: garden.CPULimits{
+						LimitInShares: 5,
+					},
 				},
-
-				// type DiskLimits struct {
-				// 	InodeSoft uint64 `json:"inode_soft,omitempty"`
-				// 	InodeHard uint64 `json:"inode_hard,omitempty"`
-
-				// 	ByteSoft uint64 `json:"byte_soft,omitempty"`
-				// 	ByteHard uint64 `json:"byte_hard,omitempty"`
-
-				// 	Scope DiskLimitScope `json:"scope,omitempty"`
-				// }
-
-				// type MemoryLimits struct {
-				// 	//	Memory usage limit in bytes.
-				// 	LimitInBytes uint64 `json:"limit_in_bytes,omitempty"`
-				// }
-
-				// type CPULimits struct {
-				// 	LimitInShares uint64 `json:"limit_in_shares,omitempty"`
-				// }
-
-				// 	} `json:"bandwidth_limits,omitempty"`
-				// CPU       CPULimits       `json:"cpu_limits,omitempty"`
-				// Disk      DiskLimits      `json:"disk_limits,omitempty"`
-				// Memory    MemoryLimits    `json:"memory_limits,omitempty"`
-
-				//				}
 			}))
 		})
 
