@@ -1109,6 +1109,8 @@ func (s *GardenServer) streamInput(decoder *json.Decoder, in *io.PipeWriter, pro
 			}
 
 		case payload.Signal != nil:
+			s.logger.Info("stream-input-process-signal", lager.Data{"payload": payload})
+
 			switch *payload.Signal {
 			case garden.SignalKill:
 				err = process.Signal(garden.SignalKill)
