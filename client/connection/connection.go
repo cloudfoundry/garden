@@ -266,7 +266,7 @@ func (c *connection) streamProcess(handle string, processIO garden.ProcessIO, hi
 		streamHandler.streamOut(processIO.Stderr, stderr)
 	}
 
-	go func(hijackedConn net.Conn) {
+	go func() {
 		defer hijackedConn.Close()
 		if stdoutConn != nil {
 			defer stdoutConn.Close()
@@ -277,7 +277,7 @@ func (c *connection) streamProcess(handle string, processIO garden.ProcessIO, hi
 
 		exitCode, err := streamHandler.wait(decoder)
 		process.exited(exitCode, err)
-	}(hijackedConn)
+	}()
 
 	return process, nil
 }
