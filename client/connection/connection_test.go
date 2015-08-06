@@ -1089,7 +1089,7 @@ var _ = Describe("Connection", func() {
 
 							transport.WriteMessage(conn, map[string]interface{}{
 								"process_id": 42,
-								"stream_id":  123,
+								"stream_id":  "123",
 							})
 
 							var payload map[string]interface{}
@@ -1216,7 +1216,7 @@ var _ = Describe("Connection", func() {
 
 							transport.WriteMessage(conn, map[string]interface{}{
 								"process_id": 42,
-								"stream_id":  123,
+								"stream_id":  "123",
 							})
 
 							var payload map[string]interface{}
@@ -1274,7 +1274,7 @@ var _ = Describe("Connection", func() {
 
 							transport.WriteMessage(conn, map[string]interface{}{
 								"process_id": 42,
-								"stream_id":  123,
+								"stream_id":  "123",
 							})
 
 							var payload map[string]interface{}
@@ -1342,7 +1342,7 @@ var _ = Describe("Connection", func() {
 
 							transport.WriteMessage(conn, map[string]interface{}{
 								"process_id": 42,
-								"stream_id":  123,
+								"stream_id":  "123",
 							})
 
 							// the stdin data may come in before or after the tty message
@@ -1412,7 +1412,7 @@ var _ = Describe("Connection", func() {
 
 							transport.WriteMessage(conn, map[string]interface{}{
 								"process_id": 42,
-								"stream_id":  123,
+								"stream_id":  "123",
 							})
 						},
 					),
@@ -1463,7 +1463,7 @@ var _ = Describe("Connection", func() {
 
 							transport.WriteMessage(conn, map[string]interface{}{
 								"process_id": 42,
-								"stream_id":  123,
+								"stream_id":  "123",
 							})
 						},
 					),
@@ -1495,7 +1495,7 @@ var _ = Describe("Connection", func() {
 						ghttp.VerifyRequest("POST", "/containers/foo-handle/processes"),
 						ghttp.RespondWith(200, marshalProto(map[string]interface{}{
 							"process_id": 42,
-							"stream_id":  123,
+							"stream_id":  "123",
 						},
 							map[string]interface{}{
 								"process_id": 42,
@@ -1567,7 +1567,7 @@ var _ = Describe("Connection", func() {
 
 							transport.WriteMessage(conn, map[string]interface{}{
 								"process_id": 42,
-								"stream_id":  123,
+								"stream_id":  "123",
 							})
 
 							var payload map[string]interface{}
@@ -1654,7 +1654,7 @@ var _ = Describe("Connection", func() {
 
 							transport.WriteMessage(conn, map[string]interface{}{
 								"process_id": 42,
-								"stream_id":  123,
+								"stream_id":  "123",
 							})
 
 							decoder := json.NewDecoder(br)
@@ -1697,7 +1697,7 @@ var _ = Describe("Connection", func() {
 						ghttp.VerifyRequest("GET", "/containers/foo-handle/processes/42"),
 						ghttp.RespondWith(200, marshalProto(map[string]interface{}{
 							"process_id": 42,
-							"stream_id":  123,
+							"stream_id":  "123",
 						},
 							map[string]interface{}{
 								"process_id": 42,
@@ -1752,7 +1752,7 @@ var _ = Describe("Connection", func() {
 
 							transport.WriteMessage(conn, map[string]interface{}{
 								"process_id": 42,
-								"stream_id":  123,
+								"stream_id":  "123",
 							})
 
 							transport.WriteMessage(conn, map[string]interface{}{

@@ -11,6 +11,7 @@ import (
 	"github.com/cloudfoundry-incubator/garden"
 	"github.com/cloudfoundry-incubator/garden/routes"
 	"github.com/cloudfoundry-incubator/garden/server/bomberman"
+	"github.com/cloudfoundry-incubator/garden/server/streamer"
 	"github.com/pivotal-golang/lager"
 	"github.com/tedsuo/rata"
 )
@@ -36,7 +37,7 @@ type GardenServer struct {
 	conns map[net.Conn]net.Conn
 	mu    sync.Mutex
 
-	streamer *StreamServer
+	streamer *streamer.Streamer
 
 	destroys  map[string]struct{}
 	destroysL *sync.Mutex
@@ -62,7 +63,7 @@ func New(
 		handling: new(sync.WaitGroup),
 		conns:    make(map[net.Conn]net.Conn),
 
-		streamer: NewSteamServer(),
+		streamer: streamer.New(time.Minute),
 
 		destroys:  make(map[string]struct{}),
 		destroysL: new(sync.Mutex),
@@ -91,8 +92,8 @@ func New(
 		routes.BulkInfo:               http.HandlerFunc(s.handleBulkInfo),
 		routes.BulkMetrics:            http.HandlerFunc(s.handleBulkMetrics),
 		routes.Run:                    http.HandlerFunc(s.handleRun),
-		routes.Stdout:                 http.HandlerFunc(s.streamer.handleStdout),
-		routes.Stderr:                 http.HandlerFunc(s.streamer.handleStderr),
+		routes.Stdout:                 streamer.HandlerFunc(s.streamer.ServeStdout),
+		routes.Stderr:                 streamer.HandlerFunc(s.streamer.ServeStderr),
 		routes.Attach:                 http.HandlerFunc(s.handleAttach),
 		routes.Metrics:                http.HandlerFunc(s.handleMetrics),
 		routes.Properties:             http.HandlerFunc(s.handleProperties),

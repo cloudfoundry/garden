@@ -218,7 +218,7 @@ func (c *connection) streamProcess(handle string, processIO garden.ProcessIO, hi
 		params := rata.Params{
 			"handle":   handle,
 			"pid":      fmt.Sprintf("%d", processPipeline.ProcessID()),
-			"streamid": fmt.Sprintf("%d", payload.StreamID),
+			"streamid": payload.StreamID,
 		}
 
 		return c.hijacker.Hijack(

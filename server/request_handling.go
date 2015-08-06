@@ -881,8 +881,8 @@ func (s *GardenServer) handleRun(w http.ResponseWriter, r *http.Request) {
 		"id":   process.ID(),
 	})
 
-	streamID := s.streamer.stream(stdout, stderr)
-	defer s.streamer.stop(streamID)
+	streamID := s.streamer.Stream(stdout, stderr)
+	defer s.streamer.Stop(streamID)
 
 	w.WriteHeader(http.StatusCreated)
 	w.Header().Set("Content-Type", "application/json")
@@ -898,12 +898,12 @@ func (s *GardenServer) handleRun(w http.ResponseWriter, r *http.Request) {
 
 	transport.WriteMessage(conn, &transport.ProcessPayload{
 		ProcessID: process.ID(),
-		StreamID:  streamID,
+		StreamID:  string(streamID),
 	})
 
 	go s.streamInput(json.NewDecoder(br), stdinW, process)
 
-	s.streamProcess(hLog, conn, process, stderr, stdinW)
+	s.streamProcess(hLog, conn, process, stdinW)
 }
 
 func (s *GardenServer) handleAttach(w http.ResponseWriter, r *http.Request) {
@@ -956,8 +956,8 @@ func (s *GardenServer) handleAttach(w http.ResponseWriter, r *http.Request) {
 		"id": process.ID(),
 	})
 
-	streamID := s.streamer.stream(stdout, stderr)
-	defer s.streamer.stop(streamID)
+	streamID := s.streamer.Stream(stdout, stderr)
+	defer s.streamer.Stop(streamID)
 
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
@@ -973,12 +973,12 @@ func (s *GardenServer) handleAttach(w http.ResponseWriter, r *http.Request) {
 
 	transport.WriteMessage(conn, &transport.ProcessPayload{
 		ProcessID: process.ID(),
-		StreamID:  streamID,
+		StreamID:  string(streamID),
 	})
 
 	go s.streamInput(json.NewDecoder(br), stdinW, process)
 
-	s.streamProcess(hLog, conn, process, stderr, stdinW)
+	s.streamProcess(hLog, conn, process, stdinW)
 
 }
 
@@ -1136,7 +1136,7 @@ func (s *GardenServer) streamInput(decoder *json.Decoder, in *io.PipeWriter, pro
 	}
 }
 
-func (s *GardenServer) streamProcess(logger lager.Logger, conn net.Conn, process garden.Process, stderr <-chan []byte, stdinPipe *io.PipeWriter) {
+func (s *GardenServer) streamProcess(logger lager.Logger, conn net.Conn, process garden.Process, stdinPipe *io.PipeWriter) {
 	statusCh := make(chan int, 1)
 	errCh := make(chan error, 1)
 
