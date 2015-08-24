@@ -41,7 +41,7 @@ var _ = Describe("Connection", func() {
 		server = ghttp.NewServer()
 		network = "tcp"
 		address = server.HTTPTestServer.Listener.Addr().String()
-		hijacker = NewHijackStreamer(network, address)
+		hijacker = NewHijackStreamer(network, address, nil)
 	})
 
 	JustBeforeEach(func() {
