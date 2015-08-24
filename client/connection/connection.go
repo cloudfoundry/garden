@@ -92,8 +92,12 @@ func New(network, address string) Connection {
 	return NewWithLogger(network, address, lager.NewLogger("garden-connection"))
 }
 
-func NewWithLogger(network, address string, log lager.Logger) Connection {
-	hijacker := NewHijackStreamer(network, address)
+func NewWithLogger(network, address string, logger lager.Logger) Connection {
+	return NewWithDialerAndLogger(network, address, nil, logger)
+}
+
+func NewWithDialerAndLogger(network, address string, dialer DialerFunc, log lager.Logger) Connection {
+	hijacker := NewHijackStreamer(network, address, dialer)
 	return NewWithHijacker(network, address, hijacker, log)
 }
 

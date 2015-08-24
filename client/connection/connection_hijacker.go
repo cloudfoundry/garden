@@ -22,9 +22,17 @@ type hijackable struct {
 	dialer            func(string, string) (net.Conn, error)
 }
 
-func NewHijackStreamer(network, address string) HijackStreamer {
+type DialerFunc func(network, address string) (net.Conn, error)
+
+func NewHijackStreamer(network, address string, dialFunc DialerFunc) HijackStreamer {
+	if dialFunc == nil {
+		dialFunc = func(network string, address string) (net.Conn, error) {
+			return net.DialTimeout(network, address, time.Second)
+		}
+	}
+
 	dialer := func(string, string) (net.Conn, error) {
-		return net.DialTimeout(network, address, time.Second)
+		return dialFunc(network, address)
 	}
 
 	return &hijackable{
