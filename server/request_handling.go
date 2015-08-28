@@ -8,11 +8,31 @@ import (
 	"net"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/cloudfoundry-incubator/garden"
 	"github.com/cloudfoundry-incubator/garden/transport"
 	"github.com/pivotal-golang/lager"
 )
+
+type processDebugInfo struct {
+	Path   string
+	Dir    string
+	User   string
+	Limits garden.ResourceLimits
+	TTY    *garden.TTYSpec
+}
+
+type containerDebugInfo struct {
+	Handle     string
+	GraceTime  time.Duration
+	RootFSPath string
+	BindMounts []garden.BindMount
+	Network    string
+	Properties garden.Properties
+	Privileged bool
+	Limits     garden.Limits
+}
 
 var ErrInvalidContentType = errors.New("content-type must be application/json")
 var ErrConcurrentDestroy = errors.New("container already being destroyed")
@@ -49,7 +69,16 @@ func (s *GardenServer) handleCreate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	hLog := s.logger.Session("create", lager.Data{
-		"request": spec,
+		"request": containerDebugInfo{
+			Handle:     spec.Handle,
+			GraceTime:  spec.GraceTime,
+			RootFSPath: spec.RootFSPath,
+			BindMounts: spec.BindMounts,
+			Network:    spec.Network,
+			Properties: spec.Properties,
+			Privileged: spec.Privileged,
+			Limits:     spec.Limits,
+		},
 	})
 
 	if spec.GraceTime == 0 {
@@ -847,7 +876,13 @@ func (s *GardenServer) handleRun(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	info := processInfo(request)
+	info := processDebugInfo{
+		Path:   request.Path,
+		Dir:    request.Dir,
+		User:   request.User,
+		Limits: request.Limits,
+		TTY:    request.TTY,
+	}
 
 	container, err := s.backend.Lookup(handle)
 	if err != nil {
@@ -1189,23 +1224,5 @@ func (s *GardenServer) streamProcess(logger lager.Logger, conn net.Conn, process
 
 			return
 		}
-	}
-}
-
-type debugInfo struct {
-	Path   string
-	Dir    string
-	User   string
-	Limits garden.ResourceLimits
-	TTY    *garden.TTYSpec
-}
-
-func processInfo(spec garden.ProcessSpec) debugInfo {
-	return debugInfo{
-		Path:   spec.Path,
-		Dir:    spec.Dir,
-		User:   spec.User,
-		Limits: spec.Limits,
-		TTY:    spec.TTY,
 	}
 }
