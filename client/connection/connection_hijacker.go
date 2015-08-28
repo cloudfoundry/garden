@@ -16,31 +16,27 @@ import (
 	"github.com/tedsuo/rata"
 )
 
+type DialerFunc func(network, address string) (net.Conn, error)
+
 type hijackable struct {
 	req               *rata.RequestGenerator
 	noKeepaliveClient *http.Client
-	dialer            func(string, string) (net.Conn, error)
+	dialer            DialerFunc
 }
 
-type DialerFunc func(network, address string) (net.Conn, error)
+func NewHijackStreamer(network, address string) HijackStreamer {
+	return NewHijackStreamerWithDialer(func(string, string) (net.Conn, error) {
+		return net.DialTimeout(network, address, time.Second)
+	})
+}
 
-func NewHijackStreamer(network, address string, dialFunc DialerFunc) HijackStreamer {
-	if dialFunc == nil {
-		dialFunc = func(network string, address string) (net.Conn, error) {
-			return net.DialTimeout(network, address, time.Second)
-		}
-	}
-
-	dialer := func(string, string) (net.Conn, error) {
-		return dialFunc(network, address)
-	}
-
+func NewHijackStreamerWithDialer(dialFunc DialerFunc) HijackStreamer {
 	return &hijackable{
 		req:    rata.NewRequestGenerator("http://api", routes.Routes),
-		dialer: dialer,
+		dialer: dialFunc,
 		noKeepaliveClient: &http.Client{
 			Transport: &http.Transport{
-				Dial:              dialer,
+				Dial:              dialFunc,
 				DisableKeepAlives: true,
 			},
 		},

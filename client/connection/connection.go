@@ -93,15 +93,16 @@ func New(network, address string) Connection {
 }
 
 func NewWithLogger(network, address string, logger lager.Logger) Connection {
-	return NewWithDialerAndLogger(network, address, nil, logger)
+	hijacker := NewHijackStreamer(network, address)
+	return NewWithHijacker(hijacker, logger)
 }
 
-func NewWithDialerAndLogger(network, address string, dialer DialerFunc, log lager.Logger) Connection {
-	hijacker := NewHijackStreamer(network, address, dialer)
-	return NewWithHijacker(network, address, hijacker, log)
+func NewWithDialerAndLogger(dialer DialerFunc, log lager.Logger) Connection {
+	hijacker := NewHijackStreamerWithDialer(dialer)
+	return NewWithHijacker(hijacker, log)
 }
 
-func NewWithHijacker(network, address string, hijacker HijackStreamer, log lager.Logger) Connection {
+func NewWithHijacker(hijacker HijackStreamer, log lager.Logger) Connection {
 	return &connection{
 		hijacker: hijacker,
 		log:      log,
