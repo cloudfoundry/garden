@@ -847,6 +847,8 @@ func (s *GardenServer) handleRun(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	info := processInfo(request)
+
 	container, err := s.backend.Lookup(handle)
 	if err != nil {
 		s.writeError(w, err, hLog)
@@ -857,7 +859,7 @@ func (s *GardenServer) handleRun(w http.ResponseWriter, r *http.Request) {
 	defer s.bomberman.Unpause(container.Handle())
 
 	hLog.Debug("running", lager.Data{
-		"spec": request,
+		"spec": info,
 	})
 
 	stdout := make(chan []byte, 1000)
@@ -877,7 +879,7 @@ func (s *GardenServer) handleRun(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	hLog.Info("spawned", lager.Data{
-		"spec": request,
+		"spec": info,
 		"id":   process.ID(),
 	})
 
@@ -1187,5 +1189,23 @@ func (s *GardenServer) streamProcess(logger lager.Logger, conn net.Conn, process
 
 			return
 		}
+	}
+}
+
+type debugInfo struct {
+	Path   string
+	Dir    string
+	User   string
+	Limits garden.ResourceLimits
+	TTY    *garden.TTYSpec
+}
+
+func processInfo(spec garden.ProcessSpec) debugInfo {
+	return debugInfo{
+		Path:   spec.Path,
+		Dir:    spec.Dir,
+		User:   spec.User,
+		Limits: spec.Limits,
+		TTY:    spec.TTY,
 	}
 }

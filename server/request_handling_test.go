@@ -33,6 +33,7 @@ var _ = Describe("When a client connects", func() {
 	var serverContainerGraceTime time.Duration
 
 	var logger *lagertest.TestLogger
+	var sink *lagertest.TestSink
 
 	var apiServer *server.GardenServer
 	var apiClient garden.Client
@@ -40,6 +41,8 @@ var _ = Describe("When a client connects", func() {
 
 	BeforeEach(func() {
 		logger = lagertest.NewTestLogger("test")
+		sink = lagertest.NewTestSink()
+		logger.RegisterSink(sink)
 
 		var err error
 		tmpdir, err = ioutil.TempDir(os.TempDir(), "api-server-test")
@@ -1754,6 +1757,31 @@ var _ = Describe("When a client connects", func() {
 
 						return process, nil
 					}
+				})
+
+				It("should not log any environment variables and command line args", func() {
+					process, err := container.Run(garden.ProcessSpec{
+						User: "alice",
+						Path: "echo",
+						Args: []string{"-username", "banana"},
+						Env:  []string{"PASSWORD=MY_SECRET"},
+					}, garden.ProcessIO{
+						Stdin:  bytes.NewBufferString("stdin data"),
+						Stdout: GinkgoWriter,
+						Stderr: GinkgoWriter,
+					})
+					Expect(err).ToNot(HaveOccurred())
+
+					exitCode, err := process.Wait()
+					Expect(exitCode).To(Equal(123))
+					Expect(err).ToNot(HaveOccurred())
+
+					buffer := sink.Buffer()
+
+					Expect(buffer).ToNot(gbytes.Say("PASSWORD"))
+					Expect(buffer).ToNot(gbytes.Say("MY_SECRET"))
+					Expect(buffer).ToNot(gbytes.Say("-username"))
+					Expect(buffer).ToNot(gbytes.Say("banana"))
 				})
 
 				It("runs the process and streams the output", func(done Done) {
