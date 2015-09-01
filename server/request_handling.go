@@ -29,7 +29,6 @@ type containerDebugInfo struct {
 	RootFSPath string
 	BindMounts []garden.BindMount
 	Network    string
-	Properties garden.Properties
 	Privileged bool
 	Limits     garden.Limits
 }
@@ -75,7 +74,6 @@ func (s *GardenServer) handleCreate(w http.ResponseWriter, r *http.Request) {
 			RootFSPath: spec.RootFSPath,
 			BindMounts: spec.BindMounts,
 			Network:    spec.Network,
-			Properties: spec.Properties,
 			Privileged: spec.Privileged,
 			Limits:     spec.Limits,
 		},

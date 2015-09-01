@@ -157,6 +157,18 @@ var _ = Describe("When a client connects", func() {
 			Ω(container.Handle()).Should(Equal("some-handle"))
 		})
 
+		It("should not log any container spec properties", func() {
+			_, err := apiClient.Create(garden.ContainerSpec{
+				Handle:     "some-handle",
+				Properties: garden.Properties{"CONTAINER_PROPERTY": "CONTAINER_SECRET"},
+			})
+			Ω(err).ShouldNot(HaveOccurred())
+
+			buffer := sink.Buffer()
+			Expect(buffer).ToNot(gbytes.Say("CONTAINER_PROPERTY"))
+			Expect(buffer).ToNot(gbytes.Say("CONTAINER_SECRET"))
+		})
+
 		It("should not log any environment variables", func() {
 			_, err := apiClient.Create(garden.ContainerSpec{
 				Handle: "some-handle",
