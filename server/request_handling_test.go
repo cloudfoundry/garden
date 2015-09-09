@@ -462,6 +462,34 @@ var _ = Describe("When a client connects", func() {
 					},
 				))
 			})
+
+			It("should not log the properties", func() {
+				_, err := apiClient.Containers(garden.Properties{
+					"hello": "banana",
+				})
+				Ω(err).ShouldNot(HaveOccurred())
+
+				buffer := sink.Buffer()
+				Expect(buffer).ToNot(gbytes.Say("hello"))
+				Expect(buffer).ToNot(gbytes.Say("banana"))
+			})
+
+			Context("when getting the containers fails", func() {
+				BeforeEach(func() {
+					serverBackend.ContainersReturns(nil, errors.New("oh no!"))
+				})
+
+				It("should not log the properties", func() {
+					apiClient.Containers(garden.Properties{
+						"hello": "banana",
+					})
+
+					buffer := sink.Buffer()
+					Expect(buffer).ToNot(gbytes.Say("hello"))
+					Expect(buffer).ToNot(gbytes.Say("banana"))
+				})
+			})
+
 		})
 	})
 
