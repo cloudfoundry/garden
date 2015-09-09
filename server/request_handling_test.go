@@ -657,7 +657,7 @@ var _ = Describe("When a client connects", func() {
 						return err
 					})
 
-					It("should not log any container spec properties", func() {
+					It("should not log any properties", func() {
 						_, err := container.Properties()
 						Ω(err).ShouldNot(HaveOccurred())
 
@@ -707,6 +707,15 @@ var _ = Describe("When a client connects", func() {
 						_, err := container.Property("some-property")
 						return err
 					})
+
+					It("should not log any properties", func() {
+						_, err := container.Property("some-property")
+						Ω(err).ShouldNot(HaveOccurred())
+
+						buffer := sink.Buffer()
+						Expect(buffer).ToNot(gbytes.Say("some-property"))
+						Expect(buffer).ToNot(gbytes.Say("some-property-value"))
+					})
 				})
 
 				Context("when getting the property fails", func() {
@@ -747,6 +756,15 @@ var _ = Describe("When a client connects", func() {
 					itFailsWhenTheContainerIsNotFound(func() error {
 						return container.SetProperty("some-property", "some-value")
 					})
+
+					It("should not log any properties", func() {
+						err := container.SetProperty("some-property", "some-value")
+						Ω(err).ShouldNot(HaveOccurred())
+
+						buffer := sink.Buffer()
+						Expect(buffer).ToNot(gbytes.Say("some-property"))
+						Expect(buffer).ToNot(gbytes.Say("some-value"))
+					})
 				})
 
 				Context("when setting the property fails", func() {
@@ -784,6 +802,15 @@ var _ = Describe("When a client connects", func() {
 
 					itFailsWhenTheContainerIsNotFound(func() error {
 						return container.RemoveProperty("some-property")
+					})
+
+					It("should not log any properties", func() {
+						err := container.RemoveProperty("some-property")
+						Ω(err).ShouldNot(HaveOccurred())
+
+						buffer := sink.Buffer()
+						Expect(buffer).ToNot(gbytes.Say("some-property"))
+						Expect(buffer).ToNot(gbytes.Say("some-value"))
 					})
 				})
 

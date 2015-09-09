@@ -763,9 +763,7 @@ func (s *GardenServer) handleProperty(w http.ResponseWriter, r *http.Request) {
 	s.bomberman.Pause(container.Handle())
 	defer s.bomberman.Unpause(container.Handle())
 
-	hLog.Debug("get-property", lager.Data{
-		"key": key,
-	})
+	hLog.Debug("get-property", lager.Data{})
 
 	value, err := container.Property(key)
 	if err != nil {
@@ -773,10 +771,7 @@ func (s *GardenServer) handleProperty(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	hLog.Debug("got-property", lager.Data{
-		"key":   key,
-		"value": value,
-	})
+	hLog.Debug("got-property", lager.Data{})
 
 	s.writeResponse(w, map[string]string{
 		"value": value,
@@ -809,10 +804,7 @@ func (s *GardenServer) handleSetProperty(w http.ResponseWriter, r *http.Request)
 	s.bomberman.Pause(container.Handle())
 	defer s.bomberman.Unpause(container.Handle())
 
-	hLog.Debug("set-property", lager.Data{
-		"key":   key,
-		"value": value,
-	})
+	hLog.Debug("set-property", lager.Data{})
 
 	err = container.SetProperty(key, value)
 	if err != nil {
@@ -820,10 +812,7 @@ func (s *GardenServer) handleSetProperty(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	hLog.Debug("set-property-complete", lager.Data{
-		"key":   key,
-		"value": value,
-	})
+	hLog.Debug("set-property-complete", lager.Data{})
 
 	s.writeSuccess(w)
 }
@@ -845,9 +834,7 @@ func (s *GardenServer) handleRemoveProperty(w http.ResponseWriter, r *http.Reque
 	s.bomberman.Pause(container.Handle())
 	defer s.bomberman.Unpause(container.Handle())
 
-	hLog.Debug("remove-property", lager.Data{
-		"key": key,
-	})
+	hLog.Debug("remove-property", lager.Data{})
 
 	err = container.RemoveProperty(key)
 	if err != nil {
@@ -855,9 +842,7 @@ func (s *GardenServer) handleRemoveProperty(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	hLog.Info("removed-property", lager.Data{
-		"key": key,
-	})
+	hLog.Info("removed-property", lager.Data{})
 
 	s.writeSuccess(w)
 }
