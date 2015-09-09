@@ -656,6 +656,15 @@ var _ = Describe("When a client connects", func() {
 						_, err := container.Properties()
 						return err
 					})
+
+					It("should not log any container spec properties", func() {
+						_, err := container.Properties()
+						Ω(err).ShouldNot(HaveOccurred())
+
+						buffer := sink.Buffer()
+						Expect(buffer).ToNot(gbytes.Say("foo"))
+						Expect(buffer).ToNot(gbytes.Say("bar"))
+					})
 				})
 
 				Context("when getting the properties fails", func() {
