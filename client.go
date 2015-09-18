@@ -7,11 +7,26 @@ import (
 
 //go:generate counterfeiter . Client
 
+func NewUnrecoverableError(symptom string) error {
+	return &UnrecoverableError{
+		Symptom: symptom,
+	}
+}
+
+type UnrecoverableError struct {
+	Symptom string
+}
+
+func (err *UnrecoverableError) Error() string {
+	return err.Symptom
+}
+
 type Client interface {
-	// Pings the garden server.
+	// Pings the garden server. Checks connectivity to the server. The server may, optionally, respond with specific
+	// errors indicating health issues.
 	//
 	// Errors:
-	// * None.
+	// * garden.UnrecoverableError indicates that the garden server has entered an error state from which it cannot recover
 	Ping() error
 
 	// Capacity returns the physical capacity of the server's machine.
