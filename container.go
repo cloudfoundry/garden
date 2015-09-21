@@ -2,6 +2,7 @@ package garden
 
 import (
 	"io"
+	"time"
 )
 
 //go:generate counterfeiter . Container
@@ -115,6 +116,9 @@ type Container interface {
 
 	// Metrics returns the current set of metrics for a container
 	Metrics() (Metrics, error)
+
+	// Sets the grace time.
+	SetGraceTime(graceTime time.Duration) error
 
 	// Properties returns the current set of properties
 	Properties() (Properties, error)

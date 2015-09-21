@@ -845,6 +845,32 @@ func (s *GardenServer) handleRemoveProperty(w http.ResponseWriter, r *http.Reque
 	s.writeSuccess(w)
 }
 
+func (s *GardenServer) handleSetGraceTime(w http.ResponseWriter, r *http.Request) {
+	handle := r.FormValue(":handle")
+
+	var graceTime time.Duration
+	if !s.readRequest(&graceTime, w, r) {
+		return
+	}
+
+	hLog := s.logger.Session("set-grace-time", lager.Data{
+		"handle": handle,
+	})
+
+	container, err := s.backend.Lookup(handle)
+	if err != nil {
+		s.writeError(w, err, hLog)
+		return
+	}
+
+	container.SetGraceTime(graceTime)
+
+	s.bomberman.Defuse(container.Handle())
+	s.bomberman.Strap(container)
+
+	s.writeSuccess(w)
+}
+
 func (s *GardenServer) handleRun(w http.ResponseWriter, r *http.Request) {
 	handle := r.FormValue(":handle")
 

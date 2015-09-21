@@ -39,6 +39,8 @@ const (
 	Run    = "Run"
 	Attach = "Attach"
 
+	SetGraceTime = "SetGraceTime"
+
 	Properties  = "Properties"
 	Property    = "Property"
 	SetProperty = "SetProperty"
@@ -84,6 +86,8 @@ var Routes = rata.Routes{
 	{Path: "/containers/:handle/processes/:pid/attaches/:streamid/stderr", Method: "GET", Name: Stderr},
 	{Path: "/containers/:handle/processes", Method: "POST", Name: Run},
 	{Path: "/containers/:handle/processes/:pid", Method: "GET", Name: Attach},
+
+	{Path: "/containers/:handle/grace_time", Method: "PUT", Name: SetGraceTime},
 
 	{Path: "/containers/:handle/properties", Method: "GET", Name: Properties},
 	{Path: "/containers/:handle/properties/:key", Method: "GET", Name: Property},

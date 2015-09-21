@@ -742,6 +742,45 @@ var _ = Describe("Connection", func() {
 		})
 	})
 
+	Describe("Setting the grace time", func() {
+		var (
+			status    int
+			handle    string
+			graceTime time.Duration
+		)
+
+		BeforeEach(func() {
+			handle = "container-handle"
+			graceTime = time.Second * 5
+			status = 200
+		})
+
+		JustBeforeEach(func() {
+			server.AppendHandlers(
+				ghttp.CombineHandlers(
+					ghttp.VerifyRequest("PUT", fmt.Sprintf("/containers/%s/grace_time", handle)),
+					// interface{} confusion: the JSON decoder decodes numberics to float64...
+					verifyRequestBody(float64(graceTime), float64(0)),
+					ghttp.RespondWith(status, "{}"),
+				),
+			)
+		})
+
+		It("send SetGraceTime request", func() {
+			Ω(connection.SetGraceTime(handle, graceTime)).Should(Succeed())
+		})
+
+		Context("when setting grace time fails", func() {
+			BeforeEach(func() {
+				status = 400
+			})
+
+			It("returns an error", func() {
+				Ω(connection.SetGraceTime(handle, graceTime)).ShouldNot(Succeed())
+			})
+		})
+	})
+
 	Describe("Getting container info", func() {
 		var infoResponse garden.ContainerInfo
 

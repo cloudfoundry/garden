@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net"
 	"strings"
+	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -598,6 +599,32 @@ var _ = Describe("Container", func() {
 			Ω(rule.Ports[0]).Should(Equal(garden.PortRange{Start: 12, End: 24}))
 
 			Ω(rule.Log).Should(Equal(true))
+		})
+	})
+
+	Describe(("GraceTime"), func() {
+		It("send the set grace time request", func() {
+			graceTime := time.Second * 5
+
+			Ω(container.SetGraceTime(graceTime)).Should(Succeed())
+
+			Ω(fakeConnection.SetGraceTimeCallCount()).Should(Equal(1))
+			handle, actualGraceTime := fakeConnection.SetGraceTimeArgsForCall(0)
+			Ω(handle).Should(Equal("some-handle"))
+			Ω(actualGraceTime).Should(Equal(graceTime))
+		})
+
+		Context("when the request fails", func() {
+			disaster := errors.New("banana")
+
+			BeforeEach(func() {
+				fakeConnection.SetGraceTimeReturns(disaster)
+			})
+
+			It("returns the error", func() {
+				err := container.SetGraceTime(time.Second * 5)
+				Ω(err).Should(Equal(disaster))
+			})
 		})
 	})
 

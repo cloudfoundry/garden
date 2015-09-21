@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/cloudfoundry-incubator/garden"
 	"github.com/cloudfoundry-incubator/garden/routes"
@@ -59,6 +60,8 @@ type Connection interface {
 
 	NetIn(handle string, hostPort, containerPort uint32) (uint32, uint32, error)
 	NetOut(handle string, rule garden.NetOutRule) error
+
+	SetGraceTime(handle string, graceTime time.Duration) error
 
 	Properties(handle string) (garden.Properties, error)
 	Property(handle string, name string) (string, error)
@@ -565,6 +568,10 @@ func (c *connection) List(filterProperties garden.Properties) ([]string, error) 
 	}
 
 	return res.Handles, nil
+}
+
+func (c *connection) SetGraceTime(handle string, graceTime time.Duration) error {
+	return c.do(routes.SetGraceTime, graceTime, &struct{}{}, rata.Params{"handle": handle}, nil)
 }
 
 func (c *connection) Properties(handle string) (garden.Properties, error) {

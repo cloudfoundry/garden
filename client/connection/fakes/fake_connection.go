@@ -4,6 +4,7 @@ package fakes
 import (
 	"io"
 	"sync"
+	"time"
 
 	"github.com/cloudfoundry-incubator/garden"
 	"github.com/cloudfoundry-incubator/garden/client/connection"
@@ -221,6 +222,15 @@ type FakeConnection struct {
 		rule   garden.NetOutRule
 	}
 	netOutReturns struct {
+		result1 error
+	}
+	SetGraceTimeStub        func(handle string, graceTime time.Duration) error
+	setGraceTimeMutex       sync.RWMutex
+	setGraceTimeArgsForCall []struct {
+		handle    string
+		graceTime time.Duration
+	}
+	setGraceTimeReturns struct {
 		result1 error
 	}
 	PropertiesStub        func(handle string) (garden.Properties, error)
@@ -1021,6 +1031,39 @@ func (fake *FakeConnection) NetOutArgsForCall(i int) (string, garden.NetOutRule)
 func (fake *FakeConnection) NetOutReturns(result1 error) {
 	fake.NetOutStub = nil
 	fake.netOutReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *FakeConnection) SetGraceTime(handle string, graceTime time.Duration) error {
+	fake.setGraceTimeMutex.Lock()
+	fake.setGraceTimeArgsForCall = append(fake.setGraceTimeArgsForCall, struct {
+		handle    string
+		graceTime time.Duration
+	}{handle, graceTime})
+	fake.setGraceTimeMutex.Unlock()
+	if fake.SetGraceTimeStub != nil {
+		return fake.SetGraceTimeStub(handle, graceTime)
+	} else {
+		return fake.setGraceTimeReturns.result1
+	}
+}
+
+func (fake *FakeConnection) SetGraceTimeCallCount() int {
+	fake.setGraceTimeMutex.RLock()
+	defer fake.setGraceTimeMutex.RUnlock()
+	return len(fake.setGraceTimeArgsForCall)
+}
+
+func (fake *FakeConnection) SetGraceTimeArgsForCall(i int) (string, time.Duration) {
+	fake.setGraceTimeMutex.RLock()
+	defer fake.setGraceTimeMutex.RUnlock()
+	return fake.setGraceTimeArgsForCall[i].handle, fake.setGraceTimeArgsForCall[i].graceTime
+}
+
+func (fake *FakeConnection) SetGraceTimeReturns(result1 error) {
+	fake.SetGraceTimeStub = nil
+	fake.setGraceTimeReturns = struct {
 		result1 error
 	}{result1}
 }

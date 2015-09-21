@@ -2,6 +2,7 @@ package client
 
 import (
 	"io"
+	"time"
 
 	"github.com/cloudfoundry-incubator/garden"
 	"github.com/cloudfoundry-incubator/garden/client/connection"
@@ -111,6 +112,10 @@ func (container *container) NetOut(netOutRule garden.NetOutRule) error {
 
 func (container *container) Metrics() (garden.Metrics, error) {
 	return container.connection.Metrics(container.handle)
+}
+
+func (container *container) SetGraceTime(graceTime time.Duration) error {
+	return container.connection.SetGraceTime(container.handle, graceTime)
 }
 
 func (container *container) Properties() (garden.Properties, error) {
