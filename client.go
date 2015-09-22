@@ -1,26 +1,8 @@
 package garden
 
-import (
-	"fmt"
-	"time"
-)
+import "time"
 
 //go:generate counterfeiter . Client
-
-func NewUnrecoverableError(symptom string) error {
-	return &UnrecoverableError{
-		Symptom: symptom,
-	}
-}
-
-type UnrecoverableError struct {
-	Symptom string
-}
-
-func (err *UnrecoverableError) Error() string {
-	return err.Symptom
-}
-
 type Client interface {
 	// Pings the garden server. Checks connectivity to the server. The server may, optionally, respond with specific
 	// errors indicating health issues.
@@ -74,28 +56,6 @@ type Client interface {
 	// Errors:
 	// * Container not found.
 	Lookup(handle string) (Container, error)
-}
-
-type ContainerNotFoundError struct {
-	Handle string
-}
-
-func (err ContainerNotFoundError) Error() string {
-	return fmt.Sprintf("unknown handle: %s", err.Handle)
-}
-
-func NewServiceUnavailableError(cause string) error {
-	return &ServiceUnavailableError{
-		Cause: cause,
-	}
-}
-
-type ServiceUnavailableError struct {
-	Cause string
-}
-
-func (err *ServiceUnavailableError) Error() string {
-	return err.Cause
 }
 
 // ContainerSpec specifies the parameters for creating a container. All parameters are optional.

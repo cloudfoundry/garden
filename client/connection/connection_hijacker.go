@@ -2,6 +2,7 @@ package connection
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -76,6 +77,7 @@ func (h *hijackable) Hijack(handler string, body io.Reader, params rata.Params, 
 		if err != nil {
 			return nil, nil, fmt.Errorf("Backend error: Exit status: %d, error reading response body: %s", httpResp.StatusCode, err)
 		}
+
 		return nil, nil, fmt.Errorf("Backend error: Exit status: %d, message: %s", httpResp.StatusCode, errRespBytes)
 	}
 
@@ -104,18 +106,13 @@ func (c *hijackable) Stream(handler string, body io.Reader, params rata.Params, 
 	}
 
 	if httpResp.StatusCode < 200 || httpResp.StatusCode > 299 {
-		errResponse, err := ioutil.ReadAll(httpResp.Body)
-		httpResp.Body.Close()
+		var result garden.Error
+		err := json.NewDecoder(httpResp.Body).Decode(&result)
 		if err != nil {
-			return nil, fmt.Errorf("bad response: %s", httpResp.Status)
+			return nil, fmt.Errorf("bad response: %s", err)
 		}
 
-		if httpResp.StatusCode == http.StatusServiceUnavailable {
-			// The body has the actual error string formed at the server.
-			return nil, garden.NewServiceUnavailableError(string(errResponse))
-		}
-
-		return nil, Error{httpResp.StatusCode, string(errResponse)}
+		return nil, result.Err
 	}
 
 	return httpResp.Body, nil

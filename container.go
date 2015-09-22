@@ -226,18 +226,6 @@ type ContainerInfo struct {
 	MappedPorts   []PortMapping //
 }
 
-func NewError(msg string) *Error {
-	return &Error{msg}
-}
-
-type Error struct {
-	ErrorMsg string `json:"error_msg"`
-}
-
-func (e *Error) Error() string {
-	return e.ErrorMsg
-}
-
 type ContainerInfoEntry struct {
 	Info ContainerInfo
 	Err  *Error

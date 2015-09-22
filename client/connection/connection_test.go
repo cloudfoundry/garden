@@ -124,7 +124,7 @@ var _ = Describe("Connection", func() {
 				server.AppendHandlers(
 					ghttp.CombineHandlers(
 						ghttp.VerifyRequest("GET", "/ping"),
-						ghttp.RespondWith(http.StatusServiceUnavailable, "Special Error Message"),
+						ghttp.RespondWith(http.StatusGatewayTimeout, `{ "Type": "ServiceUnavailableError" , "Message": "Special Error Message"}`),
 					),
 				)
 			})
@@ -136,8 +136,28 @@ var _ = Describe("Connection", func() {
 
 			It("should return an error of the appropriate type", func() {
 				err := connection.Ping()
-				_, ok := err.(*garden.ServiceUnavailableError)
-				Ω(ok).Should(BeTrue())
+				Expect(err).To(BeAssignableToTypeOf(garden.ServiceUnavailableError{}))
+			})
+		})
+
+		Context("when the request fails with extra special error code http.StatusInternalServerError", func() {
+			BeforeEach(func() {
+				server.AppendHandlers(
+					ghttp.CombineHandlers(
+						ghttp.VerifyRequest("GET", "/ping"),
+						ghttp.RespondWith(http.StatusGatewayTimeout, `{ "Type": "UnrecoverableError" , "Message": "Extra Special Error Message"}`),
+					),
+				)
+			})
+
+			It("should return an error without the http info in the error message", func() {
+				err := connection.Ping()
+				Expect(err).Should(MatchError("Extra Special Error Message"))
+			})
+
+			It("should return an error of the appropriate unrecoverable type", func() {
+				err := connection.Ping()
+				Expect(err).To(BeAssignableToTypeOf(garden.UnrecoverableError{}))
 			})
 		})
 	})
@@ -254,17 +274,17 @@ var _ = Describe("Connection", func() {
 			})
 		})
 
-		Context("when destroying fails", func() {
+		Context("when destroying fails because the container doesn't exist", func() {
 			BeforeEach(func() {
 				server.AppendHandlers(
 					ghttp.CombineHandlers(
 						ghttp.VerifyRequest("DELETE", "/containers/foo"),
-						ghttp.RespondWith(423, "some error")))
+						ghttp.RespondWith(404, `{ "Type": "ContainerNotFoundError", "Handle" : "some handle"}`)))
 			})
 
-			It("return an appropriate error with the code and message", func() {
+			It("return an appropriate error with the message", func() {
 				err := connection.Destroy("foo")
-				Ω(err).Should(MatchError(Error{423, "some error"}))
+				Ω(err).Should(MatchError(garden.ContainerNotFoundError{Handle: "some handle"}))
 			})
 		})
 	})
@@ -872,7 +892,7 @@ var _ = Describe("Connection", func() {
 
 				expectedBulkInfo := map[string]garden.ContainerInfoEntry{
 					"error": garden.ContainerInfoEntry{
-						Err: garden.NewError("Oopps"),
+						Err: &garden.Error{errors.New("Oopps")},
 					},
 					"success": garden.ContainerInfoEntry{
 						Info: garden.ContainerInfo{
@@ -957,7 +977,7 @@ var _ = Describe("Connection", func() {
 
 				errorBulkMetrics := map[string]garden.ContainerMetricsEntry{
 					"error": garden.ContainerMetricsEntry{
-						Err: garden.NewError("Oh noes!"),
+						Err: &garden.Error{errors.New("Oh noes!")},
 					},
 					"success": garden.ContainerMetricsEntry{
 						Metrics: garden.Metrics{

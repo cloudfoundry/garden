@@ -96,6 +96,16 @@ var _ = Describe("When a client connects", func() {
 			})
 		})
 
+		Context("when the backend ping fails with an UnrecoverableError", func() {
+			BeforeEach(func() {
+				serverBackend.PingReturns(garden.NewUnrecoverableError("ermahgahd!"))
+			})
+
+			It("returns an UnrecoverableError", func() {
+				Expect(apiClient.Ping()).Should(BeAssignableToTypeOf(garden.UnrecoverableError{}))
+			})
+		})
+
 		Context("when the server is not up", func() {
 			BeforeEach(func() {
 				isRunning = false
@@ -326,7 +336,7 @@ var _ = Describe("When a client connects", func() {
 			})
 
 			It("client returns an error of type ServiceUnavailableError", func() {
-				_, ok := err.(*garden.ServiceUnavailableError)
+				_, ok := err.(garden.ServiceUnavailableError)
 				Ω(ok).Should(BeTrue())
 			})
 		})
@@ -1590,7 +1600,7 @@ var _ = Describe("When a client connects", func() {
 
 					expectedBulkInfo := map[string]garden.ContainerInfoEntry{
 						"error": garden.ContainerInfoEntry{
-							Err: garden.NewError("Oopps!"),
+							Err: &garden.Error{errors.New("Oopps!")},
 						},
 						"success": garden.ContainerInfoEntry{
 							Info: garden.ContainerInfo{
@@ -1654,7 +1664,7 @@ var _ = Describe("When a client connects", func() {
 
 					errorBulkMetrics := map[string]garden.ContainerMetricsEntry{
 						"error": garden.ContainerMetricsEntry{
-							Err: garden.NewError("Oh noes!"),
+							Err: &garden.Error{errors.New("Oh noes!")},
 						},
 						"success": garden.ContainerMetricsEntry{
 							Metrics: garden.Metrics{

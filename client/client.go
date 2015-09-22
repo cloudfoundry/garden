@@ -53,10 +53,6 @@ func (client *client) Containers(properties garden.Properties) ([]garden.Contain
 func (client *client) Destroy(handle string) error {
 	err := client.connection.Destroy(handle)
 
-	if err, ok := err.(connection.Error); ok && err.StatusCode == 404 {
-		return garden.ContainerNotFoundError{handle}
-	}
-
 	return err
 }
 

@@ -41,8 +41,7 @@ func (s *GardenServer) handlePing(w http.ResponseWriter, r *http.Request) {
 
 	err := s.backend.Ping()
 	if err != nil {
-		hLog.Error("failed", err)
-		w.WriteHeader(http.StatusServiceUnavailable)
+		s.writeError(w, err, hLog)
 		return
 	}
 
@@ -1096,16 +1095,11 @@ func (s *GardenServer) handleBulkMetrics(w http.ResponseWriter, r *http.Request)
 func (s *GardenServer) writeError(w http.ResponseWriter, err error, logger lager.Logger) {
 	logger.Error("failed", err)
 
-	statusCode := http.StatusInternalServerError
-	if _, ok := err.(*garden.ServiceUnavailableError); ok {
-		statusCode = http.StatusServiceUnavailable
-	} else if _, ok := err.(garden.ContainerNotFoundError); ok {
-		statusCode = http.StatusNotFound
-	}
+	w.Header().Set("Content-Type", "application/json")
+	merr := &garden.Error{Err: err}
 
-	w.Header().Set("Content-Type", "text/plain")
-	w.WriteHeader(statusCode)
-	w.Write([]byte(err.Error()))
+	w.WriteHeader(merr.StatusCode())
+	json.NewEncoder(w).Encode(merr)
 }
 
 func (s *GardenServer) writeResponse(w http.ResponseWriter, msg interface{}) {
