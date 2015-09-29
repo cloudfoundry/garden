@@ -27,7 +27,7 @@ type hijackable struct {
 
 func NewHijackStreamer(network, address string) HijackStreamer {
 	return NewHijackStreamerWithDialer(func(string, string) (net.Conn, error) {
-		return net.DialTimeout(network, address, time.Second)
+		return net.DialTimeout(network, address, 2*time.Second)
 	})
 }
 
