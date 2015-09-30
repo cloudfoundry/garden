@@ -8,11 +8,11 @@ import (
 )
 
 type FakeProcess struct {
-	IDStub        func() uint32
+	IDStub        func() string
 	iDMutex       sync.RWMutex
 	iDArgsForCall []struct{}
 	iDReturns     struct {
-		result1 uint32
+		result1 string
 	}
 	WaitStub        func() (int, error)
 	waitMutex       sync.RWMutex
@@ -39,7 +39,7 @@ type FakeProcess struct {
 	}
 }
 
-func (fake *FakeProcess) ID() uint32 {
+func (fake *FakeProcess) ID() string {
 	fake.iDMutex.Lock()
 	fake.iDArgsForCall = append(fake.iDArgsForCall, struct{}{})
 	fake.iDMutex.Unlock()
@@ -56,10 +56,10 @@ func (fake *FakeProcess) IDCallCount() int {
 	return len(fake.iDArgsForCall)
 }
 
-func (fake *FakeProcess) IDReturns(result1 uint32) {
+func (fake *FakeProcess) IDReturns(result1 string) {
 	fake.IDStub = nil
 	fake.iDReturns = struct {
-		result1 uint32
+		result1 string
 	}{result1}
 }
 

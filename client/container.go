@@ -98,7 +98,7 @@ func (container *container) Run(spec garden.ProcessSpec, io garden.ProcessIO) (g
 	return container.connection.Run(container.handle, spec, io)
 }
 
-func (container *container) Attach(processID uint32, io garden.ProcessIO) (garden.Process, error) {
+func (container *container) Attach(processID string, io garden.ProcessIO) (garden.Process, error) {
 	return container.connection.Attach(container.handle, processID, io)
 }
 

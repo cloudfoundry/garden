@@ -1516,7 +1516,7 @@ var _ = Describe("When a client connects", func() {
 				ContainerIP:   "container-ip",
 				ExternalIP:    "external-ip",
 				ContainerPath: "/path/to/container",
-				ProcessIDs:    []uint32{1, 2},
+				ProcessIDs:    []string{"process-handle-1", "process-handle-2"},
 				Properties: garden.Properties{
 					"foo": "bar",
 					"a":   "b",
@@ -1687,7 +1687,7 @@ var _ = Describe("When a client connects", func() {
 		Describe("attaching", func() {
 			Context("when attaching succeeds", func() {
 				BeforeEach(func() {
-					fakeContainer.AttachStub = func(processID uint32, io garden.ProcessIO) (garden.Process, error) {
+					fakeContainer.AttachStub = func(processID string, io garden.ProcessIO) (garden.Process, error) {
 						writing := new(sync.WaitGroup)
 						writing.Add(1)
 
@@ -1710,7 +1710,7 @@ var _ = Describe("When a client connects", func() {
 
 						process := new(fakes.FakeProcess)
 
-						process.IDReturns(42)
+						process.IDReturns("process-handle")
 
 						process.WaitStub = func() (int, error) {
 							writing.Wait()
@@ -1731,11 +1731,11 @@ var _ = Describe("When a client connects", func() {
 						Stderr: stderr,
 					}
 
-					process, err := container.Attach(42, processIO)
+					process, err := container.Attach("process-handle", processIO)
 					Ω(err).ShouldNot(HaveOccurred())
 
 					pid, _ := fakeContainer.AttachArgsForCall(0)
-					Ω(pid).Should(Equal(uint32(42)))
+					Ω(pid).Should(Equal("process-handle"))
 
 					Eventually(stdout).Should(gbytes.Say("stdout data"))
 					Eventually(stdout).Should(gbytes.Say("mirrored stdin data"))
@@ -1747,7 +1747,7 @@ var _ = Describe("When a client connects", func() {
 				})
 
 				itResetsGraceTimeWhenHandling(func() {
-					process, err := container.Attach(42, garden.ProcessIO{
+					process, err := container.Attach("process-handle", garden.ProcessIO{
 						Stdin: bytes.NewBufferString("hello"),
 					})
 					Ω(err).ShouldNot(HaveOccurred())
@@ -1761,17 +1761,17 @@ var _ = Describe("When a client connects", func() {
 			Context("when the container is not found", func() {
 				It("fails", func() {
 					serverBackend.LookupReturns(nil, errors.New("not found"))
-					_, err := container.Attach(123, garden.ProcessIO{})
+					_, err := container.Attach("process-handle", garden.ProcessIO{})
 					Ω(err).Should(HaveOccurred())
 				})
 			})
 
 			Context("when waiting on the process fails server-side", func() {
 				BeforeEach(func() {
-					fakeContainer.AttachStub = func(id uint32, io garden.ProcessIO) (garden.Process, error) {
+					fakeContainer.AttachStub = func(id string, io garden.ProcessIO) (garden.Process, error) {
 						process := new(fakes.FakeProcess)
 
-						process.IDReturns(42)
+						process.IDReturns("process-handle")
 						process.WaitReturns(0, errors.New("oh no!"))
 
 						return process, nil
@@ -1779,7 +1779,7 @@ var _ = Describe("When a client connects", func() {
 				})
 
 				It("bubbles the error up", func() {
-					process, err := container.Attach(42, garden.ProcessIO{})
+					process, err := container.Attach("process-handle", garden.ProcessIO{})
 					Ω(err).ShouldNot(HaveOccurred())
 
 					_, err = process.Wait()
@@ -1794,12 +1794,12 @@ var _ = Describe("When a client connects", func() {
 				})
 
 				It("fails", func() {
-					_, err := container.Attach(123, garden.ProcessIO{})
+					_, err := container.Attach("process-handle", garden.ProcessIO{})
 					Ω(err).Should(HaveOccurred())
 				})
 
 				It("closes the stdin writer", func(done Done) {
-					container.Attach(123, garden.ProcessIO{})
+					container.Attach("process-handle", garden.ProcessIO{})
 
 					_, processIO := fakeContainer.AttachArgsForCall(0)
 					_, err := processIO.Stdin.Read([]byte{})
@@ -1870,7 +1870,7 @@ var _ = Describe("When a client connects", func() {
 
 						process := new(fakes.FakeProcess)
 
-						process.IDReturns(42)
+						process.IDReturns("process-handle")
 
 						process.WaitStub = func() (int, error) {
 							writing.Wait()
@@ -1974,7 +1974,7 @@ var _ = Describe("When a client connects", func() {
 						}()
 
 						process := new(fakes.FakeProcess)
-						process.IDReturns(42)
+						process.IDReturns("process-handle")
 
 						process.WaitStub = func() (int, error) {
 							select {}
@@ -2012,7 +2012,7 @@ var _ = Describe("When a client connects", func() {
 
 				BeforeEach(func() {
 					fakeProcess = new(fakes.FakeProcess)
-					fakeProcess.IDReturns(42)
+					fakeProcess.IDReturns("process-handle")
 					fakeProcess.WaitStub = func() (int, error) {
 						select {}
 						return 0, nil
@@ -2038,7 +2038,7 @@ var _ = Describe("When a client connects", func() {
 
 				BeforeEach(func() {
 					fakeProcess = new(fakes.FakeProcess)
-					fakeProcess.IDReturns(42)
+					fakeProcess.IDReturns("process-handle")
 					fakeProcess.WaitStub = func() (int, error) {
 						select {}
 						return 0, nil
@@ -2064,7 +2064,7 @@ var _ = Describe("When a client connects", func() {
 
 				BeforeEach(func() {
 					fakeProcess = new(fakes.FakeProcess)
-					fakeProcess.IDReturns(42)
+					fakeProcess.IDReturns("process-handle")
 					fakeProcess.WaitStub = func() (int, error) {
 						select {}
 						return 0, nil
@@ -2098,7 +2098,7 @@ var _ = Describe("When a client connects", func() {
 					fakeContainer.RunStub = func(spec garden.ProcessSpec, io garden.ProcessIO) (garden.Process, error) {
 						process := new(fakes.FakeProcess)
 
-						process.IDReturns(42)
+						process.IDReturns("process-handle")
 						process.WaitReturns(0, errors.New("oh no!"))
 
 						return process, nil

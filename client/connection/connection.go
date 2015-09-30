@@ -56,7 +56,7 @@ type Connection interface {
 	CurrentMemoryLimits(handle string) (garden.MemoryLimits, error)
 
 	Run(handle string, spec garden.ProcessSpec, io garden.ProcessIO) (garden.Process, error)
-	Attach(handle string, processID uint32, io garden.ProcessIO) (garden.Process, error)
+	Attach(handle string, processID string, io garden.ProcessIO) (garden.Process, error)
 
 	NetIn(handle string, hostPort, containerPort uint32) (uint32, uint32, error)
 	NetOut(handle string, rule garden.NetOutRule) error
@@ -183,13 +183,13 @@ func (c *connection) Run(handle string, spec garden.ProcessSpec, processIO garde
 		"application/json",
 	)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("hijack: %s", err)
 	}
 
 	return c.streamProcess(handle, processIO, hijackedConn, hijackedResponseReader)
 }
 
-func (c *connection) Attach(handle string, processID uint32, processIO garden.ProcessIO) (garden.Process, error) {
+func (c *connection) Attach(handle string, processID string, processIO garden.ProcessIO) (garden.Process, error) {
 	reqBody := new(bytes.Buffer)
 
 	hijackedConn, hijackedResponseReader, err := c.hijacker.Hijack(
@@ -197,7 +197,7 @@ func (c *connection) Attach(handle string, processID uint32, processIO garden.Pr
 		reqBody,
 		rata.Params{
 			"handle": handle,
-			"pid":    fmt.Sprintf("%d", processID),
+			"pid":    processID,
 		},
 		nil,
 		"",
@@ -225,7 +225,7 @@ func (c *connection) streamProcess(handle string, processIO garden.ProcessIO, hi
 	hijack := func(streamType string) (net.Conn, io.Reader, error) {
 		params := rata.Params{
 			"handle":   handle,
-			"pid":      fmt.Sprintf("%d", processPipeline.ProcessID()),
+			"pid":      processPipeline.ProcessID(),
 			"streamid": payload.StreamID,
 		}
 

@@ -3,7 +3,6 @@ package server
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -952,17 +951,11 @@ func (s *GardenServer) handleRun(w http.ResponseWriter, r *http.Request) {
 func (s *GardenServer) handleAttach(w http.ResponseWriter, r *http.Request) {
 	handle := r.FormValue(":handle")
 
-	var processID uint32
-
 	hLog := s.logger.Session("attach", lager.Data{
 		"handle": handle,
 	})
 
-	_, err := fmt.Sscanf(r.FormValue(":pid"), "%d", &processID)
-	if err != nil {
-		s.writeError(w, err, hLog)
-		return
-	}
+	processID := r.FormValue(":pid")
 
 	container, err := s.backend.Lookup(handle)
 	if err != nil {

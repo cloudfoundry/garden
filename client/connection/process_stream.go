@@ -9,7 +9,7 @@ import (
 )
 
 type processStream struct {
-	processID uint32
+	processID string
 	conn      net.Conn
 
 	sync.Mutex
@@ -61,6 +61,6 @@ func (s *processStream) sendPayload(payload interface{}) error {
 	return nil
 }
 
-func (s *processStream) ProcessID() uint32 {
+func (s *processStream) ProcessID() string {
 	return s.processID
 }

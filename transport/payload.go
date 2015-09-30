@@ -11,7 +11,7 @@ const (
 )
 
 type ProcessPayload struct {
-	ProcessID  uint32          `json:"process_id,omitempty"`
+	ProcessID  string          `json:"process_id,omitempty"`
 	StreamID   string          `json:"stream_id,omitempty"`
 	Source     *Source         `json:"source,omitempty"`
 	Data       *string         `json:"data,omitempty"`

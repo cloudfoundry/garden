@@ -7,7 +7,7 @@ import (
 )
 
 type process struct {
-	id uint32
+	id string
 
 	processInputStream *processStream
 	done               bool
@@ -16,7 +16,7 @@ type process struct {
 	doneL              *sync.Cond
 }
 
-func newProcess(id uint32, processInputStream *processStream) *process {
+func newProcess(id string, processInputStream *processStream) *process {
 	return &process{
 		id:                 id,
 		processInputStream: processInputStream,
@@ -24,7 +24,7 @@ func newProcess(id uint32, processInputStream *processStream) *process {
 	}
 }
 
-func (p *process) ID() uint32 {
+func (p *process) ID() string {
 	return p.id
 }
 

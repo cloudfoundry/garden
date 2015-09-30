@@ -192,11 +192,11 @@ type FakeConnection struct {
 		result1 garden.Process
 		result2 error
 	}
-	AttachStub        func(handle string, processID uint32, io garden.ProcessIO) (garden.Process, error)
+	AttachStub        func(handle string, processID string, io garden.ProcessIO) (garden.Process, error)
 	attachMutex       sync.RWMutex
 	attachArgsForCall []struct {
 		handle    string
-		processID uint32
+		processID string
 		io        garden.ProcessIO
 	}
 	attachReturns struct {
@@ -931,11 +931,11 @@ func (fake *FakeConnection) RunReturns(result1 garden.Process, result2 error) {
 	}{result1, result2}
 }
 
-func (fake *FakeConnection) Attach(handle string, processID uint32, io garden.ProcessIO) (garden.Process, error) {
+func (fake *FakeConnection) Attach(handle string, processID string, io garden.ProcessIO) (garden.Process, error) {
 	fake.attachMutex.Lock()
 	fake.attachArgsForCall = append(fake.attachArgsForCall, struct {
 		handle    string
-		processID uint32
+		processID string
 		io        garden.ProcessIO
 	}{handle, processID, io})
 	fake.attachMutex.Unlock()
@@ -952,7 +952,7 @@ func (fake *FakeConnection) AttachCallCount() int {
 	return len(fake.attachArgsForCall)
 }
 
-func (fake *FakeConnection) AttachArgsForCall(i int) (string, uint32, garden.ProcessIO) {
+func (fake *FakeConnection) AttachArgsForCall(i int) (string, string, garden.ProcessIO) {
 	fake.attachMutex.RLock()
 	defer fake.attachMutex.RUnlock()
 	return fake.attachArgsForCall[i].handle, fake.attachArgsForCall[i].processID, fake.attachArgsForCall[i].io
