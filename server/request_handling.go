@@ -1048,7 +1048,7 @@ func (s *GardenServer) handleInfo(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *GardenServer) handleBulkInfo(w http.ResponseWriter, r *http.Request) {
-	handles := strings.Split(r.URL.Query()["handles"][0], ",")
+	handles := splitHandles(r.URL.Query()["handles"][0])
 
 	hLog := s.logger.Session("bulk_info", lager.Data{
 		"handles": handles,
@@ -1067,7 +1067,7 @@ func (s *GardenServer) handleBulkInfo(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *GardenServer) handleBulkMetrics(w http.ResponseWriter, r *http.Request) {
-	handles := strings.Split(r.URL.Query()["handles"][0], ",")
+	handles := splitHandles(r.URL.Query()["handles"][0])
 
 	hLog := s.logger.Session("bulk_metrics", lager.Data{
 		"handles": handles,
@@ -1219,4 +1219,12 @@ func (s *GardenServer) streamProcess(logger lager.Logger, conn net.Conn, process
 			return
 		}
 	}
+}
+
+func splitHandles(queryHandles string) []string {
+	handles := []string{}
+	if queryHandles != "" {
+		handles = strings.Split(queryHandles, ",")
+	}
+	return handles
 }

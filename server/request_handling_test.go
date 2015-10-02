@@ -1575,6 +1575,13 @@ var _ = Describe("When a client connects", func() {
 				},
 			}
 
+			It("calls BulkInfo with empty slice when handles is empty", func() {
+				handles = nil
+				serverBackend.BulkInfoReturns(nil, nil)
+				apiClient.BulkInfo(handles)
+				Expect(serverBackend.BulkInfoArgsForCall(0)).To(BeEmpty())
+			})
+
 			It("reports information about containers by list of handles", func() {
 				serverBackend.BulkInfoReturns(expectedBulkInfo, nil)
 
@@ -1645,6 +1652,13 @@ var _ = Describe("When a client connects", func() {
 				bulkMetrics, err := apiClient.BulkMetrics(handles)
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(bulkMetrics).To(Equal(expectedBulkMetrics))
+			})
+
+			It("calls BulkMetrics with empty slice when handles is empty", func() {
+				handles = nil
+				serverBackend.BulkMetricsReturns(nil, nil)
+				apiClient.BulkMetrics(handles)
+				Expect(serverBackend.BulkMetricsArgsForCall(0)).To(BeEmpty())
 			})
 
 			Context("when retrieving bulk info fails", func() {
