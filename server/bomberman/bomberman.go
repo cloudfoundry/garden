@@ -5,16 +5,28 @@ import (
 	"github.com/cloudfoundry-incubator/garden/server/timebomb"
 )
 
+type action int
+
+const (
+	strap action = iota
+	defuse
+)
+
+type bomb struct {
+	Action         action
+	StrapContainer garden.Container
+	DefuseHandle   string
+}
+
 type Bomberman struct {
 	backend garden.Backend
 
 	detonate func(garden.Container)
 
-	strap   chan garden.Container
 	pause   chan string
 	unpause chan string
-	defuse  chan string
 	cleanup chan string
+	bomb    chan bomb
 }
 
 func New(backend garden.Backend, detonate func(garden.Container)) *Bomberman {
@@ -22,10 +34,9 @@ func New(backend garden.Backend, detonate func(garden.Container)) *Bomberman {
 		backend:  backend,
 		detonate: detonate,
 
-		strap:   make(chan garden.Container),
+		bomb:    make(chan bomb),
 		pause:   make(chan string),
 		unpause: make(chan string),
-		defuse:  make(chan string),
 		cleanup: make(chan string),
 	}
 
@@ -35,7 +46,7 @@ func New(backend garden.Backend, detonate func(garden.Container)) *Bomberman {
 }
 
 func (b *Bomberman) Strap(container garden.Container) {
-	b.strap <- container
+	b.bomb <- bomb{Action: strap, StrapContainer: container}
 }
 
 func (b *Bomberman) Pause(name string) {
@@ -47,7 +58,7 @@ func (b *Bomberman) Unpause(name string) {
 }
 
 func (b *Bomberman) Defuse(name string) {
-	b.defuse <- name
+	b.bomb <- bomb{Action: defuse, DefuseHandle: name}
 }
 
 func (b *Bomberman) manageBombs() {
@@ -55,23 +66,36 @@ func (b *Bomberman) manageBombs() {
 
 	for {
 		select {
-		case container := <-b.strap:
-			if b.backend.GraceTime(container) == 0 {
-				continue
+		case bombSignal := <-b.bomb:
+			switch bombSignal.Action {
+			case strap:
+				container := bombSignal.StrapContainer
+
+				if b.backend.GraceTime(container) == 0 {
+					continue
+				}
+
+				bomb := timebomb.New(
+					b.backend.GraceTime(container),
+					func() {
+						b.detonate(container)
+						b.cleanup <- container.Handle()
+					},
+				)
+
+				timeBombs[container.Handle()] = bomb
+				bomb.Strap()
+
+			case defuse:
+				bomb, found := timeBombs[bombSignal.DefuseHandle]
+				if !found {
+					continue
+				}
+
+				bomb.Defuse()
+
+				delete(timeBombs, bombSignal.DefuseHandle)
 			}
-
-			bomb := timebomb.New(
-				b.backend.GraceTime(container),
-				func() {
-					b.detonate(container)
-					b.cleanup <- container.Handle()
-				},
-			)
-
-			timeBombs[container.Handle()] = bomb
-
-			bomb.Strap()
-
 		case handle := <-b.pause:
 			bomb, found := timeBombs[handle]
 			if !found {
@@ -87,16 +111,6 @@ func (b *Bomberman) manageBombs() {
 			}
 
 			bomb.Unpause()
-
-		case handle := <-b.defuse:
-			bomb, found := timeBombs[handle]
-			if !found {
-				continue
-			}
-
-			bomb.Defuse()
-
-			delete(timeBombs, handle)
 
 		case handle := <-b.cleanup:
 			delete(timeBombs, handle)
