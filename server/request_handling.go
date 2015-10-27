@@ -106,7 +106,8 @@ func (s *GardenServer) handleList(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	hLog := s.logger.Session("list", lager.Data{})
+	hLog := s.logger.Session("list", lager.Data{"properties": properties})
+	hLog.Debug("started")
 
 	containers, err := s.backend.Containers(properties)
 	if err != nil {
@@ -119,6 +120,8 @@ func (s *GardenServer) handleList(w http.ResponseWriter, r *http.Request) {
 	for _, container := range containers {
 		handles = append(handles, container.Handle())
 	}
+
+	hLog.Debug("ending", lager.Data{"handles": handles})
 
 	s.writeResponse(w, &struct{ Handles []string }{handles})
 }
