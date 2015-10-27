@@ -943,9 +943,11 @@ func (s *GardenServer) handleRun(w http.ResponseWriter, r *http.Request) {
 		StreamID:  string(streamID),
 	})
 
-	go s.streamInput(json.NewDecoder(br), stdinW, process)
+	connCloseCh := make(chan struct{}, 1)
 
-	s.streamProcess(hLog, conn, process, stdinW)
+	go s.streamInput(json.NewDecoder(br), stdinW, process, connCloseCh)
+
+	s.streamProcess(hLog, conn, process, stdinW, connCloseCh)
 }
 
 func (s *GardenServer) handleAttach(w http.ResponseWriter, r *http.Request) {
@@ -1012,10 +1014,11 @@ func (s *GardenServer) handleAttach(w http.ResponseWriter, r *http.Request) {
 		StreamID:  string(streamID),
 	})
 
-	go s.streamInput(json.NewDecoder(br), stdinW, process)
+	connCloseCh := make(chan struct{}, 1)
 
-	s.streamProcess(hLog, conn, process, stdinW)
+	go s.streamInput(json.NewDecoder(br), stdinW, process, connCloseCh)
 
+	s.streamProcess(hLog, conn, process, stdinW, connCloseCh)
 }
 
 func (s *GardenServer) handleInfo(w http.ResponseWriter, r *http.Request) {
@@ -1115,11 +1118,12 @@ func (s *GardenServer) readRequest(msg interface{}, w http.ResponseWriter, r *ht
 	return true
 }
 
-func (s *GardenServer) streamInput(decoder *json.Decoder, in *io.PipeWriter, process garden.Process) {
+func (s *GardenServer) streamInput(decoder *json.Decoder, in *io.PipeWriter, process garden.Process, connCloseCh chan struct{}) {
 	for {
 		var payload transport.ProcessPayload
 		err := decoder.Decode(&payload)
 		if err != nil {
+			close(connCloseCh)
 			in.CloseWithError(errors.New("Connection closed"))
 			return
 		}
@@ -1167,7 +1171,7 @@ func (s *GardenServer) streamInput(decoder *json.Decoder, in *io.PipeWriter, pro
 	}
 }
 
-func (s *GardenServer) streamProcess(logger lager.Logger, conn net.Conn, process garden.Process, stdinPipe *io.PipeWriter) {
+func (s *GardenServer) streamProcess(logger lager.Logger, conn net.Conn, process garden.Process, stdinPipe *io.PipeWriter, connCloseCh chan struct{}) {
 	statusCh := make(chan int, 1)
 	errCh := make(chan error, 1)
 
@@ -1215,6 +1219,9 @@ func (s *GardenServer) streamProcess(logger lager.Logger, conn net.Conn, process
 			logger.Debug("detaching", lager.Data{
 				"id": process.ID(),
 			})
+
+			return
+		case <-connCloseCh:
 
 			return
 		}

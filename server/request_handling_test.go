@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/pivotal-golang/lager"
 	"io"
 	"io/ioutil"
 	"net"
@@ -287,6 +288,53 @@ var _ = Describe("When a client connects", func() {
 
 				_, err := apiClient.Create(garden.ContainerSpec{})
 				Ω(err).ShouldNot(HaveOccurred())
+
+				Eventually(serverBackend.DestroyCallCount, 2*time.Second).Should(Equal(1))
+				Ω(serverBackend.DestroyArgsForCall(0)).Should(Equal("doomed-handle"))
+
+				Ω(time.Since(before)).Should(BeNumerically("~", graceTime, 100*time.Millisecond))
+			})
+		})
+
+		Context("when a grace time is given and a process is running", func() {
+			It("destroys the container after it has been idle for the grace time", func() {
+				graceTime := time.Second
+
+				fakeContainer = new(fakes.FakeContainer)
+				fakeContainer.HandleReturns("doomed-handle")
+
+				fakeProcess := new(fakes.FakeProcess)
+				fakeProcess.IDReturns("doomed-handle")
+				fakeProcess.WaitStub = func() (int, error) {
+					select {}
+					return 0, nil
+				}
+
+				fakeContainer.RunReturns(fakeProcess, nil)
+
+				serverBackend.GraceTimeReturns(graceTime)
+				serverBackend.CreateReturns(fakeContainer, nil)
+				serverBackend.LookupReturns(fakeContainer, nil)
+
+				before := time.Now()
+
+				var clientConnection net.Conn
+
+				apiConnection := connection.NewWithDialerAndLogger(func(string, string) (net.Conn, error) {
+					var err error
+					clientConnection, err = net.DialTimeout("unix", socketPath, 2*time.Second)
+					return clientConnection, err
+				}, lager.NewLogger("garden-connection"))
+
+				apiClient = client.New(apiConnection)
+
+				container, err := apiClient.Create(garden.ContainerSpec{})
+				Ω(err).ShouldNot(HaveOccurred())
+
+				_, err = container.Run(garden.ProcessSpec{}, garden.ProcessIO{})
+				Ω(err).ShouldNot(HaveOccurred())
+
+				clientConnection.Close()
 
 				Eventually(serverBackend.DestroyCallCount, 2*time.Second).Should(Equal(1))
 				Ω(serverBackend.DestroyArgsForCall(0)).Should(Equal("doomed-handle"))
