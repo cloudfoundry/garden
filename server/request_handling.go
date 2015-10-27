@@ -106,7 +106,7 @@ func (s *GardenServer) handleList(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	hLog := s.logger.Session("list", lager.Data{"properties": properties})
+	hLog := s.logger.Session("list")
 	hLog.Debug("started")
 
 	containers, err := s.backend.Containers(properties)
