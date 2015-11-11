@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/pivotal-golang/lager"
 	"io"
 	"io/ioutil"
 	"net"
@@ -274,16 +273,22 @@ var _ = Describe("When a client connects", func() {
 		})
 
 		Context("when a grace time is given", func() {
-			It("destroys the container after it has been idle for the grace time", func() {
-				graceTime := time.Second
+			var graceTime time.Duration
+
+			BeforeEach(func() {
+				graceTime = time.Second
 
 				fakeContainer = new(fakes.FakeContainer)
 				fakeContainer.HandleReturns("doomed-handle")
-
-				serverBackend.GraceTimeReturns(graceTime)
 				serverBackend.CreateReturns(fakeContainer, nil)
 				serverBackend.LookupReturns(fakeContainer, nil)
+			})
 
+			JustBeforeEach(func() {
+				serverBackend.GraceTimeReturns(graceTime)
+			})
+
+			It("destroys the container after it has been idle for the grace time", func() {
 				before := time.Now()
 
 				_, err := apiClient.Create(garden.ContainerSpec{})
@@ -294,52 +299,42 @@ var _ = Describe("When a client connects", func() {
 
 				Ω(time.Since(before)).Should(BeNumerically("~", graceTime, 100*time.Millisecond))
 			})
-		})
 
-		Context("when a grace time is given and a process is running", func() {
-			It("destroys the container after it has been idle for the grace time", func() {
-				graceTime := time.Second
+			Context("and a process is running", func() {
+				It("destroys the container after it has been idle for the grace time", func() {
+					fakeProcess := new(fakes.FakeProcess)
+					fakeProcess.IDReturns("doomed-handle")
+					fakeProcess.WaitStub = func() (int, error) {
+						select {}
+						return 0, nil
+					}
+					fakeContainer.RunReturns(fakeProcess, nil)
 
-				fakeContainer = new(fakes.FakeContainer)
-				fakeContainer.HandleReturns("doomed-handle")
+					before := time.Now()
 
-				fakeProcess := new(fakes.FakeProcess)
-				fakeProcess.IDReturns("doomed-handle")
-				fakeProcess.WaitStub = func() (int, error) {
-					select {}
-					return 0, nil
-				}
+					var clientConnection net.Conn
 
-				fakeContainer.RunReturns(fakeProcess, nil)
+					apiConnection := connection.NewWithDialerAndLogger(func(string, string) (net.Conn, error) {
+						var err error
+						clientConnection, err = net.DialTimeout("unix", socketPath, 2*time.Second)
+						return clientConnection, err
+					}, lagertest.NewTestLogger("api-conn-dialer"))
 
-				serverBackend.GraceTimeReturns(graceTime)
-				serverBackend.CreateReturns(fakeContainer, nil)
-				serverBackend.LookupReturns(fakeContainer, nil)
+					apiClient = client.New(apiConnection)
 
-				before := time.Now()
+					container, err := apiClient.Create(garden.ContainerSpec{})
+					Ω(err).ShouldNot(HaveOccurred())
 
-				var clientConnection net.Conn
+					_, err = container.Run(garden.ProcessSpec{}, garden.ProcessIO{})
+					Ω(err).ShouldNot(HaveOccurred())
 
-				apiConnection := connection.NewWithDialerAndLogger(func(string, string) (net.Conn, error) {
-					var err error
-					clientConnection, err = net.DialTimeout("unix", socketPath, 2*time.Second)
-					return clientConnection, err
-				}, lager.NewLogger("garden-connection"))
+					clientConnection.Close()
 
-				apiClient = client.New(apiConnection)
+					Eventually(serverBackend.DestroyCallCount, 2*time.Second).Should(Equal(1))
+					Ω(serverBackend.DestroyArgsForCall(0)).Should(Equal("doomed-handle"))
 
-				container, err := apiClient.Create(garden.ContainerSpec{})
-				Ω(err).ShouldNot(HaveOccurred())
-
-				_, err = container.Run(garden.ProcessSpec{}, garden.ProcessIO{})
-				Ω(err).ShouldNot(HaveOccurred())
-
-				clientConnection.Close()
-
-				Eventually(serverBackend.DestroyCallCount, 2*time.Second).Should(Equal(1))
-				Ω(serverBackend.DestroyArgsForCall(0)).Should(Equal("doomed-handle"))
-
-				Ω(time.Since(before)).Should(BeNumerically("~", graceTime, 100*time.Millisecond))
+					Ω(time.Since(before)).Should(BeNumerically("~", graceTime, 100*time.Millisecond))
+				})
 			})
 		})
 

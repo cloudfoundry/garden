@@ -1224,6 +1224,7 @@ func (s *GardenServer) streamProcess(logger lager.Logger, conn net.Conn, process
 			})
 
 			return
+
 		case <-connCloseCh:
 
 			return
