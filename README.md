@@ -21,9 +21,14 @@
 [![Build Status](https://travis-ci.org/cloudfoundry-incubator/garden.png?branch=master)](https://travis-ci.org/cloudfoundry-incubator/garden)
 [![Coverage Status](https://coveralls.io/repos/cloudfoundry-incubator/garden/badge.png?branch=HEAD)](https://coveralls.io/r/cloudfoundry-incubator/garden?branch=HEAD)
 
+This package contains the canonical client for all Garden backends, as well as an interface and server package for backend implementors.
+Unless you're implementing your own Garden backend, you probably want to pick one of the backends listed below and start there.
+
 # Backends
 
-Garden provides a platform-neutral API for containerization. Backends implement support for various specific platforms. So far, the list of backends is as follows:
+Garden provides a platform-agnostic API for container orchestration.
+Backends implement support for various specific platforms.
+So far, the list of backends is as follows:
 
  - [Garden Linux](https://github.com/cloudfoundry-incubator/garden-linux/) - Linux backend
  - [Guardian](https://github.com/cloudfoundry-incubator/guardian/) - Linux backend using [runc](https://github.com/opencontainers/runc)
@@ -31,7 +36,8 @@ Garden provides a platform-neutral API for containerization. Backends implement 
 
 # Client API
 
-The canonical API for Garden is defined as a collection of Go interfaces. See the [godoc documentation](http://godoc.org/github.com/cloudfoundry-incubator/garden) for details.
+The canonical API for Garden is defined as a collection of Go interfaces.
+See the [godoc documentation](http://godoc.org/github.com/cloudfoundry-incubator/garden) for details.
 
 # Development
 
