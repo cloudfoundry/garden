@@ -76,7 +76,7 @@ type Container interface {
 	// If a container port is not given, the port will be the same as the
 	// container port.
 	//
-	// The two resulting ports are returned in the response.
+	// The resulting host and container ports are returned in that order.
 	//
 	// Errors:
 	// * When no port can be acquired from the server's port pool.
