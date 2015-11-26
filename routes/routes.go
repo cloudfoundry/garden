@@ -27,7 +27,6 @@ const (
 	LimitCPU         = "LimitCPU"
 	CurrentCPULimits = "CurrentCPULimits"
 
-	LimitDisk         = "LimitDisk"
 	CurrentDiskLimits = "CurrentDiskLimits"
 
 	LimitMemory         = "LimitMemory"
@@ -73,7 +72,6 @@ var Routes = rata.Routes{
 	{Path: "/containers/:handle/limits/cpu", Method: "PUT", Name: LimitCPU},
 	{Path: "/containers/:handle/limits/cpu", Method: "GET", Name: CurrentCPULimits},
 
-	{Path: "/containers/:handle/limits/disk", Method: "PUT", Name: LimitDisk},
 	{Path: "/containers/:handle/limits/disk", Method: "GET", Name: CurrentDiskLimits},
 
 	{Path: "/containers/:handle/limits/memory", Method: "PUT", Name: LimitMemory},

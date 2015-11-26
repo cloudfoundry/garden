@@ -68,15 +68,6 @@ func (container *container) CurrentCPULimits() (garden.CPULimits, error) {
 	return container.connection.CurrentCPULimits(container.handle)
 }
 
-func (container *container) LimitDisk(limits garden.DiskLimits) error {
-	_, err := container.connection.LimitDisk(container.handle, limits)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
 func (container *container) CurrentDiskLimits() (garden.DiskLimits, error) {
 	return container.connection.CurrentDiskLimits(container.handle)
 }

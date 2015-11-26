@@ -125,16 +125,6 @@ type FakeConnection struct {
 		result1 garden.CPULimits
 		result2 error
 	}
-	LimitDiskStub        func(handle string, limits garden.DiskLimits) (garden.DiskLimits, error)
-	limitDiskMutex       sync.RWMutex
-	limitDiskArgsForCall []struct {
-		handle string
-		limits garden.DiskLimits
-	}
-	limitDiskReturns struct {
-		result1 garden.DiskLimits
-		result2 error
-	}
 	LimitMemoryStub        func(handle string, limit garden.MemoryLimits) (garden.MemoryLimits, error)
 	limitMemoryMutex       sync.RWMutex
 	limitMemoryArgsForCall []struct {
@@ -692,40 +682,6 @@ func (fake *FakeConnection) LimitCPUReturns(result1 garden.CPULimits, result2 er
 	fake.LimitCPUStub = nil
 	fake.limitCPUReturns = struct {
 		result1 garden.CPULimits
-		result2 error
-	}{result1, result2}
-}
-
-func (fake *FakeConnection) LimitDisk(handle string, limits garden.DiskLimits) (garden.DiskLimits, error) {
-	fake.limitDiskMutex.Lock()
-	fake.limitDiskArgsForCall = append(fake.limitDiskArgsForCall, struct {
-		handle string
-		limits garden.DiskLimits
-	}{handle, limits})
-	fake.limitDiskMutex.Unlock()
-	if fake.LimitDiskStub != nil {
-		return fake.LimitDiskStub(handle, limits)
-	} else {
-		return fake.limitDiskReturns.result1, fake.limitDiskReturns.result2
-	}
-}
-
-func (fake *FakeConnection) LimitDiskCallCount() int {
-	fake.limitDiskMutex.RLock()
-	defer fake.limitDiskMutex.RUnlock()
-	return len(fake.limitDiskArgsForCall)
-}
-
-func (fake *FakeConnection) LimitDiskArgsForCall(i int) (string, garden.DiskLimits) {
-	fake.limitDiskMutex.RLock()
-	defer fake.limitDiskMutex.RUnlock()
-	return fake.limitDiskArgsForCall[i].handle, fake.limitDiskArgsForCall[i].limits
-}
-
-func (fake *FakeConnection) LimitDiskReturns(result1 garden.DiskLimits, result2 error) {
-	fake.LimitDiskStub = nil
-	fake.limitDiskReturns = struct {
-		result1 garden.DiskLimits
 		result2 error
 	}{result1, result2}
 }

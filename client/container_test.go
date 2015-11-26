@@ -281,32 +281,6 @@ var _ = Describe("Container", func() {
 		})
 	})
 
-	Describe("LimitDisk", func() {
-		It("sends a limit bandwidth request", func() {
-			err := container.LimitDisk(garden.DiskLimits{
-				ByteHard: 1,
-			})
-			Ω(err).ShouldNot(HaveOccurred())
-
-			handle, limits := fakeConnection.LimitDiskArgsForCall(0)
-			Ω(handle).Should(Equal("some-handle"))
-			Ω(limits).Should(Equal(garden.DiskLimits{ByteHard: 1}))
-		})
-
-		Context("when the request fails", func() {
-			disaster := errors.New("oh no!")
-
-			BeforeEach(func() {
-				fakeConnection.LimitDiskReturns(garden.DiskLimits{}, disaster)
-			})
-
-			It("returns the error", func() {
-				err := container.LimitDisk(garden.DiskLimits{})
-				Ω(err).Should(Equal(disaster))
-			})
-		})
-	})
-
 	Describe("LimitMemory", func() {
 		It("sends a limit bandwidth request", func() {
 			err := container.LimitMemory(garden.MemoryLimits{

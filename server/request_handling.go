@@ -448,58 +448,6 @@ func (s *GardenServer) handleCurrentMemoryLimits(w http.ResponseWriter, r *http.
 	s.writeResponse(w, limits)
 }
 
-func (s *GardenServer) handleLimitDisk(w http.ResponseWriter, r *http.Request) {
-	handle := r.FormValue(":handle")
-
-	hLog := s.logger.Session("limit-disk", lager.Data{
-		"handle": handle,
-	})
-
-	var request garden.DiskLimits
-	if !s.readRequest(&request, w, r) {
-		return
-	}
-
-	settingLimit := false
-	if request.InodeSoft > 0 || request.InodeHard > 0 ||
-		request.ByteSoft > 0 || request.ByteHard > 0 {
-		settingLimit = true
-	}
-
-	container, err := s.backend.Lookup(handle)
-	if err != nil {
-		s.writeError(w, err, hLog)
-		return
-	}
-
-	s.bomberman.Pause(container.Handle())
-	defer s.bomberman.Unpause(container.Handle())
-
-	if settingLimit {
-		hLog.Debug("limiting", lager.Data{
-			"requested-limits": request,
-		})
-
-		err = container.LimitDisk(request)
-		if err != nil {
-			s.writeError(w, err, hLog)
-			return
-		}
-	}
-
-	limits, err := container.CurrentDiskLimits()
-	if err != nil {
-		s.writeError(w, err, hLog)
-		return
-	}
-
-	hLog.Info("limited", lager.Data{
-		"resulting-limits": limits,
-	})
-
-	s.writeResponse(w, limits)
-}
-
 func (s *GardenServer) handleCurrentDiskLimits(w http.ResponseWriter, r *http.Request) {
 	handle := r.FormValue(":handle")
 

@@ -1148,47 +1148,6 @@ var _ = Describe("When a client connects", func() {
 			})
 		})
 
-		Describe("limiting disk", func() {
-			var setLimits garden.DiskLimits
-
-			BeforeEach(func() {
-				setLimits = garden.DiskLimits{
-					InodeSoft: 333,
-					InodeHard: 444,
-
-					ByteSoft: 555,
-					ByteHard: 666,
-				}
-			})
-
-			It("sets the container's disk limits and returns the current limits", func() {
-				err := container.LimitDisk(setLimits)
-				Ω(err).ShouldNot(HaveOccurred())
-
-				Ω(fakeContainer.LimitDiskArgsForCall(0)).Should(Equal(setLimits))
-			})
-
-			itResetsGraceTimeWhenHandling(func() {
-				err := container.LimitDisk(setLimits)
-				Ω(err).ShouldNot(HaveOccurred())
-			})
-
-			itFailsWhenTheContainerIsNotFound(func() error {
-				return container.LimitDisk(garden.DiskLimits{})
-			})
-
-			Context("when limiting the disk fails", func() {
-				BeforeEach(func() {
-					fakeContainer.LimitDiskReturns(errors.New("oh no!"))
-				})
-
-				It("fails", func() {
-					err := container.LimitDisk(setLimits)
-					Ω(err).Should(HaveOccurred())
-				})
-			})
-		})
-
 		Describe("getting the current disk limits", func() {
 			currentLimits := garden.DiskLimits{
 				InodeSoft: 3333,
@@ -1205,13 +1164,6 @@ var _ = Describe("When a client connects", func() {
 				Ω(err).ShouldNot(HaveOccurred())
 
 				Ω(limits).Should(Equal(currentLimits))
-			})
-
-			It("does not change the disk limit", func() {
-				_, err := container.CurrentDiskLimits()
-				Ω(err).ShouldNot(HaveOccurred())
-
-				Ω(fakeContainer.LimitDiskCallCount()).Should(BeZero())
 			})
 
 			itFailsWhenTheContainerIsNotFound(func() error {

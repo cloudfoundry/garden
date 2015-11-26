@@ -47,7 +47,6 @@ type Connection interface {
 
 	LimitBandwidth(handle string, limits garden.BandwidthLimits) (garden.BandwidthLimits, error)
 	LimitCPU(handle string, limits garden.CPULimits) (garden.CPULimits, error)
-	LimitDisk(handle string, limits garden.DiskLimits) (garden.DiskLimits, error)
 	LimitMemory(handle string, limit garden.MemoryLimits) (garden.MemoryLimits, error)
 
 	CurrentBandwidthLimits(handle string) (garden.BandwidthLimits, error)
@@ -438,22 +437,6 @@ func (c *connection) CurrentCPULimits(handle string) (garden.CPULimits, error) {
 	err := c.do(
 		routes.CurrentCPULimits,
 		nil,
-		&res,
-		rata.Params{
-			"handle": handle,
-		},
-		nil,
-	)
-
-	return res, err
-}
-
-func (c *connection) LimitDisk(handle string, limits garden.DiskLimits) (garden.DiskLimits, error) {
-	res := garden.DiskLimits{}
-
-	err := c.do(
-		routes.LimitDisk,
-		limits,
 		&res,
 		rata.Params{
 			"handle": handle,

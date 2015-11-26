@@ -82,7 +82,6 @@ func New(
 		routes.CurrentBandwidthLimits: http.HandlerFunc(s.handleCurrentBandwidthLimits),
 		routes.LimitCPU:               http.HandlerFunc(s.handleLimitCPU),
 		routes.CurrentCPULimits:       http.HandlerFunc(s.handleCurrentCPULimits),
-		routes.LimitDisk:              http.HandlerFunc(s.handleLimitDisk),
 		routes.CurrentDiskLimits:      http.HandlerFunc(s.handleCurrentDiskLimits),
 		routes.LimitMemory:            http.HandlerFunc(s.handleLimitMemory),
 		routes.CurrentMemoryLimits:    http.HandlerFunc(s.handleCurrentMemoryLimits),
