@@ -547,9 +547,12 @@ var _ = Describe("When a client connects", func() {
 	})
 
 	Context("when a container has been created", func() {
-		var container garden.Container
+		var (
+			container garden.Container
+			graceTime time.Duration
 
-		var fakeContainer *fakes.FakeContainer
+			fakeContainer *fakes.FakeContainer
+		)
 
 		BeforeEach(func() {
 			fakeContainer = new(fakes.FakeContainer)
@@ -1251,15 +1254,12 @@ var _ = Describe("When a client connects", func() {
 		})
 
 		Describe("setting the grace time", func() {
-			var graceTime time.Duration
-
 			BeforeEach(func() {
 				graceTime = time.Second
+				serverBackend.GraceTimeReturns(graceTime)
 			})
 
 			It("destroys the container after it has been idle for the grace time", func() {
-				serverBackend.GraceTimeReturns(graceTime)
-
 				before := time.Now()
 				Ω(container.SetGraceTime(graceTime)).Should(Succeed())
 
