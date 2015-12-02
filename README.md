@@ -41,6 +41,42 @@ So far, the list of backends is as follows:
 The canonical API for Garden is defined as a collection of Go interfaces.
 See the [godoc documentation](http://godoc.org/github.com/cloudfoundry-incubator/garden) for details.
 
+## Example use
+
+_Error checking ignored for brevity._
+
+Import these packages:
+```
+"github.com/cloudfoundry-incubator/garden"
+"github.com/cloudfoundry-incubator/garden/client"
+"github.com/cloudfoundry-incubator/garden/client/connection"
+```
+
+Create a client:
+```
+gardenClient := client.New(connection.New("tcp", "127.0.0.1:7777"))
+```
+
+Create a container:
+```
+container, _ := gardenClient.Create(garden.ContainerSpec{})
+```
+
+Run a process:
+```
+buffer := &bytes.Buffer{}
+process, _ := container.Run(garden.ProcessSpec{
+  User: "alice",
+  Path: "echo",
+  Args: []string{"hello from the container"},
+}, garden.ProcessIO{
+  Stdout: buffer,
+  Stderr: buffer,
+})
+exitCode := process.Wait()
+fmt.Println(buffer.String())
+```
+
 # Development
 
 ## Prerequisites
