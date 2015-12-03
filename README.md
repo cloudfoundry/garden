@@ -16,7 +16,7 @@
                                            \__._| |_.__/
 ```
 
-[Warden](https://github.com/cloudfoundry/warden) in Go, because why not?
+A rich golang client and server for container creation and management with pluggable backends for [linux](https://github.com/cloudfoundry-incubator/garden-linux/), [windows](https://github.com/cloudfoundry-incubator/garden-windows) and [The Open Container Initiative Spec](https://github.com/cloudfoundry-incubator/guardian/).
 
 [![Build Status](https://travis-ci.org/cloudfoundry-incubator/garden.png?branch=master)](https://travis-ci.org/cloudfoundry-incubator/garden)
 [![Coverage Status](https://coveralls.io/repos/cloudfoundry-incubator/garden/badge.png?branch=HEAD)](https://coveralls.io/r/cloudfoundry-incubator/garden?branch=HEAD)
