@@ -3,7 +3,7 @@ package garden
 import "net"
 
 type NetOutRule struct {
-	// the protocol to be whitelisted; default TCP
+	// the protocol to be whitelisted
 	Protocol Protocol `json:"protocol,omitempty"`
 
 	// a list of ranges of IP addresses to whitelist; Start to End inclusive; default all
