@@ -569,27 +569,17 @@ var _ = Describe("When a client connects", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 		})
 
-		itResetsGraceTimeWhenHandling := func(call func()) {
-			Context("when created with a grace time", func() {
-				graceTime := 200 * time.Millisecond
+		itResetsGraceTimeWhenHandling := func(fn func(time.Duration)) {
+			graceTime := 500 * time.Millisecond
 
-				BeforeEach(func() {
-					serverBackend.GraceTimeReturns(graceTime)
-				})
+			BeforeEach(func() {
+				serverBackend.GraceTimeReturns(graceTime)
+			})
 
-				It("resets the container's grace time", func() {
-					for i := 0; i < 11; i++ {
-						time.Sleep(graceTime / 10)
-						call()
-					}
-
-					before := time.Now()
-
-					Eventually(serverBackend.DestroyCallCount, 2*graceTime).Should(Equal(1))
-					Ω(serverBackend.DestroyArgsForCall(0)).Should(Equal(container.Handle()))
-
-					Ω(time.Since(before)).Should(BeNumerically("~", graceTime, 30*time.Millisecond))
-				})
+			It("resets grace time when handling", func() {
+				fn(graceTime * 2)
+				Expect(serverBackend.DestroyCallCount()).To(Equal(0))
+				Eventually(serverBackend.DestroyCallCount, graceTime+(250*time.Millisecond)).Should(Equal(1))
 			})
 		}
 
@@ -625,12 +615,10 @@ var _ = Describe("When a client connects", func() {
 				})
 			})
 
-			itResetsGraceTimeWhenHandling(
-				func() {
-					err := container.Stop(false)
-					Ω(err).ShouldNot(HaveOccurred())
-				},
-			)
+			itResetsGraceTimeWhenHandling(func(timeToSleep time.Duration) {
+				fakeContainer.StopStub = func(_ bool) error { time.Sleep(timeToSleep); return nil }
+				container.Stop(false)
+			})
 		})
 
 		Describe("metrics", func() {
@@ -693,7 +681,8 @@ var _ = Describe("When a client connects", func() {
 					Ω(value).Should(Equal(containerMetrics))
 				})
 
-				itResetsGraceTimeWhenHandling(func() {
+				itResetsGraceTimeWhenHandling(func(timeToSleep time.Duration) {
+					fakeContainer.MetricsStub = func() (garden.Metrics, error) { time.Sleep(timeToSleep); return garden.Metrics{}, nil }
 					_, err := container.Metrics()
 					Ω(err).ShouldNot(HaveOccurred())
 				})
@@ -731,7 +720,8 @@ var _ = Describe("When a client connects", func() {
 						Ω(value).Should(Equal(garden.Properties{"foo": "bar"}))
 					})
 
-					itResetsGraceTimeWhenHandling(func() {
+					itResetsGraceTimeWhenHandling(func(timeToSleep time.Duration) {
+						fakeContainer.PropertiesStub = func() (garden.Properties, error) { time.Sleep(timeToSleep); return nil, nil }
 						_, err := container.Properties()
 						Ω(err).ShouldNot(HaveOccurred())
 					})
@@ -782,7 +772,8 @@ var _ = Describe("When a client connects", func() {
 						Ω(name).Should(Equal("some-property"))
 					})
 
-					itResetsGraceTimeWhenHandling(func() {
+					itResetsGraceTimeWhenHandling(func(timeToSleep time.Duration) {
+						fakeContainer.PropertyStub = func(string) (string, error) { time.Sleep(timeToSleep); return "", nil }
 						_, err := container.Property("some-property")
 						Ω(err).ShouldNot(HaveOccurred())
 					})
@@ -832,7 +823,8 @@ var _ = Describe("When a client connects", func() {
 						Ω(value).Should(Equal("some-value"))
 					})
 
-					itResetsGraceTimeWhenHandling(func() {
+					itResetsGraceTimeWhenHandling(func(timeToSleep time.Duration) {
+						fakeContainer.SetPropertyStub = func(string, string) error { time.Sleep(timeToSleep); return nil }
 						err := container.SetProperty("some-property", "some-value")
 						Ω(err).ShouldNot(HaveOccurred())
 					})
@@ -879,7 +871,8 @@ var _ = Describe("When a client connects", func() {
 						Ω(name).Should(Equal("some-property"))
 					})
 
-					itResetsGraceTimeWhenHandling(func() {
+					itResetsGraceTimeWhenHandling(func(timeToSleep time.Duration) {
+						fakeContainer.RemovePropertyStub = func(string) error { time.Sleep(timeToSleep); return nil }
 						err := container.RemoveProperty("some-property")
 						Ω(err).ShouldNot(HaveOccurred())
 					})
@@ -988,7 +981,11 @@ var _ = Describe("When a client connects", func() {
 				})
 			})
 
-			itResetsGraceTimeWhenHandling(func() {
+			itResetsGraceTimeWhenHandling(func(timeToSleep time.Duration) {
+				fakeContainer.StreamOutStub = func(garden.StreamOutSpec) (io.ReadCloser, error) {
+					time.Sleep(timeToSleep)
+					return gbytes.NewBuffer(), nil
+				}
 				reader, err := container.StreamOut(garden.StreamOutSpec{User: "frank", Path: "/src/path"})
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(reader).ShouldNot(BeZero())
@@ -1027,7 +1024,8 @@ var _ = Describe("When a client connects", func() {
 				Ω(fakeContainer.LimitBandwidthArgsForCall(0)).Should(Equal(setLimits))
 			})
 
-			itResetsGraceTimeWhenHandling(func() {
+			itResetsGraceTimeWhenHandling(func(timeToSleep time.Duration) {
+				fakeContainer.LimitBandwidthStub = func(garden.BandwidthLimits) error { time.Sleep(timeToSleep); return nil }
 				err := container.LimitBandwidth(garden.BandwidthLimits{
 					RateInBytesPerSecond:      123,
 					BurstRateInBytesPerSecond: 456,
@@ -1094,7 +1092,8 @@ var _ = Describe("When a client connects", func() {
 				Ω(fakeContainer.LimitMemoryArgsForCall(0)).Should(Equal(setLimits))
 			})
 
-			itResetsGraceTimeWhenHandling(func() {
+			itResetsGraceTimeWhenHandling(func(timeToSleep time.Duration) {
+				fakeContainer.LimitMemoryStub = func(garden.MemoryLimits) error { time.Sleep(timeToSleep); return nil }
 				err := container.LimitMemory(setLimits)
 				Ω(err).ShouldNot(HaveOccurred())
 			})
@@ -1196,7 +1195,8 @@ var _ = Describe("When a client connects", func() {
 				Ω(fakeContainer.LimitCPUArgsForCall(0)).Should(Equal(setLimits))
 			})
 
-			itResetsGraceTimeWhenHandling(func() {
+			itResetsGraceTimeWhenHandling(func(timeToSleep time.Duration) {
+				fakeContainer.LimitCPUStub = func(garden.CPULimits) error { time.Sleep(timeToSleep); return nil }
 				err := container.LimitCPU(setLimits)
 				Ω(err).ShouldNot(HaveOccurred())
 			})
@@ -1268,10 +1268,6 @@ var _ = Describe("When a client connects", func() {
 
 				Ω(time.Since(before)).Should(BeNumerically("~", graceTime, 100*time.Millisecond))
 			})
-
-			itResetsGraceTimeWhenHandling(func() {
-				Ω(container.SetGraceTime(graceTime)).Should(Succeed())
-			})
 		})
 
 		Describe("net in", func() {
@@ -1289,7 +1285,8 @@ var _ = Describe("When a client connects", func() {
 				Ω(containerPort).Should(Equal(uint32(222)))
 			})
 
-			itResetsGraceTimeWhenHandling(func() {
+			itResetsGraceTimeWhenHandling(func(timeToSleep time.Duration) {
+				fakeContainer.NetInStub = func(uint32, uint32) (uint32, uint32, error) { time.Sleep(timeToSleep); return 0, 0, nil }
 				_, _, err := container.NetIn(123, 456)
 				Ω(err).ShouldNot(HaveOccurred())
 			})
@@ -1482,7 +1479,8 @@ var _ = Describe("When a client connects", func() {
 				})
 			})
 
-			itResetsGraceTimeWhenHandling(func() {
+			itResetsGraceTimeWhenHandling(func(timeToSleep time.Duration) {
+				fakeContainer.NetOutStub = func(garden.NetOutRule) error { time.Sleep(timeToSleep); return nil }
 				err := container.NetOut(garden.NetOutRule{})
 				Ω(err).ShouldNot(HaveOccurred())
 			})
@@ -1531,7 +1529,8 @@ var _ = Describe("When a client connects", func() {
 				Ω(info).Should(Equal(containerInfo))
 			})
 
-			itResetsGraceTimeWhenHandling(func() {
+			itResetsGraceTimeWhenHandling(func(timeToSleep time.Duration) {
+				fakeContainer.InfoStub = func() (garden.ContainerInfo, error) { time.Sleep(timeToSleep); return garden.ContainerInfo{}, nil }
 				_, err := container.Info()
 				Ω(err).ShouldNot(HaveOccurred())
 			})
@@ -1755,15 +1754,12 @@ var _ = Describe("When a client connects", func() {
 					Ω(status).Should(Equal(123))
 				})
 
-				itResetsGraceTimeWhenHandling(func() {
-					process, err := container.Attach("process-handle", garden.ProcessIO{
-						Stdin: bytes.NewBufferString("hello"),
-					})
-					Ω(err).ShouldNot(HaveOccurred())
-
-					status, err := process.Wait()
-					Ω(err).ShouldNot(HaveOccurred())
-					Ω(status).Should(Equal(123))
+				itResetsGraceTimeWhenHandling(func(timeToSleep time.Duration) {
+					fakeContainer.AttachStub = func(string, garden.ProcessIO) (garden.Process, error) {
+						time.Sleep(timeToSleep)
+						return nil, errors.New("blam")
+					}
+					container.Attach("process-handle", garden.ProcessIO{})
 				})
 			})
 
@@ -1945,20 +1941,17 @@ var _ = Describe("When a client connects", func() {
 					close(done)
 				})
 
-				itResetsGraceTimeWhenHandling(func() {
-					process, err := container.Run(processSpec, garden.ProcessIO{
-						Stdin: bytes.NewBufferString("hello"),
-					})
-					Ω(err).ShouldNot(HaveOccurred())
+				itResetsGraceTimeWhenHandling(func(timeToSleep time.Duration) {
+					fakeContainer.RunStub = func(garden.ProcessSpec, garden.ProcessIO) (garden.Process, error) {
+						time.Sleep(timeToSleep)
+						return nil, errors.New("boom")
+					}
 
-					status, err := process.Wait()
-					Ω(err).ShouldNot(HaveOccurred())
-					Ω(status).Should(Equal(123))
+					container.Run(processSpec, garden.ProcessIO{})
 				})
 			})
 
 			Context("when the backend returns an error", func() {
-
 				It("returns the error message", func() {
 					fakeContainer.RunReturns(nil, errors.New("o no!"))
 					_, err := container.Run(garden.ProcessSpec{}, garden.ProcessIO{})
