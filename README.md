@@ -18,8 +18,6 @@
 
 A rich golang client and server for container creation and management with pluggable backends for [linux](https://github.com/cloudfoundry-incubator/garden-linux/), [windows](https://github.com/cloudfoundry-incubator/garden-windows) and [The Open Container Initiative Spec](https://github.com/cloudfoundry-incubator/guardian/).
 
-[![Coverage Status](https://coveralls.io/repos/cloudfoundry-incubator/garden/badge.png?branch=HEAD)](https://coveralls.io/r/cloudfoundry-incubator/garden?branch=HEAD)
-
 Garden is a platform-agnostic Go API for container creation and management, with pluggable backends for different platforms and runtimes.
 This package contains the canonical client, as well as a server package containing an interface to be implemented by backends.
 

@@ -10,20 +10,6 @@ export PATH=$FIRST_GOPATH/bin:$PATH
 
 go get -t -v ./...
 go get golang.org/x/tools/cmd/cover
-go get github.com/dustin/goveralls
 go install github.com/onsi/ginkgo/ginkgo
 
 ginkgo -cover -race -r -skipMeasurements -randomizeAllSpecs "$@"
-
-# don't leak coveralls token
-set +x
-
-if [ -n "$COVERALLS_TOKEN" ]; then
-  profiles=$(find . -name '*.coverprofile' | grep -v fake)
-
-  echo mode: set > all.coverprofile
-  cat $profiles | grep -v mode: >> all.coverprofile
-
-  goveralls -coverprofile=all.coverprofile $COVERALLS_TOKEN || \
-    echo "Coveralls failed. :("
-fi
