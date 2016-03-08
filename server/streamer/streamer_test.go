@@ -3,14 +3,14 @@ package streamer_test
 import (
 	"bytes"
 	"errors"
+	"runtime/pprof"
 	"sync"
 	"time"
-
-	"runtime"
 
 	"github.com/cloudfoundry-incubator/garden/server/streamer"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gbytes"
 )
 
 var _ = Describe("Streamer", func() {
@@ -34,7 +34,7 @@ var _ = Describe("Streamer", func() {
 	})
 
 	BeforeEach(func() {
-		graceTime = 10 * time.Second
+		graceTime = 50 * time.Millisecond
 		channelBufferSize = 1
 
 		testByteSlice = []byte(testString)
@@ -87,25 +87,26 @@ var _ = Describe("Streamer", func() {
 	Context("when a grace time has been set", func() {
 		BeforeEach(func() {
 			graceTime = 100 * time.Millisecond
-
 		})
 
 		It("should not leak unused streams for longer than the grace time after streaming has been stopped", func() {
 			sid := str.Stream(stdoutChan, stderrChan)
 			str.Stop(sid)
-			time.Sleep(200 * time.Millisecond)
-			Expect(func() { str.Stop(sid) }).To(Panic(), "stream was not removed")
+
+			Eventually(func() []byte {
+				buffer := gbytes.NewBuffer()
+				defer buffer.Close()
+				Expect(pprof.Lookup("goroutine").WriteTo(buffer, 1)).To(Succeed())
+
+				return buffer.Contents()
+			}, 10*graceTime).ShouldNot(ContainSubstring("streamer.go"))
 		})
 
-		It("should not leak goroutines for longer than the grace time after streaming has been stopped", func() {
-			initialNumGoroutine := runtime.NumGoroutine()
-
+		It("should not leak unused streams for longer than the grace time after streaming has been stopped", func() {
 			sid := str.Stream(stdoutChan, stderrChan)
 			str.Stop(sid)
-
-			Eventually(func() int {
-				return runtime.NumGoroutine()
-			}, "200ms").Should(Equal(initialNumGoroutine))
+			time.Sleep(graceTime)
+			Expect(func() { str.Stop(sid) }).To(Panic(), "stream was not removed")
 		})
 	})
 
