@@ -238,34 +238,34 @@ type ContainerMetricsEntry struct {
 }
 
 type ContainerMemoryStat struct {
-	Cache                   uint64
-	Rss                     uint64
-	MappedFile              uint64
-	Pgpgin                  uint64
-	Pgpgout                 uint64
-	Swap                    uint64
-	Pgfault                 uint64
-	Pgmajfault              uint64
-	InactiveAnon            uint64
-	ActiveAnon              uint64
-	InactiveFile            uint64
-	ActiveFile              uint64
-	Unevictable             uint64
-	HierarchicalMemoryLimit uint64
-	HierarchicalMemswLimit  uint64
-	TotalCache              uint64
-	TotalRss                uint64
-	TotalMappedFile         uint64
-	TotalPgpgin             uint64
-	TotalPgpgout            uint64
-	TotalSwap               uint64
-	TotalPgfault            uint64
-	TotalPgmajfault         uint64
-	TotalInactiveAnon       uint64
-	TotalActiveAnon         uint64
-	TotalInactiveFile       uint64
-	TotalActiveFile         uint64
-	TotalUnevictable        uint64
+	ActiveAnon              uint64 `json:"active_anon"`
+	ActiveFile              uint64 `json:"active_file"`
+	Cache                   uint64 `json:"cache"`
+	HierarchicalMemoryLimit uint64 `json:"hierarchical_memory_limit"`
+	InactiveAnon            uint64 `json:"inactive_anon"`
+	InactiveFile            uint64 `json:"inactive_file"`
+	MappedFile              uint64 `json:"mapped_file"`
+	Pgfault                 uint64 `json:"pgfault"`
+	Pgmajfault              uint64 `json:"pgmajfault"`
+	Pgpgin                  uint64 `json:"pgpgin"`
+	Pgpgout                 uint64 `json:"pgpgout"`
+	Rss                     uint64 `json:"rss"`
+	TotalActiveAnon         uint64 `json:"total_active_anon"`
+	TotalActiveFile         uint64 `json:"total_active_file"`
+	TotalCache              uint64 `json:"total_cache"`
+	TotalInactiveAnon       uint64 `json:"total_inactive_anon"`
+	TotalInactiveFile       uint64 `json:"total_inactive_file"`
+	TotalMappedFile         uint64 `json:"total_mapped_file"`
+	TotalPgfault            uint64 `json:"total_pgfault"`
+	TotalPgmajfault         uint64 `json:"total_pgmajfault"`
+	TotalPgpgin             uint64 `json:"total_pgpgin"`
+	TotalPgpgout            uint64 `json:"total_pgpgout"`
+	TotalRss                uint64 `json:"total_rss"`
+	TotalUnevictable        uint64 `json:"total_unevictable"`
+	Unevictable             uint64 `json:"unevictable"`
+	Swap                    uint64 `json:"swap"`
+	HierarchicalMemswLimit  uint64 `json:"hierarchical_memsw_limit"`
+	TotalSwap               uint64 `json:"total_swap"`
 	// A memory usage total which reports memory usage in the same way that limits are enforced.
 	// This value includes memory consumed by nested containers.
 	TotalUsageTowardLimit uint64
