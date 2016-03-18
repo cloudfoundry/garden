@@ -195,13 +195,13 @@ var _ = Describe("The Garden server", func() {
 			err := apiServer.Start()
 			Ω(err).ShouldNot(HaveOccurred())
 
-			Eventually(ErrorDialing("unix", socketPath)).ShouldNot(HaveOccurred())
+			Eventually(apiClient.Ping).Should(Succeed())
 		})
 
 		It("stops accepting new connections", func() {
-			go apiServer.Stop()
+			apiServer.Stop()
 
-			Eventually(ErrorDialing("unix", socketPath)).Should(HaveOccurred())
+			Eventually(apiClient.Ping).ShouldNot(Succeed())
 		})
 
 		It("stops the backend", func() {
