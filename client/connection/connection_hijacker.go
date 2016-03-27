@@ -106,6 +106,8 @@ func (c *hijackable) Stream(handler string, body io.Reader, params rata.Params, 
 	}
 
 	if httpResp.StatusCode < 200 || httpResp.StatusCode > 299 {
+		defer httpResp.Body.Close()
+
 		var result garden.Error
 		err := json.NewDecoder(httpResp.Body).Decode(&result)
 		if err != nil {
