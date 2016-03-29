@@ -1158,12 +1158,6 @@ var _ = Describe("Connection", func() {
 					hijacker = fakeHijacker
 				})
 
-				AfterEach(func() {
-					for _, wc := range wrappedConnections {
-						Expect(wc.isClosed()).To(BeTrue())
-					}
-				})
-
 				It("should not leak net.Conn from Run", func() {
 					stdout := gbytes.NewBuffer()
 					stderr := gbytes.NewBuffer()
@@ -1178,6 +1172,10 @@ var _ = Describe("Connection", func() {
 					process.Wait()
 					Ω(stdout).Should(gbytes.Say("roundtripped stdin data"))
 					Ω(stderr).Should(gbytes.Say("stderr data"))
+
+					for _, wc := range wrappedConnections {
+						Eventually(wc.isClosed).Should(BeTrue())
+					}
 				})
 			})
 		})
