@@ -1011,50 +1011,6 @@ var _ = Describe("When a client connects", func() {
 			})
 		})
 
-		Describe("limiting bandwidth", func() {
-			It("sets the container's bandwidth limits", func() {
-				setLimits := garden.BandwidthLimits{
-					RateInBytesPerSecond:      123,
-					BurstRateInBytesPerSecond: 456,
-				}
-
-				err := container.LimitBandwidth(setLimits)
-				Ω(err).ShouldNot(HaveOccurred())
-
-				Ω(fakeContainer.LimitBandwidthArgsForCall(0)).Should(Equal(setLimits))
-			})
-
-			itResetsGraceTimeWhenHandling(func(timeToSleep time.Duration) {
-				fakeContainer.LimitBandwidthStub = func(garden.BandwidthLimits) error { time.Sleep(timeToSleep); return nil }
-				err := container.LimitBandwidth(garden.BandwidthLimits{
-					RateInBytesPerSecond:      123,
-					BurstRateInBytesPerSecond: 456,
-				})
-				Ω(err).ShouldNot(HaveOccurred())
-			})
-
-			itFailsWhenTheContainerIsNotFound(func() error {
-				return container.LimitBandwidth(garden.BandwidthLimits{
-					RateInBytesPerSecond:      123,
-					BurstRateInBytesPerSecond: 456,
-				})
-			})
-
-			Context("when limiting the bandwidth fails", func() {
-				BeforeEach(func() {
-					fakeContainer.LimitBandwidthReturns(errors.New("oh no!"))
-				})
-
-				It("fails", func() {
-					err := container.LimitBandwidth(garden.BandwidthLimits{
-						RateInBytesPerSecond:      123,
-						BurstRateInBytesPerSecond: 456,
-					})
-					Ω(err).Should(HaveOccurred())
-				})
-			})
-		})
-
 		Describe("getting the current bandwidth limits", func() {
 			It("returns the limits returned by the backend", func() {
 				effectiveLimits := garden.BandwidthLimits{
@@ -1082,38 +1038,6 @@ var _ = Describe("When a client connects", func() {
 			})
 		})
 
-		Describe("limiting memory", func() {
-			setLimits := garden.MemoryLimits{1024}
-
-			It("sets the container's memory limits", func() {
-				err := container.LimitMemory(setLimits)
-				Ω(err).ShouldNot(HaveOccurred())
-
-				Ω(fakeContainer.LimitMemoryArgsForCall(0)).Should(Equal(setLimits))
-			})
-
-			itResetsGraceTimeWhenHandling(func(timeToSleep time.Duration) {
-				fakeContainer.LimitMemoryStub = func(garden.MemoryLimits) error { time.Sleep(timeToSleep); return nil }
-				err := container.LimitMemory(setLimits)
-				Ω(err).ShouldNot(HaveOccurred())
-			})
-
-			itFailsWhenTheContainerIsNotFound(func() error {
-				return container.LimitMemory(garden.MemoryLimits{123})
-			})
-
-			Context("when limiting the memory fails", func() {
-				BeforeEach(func() {
-					fakeContainer.LimitMemoryReturns(errors.New("oh no!"))
-				})
-
-				It("fail", func() {
-					err := container.LimitMemory(garden.MemoryLimits{123})
-					Ω(err).Should(HaveOccurred())
-				})
-			})
-		})
-
 		Describe("getting memory limits", func() {
 			It("obtains the current limits", func() {
 				effectiveLimits := garden.MemoryLimits{2048}
@@ -1124,13 +1048,6 @@ var _ = Describe("When a client connects", func() {
 				Ω(limits).ShouldNot(BeZero())
 
 				Ω(limits).Should(Equal(effectiveLimits))
-			})
-
-			It("does not change the memory limit", func() {
-				_, err := container.CurrentMemoryLimits()
-				Ω(err).ShouldNot(HaveOccurred())
-
-				Ω(fakeContainer.LimitMemoryCallCount()).Should(BeZero())
 			})
 
 			itFailsWhenTheContainerIsNotFound(func() error {
@@ -1185,38 +1102,6 @@ var _ = Describe("When a client connects", func() {
 			})
 		})
 
-		Describe("set the cpu limit", func() {
-			setLimits := garden.CPULimits{123}
-
-			It("sets the container's CPU shares", func() {
-				err := container.LimitCPU(setLimits)
-				Ω(err).ShouldNot(HaveOccurred())
-
-				Ω(fakeContainer.LimitCPUArgsForCall(0)).Should(Equal(setLimits))
-			})
-
-			itResetsGraceTimeWhenHandling(func(timeToSleep time.Duration) {
-				fakeContainer.LimitCPUStub = func(garden.CPULimits) error { time.Sleep(timeToSleep); return nil }
-				err := container.LimitCPU(setLimits)
-				Ω(err).ShouldNot(HaveOccurred())
-			})
-
-			itFailsWhenTheContainerIsNotFound(func() error {
-				return container.LimitCPU(setLimits)
-			})
-
-			Context("when limiting the CPU fails", func() {
-				BeforeEach(func() {
-					fakeContainer.LimitCPUReturns(errors.New("oh no!"))
-				})
-
-				It("fails", func() {
-					err := container.LimitCPU(setLimits)
-					Ω(err).Should(HaveOccurred())
-				})
-			})
-		})
-
 		Describe("get the current cpu limits", func() {
 			effectiveLimits := garden.CPULimits{456}
 
@@ -1227,13 +1112,6 @@ var _ = Describe("When a client connects", func() {
 				Ω(err).ShouldNot(HaveOccurred())
 
 				Ω(limits).Should(Equal(effectiveLimits))
-			})
-
-			It("does not change the cpu limits", func() {
-				_, err := container.CurrentCPULimits()
-				Ω(err).ShouldNot(HaveOccurred())
-
-				Ω(fakeContainer.LimitCPUCallCount()).Should(BeZero())
 			})
 
 			itFailsWhenTheContainerIsNotFound(func() error {

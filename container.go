@@ -42,29 +42,16 @@ type Container interface {
 	// * TODO.
 	StreamOut(spec StreamOutSpec) (io.ReadCloser, error)
 
-	// Limits the network bandwidth for a container.
-	LimitBandwidth(limits BandwidthLimits) error
-
+	// Returns the current bandwidth limits set for the container.
 	CurrentBandwidthLimits() (BandwidthLimits, error)
 
-	// Limits the CPU shares for a container.
-	LimitCPU(limits CPULimits) error
-
-	// Returns the currently set CPU limts for a container.
+	// Returns the current CPU limts set for the container.
 	CurrentCPULimits() (CPULimits, error)
 
-	// Returns the currently set Disk limts for a container.
+	// Returns the current disk limts set for the container.
 	CurrentDiskLimits() (DiskLimits, error)
 
-	// Limits the memory usage for a container.
-	//
-	// The limit applies to all process in the container. When the limit is
-	// exceeded, the container will be automatically stopped.
-	//
-	// Errors:
-	// * The kernel does not support setting memory.memsw.limit_in_bytes.
-	LimitMemory(limits MemoryLimits) error
-
+	// Returns the current memory limts set for the container.
 	CurrentMemoryLimits() (MemoryLimits, error)
 
 	// Map a port on the host to a port in the container so that traffic to the

@@ -45,10 +45,6 @@ type Connection interface {
 	StreamIn(handle string, spec garden.StreamInSpec) error
 	StreamOut(handle string, spec garden.StreamOutSpec) (io.ReadCloser, error)
 
-	LimitBandwidth(handle string, limits garden.BandwidthLimits) (garden.BandwidthLimits, error)
-	LimitCPU(handle string, limits garden.CPULimits) (garden.CPULimits, error)
-	LimitMemory(handle string, limit garden.MemoryLimits) (garden.MemoryLimits, error)
-
 	CurrentBandwidthLimits(handle string) (garden.BandwidthLimits, error)
 	CurrentCPULimits(handle string) (garden.CPULimits, error)
 	CurrentDiskLimits(handle string) (garden.DiskLimits, error)
@@ -384,43 +380,12 @@ func (c *connection) RemoveProperty(handle string, name string) error {
 	return nil
 }
 
-func (c *connection) LimitBandwidth(handle string, limits garden.BandwidthLimits) (garden.BandwidthLimits, error) {
-	res := garden.BandwidthLimits{}
-	err := c.do(
-		routes.LimitBandwidth,
-		limits,
-		&res,
-		rata.Params{
-			"handle": handle,
-		},
-		nil,
-	)
-
-	return res, err
-}
-
 func (c *connection) CurrentBandwidthLimits(handle string) (garden.BandwidthLimits, error) {
 	res := garden.BandwidthLimits{}
 
 	err := c.do(
 		routes.CurrentBandwidthLimits,
 		nil,
-		&res,
-		rata.Params{
-			"handle": handle,
-		},
-		nil,
-	)
-
-	return res, err
-}
-
-func (c *connection) LimitCPU(handle string, limits garden.CPULimits) (garden.CPULimits, error) {
-	res := garden.CPULimits{}
-
-	err := c.do(
-		routes.LimitCPU,
-		limits,
 		&res,
 		rata.Params{
 			"handle": handle,
@@ -453,22 +418,6 @@ func (c *connection) CurrentDiskLimits(handle string) (garden.DiskLimits, error)
 	err := c.do(
 		routes.CurrentDiskLimits,
 		nil,
-		&res,
-		rata.Params{
-			"handle": handle,
-		},
-		nil,
-	)
-
-	return res, err
-}
-
-func (c *connection) LimitMemory(handle string, limits garden.MemoryLimits) (garden.MemoryLimits, error) {
-	res := garden.MemoryLimits{}
-
-	err := c.do(
-		routes.LimitMemory,
-		limits,
 		&res,
 		rata.Params{
 			"handle": handle,

@@ -295,50 +295,6 @@ func (s *GardenServer) handleStreamOut(w http.ResponseWriter, r *http.Request) {
 	hLog.Info("streamed-out")
 }
 
-func (s *GardenServer) handleLimitBandwidth(w http.ResponseWriter, r *http.Request) {
-	handle := r.FormValue(":handle")
-
-	var request garden.BandwidthLimits
-	if !s.readRequest(&request, w, r) {
-		return
-	}
-
-	hLog := s.logger.Session("limit-bandwidth", lager.Data{
-		"handle": handle,
-	})
-
-	container, err := s.backend.Lookup(handle)
-	if err != nil {
-		s.writeError(w, err, hLog)
-		return
-	}
-
-	s.bomberman.Pause(container.Handle())
-	defer s.bomberman.Unpause(container.Handle())
-
-	hLog.Debug("limiting", lager.Data{
-		"requested-limits": request,
-	})
-
-	err = container.LimitBandwidth(request)
-	if err != nil {
-		s.writeError(w, err, hLog)
-		return
-	}
-
-	limits, err := container.CurrentBandwidthLimits()
-	if err != nil {
-		s.writeError(w, err, hLog)
-		return
-	}
-
-	hLog.Info("limited", lager.Data{
-		"resulting-limits": limits,
-	})
-
-	s.writeResponse(w, limits)
-}
-
 func (s *GardenServer) handleCurrentBandwidthLimits(w http.ResponseWriter, r *http.Request) {
 	handle := r.FormValue(":handle")
 
@@ -365,53 +321,6 @@ func (s *GardenServer) handleCurrentBandwidthLimits(w http.ResponseWriter, r *ht
 
 	hLog.Info("got", lager.Data{
 		"limits": limits,
-	})
-
-	s.writeResponse(w, limits)
-}
-
-func (s *GardenServer) handleLimitMemory(w http.ResponseWriter, r *http.Request) {
-	handle := r.FormValue(":handle")
-
-	hLog := s.logger.Session("limit-memory", lager.Data{
-		"handle": handle,
-	})
-
-	var request garden.MemoryLimits
-	if !s.readRequest(&request, w, r) {
-		return
-	}
-
-	container, err := s.backend.Lookup(handle)
-	if err != nil {
-		s.writeError(w, err, hLog)
-		return
-	}
-
-	s.bomberman.Pause(container.Handle())
-	defer s.bomberman.Unpause(container.Handle())
-
-	if request.LimitInBytes > 0 {
-		hLog.Debug("limiting", lager.Data{
-			"requested-limits": request.LimitInBytes,
-		})
-
-		err = container.LimitMemory(request)
-
-		if err != nil {
-			s.writeError(w, err, hLog)
-			return
-		}
-	}
-
-	limits, err := container.CurrentMemoryLimits()
-	if err != nil {
-		s.writeError(w, err, hLog)
-		return
-	}
-
-	hLog.Info("limited", lager.Data{
-		"resulting-limits": limits,
 	})
 
 	s.writeResponse(w, limits)
@@ -474,52 +383,6 @@ func (s *GardenServer) handleCurrentDiskLimits(w http.ResponseWriter, r *http.Re
 
 	hLog.Info("got", lager.Data{
 		"limits": limits,
-	})
-
-	s.writeResponse(w, limits)
-}
-
-func (s *GardenServer) handleLimitCPU(w http.ResponseWriter, r *http.Request) {
-	handle := r.FormValue(":handle")
-
-	hLog := s.logger.Session("limit-cpu", lager.Data{
-		"handle": handle,
-	})
-
-	var request garden.CPULimits
-	if !s.readRequest(&request, w, r) {
-		return
-	}
-
-	container, err := s.backend.Lookup(handle)
-	if err != nil {
-		s.writeError(w, err, hLog)
-		return
-	}
-
-	s.bomberman.Pause(container.Handle())
-	defer s.bomberman.Unpause(container.Handle())
-
-	if request.LimitInShares > 0 {
-		hLog.Debug("limiting", lager.Data{
-			"requested-limits": request,
-		})
-
-		err = container.LimitCPU(request)
-		if err != nil {
-			s.writeError(w, err, hLog)
-			return
-		}
-	}
-
-	limits, err := container.CurrentCPULimits()
-	if err != nil {
-		s.writeError(w, err, hLog)
-		return
-	}
-
-	hLog.Info("limited", lager.Data{
-		"resulting-limits": limits,
 	})
 
 	s.writeResponse(w, limits)

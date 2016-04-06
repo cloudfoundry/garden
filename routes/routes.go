@@ -21,16 +21,10 @@ const (
 	Stdout = "Stdout"
 	Stderr = "Stderr"
 
-	LimitBandwidth         = "LimitBandwidth"
 	CurrentBandwidthLimits = "CurrentBandwidthLimits"
-
-	LimitCPU         = "LimitCPU"
-	CurrentCPULimits = "CurrentCPULimits"
-
-	CurrentDiskLimits = "CurrentDiskLimits"
-
-	LimitMemory         = "LimitMemory"
-	CurrentMemoryLimits = "CurrentMemoryLimits"
+	CurrentCPULimits       = "CurrentCPULimits"
+	CurrentDiskLimits      = "CurrentDiskLimits"
+	CurrentMemoryLimits    = "CurrentMemoryLimits"
 
 	NetIn  = "NetIn"
 	NetOut = "NetOut"
@@ -66,15 +60,9 @@ var Routes = rata.Routes{
 	{Path: "/containers/:handle/files", Method: "PUT", Name: StreamIn},
 	{Path: "/containers/:handle/files", Method: "GET", Name: StreamOut},
 
-	{Path: "/containers/:handle/limits/bandwidth", Method: "PUT", Name: LimitBandwidth},
 	{Path: "/containers/:handle/limits/bandwidth", Method: "GET", Name: CurrentBandwidthLimits},
-
-	{Path: "/containers/:handle/limits/cpu", Method: "PUT", Name: LimitCPU},
 	{Path: "/containers/:handle/limits/cpu", Method: "GET", Name: CurrentCPULimits},
-
 	{Path: "/containers/:handle/limits/disk", Method: "GET", Name: CurrentDiskLimits},
-
-	{Path: "/containers/:handle/limits/memory", Method: "PUT", Name: LimitMemory},
 	{Path: "/containers/:handle/limits/memory", Method: "GET", Name: CurrentMemoryLimits},
 
 	{Path: "/containers/:handle/net/in", Method: "POST", Name: NetIn},

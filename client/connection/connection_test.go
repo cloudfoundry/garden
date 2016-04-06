@@ -306,33 +306,8 @@ var _ = Describe("Connection", func() {
 		})
 	})
 
-	Describe("Limiting Memory", func() {
-		Describe("setting the memory limit", func() {
-			BeforeEach(func() {
-				server.AppendHandlers(
-					ghttp.CombineHandlers(
-						ghttp.VerifyRequest("PUT", "/containers/foo/limits/memory"),
-						verifyRequestBody(&garden.MemoryLimits{
-							LimitInBytes: 42,
-						}, &garden.MemoryLimits{}),
-						ghttp.RespondWith(200, marshalProto(&garden.MemoryLimits{
-							LimitInBytes: 40,
-						})),
-					),
-				)
-			})
-
-			It("should limit memory", func() {
-				newLimits, err := connection.LimitMemory("foo", garden.MemoryLimits{
-					LimitInBytes: 42,
-				})
-
-				Ω(err).ShouldNot(HaveOccurred())
-				Ω(newLimits.LimitInBytes).Should(BeNumerically("==", 40))
-			})
-		})
-
-		Describe("getting the memory limit", func() {
+	Describe("fetching limit info", func() {
+		Describe("getting memory limits", func() {
 			BeforeEach(func() {
 				server.AppendHandlers(
 					ghttp.CombineHandlers(
@@ -350,35 +325,8 @@ var _ = Describe("Connection", func() {
 				Ω(currentLimits.LimitInBytes).Should(BeNumerically("==", 40))
 			})
 		})
-	})
 
-	Describe("Limiting CPU", func() {
-		Describe("setting", func() {
-			BeforeEach(func() {
-				server.AppendHandlers(
-					ghttp.CombineHandlers(
-						ghttp.VerifyRequest("PUT", "/containers/foo/limits/cpu"),
-						verifyRequestBody(&garden.CPULimits{
-							LimitInShares: 42,
-						}, &garden.CPULimits{}),
-						ghttp.RespondWith(200, marshalProto(&garden.CPULimits{
-							LimitInShares: 40,
-						})),
-					),
-				)
-			})
-
-			It("should limit CPU", func() {
-				newLimits, err := connection.LimitCPU("foo", garden.CPULimits{
-					LimitInShares: 42,
-				})
-
-				Ω(err).ShouldNot(HaveOccurred())
-				Ω(newLimits.LimitInShares).Should(BeNumerically("==", 40))
-			})
-		})
-
-		Describe("getting", func() {
+		Describe("getting cpu limits", func() {
 			BeforeEach(func() {
 				server.AppendHandlers(
 					ghttp.CombineHandlers(
@@ -390,46 +338,15 @@ var _ = Describe("Connection", func() {
 				)
 			})
 
-			It("sends a nil cpu limit request", func() {
+			It("gets the cpu limit", func() {
 				limits, err := connection.CurrentCPULimits("foo")
 				Ω(err).ShouldNot(HaveOccurred())
 
 				Ω(limits.LimitInShares).Should(BeNumerically("==", 40))
 			})
 		})
-	})
 
-	Describe("Limiting Bandwidth", func() {
-		Describe("setting", func() {
-			BeforeEach(func() {
-				server.AppendHandlers(
-					ghttp.CombineHandlers(
-						ghttp.VerifyRequest("PUT", "/containers/foo/limits/bandwidth"),
-						verifyRequestBody(&garden.BandwidthLimits{
-							RateInBytesPerSecond:      42,
-							BurstRateInBytesPerSecond: 43,
-						}, &garden.BandwidthLimits{}),
-						ghttp.RespondWith(200, marshalProto(&garden.BandwidthLimits{
-							RateInBytesPerSecond:      1,
-							BurstRateInBytesPerSecond: 2,
-						})),
-					),
-				)
-			})
-
-			It("should limit Bandwidth", func() {
-				newLimits, err := connection.LimitBandwidth("foo", garden.BandwidthLimits{
-					RateInBytesPerSecond:      42,
-					BurstRateInBytesPerSecond: 43,
-				})
-
-				Ω(err).ShouldNot(HaveOccurred())
-				Ω(newLimits.RateInBytesPerSecond).Should(BeNumerically("==", 1))
-				Ω(newLimits.BurstRateInBytesPerSecond).Should(BeNumerically("==", 2))
-			})
-		})
-
-		Describe("getting", func() {
+		Describe("getting bandwidth limits", func() {
 			BeforeEach(func() {
 				server.AppendHandlers(
 					ghttp.CombineHandlers(
@@ -442,7 +359,7 @@ var _ = Describe("Connection", func() {
 				)
 			})
 
-			It("sends a nil bandwidth limit request", func() {
+			It("gets the bandwidth limit", func() {
 				limits, err := connection.CurrentBandwidthLimits("foo")
 				Ω(err).ShouldNot(HaveOccurred())
 

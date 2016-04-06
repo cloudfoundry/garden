@@ -42,26 +42,8 @@ func (container *container) StreamOut(spec garden.StreamOutSpec) (io.ReadCloser,
 	return container.connection.StreamOut(container.handle, spec)
 }
 
-func (container *container) LimitBandwidth(limits garden.BandwidthLimits) error {
-	_, err := container.connection.LimitBandwidth(container.handle, limits)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
 func (container *container) CurrentBandwidthLimits() (garden.BandwidthLimits, error) {
 	return container.connection.CurrentBandwidthLimits(container.handle)
-}
-
-func (container *container) LimitCPU(limits garden.CPULimits) error {
-	_, err := container.connection.LimitCPU(container.handle, limits)
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func (container *container) CurrentCPULimits() (garden.CPULimits, error) {
@@ -70,15 +52,6 @@ func (container *container) CurrentCPULimits() (garden.CPULimits, error) {
 
 func (container *container) CurrentDiskLimits() (garden.DiskLimits, error) {
 	return container.connection.CurrentDiskLimits(container.handle)
-}
-
-func (container *container) LimitMemory(limits garden.MemoryLimits) error {
-	_, err := container.connection.LimitMemory(container.handle, limits)
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func (container *container) CurrentMemoryLimits() (garden.MemoryLimits, error) {
