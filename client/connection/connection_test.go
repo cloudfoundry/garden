@@ -733,7 +733,7 @@ var _ = Describe("Connection", func() {
 
 				expectedBulkInfo := map[string]garden.ContainerInfoEntry{
 					"error": garden.ContainerInfoEntry{
-						Err: &garden.Error{errors.New("Oopps")},
+						Err: &garden.Error{Err: errors.New("Oopps")},
 					},
 					"success": garden.ContainerInfoEntry{
 						Info: garden.ContainerInfo{
@@ -818,7 +818,7 @@ var _ = Describe("Connection", func() {
 
 				errorBulkMetrics := map[string]garden.ContainerMetricsEntry{
 					"error": garden.ContainerMetricsEntry{
-						Err: &garden.Error{errors.New("Oh noes!")},
+						Err: &garden.Error{Err: errors.New("Oh noes!")},
 					},
 					"success": garden.ContainerMetricsEntry{
 						Metrics: garden.Metrics{

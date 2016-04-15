@@ -76,5 +76,5 @@ func (client *client) Lookup(handle string) (garden.Container, error) {
 		}
 	}
 
-	return nil, garden.ContainerNotFoundError{handle}
+	return nil, garden.ContainerNotFoundError{Handle: handle}
 }

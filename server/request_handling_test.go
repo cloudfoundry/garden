@@ -306,7 +306,6 @@ var _ = Describe("When a client connects", func() {
 					fakeProcess.IDReturns("doomed-handle")
 					fakeProcess.WaitStub = func() (int, error) {
 						select {}
-						return 0, nil
 					}
 					fakeContainer.RunReturns(fakeProcess, nil)
 
@@ -419,7 +418,7 @@ var _ = Describe("When a client connects", func() {
 		})
 
 		Context("when the container cannot be found", func() {
-			var theError = garden.ContainerNotFoundError{"some-handle"}
+			var theError = garden.ContainerNotFoundError{Handle: "some-handle"}
 
 			BeforeEach(func() {
 				serverBackend.DestroyReturns(theError)
@@ -427,7 +426,7 @@ var _ = Describe("When a client connects", func() {
 
 			It("returns an ContainerNotFoundError", func() {
 				err := apiClient.Destroy("some-handle")
-				Ω(err).Should(MatchError(garden.ContainerNotFoundError{"some-handle"}))
+				Ω(err).Should(MatchError(garden.ContainerNotFoundError{Handle: "some-handle"}))
 			})
 		})
 
@@ -1040,7 +1039,7 @@ var _ = Describe("When a client connects", func() {
 
 		Describe("getting memory limits", func() {
 			It("obtains the current limits", func() {
-				effectiveLimits := garden.MemoryLimits{2048}
+				effectiveLimits := garden.MemoryLimits{LimitInBytes: 2048}
 				fakeContainer.CurrentMemoryLimitsReturns(effectiveLimits, nil)
 
 				limits, err := container.CurrentMemoryLimits()
@@ -1103,7 +1102,7 @@ var _ = Describe("When a client connects", func() {
 		})
 
 		Describe("get the current cpu limits", func() {
-			effectiveLimits := garden.CPULimits{456}
+			effectiveLimits := garden.CPULimits{LimitInShares: 456}
 
 			It("gets the current limits", func() {
 				fakeContainer.CurrentCPULimitsReturns(effectiveLimits, nil)
@@ -1479,7 +1478,7 @@ var _ = Describe("When a client connects", func() {
 
 					expectedBulkInfo := map[string]garden.ContainerInfoEntry{
 						"error": garden.ContainerInfoEntry{
-							Err: &garden.Error{errors.New("Oopps!")},
+							Err: &garden.Error{Err: errors.New("Oopps!")},
 						},
 						"success": garden.ContainerInfoEntry{
 							Info: garden.ContainerInfo{
@@ -1550,7 +1549,7 @@ var _ = Describe("When a client connects", func() {
 
 					errorBulkMetrics := map[string]garden.ContainerMetricsEntry{
 						"error": garden.ContainerMetricsEntry{
-							Err: &garden.Error{errors.New("Oh noes!")},
+							Err: &garden.Error{Err: errors.New("Oh noes!")},
 						},
 						"success": garden.ContainerMetricsEntry{
 							Metrics: garden.Metrics{
@@ -1858,7 +1857,6 @@ var _ = Describe("When a client connects", func() {
 
 						process.WaitStub = func() (int, error) {
 							select {}
-							return 0, nil
 						}
 
 						return process, nil
@@ -1895,7 +1893,6 @@ var _ = Describe("When a client connects", func() {
 					fakeProcess.IDReturns("process-handle")
 					fakeProcess.WaitStub = func() (int, error) {
 						select {}
-						return 0, nil
 					}
 
 					fakeContainer.RunReturns(fakeProcess, nil)
@@ -1921,7 +1918,6 @@ var _ = Describe("When a client connects", func() {
 					fakeProcess.IDReturns("process-handle")
 					fakeProcess.WaitStub = func() (int, error) {
 						select {}
-						return 0, nil
 					}
 
 					fakeContainer.RunReturns(fakeProcess, nil)
@@ -1947,7 +1943,6 @@ var _ = Describe("When a client connects", func() {
 					fakeProcess.IDReturns("process-handle")
 					fakeProcess.WaitStub = func() (int, error) {
 						select {}
-						return 0, nil
 					}
 
 					fakeContainer.RunReturns(fakeProcess, nil)

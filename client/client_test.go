@@ -247,7 +247,7 @@ var _ = Describe("Client", func() {
 
 			It("returns ContainerNotFoundError", func() {
 				_, err := client.Lookup("some-handle")
-				Ω(err).Should(MatchError(garden.ContainerNotFoundError{"some-handle"}))
+				Ω(err).Should(MatchError(garden.ContainerNotFoundError{Handle: "some-handle"}))
 			})
 		})
 
