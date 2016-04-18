@@ -19,7 +19,7 @@ import (
 type GardenServer struct {
 	logger lager.Logger
 
-	server        http.Server
+	server        *http.Server
 	listenNetwork string
 	listenAddr    string
 
@@ -106,7 +106,7 @@ func New(
 
 	conLogger := logger.Session("connection")
 
-	s.server = http.Server{
+	s.server = &http.Server{
 		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			mux.ServeHTTP(w, r)
 		}),
