@@ -22,6 +22,7 @@ import (
 var _ = Describe("The Garden server", func() {
 	var logger *lagertest.TestLogger
 	var tmpdir string
+	var apiClient garden.Client
 
 	BeforeEach(func() {
 		logger = lagertest.NewTestLogger("test")
@@ -46,7 +47,8 @@ var _ = Describe("The Garden server", func() {
 			err = apiServer.Start()
 			Ω(err).ShouldNot(HaveOccurred())
 
-			Eventually(ErrorDialing("unix", socketPath)).ShouldNot(HaveOccurred())
+			apiClient = client.New(connection.New("unix", socketPath))
+			Eventually(apiClient.Ping).Should(Succeed())
 
 			stat, err := os.Stat(socketPath)
 			Ω(err).ShouldNot(HaveOccurred())
@@ -80,7 +82,8 @@ var _ = Describe("The Garden server", func() {
 			err := apiServer.Start()
 			Ω(err).ShouldNot(HaveOccurred())
 
-			Eventually(ErrorDialing("tcp", ":60123")).ShouldNot(HaveOccurred())
+			apiClient = client.New(connection.New("tcp", ":60123"))
+			Eventually(apiClient.Ping).Should(Succeed())
 		})
 	})
 

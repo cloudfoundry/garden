@@ -65,9 +65,9 @@ var _ = Describe("When a client connects", func() {
 
 		isRunning = true
 
-		Eventually(ErrorDialing("unix", socketPath)).ShouldNot(HaveOccurred())
-
 		apiClient = client.New(connection.New("unix", socketPath))
+
+		Eventually(apiClient.Ping).Should(Succeed())
 	})
 
 	AfterEach(func() {
