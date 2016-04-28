@@ -297,7 +297,7 @@ var _ = Describe("When a client connects", func() {
 				Eventually(serverBackend.DestroyCallCount, 2*time.Second).Should(Equal(1))
 				Ω(serverBackend.DestroyArgsForCall(0)).Should(Equal("doomed-handle"))
 
-				Ω(time.Since(before)).Should(BeNumerically("~", graceTime, 100*time.Millisecond))
+				Ω(time.Since(before)).Should(BeNumerically(">", graceTime), "should not destroy before the grace time expires")
 			})
 
 			Context("and a process is running", func() {
