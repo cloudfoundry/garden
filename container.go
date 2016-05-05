@@ -19,7 +19,6 @@ type Container interface {
 	//
 	// If kill is true, garden stops a container by sending the processing running inside it a SIGKILL signal.
 	//
-	// Once a container is stopped, garden does not allow spawning new processes inside the container.
 	// It is possible to copy files in to and out of a stopped container.
 	// It is only when a container is destroyed that its filesystem is cleaned up.
 	//
