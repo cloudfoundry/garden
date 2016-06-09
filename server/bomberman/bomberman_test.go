@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/cloudfoundry-incubator/garden"
-	"github.com/cloudfoundry-incubator/garden/fakes"
+	fakes "github.com/cloudfoundry-incubator/garden/gardenfakes"
 	"github.com/cloudfoundry-incubator/garden/server/bomberman"
 )
 

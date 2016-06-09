@@ -8,7 +8,7 @@ import (
 
 	"github.com/cloudfoundry-incubator/garden"
 	. "github.com/cloudfoundry-incubator/garden/client"
-	"github.com/cloudfoundry-incubator/garden/client/connection/fakes"
+	fakes "github.com/cloudfoundry-incubator/garden/client/connection/connectionfakes"
 )
 
 var _ = Describe("Client", func() {

@@ -15,17 +15,17 @@ import (
 
 	"github.com/cloudfoundry-incubator/garden"
 	. "github.com/cloudfoundry-incubator/garden/client"
-	"github.com/cloudfoundry-incubator/garden/client/connection/fakes"
-	wfakes "github.com/cloudfoundry-incubator/garden/fakes"
+	"github.com/cloudfoundry-incubator/garden/client/connection/connectionfakes"
+	"github.com/cloudfoundry-incubator/garden/gardenfakes"
 )
 
 var _ = Describe("Container", func() {
 	var container garden.Container
 
-	var fakeConnection *fakes.FakeConnection
+	var fakeConnection *connectionfakes.FakeConnection
 
 	BeforeEach(func() {
-		fakeConnection = new(fakes.FakeConnection)
+		fakeConnection = new(connectionfakes.FakeConnection)
 	})
 
 	JustBeforeEach(func() {
@@ -349,7 +349,7 @@ var _ = Describe("Container", func() {
 	Describe("Run", func() {
 		It("sends a run request and returns the process id and a stream", func() {
 			fakeConnection.RunStub = func(handle string, spec garden.ProcessSpec, io garden.ProcessIO) (garden.Process, error) {
-				process := new(wfakes.FakeProcess)
+				process := new(gardenfakes.FakeProcess)
 
 				process.IDReturns("process-handle")
 				process.WaitReturns(123, nil)
@@ -401,7 +401,7 @@ var _ = Describe("Container", func() {
 	Describe("Attach", func() {
 		It("sends an attach request and returns a stream", func() {
 			fakeConnection.AttachStub = func(handle string, processID string, io garden.ProcessIO) (garden.Process, error) {
-				process := new(wfakes.FakeProcess)
+				process := new(gardenfakes.FakeProcess)
 
 				process.IDReturns("process-handle")
 				process.WaitReturns(123, nil)

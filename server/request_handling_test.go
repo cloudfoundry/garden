@@ -20,7 +20,7 @@ import (
 	"github.com/cloudfoundry-incubator/garden"
 	"github.com/cloudfoundry-incubator/garden/client"
 	"github.com/cloudfoundry-incubator/garden/client/connection"
-	"github.com/cloudfoundry-incubator/garden/fakes"
+	fakes "github.com/cloudfoundry-incubator/garden/gardenfakes"
 	"github.com/cloudfoundry-incubator/garden/server"
 )
 
