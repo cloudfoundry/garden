@@ -1,5 +1,5 @@
 ---
-image: docker:///cloudfoundry/garden-ci-ubuntu
+image: docker:///cfgarden/garden-ci-ubuntu
 
 platform: linux
 
