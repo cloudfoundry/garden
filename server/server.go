@@ -237,5 +237,20 @@ func (s *GardenServer) reapContainer(container garden.Container) {
 		"grace-time": s.backend.GraceTime(container).String(),
 	})
 
+	s.destroysL.Lock()
+	_, alreadyDestroying := s.destroys[container.Handle()]
+	if !alreadyDestroying {
+		s.destroys[container.Handle()] = struct{}{}
+	}
+	s.destroysL.Unlock()
+
+	if alreadyDestroying {
+		s.logger.Info("skipping reap due to concurrent delete request", lager.Data{
+			"handle":     container.Handle(),
+			"grace-time": s.backend.GraceTime(container).String(),
+		})
+		return
+	}
+
 	s.backend.Destroy(container.Handle())
 }

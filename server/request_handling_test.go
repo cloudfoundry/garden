@@ -335,6 +335,55 @@ var _ = Describe("When a client connects", func() {
 					Ω(time.Since(before)).Should(BeNumerically("~", graceTime, 100*time.Millisecond))
 				})
 			})
+
+			Context("but it expires during an API destroy request", func() {
+				BeforeEach(func() {
+					// increase the grace time so that we can API create/destroy before expiration
+					graceTime = time.Second * 3
+
+					serverBackend.DestroyStub = func(string) error {
+						// sleep for longer than the grace time
+						time.Sleep(graceTime * 2)
+						return nil
+					}
+				})
+
+				It("does not reap the container", func() {
+					_, err := apiClient.Create(garden.ContainerSpec{})
+					Ω(err).ShouldNot(HaveOccurred())
+
+					err = apiClient.Destroy("doomed-handle")
+					Ω(err).ShouldNot(HaveOccurred())
+
+					Ω(serverBackend.DestroyArgsForCall(0)).Should(Equal("doomed-handle"))
+					Ω(serverBackend.DestroyCallCount()).Should(Equal(1))
+				})
+			})
+
+			Context("and an API destroy is received during grace time destruction", func() {
+				var waitUntilGraceTimeExpires chan bool
+
+				BeforeEach(func() {
+					waitUntilGraceTimeExpires = make(chan bool)
+
+					serverBackend.DestroyStub = func(string) error {
+						close(waitUntilGraceTimeExpires)
+						return nil
+					}
+				})
+
+				It("does not try to destroy the container again", func() {
+					_, err := apiClient.Create(garden.ContainerSpec{})
+					Ω(err).ShouldNot(HaveOccurred())
+
+					<-waitUntilGraceTimeExpires
+
+					err = apiClient.Destroy("doomed-handle")
+					Ω(err).Should(HaveOccurred())
+
+					Ω(serverBackend.DestroyCallCount()).Should(Equal(1))
+				})
+			})
 		})
 
 		Context("when a grace time is not given", func() {
