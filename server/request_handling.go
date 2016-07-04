@@ -32,7 +32,6 @@ type containerDebugInfo struct {
 	Limits     garden.Limits
 }
 
-var ErrInvalidContentType = errors.New("content-type must be application/json")
 var ErrConcurrentDestroy = errors.New("container already being destroyed")
 
 func (s *GardenServer) handlePing(w http.ResponseWriter, r *http.Request) {
@@ -918,11 +917,6 @@ func (s *GardenServer) writeResponse(w http.ResponseWriter, msg interface{}) {
 }
 
 func (s *GardenServer) readRequest(msg interface{}, w http.ResponseWriter, r *http.Request) bool {
-	if r.Header.Get("Content-Type") != "application/json" {
-		s.writeError(w, ErrInvalidContentType, s.logger)
-		return false
-	}
-
 	err := json.NewDecoder(r.Body).Decode(msg)
 	if err != nil {
 		s.writeError(w, err, s.logger)

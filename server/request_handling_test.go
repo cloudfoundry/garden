@@ -7,12 +7,15 @@ import (
 	"io"
 	"io/ioutil"
 	"net"
+	"net/http"
 	"os"
 	"path"
+	"strings"
 	"sync"
 	"time"
 
 	. "github.com/onsi/ginkgo"
+	"github.com/onsi/ginkgo/config"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	"github.com/pivotal-golang/lager/lagertest"
@@ -23,6 +26,60 @@ import (
 	fakes "github.com/cloudfoundry-incubator/garden/gardenfakes"
 	"github.com/cloudfoundry-incubator/garden/server"
 )
+
+var _ = Describe("When connecting directly to the server", func() {
+	var (
+		apiServer                *server.GardenServer
+		logger                   *lagertest.TestLogger
+		fakeBackend              *fakes.FakeBackend
+		fakeContainer            *fakes.FakeContainer
+		serverContainerGraceTime time.Duration
+		sink                     *lagertest.TestSink
+		port                     int
+		client                   *http.Client
+	)
+
+	BeforeEach(func() {
+		logger = lagertest.NewTestLogger("test")
+		sink = lagertest.NewTestSink()
+		logger.RegisterSink(sink)
+		fakeBackend = new(fakes.FakeBackend)
+		serverContainerGraceTime = 42 * time.Second
+		client = &http.Client{}
+
+		fakeContainer = new(fakes.FakeContainer)
+		fakeContainer.HandleReturns("some-handle")
+
+		fakeBackend.CreateReturns(fakeContainer, nil)
+		port = 8000 + config.GinkgoConfig.ParallelNode
+		apiServer = server.New(
+			"tcp",
+			fmt.Sprintf(":%d", port),
+			serverContainerGraceTime,
+			fakeBackend,
+			logger,
+		)
+		Expect(apiServer.Start()).To(Succeed())
+	})
+
+	AfterEach(func() {
+		apiServer.Stop()
+	})
+
+	Context("when not specifing the content type", func() {
+		It("handles the request", func() {
+			request, err := http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/containers", port), strings.NewReader("{}"))
+			Expect(err).NotTo(HaveOccurred())
+			response, err := client.Do(request)
+			Expect(err).NotTo(HaveOccurred())
+
+			body, err := ioutil.ReadAll(response.Body)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(string(body)).To(ContainSubstring("some-handle"))
+			Expect(response.StatusCode).To(Equal(http.StatusOK))
+		})
+	})
+})
 
 var _ = Describe("When a client connects", func() {
 	var socketPath string
