@@ -1249,7 +1249,8 @@ var _ = Describe("When a client connects", func() {
 				Eventually(serverBackend.DestroyCallCount, 2*time.Second).Should(Equal(1))
 				Ω(serverBackend.DestroyArgsForCall(0)).Should(Equal("some-handle"))
 
-				Ω(time.Since(before)).Should(BeNumerically("~", graceTime, 100*time.Millisecond))
+				Ω(time.Since(before)).Should(BeNumerically(">=", graceTime))
+				Ω(time.Since(before)).Should(BeNumerically("<", graceTime+time.Second))
 			})
 		})
 
