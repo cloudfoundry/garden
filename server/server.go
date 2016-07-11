@@ -253,4 +253,8 @@ func (s *GardenServer) reapContainer(container garden.Container) {
 	}
 
 	s.backend.Destroy(container.Handle())
+
+	s.destroysL.Lock()
+	delete(s.destroys, container.Handle())
+	s.destroysL.Unlock()
 }

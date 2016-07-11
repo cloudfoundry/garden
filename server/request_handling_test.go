@@ -416,31 +416,6 @@ var _ = Describe("When a client connects", func() {
 					Ω(serverBackend.DestroyCallCount()).Should(Equal(1))
 				})
 			})
-
-			Context("and an API destroy is received during grace time destruction", func() {
-				var waitUntilGraceTimeExpires chan bool
-
-				BeforeEach(func() {
-					waitUntilGraceTimeExpires = make(chan bool)
-
-					serverBackend.DestroyStub = func(string) error {
-						close(waitUntilGraceTimeExpires)
-						return nil
-					}
-				})
-
-				It("does not try to destroy the container again", func() {
-					_, err := apiClient.Create(garden.ContainerSpec{})
-					Ω(err).ShouldNot(HaveOccurred())
-
-					<-waitUntilGraceTimeExpires
-
-					err = apiClient.Destroy("doomed-handle")
-					Ω(err).Should(HaveOccurred())
-
-					Ω(serverBackend.DestroyCallCount()).Should(Equal(1))
-				})
-			})
 		})
 
 		Context("when a grace time is not given", func() {
