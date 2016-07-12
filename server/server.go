@@ -12,7 +12,7 @@ import (
 	"github.com/cloudfoundry-incubator/garden/routes"
 	"github.com/cloudfoundry-incubator/garden/server/bomberman"
 	"github.com/cloudfoundry-incubator/garden/server/streamer"
-	"github.com/pivotal-golang/lager"
+	"code.cloudfoundry.org/lager"
 	"github.com/tedsuo/rata"
 )
 

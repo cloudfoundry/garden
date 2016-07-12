@@ -8,7 +8,7 @@ import (
 	"sync"
 
 	"github.com/cloudfoundry-incubator/garden/transport"
-	"github.com/pivotal-golang/lager"
+	"code.cloudfoundry.org/lager"
 )
 
 type hijackFunc func(streamType string) (net.Conn, io.Reader, error)

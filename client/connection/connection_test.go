@@ -18,7 +18,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/ghttp"
-	"github.com/pivotal-golang/lager/lagertest"
+	"code.cloudfoundry.org/lager/lagertest"
 	"github.com/tedsuo/rata"
 
 	"github.com/cloudfoundry-incubator/garden"
