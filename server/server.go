@@ -8,11 +8,11 @@ import (
 	"sync"
 	"time"
 
+	"code.cloudfoundry.org/lager"
 	"github.com/cloudfoundry-incubator/garden"
 	"github.com/cloudfoundry-incubator/garden/routes"
 	"github.com/cloudfoundry-incubator/garden/server/bomberman"
 	"github.com/cloudfoundry-incubator/garden/server/streamer"
-	"code.cloudfoundry.org/lager"
 	"github.com/tedsuo/rata"
 )
 

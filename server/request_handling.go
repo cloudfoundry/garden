@@ -9,9 +9,9 @@ import (
 	"strings"
 	"time"
 
+	"code.cloudfoundry.org/lager"
 	"github.com/cloudfoundry-incubator/garden"
 	"github.com/cloudfoundry-incubator/garden/transport"
-	"code.cloudfoundry.org/lager"
 )
 
 type processDebugInfo struct {
