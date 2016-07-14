@@ -4,8 +4,8 @@ import (
 	"io"
 	"time"
 
-	"github.com/cloudfoundry-incubator/garden"
-	"github.com/cloudfoundry-incubator/garden/client/connection"
+	"code.cloudfoundry.org/garden"
+	"code.cloudfoundry.org/garden/client/connection"
 )
 
 type container struct {

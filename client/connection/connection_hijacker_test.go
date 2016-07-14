@@ -6,8 +6,8 @@ import (
 	"net"
 	"net/url"
 
-	"github.com/cloudfoundry-incubator/garden/client/connection"
-	"github.com/cloudfoundry-incubator/garden/routes"
+	"code.cloudfoundry.org/garden/client/connection"
+	"code.cloudfoundry.org/garden/routes"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/tedsuo/rata"

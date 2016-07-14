@@ -12,8 +12,8 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/cloudfoundry-incubator/garden"
-	"github.com/cloudfoundry-incubator/garden/routes"
+	"code.cloudfoundry.org/garden"
+	"code.cloudfoundry.org/garden/routes"
 	"github.com/tedsuo/rata"
 )
 

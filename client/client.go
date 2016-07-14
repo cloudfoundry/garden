@@ -1,8 +1,8 @@
 package client
 
 import (
-	"github.com/cloudfoundry-incubator/garden"
-	"github.com/cloudfoundry-incubator/garden/client/connection"
+	"code.cloudfoundry.org/garden"
+	"code.cloudfoundry.org/garden/client/connection"
 )
 
 type Client interface {

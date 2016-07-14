@@ -20,11 +20,11 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 
-	"github.com/cloudfoundry-incubator/garden"
-	"github.com/cloudfoundry-incubator/garden/client"
-	"github.com/cloudfoundry-incubator/garden/client/connection"
-	fakes "github.com/cloudfoundry-incubator/garden/gardenfakes"
-	"github.com/cloudfoundry-incubator/garden/server"
+	"code.cloudfoundry.org/garden"
+	"code.cloudfoundry.org/garden/client"
+	"code.cloudfoundry.org/garden/client/connection"
+	fakes "code.cloudfoundry.org/garden/gardenfakes"
+	"code.cloudfoundry.org/garden/server"
 )
 
 var _ = Describe("When connecting directly to the server", func() {

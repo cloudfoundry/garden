@@ -12,10 +12,10 @@ import (
 	"strings"
 	"time"
 
+	"code.cloudfoundry.org/garden"
+	"code.cloudfoundry.org/garden/routes"
+	"code.cloudfoundry.org/garden/transport"
 	"code.cloudfoundry.org/lager"
-	"github.com/cloudfoundry-incubator/garden"
-	"github.com/cloudfoundry-incubator/garden/routes"
-	"github.com/cloudfoundry-incubator/garden/transport"
 	"github.com/tedsuo/rata"
 )
 

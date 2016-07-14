@@ -4,8 +4,8 @@ import (
 	"net"
 	"sync"
 
-	"github.com/cloudfoundry-incubator/garden"
-	"github.com/cloudfoundry-incubator/garden/transport"
+	"code.cloudfoundry.org/garden"
+	"code.cloudfoundry.org/garden/transport"
 )
 
 type processStream struct {

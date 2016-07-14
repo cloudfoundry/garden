@@ -15,8 +15,8 @@ if [ -z $GOPATH ]; then
 fi
 
 cd $(dirname $0)/..
-mkdir -p $GOPATH/src/github.com/cloudfoundry-incubator
-ln -s $PWD $GOPATH/src/github.com/cloudfoundry-incubator/garden
+mkdir -p $GOPATH/src/code.cloudfoundry.org
+ln -s $PWD $GOPATH/src/code.cloudfoundry.org/garden
 
-cd $GOPATH/src/github.com/cloudfoundry-incubator/garden
+cd $GOPATH/src/code.cloudfoundry.org/garden
 go run scripts/update-godoc/main.go

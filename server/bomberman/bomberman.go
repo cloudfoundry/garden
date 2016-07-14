@@ -1,8 +1,8 @@
 package bomberman
 
 import (
-	"github.com/cloudfoundry-incubator/garden"
-	"github.com/cloudfoundry-incubator/garden/server/timebomb"
+	"code.cloudfoundry.org/garden"
+	"code.cloudfoundry.org/garden/server/timebomb"
 )
 
 type action int

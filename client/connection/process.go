@@ -3,7 +3,7 @@ package connection
 import (
 	"sync"
 
-	"github.com/cloudfoundry-incubator/garden"
+	"code.cloudfoundry.org/garden"
 )
 
 type process struct {

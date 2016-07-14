@@ -8,7 +8,7 @@ import (
 	"net/url"
 	"sync"
 
-	"github.com/cloudfoundry-incubator/garden/client/connection"
+	"code.cloudfoundry.org/garden/client/connection"
 	"github.com/tedsuo/rata"
 )
 

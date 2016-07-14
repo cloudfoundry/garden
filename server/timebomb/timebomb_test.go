@@ -6,7 +6,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	"github.com/cloudfoundry-incubator/garden/server/timebomb"
+	"code.cloudfoundry.org/garden/server/timebomb"
 )
 
 var _ = Describe("THE TIMEBOMB", func() {

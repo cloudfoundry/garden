@@ -13,10 +13,10 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 
-	"github.com/cloudfoundry-incubator/garden"
-	. "github.com/cloudfoundry-incubator/garden/client"
-	"github.com/cloudfoundry-incubator/garden/client/connection/connectionfakes"
-	"github.com/cloudfoundry-incubator/garden/gardenfakes"
+	"code.cloudfoundry.org/garden"
+	. "code.cloudfoundry.org/garden/client"
+	"code.cloudfoundry.org/garden/client/connection/connectionfakes"
+	"code.cloudfoundry.org/garden/gardenfakes"
 )
 
 var _ = Describe("Container", func() {

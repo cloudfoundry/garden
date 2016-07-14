@@ -1,6 +1,6 @@
 package transport
 
-import "github.com/cloudfoundry-incubator/garden"
+import "code.cloudfoundry.org/garden"
 
 type Source int
 

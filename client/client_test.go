@@ -6,9 +6,9 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	"github.com/cloudfoundry-incubator/garden"
-	. "github.com/cloudfoundry-incubator/garden/client"
-	fakes "github.com/cloudfoundry-incubator/garden/client/connection/connectionfakes"
+	"code.cloudfoundry.org/garden"
+	. "code.cloudfoundry.org/garden/client"
+	fakes "code.cloudfoundry.org/garden/client/connection/connectionfakes"
 )
 
 var _ = Describe("Client", func() {

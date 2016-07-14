@@ -21,10 +21,10 @@ import (
 	"github.com/onsi/gomega/ghttp"
 	"github.com/tedsuo/rata"
 
-	"github.com/cloudfoundry-incubator/garden"
-	. "github.com/cloudfoundry-incubator/garden/client/connection"
-	"github.com/cloudfoundry-incubator/garden/client/connection/fakes"
-	"github.com/cloudfoundry-incubator/garden/transport"
+	"code.cloudfoundry.org/garden"
+	. "code.cloudfoundry.org/garden/client/connection"
+	"code.cloudfoundry.org/garden/client/connection/fakes"
+	"code.cloudfoundry.org/garden/transport"
 )
 
 var _ = Describe("Connection", func() {

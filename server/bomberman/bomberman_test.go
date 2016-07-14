@@ -6,9 +6,9 @@ import (
 
 	"time"
 
-	"github.com/cloudfoundry-incubator/garden"
-	fakes "github.com/cloudfoundry-incubator/garden/gardenfakes"
-	"github.com/cloudfoundry-incubator/garden/server/bomberman"
+	"code.cloudfoundry.org/garden"
+	fakes "code.cloudfoundry.org/garden/gardenfakes"
+	"code.cloudfoundry.org/garden/server/bomberman"
 )
 
 var _ = Describe("Bomberman", func() {

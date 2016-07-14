@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cloudfoundry-incubator/garden/server/streamer"
+	"code.cloudfoundry.org/garden/server/streamer"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"

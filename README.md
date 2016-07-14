@@ -16,7 +16,7 @@
                                            \__._| |_.__/
 ```
 
-A rich golang client and server for container creation and management with pluggable backends for [linux](https://github.com/cloudfoundry-incubator/garden-linux/), [windows](https://github.com/cloudfoundry-incubator/garden-windows) and [The Open Container Initiative Spec](https://github.com/cloudfoundry-incubator/guardian/).
+A rich golang client and server for container creation and management with pluggable backends for [linux](https://github.com/cloudfoundry/garden-linux/), [windows](https://github.com/cloudfoundry/garden-windows) and [The Open Container Initiative Spec](https://github.com/cloudfoundry/guardian/).
 
 Garden is a platform-agnostic Go API for container creation and management, with pluggable backends for different platforms and runtimes.
 This package contains the canonical client, as well as a server package containing an interface to be implemented by backends.
@@ -29,14 +29,14 @@ If you want to use the Garden client to manage containers, see the [Client API](
 Backends implement support for various specific platforms.
 So far, the list of backends is as follows:
 
- - [Garden Linux](https://github.com/cloudfoundry-incubator/garden-linux/) - Linux backend
- - [Guardian](https://github.com/cloudfoundry-incubator/guardian/) - Linux backend using [runc](https://github.com/opencontainers/runc)
- - [Greenhouse](https://github.com/cloudfoundry-incubator/garden-windows) - Windows backend
+ - [Garden Linux](https://github.com/cloudfoundry/garden-linux/) - Linux backend
+ - [Guardian](https://github.com/cloudfoundry/guardian/) - Linux backend using [runc](https://github.com/opencontainers/runc)
+ - [Greenhouse](https://github.com/cloudfoundry/garden-windows) - Windows backend
 
 # Client API
 
 The canonical API for Garden is defined as a collection of Go interfaces.
-See the [godoc documentation](http://godoc.org/github.com/cloudfoundry-incubator/garden) for details.
+See the [godoc documentation](http://godoc.org/code.cloudfoundry.org/garden) for details.
 
 ## Example use
 
@@ -44,9 +44,9 @@ _Error checking ignored for brevity._
 
 Import these packages:
 ```
-"github.com/cloudfoundry-incubator/garden"
-"github.com/cloudfoundry-incubator/garden/client"
-"github.com/cloudfoundry-incubator/garden/client/connection"
+"code.cloudfoundry.org/garden"
+"code.cloudfoundry.org/garden/client"
+"code.cloudfoundry.org/garden/client/connection"
 ```
 
 Create a client:
@@ -86,9 +86,9 @@ fmt.Println(buffer.String())
 
 Assuming go is installed and `$GOPATH` is set:
 ```
-mkdir -p $GOPATH/src/github.com/cloudfoundry-incubator
-cd $GOPATH/src/github.com/cloudfoundry-incubator
-git clone git@github.com:cloudfoundry-incubator/garden
+mkdir -p $GOPATH/src/code.cloudfoundry.org
+cd $GOPATH/src/code.cloudfoundry.org
+git clone git@github.com:cloudfoundry/garden
 cd garden
 go get -t -u ./...
 go install github.com/onsi/ginkgo/ginkgo
