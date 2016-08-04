@@ -1,5 +1,8 @@
 ---
-image: docker:///cfgarden/garden-ci-ubuntu
+image_resource:
+ type: docker-image
+ source:
+   repository: cfgarden/garden-ci-ubuntu
 
 platform: linux
 
