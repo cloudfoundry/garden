@@ -99,7 +99,7 @@ fmt.Printf("Exit code: %d, Process output %s", exitCode, buffer.String())
 
 * [go](https://golang.org)
 * [git](http://git-scm.com/) (for garden and its dependencies)
-* [mercurial](http://mercurial.selenic.com/) (for some other dependencies not using git)
+* [mercurial](https://www.mercurial-scm.org/) (for some other dependencies not using git)
 
 ## Running the tests
 
