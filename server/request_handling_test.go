@@ -366,8 +366,6 @@ var _ = Describe("When a client connects", func() {
 					}
 					fakeContainer.RunReturns(fakeProcess, nil)
 
-					before := time.Now()
-
 					var clientConnection net.Conn
 
 					apiConnection := connection.NewWithDialerAndLogger(func(string, string) (net.Conn, error) {
@@ -381,6 +379,8 @@ var _ = Describe("When a client connects", func() {
 					container, err := apiClient.Create(garden.ContainerSpec{})
 					Ω(err).ShouldNot(HaveOccurred())
 
+					before := time.Now()
+
 					_, err = container.Run(garden.ProcessSpec{}, garden.ProcessIO{})
 					Ω(err).ShouldNot(HaveOccurred())
 
@@ -389,7 +389,9 @@ var _ = Describe("When a client connects", func() {
 					Eventually(serverBackend.DestroyCallCount, 2*time.Second).Should(Equal(1))
 					Ω(serverBackend.DestroyArgsForCall(0)).Should(Equal("doomed-handle"))
 
-					Ω(time.Since(before)).Should(BeNumerically("~", graceTime, 100*time.Millisecond))
+					duration := time.Since(before)
+					Ω(duration).Should(BeNumerically(">=", graceTime))
+					Ω(duration).Should(BeNumerically("<", graceTime+time.Second))
 				})
 			})
 
@@ -659,7 +661,7 @@ var _ = Describe("When a client connects", func() {
 			It("resets grace time when handling", func() {
 				fn(graceTime * 2)
 				Expect(serverBackend.DestroyCallCount()).To(Equal(0))
-				Eventually(serverBackend.DestroyCallCount, graceTime+(250*time.Millisecond)).Should(Equal(1))
+				Eventually(serverBackend.DestroyCallCount, graceTime+(1000*time.Millisecond)).Should(Equal(1))
 			})
 		}
 
