@@ -1330,7 +1330,7 @@ var _ = Describe("When a client connects", func() {
 				It("permits traffic to that network", func() {
 					Ω(container.NetOut(garden.NetOutRule{
 						Networks: []garden.IPRange{
-							{net.ParseIP("1.3.5.7"), net.ParseIP("9.9.7.6")},
+							{Start: net.ParseIP("1.3.5.7"), End: net.ParseIP("9.9.7.6")},
 						},
 					})).Should(Succeed())
 
@@ -1348,8 +1348,8 @@ var _ = Describe("When a client connects", func() {
 				It("permits traffic to those networks", func() {
 					Ω(container.NetOut(garden.NetOutRule{
 						Networks: []garden.IPRange{
-							{net.ParseIP("1.3.5.7"), net.ParseIP("9.9.7.6")},
-							{net.ParseIP("2.4.6.8"), net.ParseIP("8.6.4.2")},
+							{Start: net.ParseIP("1.3.5.7"), End: net.ParseIP("9.9.7.6")},
+							{Start: net.ParseIP("2.4.6.8"), End: net.ParseIP("8.6.4.2")},
 						},
 					})).Should(Succeed())
 
@@ -1371,7 +1371,7 @@ var _ = Describe("When a client connects", func() {
 				It("permits traffic to those ports", func() {
 					Ω(container.NetOut(garden.NetOutRule{
 						Ports: []garden.PortRange{
-							{4, 44},
+							{Start: 4, End: 44},
 						},
 					})).Should(Succeed())
 
@@ -1389,8 +1389,8 @@ var _ = Describe("When a client connects", func() {
 				It("permits traffic to those ports", func() {
 					Ω(container.NetOut(garden.NetOutRule{
 						Ports: []garden.PortRange{
-							{4, 44},
-							{563, 3944},
+							{Start: 4, End: 44},
+							{Start: 563, End: 3944},
 						},
 					})).Should(Succeed())
 
