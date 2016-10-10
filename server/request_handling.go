@@ -896,7 +896,7 @@ func (s *GardenServer) handleBulkMetrics(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	hLog.Info("got-bulkinfo")
+	hLog.Info("got-bulkmetrics")
 
 	s.writeResponse(w, bulkMetrics)
 }
