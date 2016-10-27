@@ -8,16 +8,16 @@ import (
 
 	"code.cloudfoundry.org/garden"
 	. "code.cloudfoundry.org/garden/client"
-	fakes "code.cloudfoundry.org/garden/client/connection/connectionfakes"
+	"code.cloudfoundry.org/garden/client/connection/connectionfakes"
 )
 
 var _ = Describe("Client", func() {
 	var client Client
 
-	var fakeConnection *fakes.FakeConnection
+	var fakeConnection *connectionfakes.FakeConnection
 
 	BeforeEach(func() {
-		fakeConnection = new(fakes.FakeConnection)
+		fakeConnection = new(connectionfakes.FakeConnection)
 	})
 
 	JustBeforeEach(func() {

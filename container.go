@@ -80,6 +80,12 @@ type Container interface {
 	// * An error is returned if the NetOut call fails.
 	NetOut(netOutRule NetOutRule) error
 
+	// A Bulk call for NetOut.
+	//
+	// Errors:
+	// * An error is returned if any of the NetOut calls fail.
+	BulkNetOut(netOutRules []NetOutRule) error
+
 	// Run a script inside a container.
 	//
 	// The root user will be mapped to a non-root UID in the host unless the container (not this process) was created with 'privileged' true.

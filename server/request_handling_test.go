@@ -1462,6 +1462,34 @@ var _ = Describe("When a client connects", func() {
 			})
 		})
 
+		Describe("bulk net out", func() {
+			It("calls bulk net out with rules provided", func() {
+				rules := []garden.NetOutRule{
+					garden.NetOutRule{Protocol: garden.ProtocolTCP},
+					garden.NetOutRule{Protocol: garden.ProtocolUDP},
+				}
+
+				Ω(container.BulkNetOut(rules)).Should(Succeed())
+				Ω(fakeContainer.BulkNetOutCallCount()).To(Equal(1))
+				Ω(fakeContainer.BulkNetOutArgsForCall(0)).To(Equal(rules))
+			})
+
+			itFailsWhenTheContainerIsNotFound(func() error {
+				return container.BulkNetOut([]garden.NetOutRule{})
+			})
+
+			Context("when permitting traffic fails", func() {
+				BeforeEach(func() {
+					fakeContainer.BulkNetOutReturns(errors.New("oh no!"))
+				})
+
+				It("fails", func() {
+					err := container.BulkNetOut([]garden.NetOutRule{})
+					Ω(err).Should(HaveOccurred())
+				})
+			})
+		})
+
 		Describe("info", func() {
 			containerInfo := garden.ContainerInfo{
 				State:         "active",

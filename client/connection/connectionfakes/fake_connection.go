@@ -184,6 +184,15 @@ type FakeConnection struct {
 	netOutReturns struct {
 		result1 error
 	}
+	BulkNetOutStub        func(handle string, rules []garden.NetOutRule) error
+	bulkNetOutMutex       sync.RWMutex
+	bulkNetOutArgsForCall []struct {
+		handle string
+		rules  []garden.NetOutRule
+	}
+	bulkNetOutReturns struct {
+		result1 error
+	}
 	SetGraceTimeStub        func(handle string, graceTime time.Duration) error
 	setGraceTimeMutex       sync.RWMutex
 	setGraceTimeArgsForCall []struct {
@@ -890,6 +899,45 @@ func (fake *FakeConnection) NetOutReturns(result1 error) {
 	}{result1}
 }
 
+func (fake *FakeConnection) BulkNetOut(handle string, rules []garden.NetOutRule) error {
+	var rulesCopy []garden.NetOutRule
+	if rules != nil {
+		rulesCopy = make([]garden.NetOutRule, len(rules))
+		copy(rulesCopy, rules)
+	}
+	fake.bulkNetOutMutex.Lock()
+	fake.bulkNetOutArgsForCall = append(fake.bulkNetOutArgsForCall, struct {
+		handle string
+		rules  []garden.NetOutRule
+	}{handle, rulesCopy})
+	fake.recordInvocation("BulkNetOut", []interface{}{handle, rulesCopy})
+	fake.bulkNetOutMutex.Unlock()
+	if fake.BulkNetOutStub != nil {
+		return fake.BulkNetOutStub(handle, rules)
+	} else {
+		return fake.bulkNetOutReturns.result1
+	}
+}
+
+func (fake *FakeConnection) BulkNetOutCallCount() int {
+	fake.bulkNetOutMutex.RLock()
+	defer fake.bulkNetOutMutex.RUnlock()
+	return len(fake.bulkNetOutArgsForCall)
+}
+
+func (fake *FakeConnection) BulkNetOutArgsForCall(i int) (string, []garden.NetOutRule) {
+	fake.bulkNetOutMutex.RLock()
+	defer fake.bulkNetOutMutex.RUnlock()
+	return fake.bulkNetOutArgsForCall[i].handle, fake.bulkNetOutArgsForCall[i].rules
+}
+
+func (fake *FakeConnection) BulkNetOutReturns(result1 error) {
+	fake.BulkNetOutStub = nil
+	fake.bulkNetOutReturns = struct {
+		result1 error
+	}{result1}
+}
+
 func (fake *FakeConnection) SetGraceTime(handle string, graceTime time.Duration) error {
 	fake.setGraceTimeMutex.Lock()
 	fake.setGraceTimeArgsForCall = append(fake.setGraceTimeArgsForCall, struct {
@@ -1137,6 +1185,8 @@ func (fake *FakeConnection) Invocations() map[string][][]interface{} {
 	defer fake.netInMutex.RUnlock()
 	fake.netOutMutex.RLock()
 	defer fake.netOutMutex.RUnlock()
+	fake.bulkNetOutMutex.RLock()
+	defer fake.bulkNetOutMutex.RUnlock()
 	fake.setGraceTimeMutex.RLock()
 	defer fake.setGraceTimeMutex.RUnlock()
 	fake.propertiesMutex.RLock()

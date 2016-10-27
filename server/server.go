@@ -84,6 +84,7 @@ func New(
 		routes.CurrentMemoryLimits:    http.HandlerFunc(s.handleCurrentMemoryLimits),
 		routes.NetIn:                  http.HandlerFunc(s.handleNetIn),
 		routes.NetOut:                 http.HandlerFunc(s.handleNetOut),
+		routes.BulkNetOut:             http.HandlerFunc(s.handleBulkNetOut),
 		routes.Info:                   http.HandlerFunc(s.handleInfo),
 		routes.BulkInfo:               http.HandlerFunc(s.handleBulkInfo),
 		routes.BulkMetrics:            http.HandlerFunc(s.handleBulkMetrics),

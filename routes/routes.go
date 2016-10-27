@@ -26,8 +26,9 @@ const (
 	CurrentDiskLimits      = "CurrentDiskLimits"
 	CurrentMemoryLimits    = "CurrentMemoryLimits"
 
-	NetIn  = "NetIn"
-	NetOut = "NetOut"
+	NetIn      = "NetIn"
+	NetOut     = "NetOut"
+	BulkNetOut = "BulkNetOut"
 
 	Run    = "Run"
 	Attach = "Attach"
@@ -67,6 +68,7 @@ var Routes = rata.Routes{
 
 	{Path: "/containers/:handle/net/in", Method: "POST", Name: NetIn},
 	{Path: "/containers/:handle/net/out", Method: "POST", Name: NetOut},
+	{Path: "/containers/:handle/net/out/bulk", Method: "POST", Name: BulkNetOut},
 
 	{Path: "/containers/:handle/processes/:pid/attaches/:streamid/stdout", Method: "GET", Name: Stdout},
 	{Path: "/containers/:handle/processes/:pid/attaches/:streamid/stderr", Method: "GET", Name: Stderr},

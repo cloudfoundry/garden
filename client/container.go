@@ -74,6 +74,10 @@ func (container *container) NetOut(netOutRule garden.NetOutRule) error {
 	return container.connection.NetOut(container.handle, netOutRule)
 }
 
+func (container *container) BulkNetOut(netOutRules []garden.NetOutRule) error {
+	return container.connection.BulkNetOut(container.handle, netOutRules)
+}
+
 func (container *container) Metrics() (garden.Metrics, error) {
 	return container.connection.Metrics(container.handle)
 }

@@ -503,6 +503,45 @@ func (s *GardenServer) handleNetOut(w http.ResponseWriter, r *http.Request) {
 	s.writeSuccess(w)
 }
 
+func (s *GardenServer) handleBulkNetOut(w http.ResponseWriter, r *http.Request) {
+	handle := r.FormValue(":handle")
+
+	hLog := s.logger.Session("bulk-net-out", lager.Data{
+		"handle": handle,
+	})
+
+	var rules []garden.NetOutRule
+	if !s.readRequest(&rules, w, r) {
+		return
+	}
+
+	container, err := s.backend.Lookup(handle)
+	if err != nil {
+		s.writeError(w, err, hLog)
+		return
+	}
+
+	s.bomberman.Pause(container.Handle())
+	defer s.bomberman.Unpause(container.Handle())
+
+	hLog.Debug("allowing-bulk-out", lager.Data{
+		"rules": rules,
+	})
+
+	err = container.BulkNetOut(rules)
+
+	if err != nil {
+		s.writeError(w, err, hLog)
+		return
+	}
+
+	hLog.Debug("allowed", lager.Data{
+		"rules": rules,
+	})
+
+	s.writeSuccess(w)
+}
+
 func (s *GardenServer) handleMetrics(w http.ResponseWriter, r *http.Request) {
 	handle := r.FormValue(":handle")
 

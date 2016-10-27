@@ -55,6 +55,7 @@ type Connection interface {
 
 	NetIn(handle string, hostPort, containerPort uint32) (uint32, uint32, error)
 	NetOut(handle string, rule garden.NetOutRule) error
+	BulkNetOut(handle string, rules []garden.NetOutRule) error
 
 	SetGraceTime(handle string, graceTime time.Duration) error
 
@@ -307,6 +308,18 @@ func (c *connection) NetIn(handle string, hostPort, containerPort uint32) (uint3
 	}
 
 	return res.HostPort, res.ContainerPort, nil
+}
+
+func (c *connection) BulkNetOut(handle string, rules []garden.NetOutRule) error {
+	return c.do(
+		routes.BulkNetOut,
+		rules,
+		&struct{}{},
+		rata.Params{
+			"handle": handle,
+		},
+		nil,
+	)
 }
 
 func (c *connection) NetOut(handle string, rule garden.NetOutRule) error {

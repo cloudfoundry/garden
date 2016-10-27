@@ -23,7 +23,7 @@ import (
 
 	"code.cloudfoundry.org/garden"
 	. "code.cloudfoundry.org/garden/client/connection"
-	"code.cloudfoundry.org/garden/client/connection/fakes"
+	"code.cloudfoundry.org/garden/client/connection/connectionfakes"
 	"code.cloudfoundry.org/garden/transport"
 )
 
@@ -1058,13 +1058,13 @@ var _ = Describe("Connection", func() {
 			})
 
 			Describe("connection leak avoidance", func() {
-				var fakeHijacker *fakes.FakeHijackStreamer
+				var fakeHijacker *connectionfakes.FakeHijackStreamer
 				var wrappedConnections []*wrappedConnection
 
 				BeforeEach(func() {
 					wrappedConnections = []*wrappedConnection{}
 					netHijacker := hijacker
-					fakeHijacker = new(fakes.FakeHijackStreamer)
+					fakeHijacker = new(connectionfakes.FakeHijackStreamer)
 					fakeHijacker.HijackStub = func(handler string, body io.Reader, params rata.Params, query url.Values, contentType string) (net.Conn, *bufio.Reader, error) {
 						conn, resp, err := netHijacker.Hijack(handler, body, params, query, contentType)
 						wc := &wrappedConnection{Conn: conn}
