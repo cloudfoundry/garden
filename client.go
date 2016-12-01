@@ -150,6 +150,7 @@ type Limits struct {
 	CPU       CPULimits       `json:"cpu_limits,omitempty"`
 	Disk      DiskLimits      `json:"disk_limits,omitempty"`
 	Memory    MemoryLimits    `json:"memory_limits,omitempty"`
+	Pid       PidLimits       `json:"pid_limits,omitempty"`
 }
 
 // BindMount specifies parameters for a single mount point.

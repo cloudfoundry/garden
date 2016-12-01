@@ -312,6 +312,13 @@ type CPULimits struct {
 	LimitInShares uint64 `json:"limit_in_shares,omitempty"`
 }
 
+type PidLimits struct {
+	// Limits the number of pids a container may create before new forks or clones are disallowed to processes in the container.
+	// Note: this may only be enforced when a process attempts to fork, so it does not guarantee that a new container.Run(ProcessSpec)
+	// will not succeed even if the limit has been exceeded, but the process will not be able to spawn further processes or threads.
+	Limit uint64 `json:"limit,omitempty"`
+}
+
 // Resource limits.
 //
 // Please refer to the manual page of getrlimit for a description of the individual fields:
