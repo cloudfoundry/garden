@@ -316,7 +316,7 @@ type PidLimits struct {
 	// Limits the number of pids a container may create before new forks or clones are disallowed to processes in the container.
 	// Note: this may only be enforced when a process attempts to fork, so it does not guarantee that a new container.Run(ProcessSpec)
 	// will not succeed even if the limit has been exceeded, but the process will not be able to spawn further processes or threads.
-	Limit uint64 `json:"limit,omitempty"`
+	Max uint64 `json:"max,omitempty"`
 }
 
 // Resource limits.
