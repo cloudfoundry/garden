@@ -43,8 +43,18 @@ See the [godoc documentation](http://godoc.org/code.cloudfoundry.org/garden) for
 
 _Error checking ignored for brevity._
 
+Install needed packages:
+
+```
+go get code.cloudfoundry.org/garden
+go get code.cloudfoundry.org/lager
+```
+
 Import these packages:
 ```
+"bytes"
+"fmt"
+
 "code.cloudfoundry.org/garden"
 "code.cloudfoundry.org/garden/client"
 "code.cloudfoundry.org/garden/client/connection"
