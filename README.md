@@ -41,8 +41,6 @@ See the [godoc documentation](http://godoc.org/code.cloudfoundry.org/garden) for
 
 ## Example use
 
-_Error checking ignored for brevity._
-
 Install needed packages:
 
 ```
@@ -67,20 +65,31 @@ gardenClient := client.New(connection.New("tcp", "127.0.0.1:7777"))
 
 Create a container:
 ```
-container, _ := gardenClient.Create(garden.ContainerSpec{})
+container, err := gdnClient.Create(garden.ContainerSpec{})
+if err != nil {
+  os.Exit(1)
+}
 ```
 
 Run a process:
 ```
 buffer := &bytes.Buffer{}
-process, _ := container.Run(garden.ProcessSpec{
+process, err := container.Run(garden.ProcessSpec{
   Path: "echo",
   Args: []string{"hello from the container"},
 }, garden.ProcessIO{
   Stdout: buffer,
   Stderr: buffer,
 })
-exitCode, _ := process.Wait()
+if err != nil {
+  os.Exit(1)
+}
+
+exitCode, err := process.Wait()
+if err != nil {
+  os.Exit(1)
+}
+
 fmt.Printf("Exit code: %d, Process output %s", exitCode, buffer.String())
 ```
 
