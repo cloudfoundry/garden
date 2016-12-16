@@ -31,7 +31,6 @@ If you want to use the Garden client to manage containers, see the [Client API](
 Backends implement support for various specific platforms.
 So far, the list of backends is as follows:
 
- - [Garden Linux](https://github.com/cloudfoundry/garden-linux/) - Linux backend
  - [Guardian](https://github.com/cloudfoundry/guardian/) - Linux backend using [runc](https://github.com/opencontainers/runc)
  - [Greenhouse](https://github.com/cloudfoundry/garden-windows) - Windows backend
 
