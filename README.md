@@ -64,15 +64,14 @@ Run a process:
 ```
 buffer := &bytes.Buffer{}
 process, _ := container.Run(garden.ProcessSpec{
-  User: "alice",
   Path: "echo",
   Args: []string{"hello from the container"},
 }, garden.ProcessIO{
   Stdout: buffer,
   Stderr: buffer,
 })
-exitCode := process.Wait()
-fmt.Println(buffer.String())
+exitCode, _ := process.Wait()
+fmt.Printf("Exit code: %d, Process output %s", exitCode, buffer.String())
 ```
 
 # Development
