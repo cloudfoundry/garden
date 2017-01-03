@@ -778,8 +778,8 @@ func (s *GardenServer) handleRun(w http.ResponseWriter, r *http.Request) {
 	streamID := s.streamer.Stream(stdout, stderr)
 	defer s.streamer.Stop(streamID)
 
-	w.WriteHeader(http.StatusCreated)
 	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
 
 	conn, br, err := w.(http.Hijacker).Hijack()
 	if err != nil {
@@ -849,8 +849,8 @@ func (s *GardenServer) handleAttach(w http.ResponseWriter, r *http.Request) {
 	streamID := s.streamer.Stream(stdout, stderr)
 	defer s.streamer.Stop(streamID)
 
-	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
 
 	conn, br, err := w.(http.Hijacker).Hijack()
 	if err != nil {
