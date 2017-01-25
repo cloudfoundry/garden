@@ -72,7 +72,10 @@ type ContainerSpec struct {
 	// subject to the globally configured grace time.
 	GraceTime time.Duration `json:"grace_time,omitempty"`
 
-	// RootFSPath is a URI referring to the root file system for the container.
+	// Deprecated in favour of Image property
+	RootFSPath string `json:"rootfs,omitempty"`
+
+	// Image contains a URI referring to the root file system for the container.
 	// The URI scheme must either be the empty string or "docker".
 	//
 	// A URI with an empty scheme determines the path of a root file system.
@@ -91,7 +94,7 @@ type ContainerSpec struct {
 	// * "/some/path"
 	// * "docker:///onsi/grace-busybox"
 	// * "docker://index.docker.io/busybox"
-	RootFSPath string `json:"rootfs,omitempty"`
+	Image ImageRef `json:"image,omitempty"`
 
 	// * bind_mounts: a list of mount point descriptions which will result in corresponding mount
 	// points being created in the container's file system.
@@ -143,6 +146,10 @@ type ContainerSpec struct {
 
 	// Limits to be applied to the newly created container.
 	Limits Limits `json:"limits,omitempty"`
+}
+
+type ImageRef struct {
+	URI string `json:"uri,omitempty"`
 }
 
 type Limits struct {
