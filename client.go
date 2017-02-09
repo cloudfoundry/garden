@@ -146,6 +146,15 @@ type ContainerSpec struct {
 
 	// Limits to be applied to the newly created container.
 	Limits Limits `json:"limits,omitempty"`
+
+	// Whitelist outbound network traffic.
+	//
+	// If the configuration directive deny_networks is not used,
+	// all networks are already whitelisted and passing any rules is effectively a no-op.
+	//
+	// Later programmatic NetOut calls take precedence over these rules, which is
+	// significant only in relation to logging.
+	NetOutRules []NetOutRule `json:"netout_rules,omitempty"`
 }
 
 type ImageRef struct {

@@ -68,7 +68,8 @@ type Container interface {
 	// * When no port can be acquired from the server's port pool.
 	NetIn(hostPort, containerPort uint32) (uint32, uint32, error)
 
-	// Whitelist outbound network traffic.
+	// Whitelist outbound network traffic. This is deprecated in favour of passing
+	// NetOut rules in the ContainerSpec at creation time.
 	//
 	// If the configuration directive deny_networks is not used,
 	// all networks are already whitelisted and this command is effectively a no-op.
@@ -80,7 +81,8 @@ type Container interface {
 	// * An error is returned if the NetOut call fails.
 	NetOut(netOutRule NetOutRule) error
 
-	// A Bulk call for NetOut.
+	// A Bulk call for NetOut. This is deprecated in favour of passing
+	// NetOut rules in the ContainerSpec at creation time.
 	//
 	// Errors:
 	// * An error is returned if any of the NetOut calls fail.
