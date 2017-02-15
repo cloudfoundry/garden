@@ -158,7 +158,9 @@ type ContainerSpec struct {
 }
 
 type ImageRef struct {
-	URI string `json:"uri,omitempty"`
+	URI      string `json:"uri,omitempty"`
+	Username string `json:"username,omitempty"`
+	Password string `json:"password,omitempty"`
 }
 
 type Limits struct {
