@@ -1070,7 +1070,7 @@ var _ = Describe("When a client connects", func() {
 				}
 				reader, err := container.StreamOut(garden.StreamOutSpec{User: "frank", Path: "/src/path"})
 				Ω(err).ShouldNot(HaveOccurred())
-				Ω(reader).ShouldNot(BeZero())
+				Ω(reader).ShouldNot(BeNil())
 
 				_, err = ioutil.ReadAll(reader)
 				Ω(err).ShouldNot(HaveOccurred())
