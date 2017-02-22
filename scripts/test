@@ -12,4 +12,4 @@ go get -t -v ./...
 go get golang.org/x/tools/cmd/cover
 go install github.com/onsi/ginkgo/ginkgo
 
-ginkgo -cover -race -r -skipMeasurements -randomizeAllSpecs -failOnPending "$@"
+ginkgo -cover -race -r -skipMeasurements -randomizeSuites -randomizeAllSpecs -failOnPending "$@"
