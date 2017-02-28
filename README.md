@@ -52,6 +52,7 @@ Import these packages:
 ```
 "bytes"
 "fmt"
+"os"
 
 "code.cloudfoundry.org/garden"
 "code.cloudfoundry.org/garden/client"
@@ -65,7 +66,7 @@ gardenClient := client.New(connection.New("tcp", "127.0.0.1:7777"))
 
 Create a container:
 ```
-container, err := gdnClient.Create(garden.ContainerSpec{})
+container, err := gardenClient.Create(garden.ContainerSpec{})
 if err != nil {
   os.Exit(1)
 }
