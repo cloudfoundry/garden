@@ -134,6 +134,9 @@ type Container interface {
 
 // ProcessSpec contains parameters for running a script inside a container.
 type ProcessSpec struct {
+	// ID for the process. If empty, an ID will be generated.
+	ID string `json:"id,omitempty"`
+
 	// Path to command to execute.
 	Path string `json:"path,omitempty"`
 

@@ -1805,6 +1805,7 @@ var _ = Describe("When a client connects", func() {
 
 		Describe("running", func() {
 			processSpec := garden.ProcessSpec{
+				ID:   "some-process-id",
 				Path: "/some/script",
 				Args: []string{"arg1", "arg2"},
 				Dir:  "/some/dir",
