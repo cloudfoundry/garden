@@ -1,7 +1,7 @@
 package connection
 
 import (
-	"sync"
+	"sync/atomic"
 
 	"code.cloudfoundry.org/garden"
 )
@@ -10,17 +10,16 @@ type process struct {
 	id string
 
 	processInputStream *processStream
-	done               bool
-	exitStatus         int
-	exitErr            error
-	doneL              *sync.Cond
+	status             chan garden.ProcessStatus
+	shouldDoCleanup    uint32
 }
 
 func newProcess(id string, processInputStream *processStream) *process {
 	return &process{
 		id:                 id,
 		processInputStream: processInputStream,
-		doneL:              sync.NewCond(&sync.Mutex{}),
+		status:             make(chan garden.ProcessStatus, 1),
+		shouldDoCleanup:    0,
 	}
 }
 
@@ -28,16 +27,14 @@ func (p *process) ID() string {
 	return p.id
 }
 
+func (p *process) ExitStatus() chan garden.ProcessStatus {
+	return p.status
+}
+
 func (p *process) Wait() (int, error) {
-	p.doneL.L.Lock()
-
-	for !p.done {
-		p.doneL.Wait()
-	}
-
-	defer p.doneL.L.Unlock()
-
-	return p.exitStatus, p.exitErr
+	atomic.StoreUint32(&p.shouldDoCleanup, 1)
+	ret := <-p.status
+	return ret.Code, ret.Err
 }
 
 func (p *process) SetTTY(tty garden.TTYSpec) error {
@@ -48,12 +45,12 @@ func (p *process) Signal(signal garden.Signal) error {
 	return p.processInputStream.Signal(signal)
 }
 
-func (p *process) exited(exitStatus int, err error) {
-	p.doneL.L.Lock()
-	p.exitStatus = exitStatus
-	p.exitErr = err
-	p.done = true
-	p.doneL.L.Unlock()
+func (p *process) exited(exitStatus garden.ProcessStatus) {
+	//the exited function should only be called once otherwise the
+	//line below will block
+	p.status <- exitStatus
+}
 
-	p.doneL.Broadcast()
+func (p *process) shouldCleanup() bool {
+	return atomic.LoadUint32(&p.shouldDoCleanup) > 0
 }

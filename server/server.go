@@ -92,6 +92,7 @@ func New(
 		routes.Stdout:                 streamer.HandlerFunc(s.streamer.ServeStdout),
 		routes.Stderr:                 streamer.HandlerFunc(s.streamer.ServeStderr),
 		routes.Attach:                 http.HandlerFunc(s.handleAttach),
+		routes.ProcessCleanup:         http.HandlerFunc(s.handleProcessCleanup),
 		routes.Metrics:                http.HandlerFunc(s.handleMetrics),
 		routes.Properties:             http.HandlerFunc(s.handleProperties),
 		routes.Property:               http.HandlerFunc(s.handleProperty),

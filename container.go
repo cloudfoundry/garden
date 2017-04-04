@@ -179,8 +179,14 @@ type ProcessIO struct {
 type Process interface {
 	ID() string
 	Wait() (int, error)
+	ExitStatus() chan ProcessStatus
 	SetTTY(TTYSpec) error
 	Signal(Signal) error
+}
+
+type ProcessStatus struct {
+	Code int
+	Err  error
 }
 
 type Signal int

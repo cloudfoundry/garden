@@ -26,6 +26,10 @@ type FakeHijackStreamer struct {
 		result1 io.ReadCloser
 		result2 error
 	}
+	streamReturnsOnCall map[int]struct {
+		result1 io.ReadCloser
+		result2 error
+	}
 	HijackStub        func(handler string, body io.Reader, params rata.Params, query url.Values, contentType string) (net.Conn, *bufio.Reader, error)
 	hijackMutex       sync.RWMutex
 	hijackArgsForCall []struct {
@@ -40,12 +44,18 @@ type FakeHijackStreamer struct {
 		result2 *bufio.Reader
 		result3 error
 	}
+	hijackReturnsOnCall map[int]struct {
+		result1 net.Conn
+		result2 *bufio.Reader
+		result3 error
+	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
 
 func (fake *FakeHijackStreamer) Stream(handler string, body io.Reader, params rata.Params, query url.Values, contentType string) (io.ReadCloser, error) {
 	fake.streamMutex.Lock()
+	ret, specificReturn := fake.streamReturnsOnCall[len(fake.streamArgsForCall)]
 	fake.streamArgsForCall = append(fake.streamArgsForCall, struct {
 		handler     string
 		body        io.Reader
@@ -57,9 +67,11 @@ func (fake *FakeHijackStreamer) Stream(handler string, body io.Reader, params ra
 	fake.streamMutex.Unlock()
 	if fake.StreamStub != nil {
 		return fake.StreamStub(handler, body, params, query, contentType)
-	} else {
-		return fake.streamReturns.result1, fake.streamReturns.result2
 	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fake.streamReturns.result1, fake.streamReturns.result2
 }
 
 func (fake *FakeHijackStreamer) StreamCallCount() int {
@@ -82,8 +94,23 @@ func (fake *FakeHijackStreamer) StreamReturns(result1 io.ReadCloser, result2 err
 	}{result1, result2}
 }
 
+func (fake *FakeHijackStreamer) StreamReturnsOnCall(i int, result1 io.ReadCloser, result2 error) {
+	fake.StreamStub = nil
+	if fake.streamReturnsOnCall == nil {
+		fake.streamReturnsOnCall = make(map[int]struct {
+			result1 io.ReadCloser
+			result2 error
+		})
+	}
+	fake.streamReturnsOnCall[i] = struct {
+		result1 io.ReadCloser
+		result2 error
+	}{result1, result2}
+}
+
 func (fake *FakeHijackStreamer) Hijack(handler string, body io.Reader, params rata.Params, query url.Values, contentType string) (net.Conn, *bufio.Reader, error) {
 	fake.hijackMutex.Lock()
+	ret, specificReturn := fake.hijackReturnsOnCall[len(fake.hijackArgsForCall)]
 	fake.hijackArgsForCall = append(fake.hijackArgsForCall, struct {
 		handler     string
 		body        io.Reader
@@ -95,9 +122,11 @@ func (fake *FakeHijackStreamer) Hijack(handler string, body io.Reader, params ra
 	fake.hijackMutex.Unlock()
 	if fake.HijackStub != nil {
 		return fake.HijackStub(handler, body, params, query, contentType)
-	} else {
-		return fake.hijackReturns.result1, fake.hijackReturns.result2, fake.hijackReturns.result3
 	}
+	if specificReturn {
+		return ret.result1, ret.result2, ret.result3
+	}
+	return fake.hijackReturns.result1, fake.hijackReturns.result2, fake.hijackReturns.result3
 }
 
 func (fake *FakeHijackStreamer) HijackCallCount() int {
@@ -115,6 +144,22 @@ func (fake *FakeHijackStreamer) HijackArgsForCall(i int) (string, io.Reader, rat
 func (fake *FakeHijackStreamer) HijackReturns(result1 net.Conn, result2 *bufio.Reader, result3 error) {
 	fake.HijackStub = nil
 	fake.hijackReturns = struct {
+		result1 net.Conn
+		result2 *bufio.Reader
+		result3 error
+	}{result1, result2, result3}
+}
+
+func (fake *FakeHijackStreamer) HijackReturnsOnCall(i int, result1 net.Conn, result2 *bufio.Reader, result3 error) {
+	fake.HijackStub = nil
+	if fake.hijackReturnsOnCall == nil {
+		fake.hijackReturnsOnCall = make(map[int]struct {
+			result1 net.Conn
+			result2 *bufio.Reader
+			result3 error
+		})
+	}
+	fake.hijackReturnsOnCall[i] = struct {
 		result1 net.Conn
 		result2 *bufio.Reader
 		result3 error
