@@ -178,7 +178,11 @@ type ProcessIO struct {
 
 type Process interface {
 	ID() string
+	// Waits for process to complete and returns exit status.
+	// Later invocations of Wait, ExitStatus or Attach will not succeed.
 	Wait() (int, error)
+	// Waits for process to complete and returns exit status.
+	// Safe to call multiple times.
 	ExitStatus() chan ProcessStatus
 	SetTTY(TTYSpec) error
 	Signal(Signal) error
