@@ -1016,7 +1016,6 @@ var _ = Describe("Connection", func() {
 					stderrStream("foo-handle", "process-handle", 123, func(conn net.Conn) {
 						conn.Write([]byte("stderr data"))
 					}),
-					cleanup(),
 				)
 			})
 
@@ -1058,36 +1057,20 @@ var _ = Describe("Connection", func() {
 				Ω(stderr).Should(gbytes.Say("stderr data"))
 			})
 
-			It("returns the process exit code", func() {
-				process, err := connection.Run("foo-handle", spec, garden.ProcessIO{
-					Stdin:  bytes.NewBufferString("stdin data"),
-					Stdout: gbytes.NewBuffer(),
-					Stderr: gbytes.NewBuffer(),
-				})
-				Ω(err).ShouldNot(HaveOccurred())
-
-				status := <-process.ExitStatus()
-				Expect(status.Err).NotTo(HaveOccurred())
-				Expect(status.Code).To(Equal(3))
-			})
-
 			Describe("connection leak avoidance", func() {
 				var fakeHijacker *connectionfakes.FakeHijackStreamer
 				var wrappedConnections []*wrappedConnection
 
 				BeforeEach(func() {
-					realHijacker := hijacker
-
 					wrappedConnections = []*wrappedConnection{}
-
+					netHijacker := hijacker
 					fakeHijacker = new(connectionfakes.FakeHijackStreamer)
 					fakeHijacker.HijackStub = func(handler string, body io.Reader, params rata.Params, query url.Values, contentType string) (net.Conn, *bufio.Reader, error) {
-						conn, resp, err := realHijacker.Hijack(handler, body, params, query, contentType)
+						conn, resp, err := netHijacker.Hijack(handler, body, params, query, contentType)
 						wc := &wrappedConnection{Conn: conn}
 						wrappedConnections = append(wrappedConnections, wc)
 						return wc, resp, err
 					}
-					fakeHijacker.StreamStub = realHijacker.Stream
 
 					hijacker = fakeHijacker
 				})
@@ -1149,7 +1132,6 @@ var _ = Describe("Connection", func() {
 							})
 						},
 					),
-					cleanup(),
 					stdoutStream("foo-handle", "process-handle", 123, func(conn net.Conn) {
 						conn.Write([]byte("stdout data"))
 						conn.Write([]byte(fmt.Sprintf("roundtripped %s", <-stdInContent)))
@@ -1208,7 +1190,6 @@ var _ = Describe("Connection", func() {
 							})
 						},
 					),
-					cleanup(),
 					emptyStdoutStream("foo-handle", "process-handle", 123),
 					emptyStderrStream("foo-handle", "process-handle", 123),
 				)
@@ -1287,7 +1268,6 @@ var _ = Describe("Connection", func() {
 					),
 					emptyStdoutStream("foo-handle", "process-handle", 123),
 					emptyStderrStream("foo-handle", "process-handle", 123),
-					cleanup(),
 				)
 			})
 
@@ -1364,23 +1344,6 @@ var _ = Describe("Connection", func() {
 					close(done)
 				})
 			})
-
-			Describe("getting the process exit code", func() {
-				It("returns the error", func(done Done) {
-					process, err := connection.Run("foo-handle", garden.ProcessSpec{
-						Path: "lol",
-						Args: []string{"arg1", "arg2"},
-						Dir:  "/some/dir",
-					}, garden.ProcessIO{Stdout: GinkgoWriter})
-					Ω(err).ShouldNot(HaveOccurred())
-
-					status := <-process.ExitStatus()
-					Expect(status.Err).To(HaveOccurred())
-					Expect(status.Err.Error()).To(ContainSubstring("connection: failed to hijack stream "))
-
-					close(done)
-				})
-			})
 		})
 
 		Context("when the connection breaks before an exit status is received", func() {
@@ -1402,7 +1365,6 @@ var _ = Describe("Connection", func() {
 							})
 						},
 					),
-					cleanup(),
 					emptyStdoutStream("foo-handle", "process-handle", 123),
 					emptyStderrStream("foo-handle", "process-handle", 123),
 				)
@@ -1444,7 +1406,6 @@ var _ = Describe("Connection", func() {
 							},
 						)),
 					),
-					cleanup(),
 					emptyStdoutStream("foo-handle", "process-handle", 123),
 					emptyStderrStream("foo-handle", "process-handle", 123),
 				)
@@ -1531,7 +1492,6 @@ var _ = Describe("Connection", func() {
 					stderrStream("foo-handle", "process-handle", 123, func(conn net.Conn) {
 						conn.Write([]byte("stderr data"))
 					}),
-					cleanup(),
 				)
 			})
 
@@ -1552,22 +1512,9 @@ var _ = Describe("Connection", func() {
 				Eventually(stderr).Should(gbytes.Say("stderr data"))
 				Eventually(stdout).Should(gbytes.Say("roundtripped stdin data"))
 
-				exitCode, err := process.Wait()
+				status, err := process.Wait()
 				Ω(err).ShouldNot(HaveOccurred())
-				Ω(exitCode).Should(Equal(3))
-			})
-
-			It("should return the exit status", func() {
-				process, err := connection.Attach("foo-handle", "process-handle", garden.ProcessIO{
-					Stdin:  bytes.NewBufferString("stdin data"),
-					Stdout: gbytes.NewBuffer(),
-					Stderr: gbytes.NewBuffer(),
-				})
-				Ω(err).ShouldNot(HaveOccurred())
-
-				status := <-process.ExitStatus()
-				Ω(status.Err).ShouldNot(HaveOccurred())
-				Ω(status.Code).Should(Equal(3))
+				Ω(status).Should(Equal(3))
 			})
 
 			It("finishes streaming stdout and stderr before returning from .Wait", func() {
@@ -1586,6 +1533,7 @@ var _ = Describe("Connection", func() {
 				Ω(stdout).Should(gbytes.Say("roundtripped stdin data"))
 				Ω(stderr).Should(gbytes.Say("stderr data"))
 			})
+
 		})
 
 		Context("when an error occurs while reading the given stdin stream", func() {
@@ -1668,7 +1616,6 @@ var _ = Describe("Connection", func() {
 							},
 						)),
 					),
-					cleanup(),
 					emptyStdoutStream("foo-handle", "process-handle", 123),
 					emptyStderrStream("foo-handle", "process-handle", 123),
 				)
@@ -1684,19 +1631,6 @@ var _ = Describe("Connection", func() {
 					_, err = process.Wait()
 					Ω(err).Should(HaveOccurred())
 					Ω(err.Error()).Should(ContainSubstring("oh no!"))
-				})
-			})
-
-			Describe("getting the exit code of the process", func() {
-				It("returns an error", func() {
-					process, err := connection.Attach("foo-handle", "process-handle", garden.ProcessIO{})
-
-					Ω(err).ShouldNot(HaveOccurred())
-					Ω(process.ID()).Should(Equal("process-handle"))
-
-					status := <-process.ExitStatus()
-					Ω(status.Err).Should(HaveOccurred())
-					Ω(status.Err.Error()).Should(ContainSubstring("oh no!"))
 				})
 			})
 		})
@@ -1732,7 +1666,6 @@ var _ = Describe("Connection", func() {
 							})
 						},
 					),
-					cleanup(),
 					emptyStdoutStream("foo-handle", "process-handle", 123),
 					emptyStderrStream("foo-handle", "process-handle", 123),
 				)
@@ -1775,15 +1708,6 @@ func marshalProto(messages ...interface{}) string {
 	}
 
 	return result.String()
-}
-
-func cleanup() http.HandlerFunc {
-	return ghttp.CombineHandlers(
-		ghttp.VerifyRequest("DELETE", "/containers/foo-handle/processes/process-handle"),
-		func(w http.ResponseWriter, r *http.Request) {
-			w.WriteHeader(http.StatusOK)
-		},
-	)
 }
 
 func emptyStdoutStream(handle, processid string, attachid int) http.HandlerFunc {

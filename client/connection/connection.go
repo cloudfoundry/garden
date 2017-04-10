@@ -247,7 +247,7 @@ func (c *connection) streamProcess(handle string, processIO garden.ProcessIO, hi
 		stdoutConn, stdout, err = hijack(routes.Stdout)
 		if err != nil {
 			werr := fmt.Errorf("connection: failed to hijack stream %s: %s", routes.Stdout, err)
-			c.exited(handle, process, 0, werr)
+			process.exited(0, werr)
 			hijackedConn.Close()
 			return process, nil
 		}
@@ -263,7 +263,7 @@ func (c *connection) streamProcess(handle string, processIO garden.ProcessIO, hi
 		stderrConn, stderr, err = hijack(routes.Stderr)
 		if err != nil {
 			werr := fmt.Errorf("connection: failed to hijack stream %s: %s", routes.Stderr, err)
-			c.exited(handle, process, 0, werr)
+			process.exited(0, werr)
 			hijackedConn.Close()
 			return process, nil
 		}
@@ -280,30 +280,10 @@ func (c *connection) streamProcess(handle string, processIO garden.ProcessIO, hi
 		}
 
 		exitCode, err := streamHandler.wait(decoder)
-		c.exited(handle, process, exitCode, err)
+		process.exited(exitCode, err)
 	}()
 
 	return process, nil
-}
-
-func (c *connection) exited(handle string, process *process, exitCode int, err error) {
-	if process.shouldCleanup() {
-		c.processCleanup(handle, process.ID())
-	}
-	process.exited(garden.ProcessStatus{Code: exitCode, Err: err})
-}
-
-func (c *connection) processCleanup(handle, pid string) error {
-	return c.do(
-		routes.ProcessCleanup,
-		nil,
-		&transport.ProcessPayload{},
-		rata.Params{
-			"handle": handle,
-			"pid":    pid,
-		},
-		nil,
-	)
 }
 
 func (c *connection) NetIn(handle string, hostPort, containerPort uint32) (uint32, uint32, error) {

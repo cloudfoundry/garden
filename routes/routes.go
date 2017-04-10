@@ -30,9 +30,8 @@ const (
 	NetOut     = "NetOut"
 	BulkNetOut = "BulkNetOut"
 
-	Run            = "Run"
-	Attach         = "Attach"
-	ProcessCleanup = "ProcessCleanup"
+	Run    = "Run"
+	Attach = "Attach"
 
 	SetGraceTime = "SetGraceTime"
 
@@ -75,7 +74,6 @@ var Routes = rata.Routes{
 	{Path: "/containers/:handle/processes/:pid/attaches/:streamid/stderr", Method: "GET", Name: Stderr},
 	{Path: "/containers/:handle/processes", Method: "POST", Name: Run},
 	{Path: "/containers/:handle/processes/:pid", Method: "GET", Name: Attach},
-	{Path: "/containers/:handle/processes/:pid", Method: "DELETE", Name: ProcessCleanup},
 
 	{Path: "/containers/:handle/grace_time", Method: "PUT", Name: SetGraceTime},
 
