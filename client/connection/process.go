@@ -10,17 +10,15 @@ type process struct {
 	id string
 
 	processInputStream *processStream
-
-	exitStatus      garden.ProcessStatus
-	exitStatusReady chan struct{}
-	shouldDoCleanup uint32
+	status             chan garden.ProcessStatus
+	shouldDoCleanup    uint32
 }
 
 func newProcess(id string, processInputStream *processStream) *process {
 	return &process{
 		id:                 id,
 		processInputStream: processInputStream,
-		exitStatusReady:    make(chan struct{}),
+		status:             make(chan garden.ProcessStatus, 1),
 		shouldDoCleanup:    0,
 	}
 }
@@ -30,18 +28,12 @@ func (p *process) ID() string {
 }
 
 func (p *process) ExitStatus() chan garden.ProcessStatus {
-	ch := make(chan garden.ProcessStatus)
-	go func() {
-		<-p.exitStatusReady
-		ch <- p.exitStatus
-	}()
-
-	return ch
+	return p.status
 }
 
 func (p *process) Wait() (int, error) {
 	atomic.StoreUint32(&p.shouldDoCleanup, 1)
-	ret := <-p.ExitStatus()
+	ret := <-p.status
 	return ret.Code, ret.Err
 }
 
@@ -54,8 +46,9 @@ func (p *process) Signal(signal garden.Signal) error {
 }
 
 func (p *process) exited(exitStatus garden.ProcessStatus) {
-	p.exitStatus = exitStatus
-	close(p.exitStatusReady)
+	//the exited function should only be called once otherwise the
+	//line below will block
+	p.status <- exitStatus
 }
 
 func (p *process) shouldCleanup() bool {
