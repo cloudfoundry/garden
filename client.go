@@ -131,6 +131,12 @@ type ContainerSpec struct {
 	//   already had a container allocated from it.
 	Network string `json:"network,omitempty"`
 
+	// DNSServers is a list of IP addresses to use as an override for DNS servers in the container.
+	//
+	// If not specified, the DNS servers in use by the host will be copied over. If specified, DNS
+	// servers used by the host are ignored.
+	DNSServers []string `json:"dns_servers,omitempty"`
+
 	// Properties is a sequence of string key/value pairs providing arbitrary
 	// data about the container. The keys are assumed to be unique but this is not
 	// enforced via the protocol.
