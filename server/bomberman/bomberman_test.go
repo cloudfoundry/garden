@@ -29,7 +29,7 @@ var _ = Describe("Bomberman", func() {
 
 		select {
 		case <-detonated:
-		case <-time.After(backend.GraceTime(container) + 50*time.Millisecond):
+		case <-time.After(backend.GraceTime(container) * 2):
 			Fail("did not detonate!")
 		}
 	})
