@@ -96,6 +96,20 @@ type ContainerSpec struct {
 	// * "docker://index.docker.io/busybox"
 	Image ImageRef `json:"image,omitempty"`
 
+	// * rootfs_propagation: a string value to configure rootfs propagation when
+	// mounting the root filesystem.
+	//
+	// Valid values are:
+	//  * "private"
+	//  * "shared"
+	//  * "slave"
+	//  * "unbindable"
+	//  * "rprivate"
+	//  * "rshared"
+	//  * "rslave"
+	//  * "runbindable"
+	RootFSPropagation string `json:"rootfs_propagation"`
+
 	// * bind_mounts: a list of mount point descriptions which will result in corresponding mount
 	// points being created in the container's file system.
 	//
