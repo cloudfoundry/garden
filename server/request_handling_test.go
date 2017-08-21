@@ -1781,6 +1781,21 @@ var _ = Describe("When a client connects", func() {
 				})
 			})
 
+			Context("when the process is not found", func() {
+				BeforeEach(func() {
+					fakeContainer.AttachReturns(nil, garden.ProcessNotFoundError{
+						ProcessID: "not-existing-process"},
+					)
+				})
+
+				It("returns a ProcessNotFoundError", func() {
+					_, err := container.Attach("not-existing-process", garden.ProcessIO{})
+					Ω(err).Should(MatchError(garden.ProcessNotFoundError{
+						ProcessID: "not-existing-process",
+					}))
+				})
+			})
+
 			Context("when attaching fails", func() {
 				BeforeEach(func() {
 					fakeContainer.AttachReturns(nil, errors.New("oh no!"))

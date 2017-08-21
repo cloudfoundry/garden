@@ -1683,6 +1683,24 @@ var _ = Describe("Connection", func() {
 				})
 			})
 		})
+
+		Context("when the server returns HTTP 404", func() {
+			BeforeEach(func() {
+				server.AppendHandlers(
+					ghttp.CombineHandlers(
+						ghttp.VerifyRequest("GET", "/containers/foo-handle/processes/idontexist"),
+						ghttp.RespondWith(http.StatusNotFound, nil),
+					),
+				)
+			})
+
+			It("returns a ProcessNotFoundError", func() {
+				_, err := connection.Attach("foo-handle", "idontexist", garden.ProcessIO{})
+				Ω(err).Should(MatchError(garden.ProcessNotFoundError{
+					ProcessID: "idontexist",
+				}))
+			})
+		})
 	})
 })
 

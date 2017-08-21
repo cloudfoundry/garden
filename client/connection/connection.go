@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"net/http"
 	"net/url"
 	"strings"
 	"time"
@@ -199,6 +200,11 @@ func (c *connection) Attach(handle string, processID string, processIO garden.Pr
 		"",
 	)
 	if err != nil {
+		if httpErr, ok := err.(httpError); ok {
+			if httpErr.StatusCode == http.StatusNotFound {
+				return nil, garden.ProcessNotFoundError{ProcessID: processID}
+			}
+		}
 		return nil, err
 	}
 

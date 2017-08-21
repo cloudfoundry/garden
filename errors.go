@@ -13,6 +13,7 @@ const (
 	unrecoverableErrType      = "UnrecoverableError"
 	serviceUnavailableErrType = "ServiceUnavailableError"
 	containerNotFoundErrType  = "ContainerNotFoundError"
+	processNotFoundErrType    = "ProcessNotFoundError"
 )
 
 type Error struct {
@@ -24,9 +25,10 @@ func NewError(err string) *Error {
 }
 
 type marshalledError struct {
-	Type    errType
-	Message string
-	Handle  string
+	Type      errType
+	Message   string
+	Handle    string
+	ProcessID string
 }
 
 func (m Error) Error() string {
@@ -37,6 +39,8 @@ func (m Error) StatusCode() int {
 	switch m.Err.(type) {
 	case ContainerNotFoundError:
 		return http.StatusNotFound
+	case ProcessNotFoundError:
+		return http.StatusNotFound
 	}
 
 	return http.StatusInternalServerError
@@ -45,17 +49,26 @@ func (m Error) StatusCode() int {
 func (m Error) MarshalJSON() ([]byte, error) {
 	var errorType errType
 	handle := ""
+	processID := ""
 	switch err := m.Err.(type) {
 	case ContainerNotFoundError:
 		errorType = containerNotFoundErrType
 		handle = err.Handle
+	case ProcessNotFoundError:
+		errorType = processNotFoundErrType
+		processID = err.ProcessID
 	case ServiceUnavailableError:
 		errorType = serviceUnavailableErrType
 	case UnrecoverableError:
 		errorType = unrecoverableErrType
 	}
 
-	return json.Marshal(marshalledError{errorType, m.Err.Error(), handle})
+	return json.Marshal(marshalledError{
+		Type:      errorType,
+		Message:   m.Err.Error(),
+		Handle:    handle,
+		ProcessID: processID,
+	})
 }
 
 func (m *Error) UnmarshalJSON(data []byte) error {
@@ -72,6 +85,8 @@ func (m *Error) UnmarshalJSON(data []byte) error {
 		m.Err = ServiceUnavailableError{result.Message}
 	case containerNotFoundErrType:
 		m.Err = ContainerNotFoundError{result.Handle}
+	case processNotFoundErrType:
+		m.Err = ProcessNotFoundError{ProcessID: result.ProcessID}
 	default:
 		m.Err = errors.New(result.Message)
 	}
@@ -113,4 +128,12 @@ type ServiceUnavailableError struct {
 
 func (err ServiceUnavailableError) Error() string {
 	return err.Cause
+}
+
+type ProcessNotFoundError struct {
+	ProcessID string
+}
+
+func (err ProcessNotFoundError) Error() string {
+	return fmt.Sprintf("unknown process: %s", err.ProcessID)
 }

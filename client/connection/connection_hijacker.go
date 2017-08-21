@@ -19,6 +19,15 @@ import (
 
 type DialerFunc func(network, address string) (net.Conn, error)
 
+type httpError struct {
+	StatusCode   int
+	ResponseBody string
+}
+
+func (e httpError) Error() string {
+	return fmt.Sprintf("Backend error: Exit status %d, message: %s", e.StatusCode, e.ResponseBody)
+}
+
 type hijackable struct {
 	req               *rata.RequestGenerator
 	noKeepaliveClient *http.Client
@@ -78,7 +87,7 @@ func (h *hijackable) Hijack(handler string, body io.Reader, params rata.Params, 
 			return nil, nil, fmt.Errorf("Backend error: Exit status: %d, error reading response body: %s", httpResp.StatusCode, err)
 		}
 
-		return nil, nil, fmt.Errorf("Backend error: Exit status: %d, message: %s", httpResp.StatusCode, errRespBytes)
+		return nil, nil, httpError{StatusCode: httpResp.StatusCode, ResponseBody: string(errRespBytes)}
 	}
 
 	hijackedConn, hijackedResponseReader := client.Hijack()

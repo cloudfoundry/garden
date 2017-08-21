@@ -940,8 +940,18 @@ func (s *GardenServer) handleBulkMetrics(w http.ResponseWriter, r *http.Request)
 	s.writeResponse(w, bulkMetrics)
 }
 
+func isClientError(err error) bool {
+	if _, ok := err.(garden.ProcessNotFoundError); ok {
+		return true
+	}
+
+	return false
+}
+
 func (s *GardenServer) writeError(w http.ResponseWriter, err error, logger lager.Logger) {
-	logger.Error("failed", err)
+	if !isClientError(err) {
+		logger.Error("failed", err)
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	merr := &garden.Error{Err: err}

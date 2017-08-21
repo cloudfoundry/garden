@@ -444,6 +444,19 @@ var _ = Describe("Container", func() {
 			Eventually(stdout).Should(gbytes.Say("stdout data"))
 			Eventually(stderr).Should(gbytes.Say("stderr data"))
 		})
+
+		Context("when the process requested is not found", func() {
+			It("returns ProcessNotFoundError", func() {
+				fakeConnection.AttachReturns(nil, garden.ProcessNotFoundError{
+					ProcessID: "not-existing-process",
+				})
+
+				_, err := container.Attach("notExistingProcess", garden.ProcessIO{})
+				Ω(err).Should(Equal(garden.ProcessNotFoundError{
+					ProcessID: "not-existing-process",
+				}))
+			})
+		})
 	})
 
 	Describe("NetIn", func() {
