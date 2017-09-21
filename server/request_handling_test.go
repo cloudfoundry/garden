@@ -59,7 +59,7 @@ var _ = Describe("When connecting directly to the server", func() {
 			fakeBackend,
 			logger,
 		)
-		Expect(apiServer.Start()).To(Succeed())
+		listenAndServe(apiServer, "tcp", fmt.Sprintf("127.0.0.1:%d", port))
 	})
 
 	AfterEach(func() {
@@ -116,9 +116,7 @@ var _ = Describe("When a client connects", func() {
 			serverBackend,
 			logger,
 		)
-
-		err = apiServer.Start()
-		Ω(err).ShouldNot(HaveOccurred())
+		listenAndServe(apiServer, "unix", socketPath)
 
 		isRunning = true
 

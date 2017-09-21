@@ -29,8 +29,9 @@ type GardenServer struct {
 	listener net.Listener
 	handling *sync.WaitGroup
 
-	started  bool
-	stopping chan bool
+	started    bool
+	startMutex *sync.Mutex
+	stopping   chan bool
 
 	bomberman *bomberman.Bomberman
 
@@ -67,6 +68,8 @@ func New(
 
 		destroys:  make(map[string]struct{}),
 		destroysL: new(sync.Mutex),
+
+		startMutex: new(sync.Mutex),
 	}
 
 	handlers := map[string]http.Handler{
@@ -143,30 +146,51 @@ func New(
 	return s
 }
 
-func (s *GardenServer) Start() error {
+func (s *GardenServer) ListenAndServe() error {
+	listener, err := s.listen()
+	if err != nil {
+		return err
+	}
+
+	return s.Serve(listener)
+}
+
+func (s *GardenServer) Serve(listener net.Listener) error {
+	s.startMutex.Lock()
 	s.started = true
-
-	err := s.removeExistingSocket()
-	if err != nil {
-		return err
-	}
-
-	err = s.backend.Start()
-	if err != nil {
-		return err
-	}
-
-	listener, err := net.Listen(s.listenNetwork, s.listenAddr)
-	if err != nil {
-		return err
-	}
-
 	s.listener = listener
+	s.startMutex.Unlock()
 
-	if s.listenNetwork == "unix" {
-		os.Chmod(s.listenAddr, 0777)
+	err := s.server.Serve(s.listener)
+	s.startMutex.Lock()
+	defer s.startMutex.Unlock()
+	if s.started {
+		return err
+	}
+	return nil
+}
+
+// Start deprecated: please use Serve() or ListenAndServe()
+func (s *GardenServer) Start() error {
+	if err := s.backend.Start(); err != nil {
+		return err
 	}
 
+	if err := s.SetupBomberman(); err != nil {
+		return err
+	}
+
+	listener, err := s.listen()
+	if err != nil {
+		return err
+	}
+
+	go s.server.Serve(listener)
+
+	return nil
+}
+
+func (s *GardenServer) SetupBomberman() error {
 	containers, err := s.backend.Containers(nil)
 	if err != nil {
 		return err
@@ -178,15 +202,40 @@ func (s *GardenServer) Start() error {
 		s.bomberman.Strap(container)
 	}
 
-	go s.server.Serve(listener)
-
 	return nil
 }
 
+func (s *GardenServer) listen() (net.Listener, error) {
+	if err := s.removeExistingSocket(); err != nil {
+		return nil, err
+	}
+
+	listener, err := net.Listen(s.listenNetwork, s.listenAddr)
+	if err != nil {
+		return nil, err
+	}
+
+	if s.listenNetwork == "unix" {
+		// The permissions of this socket are not ideal, and have been globally
+		// readable/writeable for years due the fact that in Cloud Foundry
+		// deployments, garden server and diego rep always run as different users.
+		// https://www.pivotaltracker.com/story/show/151245015 addresses this
+		// issue.
+		if err := os.Chmod(s.listenAddr, 0777); err != nil {
+			return nil, err
+		}
+	}
+
+	return listener, nil
+}
+
 func (s *GardenServer) Stop() {
+	s.startMutex.Lock()
+	defer s.startMutex.Unlock()
 	if !s.started {
 		return
 	}
+	s.started = false
 
 	close(s.stopping)
 

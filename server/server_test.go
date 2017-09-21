@@ -22,7 +22,6 @@ import (
 var _ = Describe("The Garden server", func() {
 	var logger *lagertest.TestLogger
 	var tmpdir string
-	var apiClient garden.Client
 
 	BeforeEach(func() {
 		logger = lagertest.NewTestLogger("test")
@@ -43,20 +42,15 @@ var _ = Describe("The Garden server", func() {
 			socketPath := path.Join(tmpdir, "api.sock")
 
 			apiServer := server.New("unix", socketPath, 0, new(fakes.FakeBackend), logger)
-
-			err = apiServer.Start()
-			Ω(err).ShouldNot(HaveOccurred())
-
-			apiClient = client.New(connection.New("unix", socketPath))
-			Eventually(apiClient.Ping).Should(Succeed())
+			listenAndServe(apiServer, "unix", socketPath)
 
 			stat, err := os.Stat(socketPath)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			Ω(int(stat.Mode() & 0777)).Should(Equal(0777))
+			Ω(int(stat.Mode() & os.ModePerm)).Should(Equal(0777))
 		})
 
-		It("deletes the socket file if it is already there", func() {
+		It("listens on the given socket path, recreating it if it's already present", func() {
 			var err error
 			tmpdir, err = ioutil.TempDir(os.TempDir(), "api-server-test")
 			Ω(err).ShouldNot(HaveOccurred())
@@ -69,39 +63,15 @@ var _ = Describe("The Garden server", func() {
 			socket.Close()
 
 			apiServer := server.New("unix", socketPath, 0, new(fakes.FakeBackend), logger)
-
-			err = apiServer.Start()
-			Ω(err).ShouldNot(HaveOccurred())
+			listenAndServe(apiServer, "unix", socketPath)
 		})
 	})
 
 	Context("when passed a tcp addr", func() {
 		It("listens on the given addr", func() {
 			apiServer := server.New("tcp", ":60123", 0, new(fakes.FakeBackend), logger)
-
-			err := apiServer.Start()
-			Ω(err).ShouldNot(HaveOccurred())
-
-			apiClient = client.New(connection.New("tcp", ":60123"))
-			Eventually(apiClient.Ping).Should(Succeed())
+			listenAndServe(apiServer, "tcp", "127.0.0.1:60123")
 		})
-	})
-
-	It("starts the backend", func() {
-		var err error
-		tmpdir, err = ioutil.TempDir(os.TempDir(), "api-server-test")
-		Ω(err).ShouldNot(HaveOccurred())
-
-		socketPath := path.Join(tmpdir, "api.sock")
-
-		fakeBackend := new(fakes.FakeBackend)
-
-		apiServer := server.New("unix", socketPath, 0, fakeBackend, logger)
-
-		err = apiServer.Start()
-		Ω(err).ShouldNot(HaveOccurred())
-
-		Ω(fakeBackend.StartCallCount()).Should(Equal(1))
 	})
 
 	It("destroys containers that have been idle for their grace time", func() {
@@ -122,8 +92,7 @@ var _ = Describe("The Garden server", func() {
 
 		before := time.Now()
 
-		err = apiServer.Start()
-		Ω(err).ShouldNot(HaveOccurred())
+		listenAndServe(apiServer, "unix", socketPath)
 
 		Ω(fakeBackend.DestroyCallCount()).Should(Equal(0))
 		Eventually(fakeBackend.DestroyCallCount).Should(Equal(1))
@@ -131,10 +100,8 @@ var _ = Describe("The Garden server", func() {
 		Ω(time.Since(before)).Should(BeNumerically(">", 100*time.Millisecond))
 	})
 
-	Context("when starting the backend fails", func() {
-		disaster := errors.New("oh no!")
-
-		It("fails to start", func() {
+	Describe("using the deprecated Start() method", func() {
+		It("starts the backend", func() {
 			var err error
 			tmpdir, err = ioutil.TempDir(os.TempDir(), "api-server-test")
 			Ω(err).ShouldNot(HaveOccurred())
@@ -142,12 +109,30 @@ var _ = Describe("The Garden server", func() {
 			socketPath := path.Join(tmpdir, "api.sock")
 
 			fakeBackend := new(fakes.FakeBackend)
-			fakeBackend.StartReturns(disaster)
 
 			apiServer := server.New("unix", socketPath, 0, fakeBackend, logger)
+			// listenAndServe(apiServer, "unix", socketPath)
+			Expect(apiServer.Start()).To(Succeed())
 
-			err = apiServer.Start()
-			Ω(err).Should(Equal(disaster))
+			Ω(fakeBackend.StartCallCount()).Should(Equal(1))
+		})
+
+		Context("when starting the backend fails", func() {
+			disaster := errors.New("oh no!")
+
+			It("fails to start", func() {
+				var err error
+				tmpdir, err = ioutil.TempDir(os.TempDir(), "api-server-test")
+				Ω(err).ShouldNot(HaveOccurred())
+
+				socketPath := path.Join(tmpdir, "api.sock")
+
+				fakeBackend := new(fakes.FakeBackend)
+				fakeBackend.StartReturns(disaster)
+
+				apiServer := server.New("unix", socketPath, 0, fakeBackend, logger)
+				Expect(apiServer.Start()).To(MatchError(disaster))
+			})
 		})
 	})
 
@@ -165,7 +150,7 @@ var _ = Describe("The Garden server", func() {
 				logger,
 			)
 
-			err = apiServer.Start()
+			err = apiServer.ListenAndServe()
 			Ω(err).Should(HaveOccurred())
 		})
 	})
@@ -181,7 +166,7 @@ var _ = Describe("The Garden server", func() {
 
 		BeforeEach(func() {
 			var err error
-			tmpdir, err = ioutil.TempDir(os.TempDir(), "api-server-test")
+			tmpdir, err = ioutil.TempDir("", "api-server-test")
 			Ω(err).ShouldNot(HaveOccurred())
 
 			socketPath = path.Join(tmpdir, "api.sock")
@@ -194,11 +179,7 @@ var _ = Describe("The Garden server", func() {
 
 		JustBeforeEach(func() {
 			apiServer = server.New("unix", socketPath, 0, serverBackend, logger)
-
-			err := apiServer.Start()
-			Ω(err).ShouldNot(HaveOccurred())
-
-			Eventually(apiClient.Ping).Should(Succeed())
+			listenAndServe(apiServer, "unix", socketPath)
 		})
 
 		It("stops accepting new connections", func() {
