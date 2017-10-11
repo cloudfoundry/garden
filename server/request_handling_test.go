@@ -1850,6 +1850,11 @@ var _ = Describe("When a client connects", func() {
 						Rows:    24,
 					},
 				},
+				Image: garden.ImageRef{
+					URI:      "some-uri",
+					Username: "registry-username",
+					Password: "registry-password",
+				},
 			}
 
 			Context("when running succeeds", func() {

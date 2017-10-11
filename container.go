@@ -157,6 +157,10 @@ type ProcessSpec struct {
 
 	// Execute with a TTY for stdio.
 	TTY *TTYSpec `json:"tty,omitempty"`
+
+	// Execute process in own root filesystem, different from the other processes
+	// in the container.
+	Image ImageRef `json:"image,omitempty"`
 }
 
 type TTYSpec struct {
