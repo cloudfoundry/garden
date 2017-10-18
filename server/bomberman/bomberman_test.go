@@ -53,7 +53,7 @@ var _ = Describe("Bomberman", func() {
 			select {
 			case <-detonated:
 				Fail("detonated!")
-			case <-time.After(backend.GraceTime(container) + 50*time.Millisecond):
+			case <-time.After(backend.GraceTime(container) * 2):
 			}
 		})
 	})
@@ -78,7 +78,7 @@ var _ = Describe("Bomberman", func() {
 			select {
 			case <-detonated:
 				Fail("detonated!")
-			case <-time.After(backend.GraceTime(container) + 50*time.Millisecond):
+			case <-time.After(backend.GraceTime(container) * 2):
 			}
 		})
 
@@ -114,8 +114,8 @@ var _ = Describe("Bomberman", func() {
 
 				select {
 				case <-detonated:
-					Ω(time.Since(before)).Should(BeNumerically(">=", 100*time.Millisecond))
-				case <-time.After(backend.GraceTime(container) + 50*time.Millisecond):
+					Expect(time.Since(before)).To(BeNumerically(">=", 100*time.Millisecond))
+				case <-time.After(backend.GraceTime(container) * 2):
 					Fail("did not detonate!")
 				}
 			})
@@ -152,7 +152,7 @@ var _ = Describe("Bomberman", func() {
 			select {
 			case <-detonated:
 				Fail("detonated!")
-			case <-time.After(backend.GraceTime(container) + 50*time.Millisecond):
+			case <-time.After(backend.GraceTime(container) * 2):
 			}
 		})
 
