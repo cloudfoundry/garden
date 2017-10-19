@@ -150,6 +150,7 @@ type ProcessSpec struct {
 	Dir string `json:"dir,omitempty"`
 
 	// The name of a user in the container to run the process as.
+	// This must either be a username, or uid:gid.
 	User string `json:"user,omitempty"`
 
 	// Resource limits
