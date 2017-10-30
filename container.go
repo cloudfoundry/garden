@@ -156,6 +156,9 @@ type ProcessSpec struct {
 	// Resource limits
 	Limits ResourceLimits `json:"rlimits,omitempty"`
 
+	// Limits to be applied to the newly created process
+	OverrideContainerLimits *ProcessLimits `json:"limits,omitempty"`
+
 	// Execute with a TTY for stdio.
 	TTY *TTYSpec `json:"tty,omitempty"`
 
@@ -303,6 +306,11 @@ type ContainerNetworkStat struct {
 type BandwidthLimits struct {
 	RateInBytesPerSecond      uint64 `json:"rate,omitempty"`
 	BurstRateInBytesPerSecond uint64 `json:"burst,omitempty"`
+}
+
+type ProcessLimits struct {
+	CPU    CPULimits    `json:"cpu_limits,omitempty"`
+	Memory MemoryLimits `json:"memory_limits,omitempty"`
 }
 
 type DiskLimits struct {
