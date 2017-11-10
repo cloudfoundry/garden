@@ -165,6 +165,10 @@ type ProcessSpec struct {
 	// Execute process in own root filesystem, different from the other processes
 	// in the container.
 	Image ImageRef `json:"image,omitempty"`
+
+	// Bind mounts to be applied to the process's filesystem
+	// An error is returned if ProcessSpec.Image is not also set.
+	BindMounts []BindMount `json:"bind_mounts,omitempty"`
 }
 
 type TTYSpec struct {
