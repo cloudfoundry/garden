@@ -1686,10 +1686,13 @@ var _ = Describe("Connection", func() {
 
 		Context("when the server returns HTTP 404", func() {
 			BeforeEach(func() {
+				gardenErr := garden.Error{Err: garden.ProcessNotFoundError{ProcessID: "idontexist"}}
+				respBody, err := gardenErr.MarshalJSON()
+				Expect(err).NotTo(HaveOccurred())
 				server.AppendHandlers(
 					ghttp.CombineHandlers(
 						ghttp.VerifyRequest("GET", "/containers/foo-handle/processes/idontexist"),
-						ghttp.RespondWith(http.StatusNotFound, nil),
+						ghttp.RespondWith(http.StatusNotFound, respBody),
 					),
 				)
 			})
