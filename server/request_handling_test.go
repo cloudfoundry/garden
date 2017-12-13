@@ -103,7 +103,7 @@ var _ = Describe("When a client connects", func() {
 
 		var err error
 		tmpdir, err = ioutil.TempDir(os.TempDir(), "api-server-test")
-		Ω(err).ShouldNot(HaveOccurred())
+		Expect(err).ToNot(HaveOccurred())
 
 		socketPath = path.Join(tmpdir, "api.sock")
 		serverBackend = new(fakes.FakeBackend)
@@ -137,7 +137,7 @@ var _ = Describe("When a client connects", func() {
 	Context("and the client sends a PingRequest", func() {
 		Context("and the backend ping succeeds", func() {
 			It("does not error", func() {
-				Ω(apiClient.Ping()).ShouldNot(HaveOccurred())
+				Expect(apiClient.Ping()).ToNot(HaveOccurred())
 			})
 		})
 
@@ -147,7 +147,7 @@ var _ = Describe("When a client connects", func() {
 			})
 
 			It("returns an error", func() {
-				Ω(apiClient.Ping()).Should(HaveOccurred())
+				Expect(apiClient.Ping()).To(HaveOccurred())
 			})
 		})
 
@@ -157,7 +157,7 @@ var _ = Describe("When a client connects", func() {
 			})
 
 			It("returns an UnrecoverableError", func() {
-				Expect(apiClient.Ping()).Should(BeAssignableToTypeOf(garden.UnrecoverableError{}))
+				Expect(apiClient.Ping()).To(BeAssignableToTypeOf(garden.UnrecoverableError{}))
 			})
 		})
 
@@ -168,7 +168,7 @@ var _ = Describe("When a client connects", func() {
 			})
 
 			It("returns an error", func() {
-				Ω(apiClient.Ping()).Should(HaveOccurred())
+				Expect(apiClient.Ping()).To(HaveOccurred())
 			})
 		})
 	})
@@ -184,11 +184,11 @@ var _ = Describe("When a client connects", func() {
 
 		It("returns the backend's reported capacity", func() {
 			capacity, err := apiClient.Capacity()
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).ToNot(HaveOccurred())
 
-			Ω(capacity.MemoryInBytes).Should(Equal(uint64(1111)))
-			Ω(capacity.DiskInBytes).Should(Equal(uint64(2222)))
-			Ω(capacity.MaxContainers).Should(Equal(uint64(42)))
+			Expect(capacity.MemoryInBytes).To(Equal(uint64(1111)))
+			Expect(capacity.DiskInBytes).To(Equal(uint64(2222)))
+			Expect(capacity.MaxContainers).To(Equal(uint64(42)))
 		})
 
 		Context("when getting the capacity fails", func() {
@@ -198,7 +198,7 @@ var _ = Describe("When a client connects", func() {
 
 			It("returns an error", func() {
 				_, err := apiClient.Capacity()
-				Ω(err).Should(HaveOccurred())
+				Expect(err).To(HaveOccurred())
 			})
 		})
 	})
@@ -217,9 +217,9 @@ var _ = Describe("When a client connects", func() {
 			container, err := apiClient.Create(garden.ContainerSpec{
 				Handle: "some-handle",
 			})
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).ToNot(HaveOccurred())
 
-			Ω(container.Handle()).Should(Equal("some-handle"))
+			Expect(container.Handle()).To(Equal("some-handle"))
 		})
 
 		It("should not log any container spec properties", func() {
@@ -227,7 +227,7 @@ var _ = Describe("When a client connects", func() {
 				Handle:     "some-handle",
 				Properties: garden.Properties{"CONTAINER_PROPERTY": "CONTAINER_SECRET"},
 			})
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).ToNot(HaveOccurred())
 
 			buffer := sink.Buffer()
 			Expect(buffer).ToNot(gbytes.Say("CONTAINER_PROPERTY"))
@@ -239,7 +239,7 @@ var _ = Describe("When a client connects", func() {
 				Handle: "some-handle",
 				Env:    []string{"PASSWORD=MY_SECRET"},
 			})
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).ToNot(HaveOccurred())
 
 			buffer := sink.Buffer()
 			Expect(buffer).ToNot(gbytes.Say("PASSWORD"))
@@ -285,9 +285,9 @@ var _ = Describe("When a client connects", func() {
 					},
 				},
 			})
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).ToNot(HaveOccurred())
 
-			Ω(serverBackend.CreateArgsForCall(0)).Should(Equal(garden.ContainerSpec{
+			Expect(serverBackend.CreateArgsForCall(0)).To(Equal(garden.ContainerSpec{
 				Handle:     "some-handle",
 				GraceTime:  time.Duration(42 * time.Second),
 				Network:    "some-network",
@@ -347,12 +347,12 @@ var _ = Describe("When a client connects", func() {
 				before := time.Now()
 
 				_, err := apiClient.Create(garden.ContainerSpec{})
-				Ω(err).ShouldNot(HaveOccurred())
+				Expect(err).ToNot(HaveOccurred())
 
 				Eventually(serverBackend.DestroyCallCount, 2*time.Second).Should(Equal(1))
-				Ω(serverBackend.DestroyArgsForCall(0)).Should(Equal("doomed-handle"))
+				Expect(serverBackend.DestroyArgsForCall(0)).To(Equal("doomed-handle"))
 
-				Ω(time.Since(before)).Should(BeNumerically(">", graceTime), "should not destroy before the grace time expires")
+				Expect(time.Since(before)).To(BeNumerically(">", graceTime), "should not destroy before the grace time expires")
 			})
 
 			Context("and a process is running", func() {
@@ -375,21 +375,21 @@ var _ = Describe("When a client connects", func() {
 					apiClient = client.New(apiConnection)
 
 					container, err := apiClient.Create(garden.ContainerSpec{})
-					Ω(err).ShouldNot(HaveOccurred())
+					Expect(err).ToNot(HaveOccurred())
 
 					before := time.Now()
 
 					_, err = container.Run(garden.ProcessSpec{}, garden.ProcessIO{})
-					Ω(err).ShouldNot(HaveOccurred())
+					Expect(err).ToNot(HaveOccurred())
 
 					clientConnection.Close()
 
 					Eventually(serverBackend.DestroyCallCount, 2*time.Second).Should(Equal(1))
-					Ω(serverBackend.DestroyArgsForCall(0)).Should(Equal("doomed-handle"))
+					Expect(serverBackend.DestroyArgsForCall(0)).To(Equal("doomed-handle"))
 
 					duration := time.Since(before)
-					Ω(duration).Should(BeNumerically(">=", graceTime))
-					Ω(duration).Should(BeNumerically("<", graceTime+time.Second))
+					Expect(duration).To(BeNumerically(">=", graceTime))
+					Expect(duration).To(BeNumerically("<", graceTime+time.Second))
 				})
 			})
 
@@ -407,13 +407,13 @@ var _ = Describe("When a client connects", func() {
 
 				It("does not reap the container", func() {
 					_, err := apiClient.Create(garden.ContainerSpec{})
-					Ω(err).ShouldNot(HaveOccurred())
+					Expect(err).ToNot(HaveOccurred())
 
 					err = apiClient.Destroy("doomed-handle")
-					Ω(err).ShouldNot(HaveOccurred())
+					Expect(err).ToNot(HaveOccurred())
 
-					Ω(serverBackend.DestroyArgsForCall(0)).Should(Equal("doomed-handle"))
-					Ω(serverBackend.DestroyCallCount()).Should(Equal(1))
+					Expect(serverBackend.DestroyArgsForCall(0)).To(Equal("doomed-handle"))
+					Expect(serverBackend.DestroyCallCount()).To(Equal(1))
 				})
 			})
 		})
@@ -423,10 +423,10 @@ var _ = Describe("When a client connects", func() {
 				_, err := apiClient.Create(garden.ContainerSpec{
 					Handle: "some-handle",
 				})
-				Ω(err).ShouldNot(HaveOccurred())
+				Expect(err).ToNot(HaveOccurred())
 
 				spec := serverBackend.CreateArgsForCall(0)
-				Ω(spec.GraceTime).Should(Equal(serverContainerGraceTime))
+				Expect(spec.GraceTime).To(Equal(serverContainerGraceTime))
 			})
 		})
 
@@ -439,7 +439,7 @@ var _ = Describe("When a client connects", func() {
 				_, err := apiClient.Create(garden.ContainerSpec{
 					Handle: "some-handle",
 				})
-				Ω(err).Should(HaveOccurred())
+				Expect(err).To(HaveOccurred())
 			})
 		})
 
@@ -455,12 +455,12 @@ var _ = Describe("When a client connects", func() {
 			})
 
 			It("client returns an error with a well formed error msg", func() {
-				Ω(err).Should(MatchError("special error"))
+				Expect(err).To(MatchError("special error"))
 			})
 
 			It("client returns an error of type ServiceUnavailableError", func() {
 				_, ok := err.(garden.ServiceUnavailableError)
-				Ω(ok).Should(BeTrue())
+				Expect(ok).To(BeTrue())
 			})
 		})
 	})
@@ -468,9 +468,9 @@ var _ = Describe("When a client connects", func() {
 	Context("and the client sends a destroy request", func() {
 		It("destroys the container", func() {
 			err := apiClient.Destroy("some-handle")
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).ToNot(HaveOccurred())
 
-			Ω(serverBackend.DestroyArgsForCall(0)).Should(Equal("some-handle"))
+			Expect(serverBackend.DestroyArgsForCall(0)).To(Equal("some-handle"))
 		})
 
 		Context("concurrent with other destroy requests", func() {
@@ -492,9 +492,9 @@ var _ = Describe("When a client connects", func() {
 				<-destroying
 
 				err := apiClient.Destroy("some-handle")
-				Ω(err).Should(HaveOccurred())
+				Expect(err).To(HaveOccurred())
 
-				Ω(serverBackend.DestroyCallCount()).Should(Equal(1))
+				Expect(serverBackend.DestroyCallCount()).To(Equal(1))
 			})
 		})
 
@@ -507,7 +507,7 @@ var _ = Describe("When a client connects", func() {
 
 			It("returns an ContainerNotFoundError", func() {
 				err := apiClient.Destroy("some-handle")
-				Ω(err).Should(MatchError(garden.ContainerNotFoundError{Handle: "some-handle"}))
+				Expect(err).To(MatchError(garden.ContainerNotFoundError{Handle: "some-handle"}))
 			})
 		})
 
@@ -520,22 +520,22 @@ var _ = Describe("When a client connects", func() {
 
 			It("returns an error with the same message", func() {
 				err := apiClient.Destroy("some-handle")
-				Ω(err).Should(MatchError("o no"))
+				Expect(err).To(MatchError("o no"))
 			})
 
 			Context("and destroying is attempted again", func() {
 				BeforeEach(func() {
 					err := apiClient.Destroy("some-handle")
-					Ω(err).Should(HaveOccurred())
+					Expect(err).To(HaveOccurred())
 
 					serverBackend.DestroyReturns(nil)
 				})
 
 				It("tries to destroy again", func() {
 					err := apiClient.Destroy("some-handle")
-					Ω(err).ShouldNot(HaveOccurred())
+					Expect(err).ToNot(HaveOccurred())
 
-					Ω(serverBackend.DestroyArgsForCall(0)).Should(Equal("some-handle"))
+					Expect(serverBackend.DestroyArgsForCall(0)).To(Equal("some-handle"))
 				})
 			})
 		})
@@ -557,18 +557,18 @@ var _ = Describe("When a client connects", func() {
 
 		It("returns the containers from the backend", func() {
 			containers, err := apiClient.Containers(nil)
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).ToNot(HaveOccurred())
 
-			Ω(containers).Should(HaveLen(3))
+			Expect(containers).To(HaveLen(3))
 
 			handles := make([]string, 3)
 			for i, c := range containers {
 				handles[i] = c.Handle()
 			}
 
-			Ω(handles).Should(ContainElement("some-handle"))
-			Ω(handles).Should(ContainElement("another-handle"))
-			Ω(handles).Should(ContainElement("super-handle"))
+			Expect(handles).To(ContainElement("some-handle"))
+			Expect(handles).To(ContainElement("another-handle"))
+			Expect(handles).To(ContainElement("super-handle"))
 		})
 
 		Context("when getting the containers fails", func() {
@@ -578,7 +578,7 @@ var _ = Describe("When a client connects", func() {
 
 			It("returns an error", func() {
 				_, err := apiClient.Containers(nil)
-				Ω(err).Should(HaveOccurred())
+				Expect(err).To(HaveOccurred())
 			})
 		})
 
@@ -587,9 +587,9 @@ var _ = Describe("When a client connects", func() {
 				_, err := apiClient.Containers(garden.Properties{
 					"foo": "bar",
 				})
-				Ω(err).ShouldNot(HaveOccurred())
+				Expect(err).ToNot(HaveOccurred())
 
-				Ω(serverBackend.ContainersArgsForCall(serverBackend.ContainersCallCount() - 1)).Should(Equal(
+				Expect(serverBackend.ContainersArgsForCall(serverBackend.ContainersCallCount() - 1)).To(Equal(
 					garden.Properties{
 						"foo": "bar",
 					},
@@ -600,7 +600,7 @@ var _ = Describe("When a client connects", func() {
 				_, err := apiClient.Containers(garden.Properties{
 					"hello": "banana",
 				})
-				Ω(err).ShouldNot(HaveOccurred())
+				Expect(err).ToNot(HaveOccurred())
 
 				buffer := sink.Buffer()
 				Expect(buffer).ToNot(gbytes.Say("hello"))
@@ -646,7 +646,7 @@ var _ = Describe("When a client connects", func() {
 			var err error
 
 			container, err = apiClient.Create(garden.ContainerSpec{})
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).ToNot(HaveOccurred())
 		})
 
 		itResetsGraceTimeWhenHandling := func(fn func(time.Duration)) {
@@ -667,7 +667,7 @@ var _ = Describe("When a client connects", func() {
 			Context("when the container is not found", func() {
 				It("fails", func() {
 					serverBackend.LookupReturns(nil, errors.New("not found"))
-					Ω(example()).Should(MatchError("not found"))
+					Expect(example()).To(MatchError("not found"))
 				})
 			})
 		}
@@ -675,9 +675,9 @@ var _ = Describe("When a client connects", func() {
 		Describe("stopping", func() {
 			It("stops the container and sends a StopResponse", func() {
 				err := container.Stop(true)
-				Ω(err).ShouldNot(HaveOccurred())
+				Expect(err).ToNot(HaveOccurred())
 
-				Ω(fakeContainer.StopArgsForCall(0)).Should(Equal(true))
+				Expect(fakeContainer.StopArgsForCall(0)).To(Equal(true))
 			})
 
 			itFailsWhenTheContainerIsNotFound(func() error {
@@ -691,7 +691,7 @@ var _ = Describe("When a client connects", func() {
 
 				It("returns an error", func() {
 					err := container.Stop(true)
-					Ω(err).Should(HaveOccurred())
+					Expect(err).To(HaveOccurred())
 				})
 			})
 
@@ -756,15 +756,15 @@ var _ = Describe("When a client connects", func() {
 
 				It("returns the metrics from the container", func() {
 					value, err := container.Metrics()
-					Ω(err).ShouldNot(HaveOccurred())
+					Expect(err).ToNot(HaveOccurred())
 
-					Ω(value).Should(Equal(containerMetrics))
+					Expect(value).To(Equal(containerMetrics))
 				})
 
 				itResetsGraceTimeWhenHandling(func(timeToSleep time.Duration) {
 					fakeContainer.MetricsStub = func() (garden.Metrics, error) { time.Sleep(timeToSleep); return garden.Metrics{}, nil }
 					_, err := container.Metrics()
-					Ω(err).ShouldNot(HaveOccurred())
+					Expect(err).ToNot(HaveOccurred())
 				})
 
 				itFailsWhenTheContainerIsNotFound(func() error {
@@ -780,8 +780,8 @@ var _ = Describe("When a client connects", func() {
 
 				It("returns an error", func() {
 					metrics, err := container.Metrics()
-					Ω(err).Should(HaveOccurred())
-					Ω(metrics).Should(Equal(garden.Metrics{}))
+					Expect(err).To(HaveOccurred())
+					Expect(metrics).To(Equal(garden.Metrics{}))
 				})
 			})
 		})
@@ -795,15 +795,15 @@ var _ = Describe("When a client connects", func() {
 
 					It("returns the properties from the container", func() {
 						value, err := container.Properties()
-						Ω(err).ShouldNot(HaveOccurred())
+						Expect(err).ToNot(HaveOccurred())
 
-						Ω(value).Should(Equal(garden.Properties{"foo": "bar"}))
+						Expect(value).To(Equal(garden.Properties{"foo": "bar"}))
 					})
 
 					itResetsGraceTimeWhenHandling(func(timeToSleep time.Duration) {
 						fakeContainer.PropertiesStub = func() (garden.Properties, error) { time.Sleep(timeToSleep); return nil, nil }
 						_, err := container.Properties()
-						Ω(err).ShouldNot(HaveOccurred())
+						Expect(err).ToNot(HaveOccurred())
 					})
 
 					itFailsWhenTheContainerIsNotFound(func() error {
@@ -813,7 +813,7 @@ var _ = Describe("When a client connects", func() {
 
 					It("should not log any properties", func() {
 						_, err := container.Properties()
-						Ω(err).ShouldNot(HaveOccurred())
+						Expect(err).ToNot(HaveOccurred())
 
 						buffer := sink.Buffer()
 						Expect(buffer).ToNot(gbytes.Say("foo"))
@@ -828,8 +828,8 @@ var _ = Describe("When a client connects", func() {
 
 					It("returns an error", func() {
 						properties, err := container.Properties()
-						Ω(err).Should(HaveOccurred())
-						Ω(properties).Should(BeEmpty())
+						Expect(err).To(HaveOccurred())
+						Expect(properties).To(BeEmpty())
 					})
 				})
 			})
@@ -842,20 +842,20 @@ var _ = Describe("When a client connects", func() {
 
 					It("returns the property from the container", func() {
 						value, err := container.Property("some-property")
-						Ω(err).ShouldNot(HaveOccurred())
+						Expect(err).ToNot(HaveOccurred())
 
-						Ω(value).Should(Equal("some-property-value"))
+						Expect(value).To(Equal("some-property-value"))
 
-						Ω(fakeContainer.PropertyCallCount()).Should(Equal(1))
+						Expect(fakeContainer.PropertyCallCount()).To(Equal(1))
 
 						name := fakeContainer.PropertyArgsForCall(0)
-						Ω(name).Should(Equal("some-property"))
+						Expect(name).To(Equal("some-property"))
 					})
 
 					itResetsGraceTimeWhenHandling(func(timeToSleep time.Duration) {
 						fakeContainer.PropertyStub = func(string) (string, error) { time.Sleep(timeToSleep); return "", nil }
 						_, err := container.Property("some-property")
-						Ω(err).ShouldNot(HaveOccurred())
+						Expect(err).ToNot(HaveOccurred())
 					})
 
 					itFailsWhenTheContainerIsNotFound(func() error {
@@ -865,7 +865,7 @@ var _ = Describe("When a client connects", func() {
 
 					It("should not log any properties", func() {
 						_, err := container.Property("some-property")
-						Ω(err).ShouldNot(HaveOccurred())
+						Expect(err).ToNot(HaveOccurred())
 
 						buffer := sink.Buffer()
 						Expect(buffer).ToNot(gbytes.Say("some-property"))
@@ -880,8 +880,8 @@ var _ = Describe("When a client connects", func() {
 
 					It("returns an error", func() {
 						value, err := container.Property("some-property")
-						Ω(err).Should(HaveOccurred())
-						Ω(value).Should(BeZero())
+						Expect(err).To(HaveOccurred())
+						Expect(value).To(BeZero())
 					})
 				})
 			})
@@ -894,19 +894,19 @@ var _ = Describe("When a client connects", func() {
 
 					It("sets the property on the container", func() {
 						err := container.SetProperty("some-property", "some-value")
-						Ω(err).ShouldNot(HaveOccurred())
+						Expect(err).ToNot(HaveOccurred())
 
-						Ω(fakeContainer.SetPropertyCallCount()).Should(Equal(1))
+						Expect(fakeContainer.SetPropertyCallCount()).To(Equal(1))
 
 						name, value := fakeContainer.SetPropertyArgsForCall(0)
-						Ω(name).Should(Equal("some-property"))
-						Ω(value).Should(Equal("some-value"))
+						Expect(name).To(Equal("some-property"))
+						Expect(value).To(Equal("some-value"))
 					})
 
 					itResetsGraceTimeWhenHandling(func(timeToSleep time.Duration) {
 						fakeContainer.SetPropertyStub = func(string, string) error { time.Sleep(timeToSleep); return nil }
 						err := container.SetProperty("some-property", "some-value")
-						Ω(err).ShouldNot(HaveOccurred())
+						Expect(err).ToNot(HaveOccurred())
 					})
 
 					itFailsWhenTheContainerIsNotFound(func() error {
@@ -915,7 +915,7 @@ var _ = Describe("When a client connects", func() {
 
 					It("should not log any properties", func() {
 						err := container.SetProperty("some-property", "some-value")
-						Ω(err).ShouldNot(HaveOccurred())
+						Expect(err).ToNot(HaveOccurred())
 
 						buffer := sink.Buffer()
 						Expect(buffer).ToNot(gbytes.Say("some-property"))
@@ -930,7 +930,7 @@ var _ = Describe("When a client connects", func() {
 
 					It("returns an error", func() {
 						err := container.SetProperty("some-property", "some-value")
-						Ω(err).Should(HaveOccurred())
+						Expect(err).To(HaveOccurred())
 					})
 				})
 			})
@@ -943,18 +943,18 @@ var _ = Describe("When a client connects", func() {
 
 					It("returns the property from the container", func() {
 						err := container.RemoveProperty("some-property")
-						Ω(err).ShouldNot(HaveOccurred())
+						Expect(err).ToNot(HaveOccurred())
 
-						Ω(fakeContainer.RemovePropertyCallCount()).Should(Equal(1))
+						Expect(fakeContainer.RemovePropertyCallCount()).To(Equal(1))
 
 						name := fakeContainer.RemovePropertyArgsForCall(0)
-						Ω(name).Should(Equal("some-property"))
+						Expect(name).To(Equal("some-property"))
 					})
 
 					itResetsGraceTimeWhenHandling(func(timeToSleep time.Duration) {
 						fakeContainer.RemovePropertyStub = func(string) error { time.Sleep(timeToSleep); return nil }
 						err := container.RemoveProperty("some-property")
-						Ω(err).ShouldNot(HaveOccurred())
+						Expect(err).ToNot(HaveOccurred())
 					})
 
 					itFailsWhenTheContainerIsNotFound(func() error {
@@ -963,7 +963,7 @@ var _ = Describe("When a client connects", func() {
 
 					It("should not log any properties", func() {
 						err := container.RemoveProperty("some-property")
-						Ω(err).ShouldNot(HaveOccurred())
+						Expect(err).ToNot(HaveOccurred())
 
 						buffer := sink.Buffer()
 						Expect(buffer).ToNot(gbytes.Say("some-property"))
@@ -978,7 +978,7 @@ var _ = Describe("When a client connects", func() {
 
 					It("returns an error", func() {
 						err := container.RemoveProperty("some-property")
-						Ω(err).Should(HaveOccurred())
+						Expect(err).To(HaveOccurred())
 					})
 				})
 			})
@@ -989,16 +989,16 @@ var _ = Describe("When a client connects", func() {
 				data := bytes.NewBufferString("chunk-1;chunk-2;chunk-3;")
 
 				fakeContainer.StreamInStub = func(spec garden.StreamInSpec) error {
-					Ω(spec.Path).Should(Equal("/dst/path"))
-					Ω(spec.User).Should(Equal("frank"))
-					Ω(ioutil.ReadAll(spec.TarStream)).Should(Equal([]byte("chunk-1;chunk-2;chunk-3;")))
+					Expect(spec.Path).To(Equal("/dst/path"))
+					Expect(spec.User).To(Equal("frank"))
+					Expect(ioutil.ReadAll(spec.TarStream)).To(Equal([]byte("chunk-1;chunk-2;chunk-3;")))
 					return nil
 				}
 
 				err := container.StreamIn(garden.StreamInSpec{User: "frank", Path: "/dst/path", TarStream: data})
-				Ω(err).ShouldNot(HaveOccurred())
+				Expect(err).ToNot(HaveOccurred())
 
-				Ω(fakeContainer.StreamInCallCount()).Should(Equal(1))
+				Expect(fakeContainer.StreamInCallCount()).To(Equal(1))
 			})
 
 			itFailsWhenTheContainerIsNotFound(func() error {
@@ -1012,7 +1012,7 @@ var _ = Describe("When a client connects", func() {
 
 				It("fails", func() {
 					err := container.StreamIn(garden.StreamInSpec{User: "bob", Path: "/dst/path"})
-					Ω(err).Should(HaveOccurred())
+					Expect(err).To(HaveOccurred())
 				})
 			})
 		})
@@ -1030,15 +1030,15 @@ var _ = Describe("When a client connects", func() {
 
 			It("streams the bits out and succeeds", func() {
 				reader, err := container.StreamOut(garden.StreamOutSpec{User: "frank", Path: "/src/path"})
-				Ω(err).ShouldNot(HaveOccurred())
-				Ω(reader).ShouldNot(BeZero())
+				Expect(err).ToNot(HaveOccurred())
+				Expect(reader).ToNot(BeZero())
 
 				streamedContent, err := ioutil.ReadAll(reader)
-				Ω(err).ShouldNot(HaveOccurred())
+				Expect(err).ToNot(HaveOccurred())
 
-				Ω(string(streamedContent)).Should(Equal("hello-world!"))
+				Expect(string(streamedContent)).To(Equal("hello-world!"))
 
-				Ω(fakeContainer.StreamOutArgsForCall(0)).Should(Equal(garden.StreamOutSpec{User: "frank", Path: "/src/path"}))
+				Expect(fakeContainer.StreamOutArgsForCall(0)).To(Equal(garden.StreamOutSpec{User: "frank", Path: "/src/path"}))
 			})
 
 			Context("when the connection dies as we're streaming", func() {
@@ -1052,10 +1052,10 @@ var _ = Describe("When a client connects", func() {
 
 				It("closes the backend's stream", func() {
 					reader, err := container.StreamOut(garden.StreamOutSpec{User: "frank", Path: "/src/path"})
-					Ω(err).ShouldNot(HaveOccurred())
+					Expect(err).ToNot(HaveOccurred())
 
 					err = reader.Close()
-					Ω(err).ShouldNot(HaveOccurred())
+					Expect(err).ToNot(HaveOccurred())
 
 					Eventually(closer.Closed).Should(BeTrue())
 				})
@@ -1067,10 +1067,10 @@ var _ = Describe("When a client connects", func() {
 					return gbytes.NewBuffer(), nil
 				}
 				reader, err := container.StreamOut(garden.StreamOutSpec{User: "frank", Path: "/src/path"})
-				Ω(err).ShouldNot(HaveOccurred())
+				Expect(err).ToNot(HaveOccurred())
 
 				_, err = ioutil.ReadAll(reader)
-				Ω(err).ShouldNot(HaveOccurred())
+				Expect(err).ToNot(HaveOccurred())
 			})
 
 			itFailsWhenTheContainerIsNotFound(func() error {
@@ -1085,7 +1085,7 @@ var _ = Describe("When a client connects", func() {
 
 				It("returns an error", func() {
 					_, err := container.StreamOut(garden.StreamOutSpec{User: "frank", Path: "/src/path"})
-					Ω(err).Should(HaveOccurred())
+					Expect(err).To(HaveOccurred())
 				})
 			})
 		})
@@ -1100,9 +1100,9 @@ var _ = Describe("When a client connects", func() {
 				fakeContainer.CurrentBandwidthLimitsReturns(effectiveLimits, nil)
 
 				limits, err := container.CurrentBandwidthLimits()
-				Ω(err).ShouldNot(HaveOccurred())
+				Expect(err).ToNot(HaveOccurred())
 
-				Ω(limits).Should(Equal(effectiveLimits))
+				Expect(limits).To(Equal(effectiveLimits))
 			})
 
 			Context("when getting the current limits fails", func() {
@@ -1112,7 +1112,7 @@ var _ = Describe("When a client connects", func() {
 
 				It("fails", func() {
 					_, err := container.CurrentBandwidthLimits()
-					Ω(err).Should(HaveOccurred())
+					Expect(err).To(HaveOccurred())
 				})
 			})
 		})
@@ -1123,10 +1123,10 @@ var _ = Describe("When a client connects", func() {
 				fakeContainer.CurrentMemoryLimitsReturns(effectiveLimits, nil)
 
 				limits, err := container.CurrentMemoryLimits()
-				Ω(err).ShouldNot(HaveOccurred())
-				Ω(limits).ShouldNot(BeZero())
+				Expect(err).ToNot(HaveOccurred())
+				Expect(limits).ToNot(BeZero())
 
-				Ω(limits).Should(Equal(effectiveLimits))
+				Expect(limits).To(Equal(effectiveLimits))
 			})
 
 			itFailsWhenTheContainerIsNotFound(func() error {
@@ -1141,7 +1141,7 @@ var _ = Describe("When a client connects", func() {
 
 				It("fails", func() {
 					_, err := container.CurrentMemoryLimits()
-					Ω(err).Should(HaveOccurred())
+					Expect(err).To(HaveOccurred())
 				})
 			})
 		})
@@ -1159,9 +1159,9 @@ var _ = Describe("When a client connects", func() {
 				fakeContainer.CurrentDiskLimitsReturns(currentLimits, nil)
 
 				limits, err := container.CurrentDiskLimits()
-				Ω(err).ShouldNot(HaveOccurred())
+				Expect(err).ToNot(HaveOccurred())
 
-				Ω(limits).Should(Equal(currentLimits))
+				Expect(limits).To(Equal(currentLimits))
 			})
 
 			itFailsWhenTheContainerIsNotFound(func() error {
@@ -1176,7 +1176,7 @@ var _ = Describe("When a client connects", func() {
 
 				It("fails", func() {
 					_, err := container.CurrentDiskLimits()
-					Ω(err).Should(HaveOccurred())
+					Expect(err).To(HaveOccurred())
 				})
 			})
 		})
@@ -1188,9 +1188,9 @@ var _ = Describe("When a client connects", func() {
 				fakeContainer.CurrentCPULimitsReturns(effectiveLimits, nil)
 
 				limits, err := container.CurrentCPULimits()
-				Ω(err).ShouldNot(HaveOccurred())
+				Expect(err).ToNot(HaveOccurred())
 
-				Ω(limits).Should(Equal(effectiveLimits))
+				Expect(limits).To(Equal(effectiveLimits))
 			})
 
 			itFailsWhenTheContainerIsNotFound(func() error {
@@ -1205,7 +1205,7 @@ var _ = Describe("When a client connects", func() {
 
 				It("fails", func() {
 					_, err := container.CurrentCPULimits()
-					Ω(err).Should(HaveOccurred())
+					Expect(err).To(HaveOccurred())
 				})
 			})
 		})
@@ -1218,13 +1218,13 @@ var _ = Describe("When a client connects", func() {
 
 			It("destroys the container after it has been idle for the grace time", func() {
 				before := time.Now()
-				Ω(container.SetGraceTime(graceTime)).Should(Succeed())
+				Expect(container.SetGraceTime(graceTime)).To(Succeed())
 
 				Eventually(serverBackend.DestroyCallCount, 2*time.Second).Should(Equal(1))
-				Ω(serverBackend.DestroyArgsForCall(0)).Should(Equal("some-handle"))
+				Expect(serverBackend.DestroyArgsForCall(0)).To(Equal("some-handle"))
 
-				Ω(time.Since(before)).Should(BeNumerically(">=", graceTime))
-				Ω(time.Since(before)).Should(BeNumerically("<", graceTime+time.Second))
+				Expect(time.Since(before)).To(BeNumerically(">=", graceTime))
+				Expect(time.Since(before)).To(BeNumerically("<", graceTime+time.Second))
 			})
 		})
 
@@ -1233,20 +1233,20 @@ var _ = Describe("When a client connects", func() {
 				fakeContainer.NetInReturns(111, 222, nil)
 
 				hostPort, containerPort, err := container.NetIn(123, 456)
-				Ω(err).ShouldNot(HaveOccurred())
+				Expect(err).ToNot(HaveOccurred())
 
 				hp, cp := fakeContainer.NetInArgsForCall(0)
-				Ω(hp).Should(Equal(uint32(123)))
-				Ω(cp).Should(Equal(uint32(456)))
+				Expect(hp).To(Equal(uint32(123)))
+				Expect(cp).To(Equal(uint32(456)))
 
-				Ω(hostPort).Should(Equal(uint32(111)))
-				Ω(containerPort).Should(Equal(uint32(222)))
+				Expect(hostPort).To(Equal(uint32(111)))
+				Expect(containerPort).To(Equal(uint32(222)))
 			})
 
 			itResetsGraceTimeWhenHandling(func(timeToSleep time.Duration) {
 				fakeContainer.NetInStub = func(uint32, uint32) (uint32, uint32, error) { time.Sleep(timeToSleep); return 0, 0, nil }
 				_, _, err := container.NetIn(123, 456)
-				Ω(err).ShouldNot(HaveOccurred())
+				Expect(err).ToNot(HaveOccurred())
 			})
 
 			itFailsWhenTheContainerIsNotFound(func() error {
@@ -1261,7 +1261,7 @@ var _ = Describe("When a client connects", func() {
 
 				It("fails", func() {
 					_, _, err := container.NetIn(123, 456)
-					Ω(err).Should(HaveOccurred())
+					Expect(err).To(HaveOccurred())
 				})
 			})
 		})
@@ -1269,70 +1269,70 @@ var _ = Describe("When a client connects", func() {
 		Describe("net out", func() {
 			Context("when a zero-value NetOutRule is supplied", func() {
 				It("permits all TCP traffic to everywhere, with logging not enabled", func() {
-					Ω(container.NetOut(garden.NetOutRule{})).Should(Succeed())
+					Expect(container.NetOut(garden.NetOutRule{})).To(Succeed())
 					rule := fakeContainer.NetOutArgsForCall(0)
 
-					Ω(rule.Protocol).Should(Equal(garden.ProtocolAll))
-					Ω(rule.Networks).Should(BeNil())
-					Ω(rule.Ports).Should(BeNil())
-					Ω(rule.ICMPs).Should(BeNil())
-					Ω(rule.Log).Should(Equal(false))
+					Expect(rule.Protocol).To(Equal(garden.ProtocolAll))
+					Expect(rule.Networks).To(BeNil())
+					Expect(rule.Ports).To(BeNil())
+					Expect(rule.ICMPs).To(BeNil())
+					Expect(rule.Log).To(Equal(false))
 				})
 			})
 
 			Context("when protocol is specified", func() {
 				Context("as TCP", func() {
 					It("permits TCP traffic", func() {
-						Ω(container.NetOut(garden.NetOutRule{
+						Expect(container.NetOut(garden.NetOutRule{
 							Protocol: garden.ProtocolTCP,
-						})).Should(Succeed())
+						})).To(Succeed())
 						rule := fakeContainer.NetOutArgsForCall(0)
-						Ω(rule.Protocol).Should(Equal(garden.ProtocolTCP))
+						Expect(rule.Protocol).To(Equal(garden.ProtocolTCP))
 					})
 				})
 
 				Context("as UDP", func() {
 					It("permits UDP traffic", func() {
-						Ω(container.NetOut(garden.NetOutRule{
+						Expect(container.NetOut(garden.NetOutRule{
 							Protocol: garden.ProtocolUDP,
-						})).Should(Succeed())
+						})).To(Succeed())
 						rule := fakeContainer.NetOutArgsForCall(0)
-						Ω(rule.Protocol).Should(Equal(garden.ProtocolUDP))
+						Expect(rule.Protocol).To(Equal(garden.ProtocolUDP))
 					})
 				})
 
 				Context("as ICMP", func() {
 					It("permits ICMP traffic", func() {
-						Ω(container.NetOut(garden.NetOutRule{
+						Expect(container.NetOut(garden.NetOutRule{
 							Protocol: garden.ProtocolICMP,
-						})).Should(Succeed())
+						})).To(Succeed())
 						rule := fakeContainer.NetOutArgsForCall(0)
-						Ω(rule.Protocol).Should(Equal(garden.ProtocolICMP))
+						Expect(rule.Protocol).To(Equal(garden.ProtocolICMP))
 					})
 				})
 
 				Context("as ALL", func() {
 					It("permits ALL traffic", func() {
-						Ω(container.NetOut(garden.NetOutRule{
+						Expect(container.NetOut(garden.NetOutRule{
 							Protocol: garden.ProtocolAll,
-						})).Should(Succeed())
+						})).To(Succeed())
 
 						rule := fakeContainer.NetOutArgsForCall(0)
-						Ω(rule.Protocol).Should(Equal(garden.ProtocolAll))
+						Expect(rule.Protocol).To(Equal(garden.ProtocolAll))
 					})
 				})
 			})
 
 			Context("when network is specified", func() {
 				It("permits traffic to that network", func() {
-					Ω(container.NetOut(garden.NetOutRule{
+					Expect(container.NetOut(garden.NetOutRule{
 						Networks: []garden.IPRange{
 							{Start: net.ParseIP("1.3.5.7"), End: net.ParseIP("9.9.7.6")},
 						},
-					})).Should(Succeed())
+					})).To(Succeed())
 
 					rule := fakeContainer.NetOutArgsForCall(0)
-					Ω(rule.Networks).Should(Equal([]garden.IPRange{
+					Expect(rule.Networks).To(Equal([]garden.IPRange{
 						{
 							Start: net.ParseIP("1.3.5.7"),
 							End:   net.ParseIP("9.9.7.6"),
@@ -1343,15 +1343,15 @@ var _ = Describe("When a client connects", func() {
 
 			Context("when multiple networks are specified", func() {
 				It("permits traffic to those networks", func() {
-					Ω(container.NetOut(garden.NetOutRule{
+					Expect(container.NetOut(garden.NetOutRule{
 						Networks: []garden.IPRange{
 							{Start: net.ParseIP("1.3.5.7"), End: net.ParseIP("9.9.7.6")},
 							{Start: net.ParseIP("2.4.6.8"), End: net.ParseIP("8.6.4.2")},
 						},
-					})).Should(Succeed())
+					})).To(Succeed())
 
 					rule := fakeContainer.NetOutArgsForCall(0)
-					Ω(rule.Networks).Should(ConsistOf(
+					Expect(rule.Networks).To(ConsistOf(
 						garden.IPRange{
 							Start: net.ParseIP("1.3.5.7"),
 							End:   net.ParseIP("9.9.7.6"),
@@ -1366,14 +1366,14 @@ var _ = Describe("When a client connects", func() {
 
 			Context("when ports are specified", func() {
 				It("permits traffic to those ports", func() {
-					Ω(container.NetOut(garden.NetOutRule{
+					Expect(container.NetOut(garden.NetOutRule{
 						Ports: []garden.PortRange{
 							{Start: 4, End: 44},
 						},
-					})).Should(Succeed())
+					})).To(Succeed())
 
 					rule := fakeContainer.NetOutArgsForCall(0)
-					Ω(rule.Ports).Should(Equal([]garden.PortRange{
+					Expect(rule.Ports).To(Equal([]garden.PortRange{
 						{
 							Start: 4,
 							End:   44,
@@ -1384,15 +1384,15 @@ var _ = Describe("When a client connects", func() {
 
 			Context("when multiple ports are specified", func() {
 				It("permits traffic to those ports", func() {
-					Ω(container.NetOut(garden.NetOutRule{
+					Expect(container.NetOut(garden.NetOutRule{
 						Ports: []garden.PortRange{
 							{Start: 4, End: 44},
 							{Start: 563, End: 3944},
 						},
-					})).Should(Succeed())
+					})).To(Succeed())
 
 					rule := fakeContainer.NetOutArgsForCall(0)
-					Ω(rule.Ports).Should(ConsistOf(
+					Expect(rule.Ports).To(ConsistOf(
 						garden.PortRange{
 							Start: 4,
 							End:   44,
@@ -1407,40 +1407,40 @@ var _ = Describe("When a client connects", func() {
 
 			Context("when icmps are specified without a code", func() {
 				It("permits traffic matching those icmps", func() {
-					Ω(container.NetOut(garden.NetOutRule{
+					Expect(container.NetOut(garden.NetOutRule{
 						ICMPs: &garden.ICMPControl{Type: 4},
-					})).Should(Succeed())
+					})).To(Succeed())
 
 					rule := fakeContainer.NetOutArgsForCall(0)
-					Ω(rule.ICMPs).Should(Equal(&garden.ICMPControl{Type: 4}))
+					Expect(rule.ICMPs).To(Equal(&garden.ICMPControl{Type: 4}))
 				})
 			})
 
 			Context("when icmps are specified with a code", func() {
 				It("permits traffic matching those icmps", func() {
 					var code garden.ICMPCode = 34
-					Ω(container.NetOut(garden.NetOutRule{
+					Expect(container.NetOut(garden.NetOutRule{
 						ICMPs: &garden.ICMPControl{Type: 4, Code: &code},
-					})).Should(Succeed())
+					})).To(Succeed())
 
 					rule := fakeContainer.NetOutArgsForCall(0)
-					Ω(rule.ICMPs).Should(Equal(&garden.ICMPControl{Type: 4, Code: &code}))
+					Expect(rule.ICMPs).To(Equal(&garden.ICMPControl{Type: 4, Code: &code}))
 				})
 			})
 
 			Context("when log is true", func() {
 				It("requests that the rule logs", func() {
-					Ω(container.NetOut(garden.NetOutRule{Log: true})).Should(Succeed())
+					Expect(container.NetOut(garden.NetOutRule{Log: true})).To(Succeed())
 
 					rule := fakeContainer.NetOutArgsForCall(0)
-					Ω(rule.Log).Should(BeTrue())
+					Expect(rule.Log).To(BeTrue())
 				})
 			})
 
 			itResetsGraceTimeWhenHandling(func(timeToSleep time.Duration) {
 				fakeContainer.NetOutStub = func(garden.NetOutRule) error { time.Sleep(timeToSleep); return nil }
 				err := container.NetOut(garden.NetOutRule{})
-				Ω(err).ShouldNot(HaveOccurred())
+				Expect(err).ToNot(HaveOccurred())
 			})
 
 			itFailsWhenTheContainerIsNotFound(func() error {
@@ -1454,7 +1454,7 @@ var _ = Describe("When a client connects", func() {
 
 				It("fails", func() {
 					err := container.NetOut(garden.NetOutRule{})
-					Ω(err).Should(HaveOccurred())
+					Expect(err).To(HaveOccurred())
 				})
 			})
 		})
@@ -1466,9 +1466,9 @@ var _ = Describe("When a client connects", func() {
 					garden.NetOutRule{Protocol: garden.ProtocolUDP},
 				}
 
-				Ω(container.BulkNetOut(rules)).Should(Succeed())
-				Ω(fakeContainer.BulkNetOutCallCount()).To(Equal(1))
-				Ω(fakeContainer.BulkNetOutArgsForCall(0)).To(Equal(rules))
+				Expect(container.BulkNetOut(rules)).To(Succeed())
+				Expect(fakeContainer.BulkNetOutCallCount()).To(Equal(1))
+				Expect(fakeContainer.BulkNetOutArgsForCall(0)).To(Equal(rules))
 			})
 
 			itFailsWhenTheContainerIsNotFound(func() error {
@@ -1482,7 +1482,7 @@ var _ = Describe("When a client connects", func() {
 
 				It("fails", func() {
 					err := container.BulkNetOut([]garden.NetOutRule{})
-					Ω(err).Should(HaveOccurred())
+					Expect(err).To(HaveOccurred())
 				})
 			})
 		})
@@ -1510,15 +1510,15 @@ var _ = Describe("When a client connects", func() {
 				fakeContainer.InfoReturns(containerInfo, nil)
 
 				info, err := container.Info()
-				Ω(err).ShouldNot(HaveOccurred())
+				Expect(err).ToNot(HaveOccurred())
 
-				Ω(info).Should(Equal(containerInfo))
+				Expect(info).To(Equal(containerInfo))
 			})
 
 			itResetsGraceTimeWhenHandling(func(timeToSleep time.Duration) {
 				fakeContainer.InfoStub = func() (garden.ContainerInfo, error) { time.Sleep(timeToSleep); return garden.ContainerInfo{}, nil }
 				_, err := container.Info()
-				Ω(err).ShouldNot(HaveOccurred())
+				Expect(err).ToNot(HaveOccurred())
 			})
 
 			itFailsWhenTheContainerIsNotFound(func() error {
@@ -1533,7 +1533,7 @@ var _ = Describe("When a client connects", func() {
 
 				It("fails", func() {
 					_, err := container.Info()
-					Ω(err).Should(HaveOccurred())
+					Expect(err).To(HaveOccurred())
 				})
 			})
 		})
@@ -1566,8 +1566,8 @@ var _ = Describe("When a client connects", func() {
 				serverBackend.BulkInfoReturns(expectedBulkInfo, nil)
 
 				bulkInfo, err := apiClient.BulkInfo(handles)
-				Ω(err).ShouldNot(HaveOccurred())
-				Ω(bulkInfo).To(Equal(expectedBulkInfo))
+				Expect(err).ToNot(HaveOccurred())
+				Expect(bulkInfo).To(Equal(expectedBulkInfo))
 			})
 
 			Context("when retrieving bulk info fails", func() {
@@ -1578,7 +1578,7 @@ var _ = Describe("When a client connects", func() {
 					)
 
 					_, err := apiClient.BulkInfo(handles)
-					Ω(err).Should(MatchError("Oh noes!"))
+					Expect(err).To(MatchError("Oh noes!"))
 				})
 			})
 
@@ -1599,8 +1599,8 @@ var _ = Describe("When a client connects", func() {
 					serverBackend.BulkInfoReturns(expectedBulkInfo, nil)
 
 					bulkInfo, err := apiClient.BulkInfo(handles)
-					Ω(err).ShouldNot(HaveOccurred())
-					Ω(bulkInfo).To(Equal(expectedBulkInfo))
+					Expect(err).ToNot(HaveOccurred())
+					Expect(bulkInfo).To(Equal(expectedBulkInfo))
 				})
 			})
 		})
@@ -1630,8 +1630,8 @@ var _ = Describe("When a client connects", func() {
 				serverBackend.BulkMetricsReturns(expectedBulkMetrics, nil)
 
 				bulkMetrics, err := apiClient.BulkMetrics(handles)
-				Ω(err).ShouldNot(HaveOccurred())
-				Ω(bulkMetrics).To(Equal(expectedBulkMetrics))
+				Expect(err).ToNot(HaveOccurred())
+				Expect(bulkMetrics).To(Equal(expectedBulkMetrics))
 			})
 
 			It("calls BulkMetrics with empty slice when handles is empty", func() {
@@ -1649,7 +1649,7 @@ var _ = Describe("When a client connects", func() {
 					)
 
 					_, err := apiClient.BulkMetrics(handles)
-					Ω(err).Should(MatchError("Oh noes!"))
+					Expect(err).To(MatchError("Oh noes!"))
 				})
 			})
 
@@ -1672,8 +1672,8 @@ var _ = Describe("When a client connects", func() {
 					serverBackend.BulkMetricsReturns(errorBulkMetrics, nil)
 
 					bulkMetrics, err := apiClient.BulkMetrics(handles)
-					Ω(err).ShouldNot(HaveOccurred())
-					Ω(bulkMetrics).To(Equal(errorBulkMetrics))
+					Expect(err).ToNot(HaveOccurred())
+					Expect(bulkMetrics).To(Equal(errorBulkMetrics))
 				})
 			})
 		})
@@ -1690,16 +1690,16 @@ var _ = Describe("When a client connects", func() {
 							defer GinkgoRecover()
 
 							_, err := fmt.Fprintf(io.Stdout, "stdout data")
-							Ω(err).ShouldNot(HaveOccurred())
+							Expect(err).ToNot(HaveOccurred())
 
 							in, err := ioutil.ReadAll(io.Stdin)
-							Ω(err).ShouldNot(HaveOccurred())
+							Expect(err).ToNot(HaveOccurred())
 
 							_, err = fmt.Fprintf(io.Stdout, "mirrored %s", string(in))
-							Ω(err).ShouldNot(HaveOccurred())
+							Expect(err).ToNot(HaveOccurred())
 
 							_, err = fmt.Fprintf(io.Stderr, "stderr data")
-							Ω(err).ShouldNot(HaveOccurred())
+							Expect(err).ToNot(HaveOccurred())
 						}()
 
 						process := new(fakes.FakeProcess)
@@ -1726,18 +1726,18 @@ var _ = Describe("When a client connects", func() {
 					}
 
 					process, err := container.Attach("process-handle", processIO)
-					Ω(err).ShouldNot(HaveOccurred())
+					Expect(err).ToNot(HaveOccurred())
 
 					pid, _ := fakeContainer.AttachArgsForCall(0)
-					Ω(pid).Should(Equal("process-handle"))
+					Expect(pid).To(Equal("process-handle"))
 
 					Eventually(stdout).Should(gbytes.Say("stdout data"))
 					Eventually(stdout).Should(gbytes.Say("mirrored stdin data"))
 					Eventually(stderr).Should(gbytes.Say("stderr data"))
 
 					status, err := process.Wait()
-					Ω(err).ShouldNot(HaveOccurred())
-					Ω(status).Should(Equal(123))
+					Expect(err).ToNot(HaveOccurred())
+					Expect(status).To(Equal(123))
 				})
 
 				itResetsGraceTimeWhenHandling(func(timeToSleep time.Duration) {
@@ -1753,7 +1753,7 @@ var _ = Describe("When a client connects", func() {
 				It("fails", func() {
 					serverBackend.LookupReturns(nil, errors.New("not found"))
 					_, err := container.Attach("process-handle", garden.ProcessIO{})
-					Ω(err).Should(HaveOccurred())
+					Expect(err).To(HaveOccurred())
 				})
 			})
 
@@ -1771,11 +1771,11 @@ var _ = Describe("When a client connects", func() {
 
 				It("bubbles the error up", func() {
 					process, err := container.Attach("process-handle", garden.ProcessIO{})
-					Ω(err).ShouldNot(HaveOccurred())
+					Expect(err).ToNot(HaveOccurred())
 
 					_, err = process.Wait()
-					Ω(err).Should(HaveOccurred())
-					Ω(err.Error()).Should(ContainSubstring("oh no!"))
+					Expect(err).To(HaveOccurred())
+					Expect(err.Error()).To(ContainSubstring("oh no!"))
 				})
 			})
 
@@ -1788,7 +1788,7 @@ var _ = Describe("When a client connects", func() {
 
 				It("returns a ProcessNotFoundError", func() {
 					_, err := container.Attach("not-existing-process", garden.ProcessIO{})
-					Ω(err).Should(MatchError(garden.ProcessNotFoundError{
+					Expect(err).To(MatchError(garden.ProcessNotFoundError{
 						ProcessID: "not-existing-process",
 					}))
 				})
@@ -1801,17 +1801,15 @@ var _ = Describe("When a client connects", func() {
 
 				It("fails", func() {
 					_, err := container.Attach("process-handle", garden.ProcessIO{})
-					Ω(err).Should(HaveOccurred())
+					Expect(err).To(HaveOccurred())
 				})
 
-				It("closes the stdin writer", func(done Done) {
+				It("closes the stdin writer", func() {
 					container.Attach("process-handle", garden.ProcessIO{})
 
 					_, processIO := fakeContainer.AttachArgsForCall(0)
 					_, err := processIO.Stdin.Read([]byte{})
-					Ω(err).Should(Equal(io.EOF))
-
-					close(done)
+					Expect(err).To(Equal(io.EOF))
 				})
 			})
 		})
@@ -1868,16 +1866,16 @@ var _ = Describe("When a client connects", func() {
 							defer GinkgoRecover()
 
 							_, err := fmt.Fprintf(io.Stdout, "stdout data")
-							Ω(err).ShouldNot(HaveOccurred())
+							Expect(err).ToNot(HaveOccurred())
 
 							in, err := ioutil.ReadAll(io.Stdin)
-							Ω(err).ShouldNot(HaveOccurred())
+							Expect(err).ToNot(HaveOccurred())
 
 							_, err = fmt.Fprintf(io.Stdout, "mirrored %s", string(in))
-							Ω(err).ShouldNot(HaveOccurred())
+							Expect(err).ToNot(HaveOccurred())
 
 							_, err = fmt.Fprintf(io.Stderr, "stderr data")
-							Ω(err).ShouldNot(HaveOccurred())
+							Expect(err).ToNot(HaveOccurred())
 						}()
 
 						process := new(fakes.FakeProcess)
@@ -1918,7 +1916,7 @@ var _ = Describe("When a client connects", func() {
 					Expect(buffer).ToNot(gbytes.Say("banana"))
 				})
 
-				It("runs the process and streams the output", func(done Done) {
+				It("runs the process and streams the output", func() {
 					stdout := gbytes.NewBuffer()
 					stderr := gbytes.NewBuffer()
 
@@ -1929,23 +1927,21 @@ var _ = Describe("When a client connects", func() {
 					}
 
 					process, err := container.Run(processSpec, processIO)
-					Ω(err).ShouldNot(HaveOccurred())
+					Expect(err).ToNot(HaveOccurred())
 
 					ranSpec, processIO := fakeContainer.RunArgsForCall(0)
-					Ω(ranSpec).Should(Equal(processSpec))
+					Expect(ranSpec).To(Equal(processSpec))
 
 					Eventually(stdout).Should(gbytes.Say("stdout data"))
 					Eventually(stdout).Should(gbytes.Say("mirrored stdin data"))
 					Eventually(stderr).Should(gbytes.Say("stderr data"))
 
 					status, err := process.Wait()
-					Ω(err).ShouldNot(HaveOccurred())
-					Ω(status).Should(Equal(123))
+					Expect(err).ToNot(HaveOccurred())
+					Expect(status).To(Equal(123))
 
 					_, err = processIO.Stdin.Read([]byte{})
-					Ω(err).Should(Equal(io.EOF))
-
-					close(done)
+					Expect(err).To(Equal(io.EOF))
 				})
 
 				itResetsGraceTimeWhenHandling(func(timeToSleep time.Duration) {
@@ -1978,7 +1974,7 @@ var _ = Describe("When a client connects", func() {
 
 							for {
 								_, err := fmt.Fprintf(io.Stdout, "stdout data")
-								Ω(err).ShouldNot(HaveOccurred())
+								Expect(err).ToNot(HaveOccurred())
 							}
 						}()
 
@@ -1996,7 +1992,7 @@ var _ = Describe("When a client connects", func() {
 				It("does not close the process's stdin", func() {
 					pipeR, _ := io.Pipe()
 					_, err := container.Run(processSpec, garden.ProcessIO{Stdin: pipeR})
-					Ω(err).ShouldNot(HaveOccurred())
+					Expect(err).ToNot(HaveOccurred())
 
 					apiServer.Stop()
 					isRunning = false
@@ -2010,8 +2006,8 @@ var _ = Describe("When a client connects", func() {
 					}()
 
 					Eventually(readExited).Should(BeClosed())
-					Ω(err).Should(HaveOccurred())
-					Ω(err).ShouldNot(Equal(io.EOF))
+					Expect(err).To(HaveOccurred())
+					Expect(err).ToNot(Equal(io.EOF))
 				})
 			})
 
@@ -2030,13 +2026,13 @@ var _ = Describe("When a client connects", func() {
 
 				It("is eventually killed in the backend", func() {
 					process, err := container.Run(processSpec, garden.ProcessIO{})
-					Ω(err).ShouldNot(HaveOccurred())
+					Expect(err).ToNot(HaveOccurred())
 
 					err = process.Signal(garden.SignalKill)
-					Ω(err).ShouldNot(HaveOccurred())
+					Expect(err).ToNot(HaveOccurred())
 
 					Eventually(fakeProcess.SignalCallCount).Should(Equal(1))
-					Ω(fakeProcess.SignalArgsForCall(0)).Should(Equal(garden.SignalKill))
+					Expect(fakeProcess.SignalArgsForCall(0)).To(Equal(garden.SignalKill))
 				})
 			})
 
@@ -2055,13 +2051,13 @@ var _ = Describe("When a client connects", func() {
 
 				It("is eventually terminated in the backend", func() {
 					process, err := container.Run(processSpec, garden.ProcessIO{})
-					Ω(err).ShouldNot(HaveOccurred())
+					Expect(err).ToNot(HaveOccurred())
 
 					err = process.Signal(garden.SignalTerminate)
-					Ω(err).ShouldNot(HaveOccurred())
+					Expect(err).ToNot(HaveOccurred())
 
 					Eventually(fakeProcess.SignalCallCount).Should(Equal(1))
-					Ω(fakeProcess.SignalArgsForCall(0)).Should(Equal(garden.SignalTerminate))
+					Expect(fakeProcess.SignalArgsForCall(0)).To(Equal(garden.SignalTerminate))
 				})
 			})
 
@@ -2080,7 +2076,7 @@ var _ = Describe("When a client connects", func() {
 
 				It("is eventually set in the backend", func() {
 					process, err := container.Run(processSpec, garden.ProcessIO{})
-					Ω(err).ShouldNot(HaveOccurred())
+					Expect(err).ToNot(HaveOccurred())
 
 					ttySpec := garden.TTYSpec{
 						WindowSize: &garden.WindowSize{
@@ -2090,11 +2086,11 @@ var _ = Describe("When a client connects", func() {
 					}
 
 					err = process.SetTTY(ttySpec)
-					Ω(err).ShouldNot(HaveOccurred())
+					Expect(err).ToNot(HaveOccurred())
 
 					Eventually(fakeProcess.SetTTYCallCount).Should(Equal(1))
 
-					Ω(fakeProcess.SetTTYArgsForCall(0)).Should(Equal(ttySpec))
+					Expect(fakeProcess.SetTTYArgsForCall(0)).To(Equal(ttySpec))
 				})
 			})
 
@@ -2112,11 +2108,11 @@ var _ = Describe("When a client connects", func() {
 
 				It("bubbles the error up", func() {
 					process, err := container.Run(processSpec, garden.ProcessIO{})
-					Ω(err).ShouldNot(HaveOccurred())
+					Expect(err).ToNot(HaveOccurred())
 
 					_, err = process.Wait()
-					Ω(err).Should(HaveOccurred())
-					Ω(err.Error()).Should(ContainSubstring("oh no!"))
+					Expect(err).To(HaveOccurred())
+					Expect(err.Error()).To(ContainSubstring("oh no!"))
 				})
 			})
 
@@ -2124,7 +2120,7 @@ var _ = Describe("When a client connects", func() {
 				It("fails", func() {
 					serverBackend.LookupReturns(nil, errors.New("not found"))
 					_, err := container.Run(processSpec, garden.ProcessIO{})
-					Ω(err).Should(HaveOccurred())
+					Expect(err).To(HaveOccurred())
 				})
 			})
 
@@ -2135,7 +2131,7 @@ var _ = Describe("When a client connects", func() {
 
 				It("fails", func() {
 					_, err := container.Run(processSpec, garden.ProcessIO{})
-					Ω(err).Should(HaveOccurred())
+					Expect(err).To(HaveOccurred())
 				})
 			})
 		})
