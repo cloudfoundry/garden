@@ -1,9 +1,9 @@
 ---
 image_resource:
- type: docker-image
- source:
-   repository: cfgarden/garden-ci-ubuntu
-   tag: '0.9.1'
+  type: docker-image
+  source:
+    repository: cfgarden/garden-ci-ubuntu
+    tag: '0.11.2'
 
 platform: linux
 
