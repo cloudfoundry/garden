@@ -715,8 +715,7 @@ func (s *GardenServer) handleSetGraceTime(w http.ResponseWriter, r *http.Request
 
 	container.SetGraceTime(graceTime)
 
-	s.bomberman.Defuse(container.Handle())
-	s.bomberman.Strap(container)
+	s.bomberman.Reset(container)
 
 	s.writeSuccess(w)
 }

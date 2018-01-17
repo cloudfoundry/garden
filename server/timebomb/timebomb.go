@@ -26,8 +26,8 @@ func New(countdown time.Duration, detonate func()) *TimeBomb {
 
 func (b *TimeBomb) Strap() {
 	b.lock.Lock()
+	defer b.lock.Unlock()
 	b.timer = time.AfterFunc(b.countdown, b.detonate)
-	b.lock.Unlock()
 }
 
 func (b *TimeBomb) Pause() bool {
@@ -43,11 +43,7 @@ func (b *TimeBomb) Pause() bool {
 		return true
 	}
 
-	if !timer.Stop() {
-		return false
-	}
-
-	return true
+	return timer.Stop()
 }
 
 func (b *TimeBomb) Defuse() bool {
@@ -72,7 +68,22 @@ func (b *TimeBomb) Unpause() {
 
 	b.pauses--
 
-	if !b.defused && b.pauses == 0 {
+	if !b.defused && b.pauses == 0 && b.countdown != 0 {
+		b.timer = time.AfterFunc(b.countdown, b.detonate)
+	}
+}
+
+func (b *TimeBomb) Reset(countdown time.Duration) {
+	b.lock.Lock()
+	defer b.lock.Unlock()
+
+	b.countdown = countdown
+
+	if b.timer != nil {
+		b.timer.Stop()
+	}
+
+	if b.timer != nil || b.pauses == 0 {
 		b.timer = time.AfterFunc(b.countdown, b.detonate)
 	}
 }
