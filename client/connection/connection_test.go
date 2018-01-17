@@ -99,7 +99,7 @@ var _ = Describe("Connection", func() {
 
 			It("should ping the server", func() {
 				err := connection.Ping()
-				Ω(err).ShouldNot(HaveOccurred())
+				Expect(err).ToNot(HaveOccurred())
 			})
 		})
 
@@ -115,7 +115,7 @@ var _ = Describe("Connection", func() {
 
 			It("should return an error", func() {
 				err := connection.Ping()
-				Ω(err).Should(HaveOccurred())
+				Expect(err).To(HaveOccurred())
 			})
 		})
 
@@ -131,7 +131,7 @@ var _ = Describe("Connection", func() {
 
 			It("should return an error without the http info in the error message", func() {
 				err := connection.Ping()
-				Ω(err).Should(MatchError("Special Error Message"))
+				Expect(err).To(MatchError("Special Error Message"))
 			})
 
 			It("should return an error of the appropriate type", func() {
@@ -152,7 +152,7 @@ var _ = Describe("Connection", func() {
 
 			It("should return an error without the http info in the error message", func() {
 				err := connection.Ping()
-				Expect(err).Should(MatchError("Extra Special Error Message"))
+				Expect(err).To(MatchError("Extra Special Error Message"))
 			})
 
 			It("should return an error of the appropriate unrecoverable type", func() {
@@ -177,11 +177,11 @@ var _ = Describe("Connection", func() {
 
 			It("should return the server's capacity", func() {
 				capacity, err := connection.Capacity()
-				Ω(err).ShouldNot(HaveOccurred())
+				Expect(err).ToNot(HaveOccurred())
 
-				Ω(capacity.MemoryInBytes).Should(BeNumerically("==", 1111))
-				Ω(capacity.DiskInBytes).Should(BeNumerically("==", 2222))
-				Ω(capacity.MaxContainers).Should(BeNumerically("==", 42))
+				Expect(capacity.MemoryInBytes).To(BeNumerically("==", 1111))
+				Expect(capacity.DiskInBytes).To(BeNumerically("==", 2222))
+				Expect(capacity.MaxContainers).To(BeNumerically("==", 42))
 			})
 		})
 
@@ -195,7 +195,7 @@ var _ = Describe("Connection", func() {
 
 			It("should return an error", func() {
 				_, err := connection.Capacity()
-				Ω(err).Should(HaveOccurred())
+				Expect(err).To(HaveOccurred())
 			})
 		})
 	})
@@ -218,8 +218,8 @@ var _ = Describe("Connection", func() {
 
 			It("sends the ContainerSpec over the connection as JSON", func() {
 				handle, err := connection.Create(spec)
-				Ω(err).ShouldNot(HaveOccurred())
-				Ω(handle).Should(Equal("foohandle"))
+				Expect(err).ToNot(HaveOccurred())
+				Expect(handle).To(Equal("foohandle"))
 			})
 		})
 
@@ -253,8 +253,8 @@ var _ = Describe("Connection", func() {
 
 			It("sends the ContainerSpec over the connection as JSON", func() {
 				handle, err := connection.Create(spec)
-				Ω(err).ShouldNot(HaveOccurred())
-				Ω(handle).Should(Equal("foohandle"))
+				Expect(err).ToNot(HaveOccurred())
+				Expect(handle).To(Equal("foohandle"))
 			})
 		})
 	})
@@ -270,7 +270,7 @@ var _ = Describe("Connection", func() {
 
 			It("should stop the container", func() {
 				err := connection.Destroy("foo")
-				Ω(err).ShouldNot(HaveOccurred())
+				Expect(err).ToNot(HaveOccurred())
 			})
 		})
 
@@ -284,7 +284,7 @@ var _ = Describe("Connection", func() {
 
 			It("return an appropriate error with the message", func() {
 				err := connection.Destroy("foo")
-				Ω(err).Should(MatchError(garden.ContainerNotFoundError{Handle: "some handle"}))
+				Expect(err).To(MatchError(garden.ContainerNotFoundError{Handle: "some handle"}))
 			})
 		})
 	})
@@ -302,7 +302,7 @@ var _ = Describe("Connection", func() {
 
 		It("should stop the container", func() {
 			err := connection.Stop("foo", true)
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).ToNot(HaveOccurred())
 		})
 	})
 
@@ -321,8 +321,8 @@ var _ = Describe("Connection", func() {
 
 			It("gets the memory limit", func() {
 				currentLimits, err := connection.CurrentMemoryLimits("foo")
-				Ω(err).ShouldNot(HaveOccurred())
-				Ω(currentLimits.LimitInBytes).Should(BeNumerically("==", 40))
+				Expect(err).ToNot(HaveOccurred())
+				Expect(currentLimits.LimitInBytes).To(BeNumerically("==", 40))
 			})
 		})
 
@@ -340,9 +340,9 @@ var _ = Describe("Connection", func() {
 
 			It("gets the cpu limit", func() {
 				limits, err := connection.CurrentCPULimits("foo")
-				Ω(err).ShouldNot(HaveOccurred())
+				Expect(err).ToNot(HaveOccurred())
 
-				Ω(limits.LimitInShares).Should(BeNumerically("==", 40))
+				Expect(limits.LimitInShares).To(BeNumerically("==", 40))
 			})
 		})
 
@@ -361,10 +361,10 @@ var _ = Describe("Connection", func() {
 
 			It("gets the bandwidth limit", func() {
 				limits, err := connection.CurrentBandwidthLimits("foo")
-				Ω(err).ShouldNot(HaveOccurred())
+				Expect(err).ToNot(HaveOccurred())
 
-				Ω(limits.RateInBytesPerSecond).Should(BeNumerically("==", 1))
-				Ω(limits.BurstRateInBytesPerSecond).Should(BeNumerically("==", 2))
+				Expect(limits.RateInBytesPerSecond).To(BeNumerically("==", 1))
+				Expect(limits.BurstRateInBytesPerSecond).To(BeNumerically("==", 2))
 			})
 		})
 	})
@@ -387,9 +387,9 @@ var _ = Describe("Connection", func() {
 
 		It("should return the allocated ports", func() {
 			hostPort, containerPort, err := connection.NetIn("foo-handle", 8080, 8081)
-			Ω(err).ShouldNot(HaveOccurred())
-			Ω(hostPort).Should(Equal(uint32(1234)))
-			Ω(containerPort).Should(Equal(uint32(1235)))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(hostPort).To(Equal(uint32(1234)))
+			Expect(containerPort).To(Equal(uint32(1235)))
 		})
 	})
 
@@ -423,7 +423,7 @@ var _ = Describe("Connection", func() {
 			})
 
 			It("should send the rule over the wire", func() {
-				Ω(connection.NetOut(handle, rule)).Should(Succeed())
+				Expect(connection.NetOut(handle, rule)).To(Succeed())
 			})
 		})
 	})
@@ -443,8 +443,8 @@ var _ = Describe("Connection", func() {
 		It("should return the list of containers", func() {
 			handles, err := connection.List(map[string]string{"foo": "bar"})
 
-			Ω(err).ShouldNot(HaveOccurred())
-			Ω(handles).Should(Equal([]string{"container1", "container2", "container3"}))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(handles).To(Equal([]string{"container1", "container2", "container3"}))
 		})
 	})
 
@@ -466,8 +466,8 @@ var _ = Describe("Connection", func() {
 		It("returns the map of properties", func() {
 			properties, err := connection.Properties(handle)
 
-			Ω(err).ShouldNot(HaveOccurred())
-			Ω(properties).Should(
+			Expect(err).ToNot(HaveOccurred())
+			Expect(properties).To(
 				Equal(garden.Properties{
 					"foo": "bar",
 				}),
@@ -481,7 +481,7 @@ var _ = Describe("Connection", func() {
 
 			It("returns an error", func() {
 				_, err := connection.Properties(handle)
-				Ω(err).Should(HaveOccurred())
+				Expect(err).To(HaveOccurred())
 			})
 		})
 	})
@@ -507,8 +507,8 @@ var _ = Describe("Connection", func() {
 		It("returns the property", func() {
 			property, err := connection.Property(handle, propertyName)
 
-			Ω(err).ShouldNot(HaveOccurred())
-			Ω(property).Should(Equal(propertyValue))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(property).To(Equal(propertyValue))
 		})
 
 		Context("when getting container property fails", func() {
@@ -518,7 +518,7 @@ var _ = Describe("Connection", func() {
 
 			It("returns an error", func() {
 				_, err := connection.Property(handle, propertyName)
-				Ω(err).Should(HaveOccurred())
+				Expect(err).To(HaveOccurred())
 			})
 		})
 
@@ -587,8 +587,8 @@ var _ = Describe("Connection", func() {
 		It("returns the MemoryStat, CPUStat and DiskStat", func() {
 			returnedMetrics, err := connection.Metrics(handle)
 
-			Ω(err).ShouldNot(HaveOccurred())
-			Ω(returnedMetrics).Should(Equal(metrics))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(returnedMetrics).To(Equal(metrics))
 		})
 
 		Context("when getting container metrics fails", func() {
@@ -598,7 +598,7 @@ var _ = Describe("Connection", func() {
 
 			It("returns an error", func() {
 				_, err := connection.Metrics(handle)
-				Ω(err).Should(HaveOccurred())
+				Expect(err).To(HaveOccurred())
 			})
 		})
 	})
@@ -628,7 +628,7 @@ var _ = Describe("Connection", func() {
 		})
 
 		It("send SetGraceTime request", func() {
-			Ω(connection.SetGraceTime(handle, graceTime)).Should(Succeed())
+			Expect(connection.SetGraceTime(handle, graceTime)).To(Succeed())
 		})
 
 		Context("when setting grace time fails", func() {
@@ -637,7 +637,7 @@ var _ = Describe("Connection", func() {
 			})
 
 			It("returns an error", func() {
-				Ω(connection.SetGraceTime(handle, graceTime)).ShouldNot(Succeed())
+				Expect(connection.SetGraceTime(handle, graceTime)).ToNot(Succeed())
 			})
 		})
 	})
@@ -673,9 +673,9 @@ var _ = Describe("Connection", func() {
 
 		It("should return the container's info", func() {
 			info, err := connection.Info("some-handle")
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).ToNot(HaveOccurred())
 
-			Ω(info).Should(Equal(infoResponse))
+			Expect(info).To(Equal(infoResponse))
 		})
 	})
 
@@ -707,8 +707,8 @@ var _ = Describe("Connection", func() {
 
 			It("returns info about containers", func() {
 				bulkInfo, err := connection.BulkInfo(handles)
-				Ω(err).ShouldNot(HaveOccurred())
-				Ω(bulkInfo).Should(Equal(expectedBulkInfo))
+				Expect(err).ToNot(HaveOccurred())
+				Expect(bulkInfo).To(Equal(expectedBulkInfo))
 			})
 		})
 
@@ -724,7 +724,7 @@ var _ = Describe("Connection", func() {
 
 			It("returns the error", func() {
 				_, err := connection.BulkInfo(handles)
-				Ω(err).Should(HaveOccurred())
+				Expect(err).To(HaveOccurred())
 			})
 		})
 
@@ -748,8 +748,8 @@ var _ = Describe("Connection", func() {
 						ghttp.RespondWith(200, marshalProto(expectedBulkInfo))))
 
 				bulkInfo, err := connection.BulkInfo(handles)
-				Ω(err).ShouldNot(HaveOccurred())
-				Ω(bulkInfo).Should(Equal(expectedBulkInfo))
+				Expect(err).ToNot(HaveOccurred())
+				Expect(bulkInfo).To(Equal(expectedBulkInfo))
 			})
 		})
 	})
@@ -792,8 +792,8 @@ var _ = Describe("Connection", func() {
 
 			It("returns info about containers", func() {
 				bulkMetrics, err := connection.BulkMetrics(handles)
-				Ω(err).ShouldNot(HaveOccurred())
-				Ω(bulkMetrics).Should(Equal(expectedBulkMetrics))
+				Expect(err).ToNot(HaveOccurred())
+				Expect(bulkMetrics).To(Equal(expectedBulkMetrics))
 			})
 		})
 
@@ -809,7 +809,7 @@ var _ = Describe("Connection", func() {
 
 			It("returns the error", func() {
 				_, err := connection.BulkMetrics(handles)
-				Ω(err).Should(HaveOccurred())
+				Expect(err).To(HaveOccurred())
 			})
 		})
 
@@ -835,8 +835,8 @@ var _ = Describe("Connection", func() {
 						ghttp.RespondWith(200, marshalProto(errorBulkMetrics))))
 
 				bulkMetrics, err := connection.BulkMetrics(handles)
-				Ω(err).ShouldNot(HaveOccurred())
-				Ω(bulkMetrics).To(Equal(errorBulkMetrics))
+				Expect(err).ToNot(HaveOccurred())
+				Expect(bulkMetrics).To(Equal(errorBulkMetrics))
 			})
 		})
 	})
@@ -849,9 +849,9 @@ var _ = Describe("Connection", func() {
 						ghttp.VerifyRequest("PUT", "/containers/foo-handle/files", "user=alice&destination=%2Fbar"),
 						func(w http.ResponseWriter, r *http.Request) {
 							body, err := ioutil.ReadAll(r.Body)
-							Ω(err).ShouldNot(HaveOccurred())
+							Expect(err).ToNot(HaveOccurred())
 
-							Ω(string(body)).Should(Equal("chunk-1chunk-2"))
+							Expect(string(body)).To(Equal("chunk-1chunk-2"))
 						},
 					),
 				)
@@ -861,9 +861,9 @@ var _ = Describe("Connection", func() {
 				buffer := bytes.NewBufferString("chunk-1chunk-2")
 
 				err := connection.StreamIn("foo-handle", garden.StreamInSpec{User: "alice", Path: "/bar", TarStream: buffer})
-				Ω(err).ShouldNot(HaveOccurred())
+				Expect(err).ToNot(HaveOccurred())
 
-				Ω(server.ReceivedRequests()).Should(HaveLen(1))
+				Expect(server.ReceivedRequests()).To(HaveLen(1))
 			})
 		})
 
@@ -880,9 +880,9 @@ var _ = Describe("Connection", func() {
 			It("returns an error on close", func() {
 				buffer := bytes.NewBufferString("chunk-1chunk-2")
 				err := connection.StreamIn("foo-handle", garden.StreamInSpec{User: "bob", Path: "/bar", TarStream: buffer})
-				Ω(err).Should(HaveOccurred())
+				Expect(err).To(HaveOccurred())
 
-				Ω(server.ReceivedRequests()).Should(HaveLen(1))
+				Expect(server.ReceivedRequests()).To(HaveLen(1))
 			})
 		})
 
@@ -903,9 +903,9 @@ var _ = Describe("Connection", func() {
 				buffer := bytes.NewBufferString("chunk-1chunk-2")
 
 				err := connection.StreamIn("foo-handle", garden.StreamInSpec{User: "bob", Path: "/bar", TarStream: buffer})
-				Ω(err).Should(HaveOccurred())
+				Expect(err).To(HaveOccurred())
 
-				Ω(server.ReceivedRequests()).Should(HaveLen(1))
+				Expect(server.ReceivedRequests()).To(HaveLen(1))
 			})
 		})
 	})
@@ -923,11 +923,11 @@ var _ = Describe("Connection", func() {
 
 			It("asks garden.for the given file, then reads its content", func() {
 				reader, err := connection.StreamOut("foo-handle", garden.StreamOutSpec{User: "frank", Path: "/bar"})
-				Ω(err).ShouldNot(HaveOccurred())
+				Expect(err).ToNot(HaveOccurred())
 
 				readBytes, err := ioutil.ReadAll(reader)
-				Ω(err).ShouldNot(HaveOccurred())
-				Ω(readBytes).Should(Equal([]byte("hello-world!")))
+				Expect(err).ToNot(HaveOccurred())
+				Expect(readBytes).To(Equal([]byte("hello-world!")))
 
 				reader.Close()
 			})
@@ -947,11 +947,11 @@ var _ = Describe("Connection", func() {
 
 			It("asks garden.for the given file, then reads its content", func() {
 				reader, err := connection.StreamOut("foo-handle", garden.StreamOutSpec{User: "deandra", Path: "/bar"})
-				Ω(err).ShouldNot(HaveOccurred())
+				Expect(err).ToNot(HaveOccurred())
 
 				_, err = ioutil.ReadAll(reader)
 				reader.Close()
-				Ω(err).Should(HaveOccurred())
+				Expect(err).To(HaveOccurred())
 			})
 		})
 	})
@@ -981,7 +981,7 @@ var _ = Describe("Connection", func() {
 							w.WriteHeader(http.StatusOK)
 
 							conn, br, err := w.(http.Hijacker).Hijack()
-							Ω(err).ShouldNot(HaveOccurred())
+							Expect(err).ToNot(HaveOccurred())
 
 							defer conn.Close()
 
@@ -994,9 +994,9 @@ var _ = Describe("Connection", func() {
 
 							var payload map[string]interface{}
 							err = decoder.Decode(&payload)
-							Ω(err).ShouldNot(HaveOccurred())
+							Expect(err).ToNot(HaveOccurred())
 
-							Ω(payload).Should(Equal(map[string]interface{}{
+							Expect(payload).To(Equal(map[string]interface{}{
 								"process_id": "process-handle",
 								"source":     float64(transport.Stdin),
 								"data":       "stdin data",
@@ -1029,16 +1029,16 @@ var _ = Describe("Connection", func() {
 					Stderr: stderr,
 				})
 
-				Ω(err).ShouldNot(HaveOccurred())
-				Ω(process.ID()).Should(Equal("process-handle"))
+				Expect(err).ToNot(HaveOccurred())
+				Expect(process.ID()).To(Equal("process-handle"))
 
 				Eventually(stdout).Should(gbytes.Say("stdout data"))
 				Eventually(stdout).Should(gbytes.Say("roundtripped stdin data"))
 				Eventually(stderr).Should(gbytes.Say("stderr data"))
 
 				status, err := process.Wait()
-				Ω(err).ShouldNot(HaveOccurred())
-				Ω(status).Should(Equal(3))
+				Expect(err).ToNot(HaveOccurred())
+				Expect(status).To(Equal(3))
 			})
 
 			It("finishes streaming stdout and stderr before returning from .Wait", func() {
@@ -1050,11 +1050,11 @@ var _ = Describe("Connection", func() {
 					Stdout: stdout,
 					Stderr: stderr,
 				})
-				Ω(err).ShouldNot(HaveOccurred())
+				Expect(err).ToNot(HaveOccurred())
 
 				process.Wait()
-				Ω(stdout).Should(gbytes.Say("roundtripped stdin data"))
-				Ω(stderr).Should(gbytes.Say("stderr data"))
+				Expect(stdout).To(gbytes.Say("roundtripped stdin data"))
+				Expect(stderr).To(gbytes.Say("stderr data"))
 			})
 
 			Describe("connection leak avoidance", func() {
@@ -1084,11 +1084,11 @@ var _ = Describe("Connection", func() {
 						Stdout: stdout,
 						Stderr: stderr,
 					})
-					Ω(err).ShouldNot(HaveOccurred())
+					Expect(err).ToNot(HaveOccurred())
 
 					process.Wait()
-					Ω(stdout).Should(gbytes.Say("roundtripped stdin data"))
-					Ω(stderr).Should(gbytes.Say("stderr data"))
+					Expect(stdout).To(gbytes.Say("roundtripped stdin data"))
+					Expect(stderr).To(gbytes.Say("stderr data"))
 
 					for _, wc := range wrappedConnections {
 						Eventually(wc.isClosed).Should(BeTrue())
@@ -1106,7 +1106,7 @@ var _ = Describe("Connection", func() {
 							w.WriteHeader(http.StatusOK)
 
 							conn, br, err := w.(http.Hijacker).Hijack()
-							Ω(err).ShouldNot(HaveOccurred())
+							Expect(err).ToNot(HaveOccurred())
 
 							defer conn.Close()
 
@@ -1119,9 +1119,9 @@ var _ = Describe("Connection", func() {
 
 							var payload map[string]interface{}
 							err = decoder.Decode(&payload)
-							Ω(err).ShouldNot(HaveOccurred())
+							Expect(err).ToNot(HaveOccurred())
 
-							Ω(payload).Should(Equal(map[string]interface{}{
+							Expect(payload).To(Equal(map[string]interface{}{
 								"process_id": "process-handle",
 								"signal":     float64(garden.SignalTerminate),
 							}))
@@ -1143,15 +1143,15 @@ var _ = Describe("Connection", func() {
 			It("sends the appropriate protocol message", func() {
 				process, err := connection.Run("foo-handle", garden.ProcessSpec{}, garden.ProcessIO{})
 
-				Ω(err).ShouldNot(HaveOccurred())
-				Ω(process.ID()).Should(Equal("process-handle"))
+				Expect(err).ToNot(HaveOccurred())
+				Expect(process.ID()).To(Equal("process-handle"))
 
 				err = process.Signal(garden.SignalTerminate)
-				Ω(err).ShouldNot(HaveOccurred())
+				Expect(err).ToNot(HaveOccurred())
 
 				status, err := process.Wait()
-				Ω(err).ShouldNot(HaveOccurred())
-				Ω(status).Should(Equal(3))
+				Expect(err).ToNot(HaveOccurred())
+				Expect(status).To(Equal(3))
 			})
 		})
 
@@ -1164,7 +1164,7 @@ var _ = Describe("Connection", func() {
 							w.WriteHeader(http.StatusOK)
 
 							conn, br, err := w.(http.Hijacker).Hijack()
-							Ω(err).ShouldNot(HaveOccurred())
+							Expect(err).ToNot(HaveOccurred())
 
 							defer conn.Close()
 
@@ -1177,9 +1177,9 @@ var _ = Describe("Connection", func() {
 
 							var payload map[string]interface{}
 							err = decoder.Decode(&payload)
-							Ω(err).ShouldNot(HaveOccurred())
+							Expect(err).ToNot(HaveOccurred())
 
-							Ω(payload).Should(Equal(map[string]interface{}{
+							Expect(payload).To(Equal(map[string]interface{}{
 								"process_id": "process-handle",
 								"signal":     float64(garden.SignalKill),
 							}))
@@ -1198,15 +1198,15 @@ var _ = Describe("Connection", func() {
 			It("sends the appropriate protocol message", func() {
 				process, err := connection.Run("foo-handle", garden.ProcessSpec{}, garden.ProcessIO{})
 
-				Ω(err).ShouldNot(HaveOccurred())
-				Ω(process.ID()).Should(Equal("process-handle"))
+				Expect(err).ToNot(HaveOccurred())
+				Expect(process.ID()).To(Equal("process-handle"))
 
 				err = process.Signal(garden.SignalKill)
-				Ω(err).ShouldNot(HaveOccurred())
+				Expect(err).ToNot(HaveOccurred())
 
 				status, err := process.Wait()
-				Ω(err).ShouldNot(HaveOccurred())
-				Ω(status).Should(Equal(3))
+				Expect(err).ToNot(HaveOccurred())
+				Expect(status).To(Equal(3))
 			})
 		})
 
@@ -1232,7 +1232,7 @@ var _ = Describe("Connection", func() {
 							w.WriteHeader(http.StatusOK)
 
 							conn, br, err := w.(http.Hijacker).Hijack()
-							Ω(err).ShouldNot(HaveOccurred())
+							Expect(err).ToNot(HaveOccurred())
 
 							defer conn.Close()
 
@@ -1247,7 +1247,7 @@ var _ = Describe("Connection", func() {
 							Eventually(func() interface{} {
 								var payload map[string]interface{}
 								err = decoder.Decode(&payload)
-								Ω(err).ShouldNot(HaveOccurred())
+								Expect(err).ToNot(HaveOccurred())
 
 								return payload
 							}).Should(Equal(map[string]interface{}{
@@ -1278,8 +1278,8 @@ var _ = Describe("Connection", func() {
 					Stderr: gbytes.NewBuffer(),
 				})
 
-				Ω(err).ShouldNot(HaveOccurred())
-				Ω(process.ID()).Should(Equal("process-handle"))
+				Expect(err).ToNot(HaveOccurred())
+				Expect(process.ID()).To(Equal("process-handle"))
 
 				err = process.SetTTY(garden.TTYSpec{
 					WindowSize: &garden.WindowSize{
@@ -1287,11 +1287,11 @@ var _ = Describe("Connection", func() {
 						Rows:    24,
 					},
 				})
-				Ω(err).ShouldNot(HaveOccurred())
+				Expect(err).ToNot(HaveOccurred())
 
 				status, err := process.Wait()
-				Ω(err).ShouldNot(HaveOccurred())
-				Ω(status).Should(Equal(3))
+				Expect(err).ToNot(HaveOccurred())
+				Expect(status).To(Equal(3))
 			})
 		})
 
@@ -1304,7 +1304,7 @@ var _ = Describe("Connection", func() {
 							w.WriteHeader(http.StatusOK)
 
 							conn, _, err := w.(http.Hijacker).Hijack()
-							Ω(err).ShouldNot(HaveOccurred())
+							Expect(err).ToNot(HaveOccurred())
 
 							defer conn.Close()
 
@@ -1321,7 +1321,7 @@ var _ = Describe("Connection", func() {
 							w.WriteHeader(http.StatusInternalServerError)
 
 							conn, _, err := w.(http.Hijacker).Hijack()
-							Ω(err).ShouldNot(HaveOccurred())
+							Expect(err).ToNot(HaveOccurred())
 							defer conn.Close()
 						},
 					),
@@ -1336,10 +1336,10 @@ var _ = Describe("Connection", func() {
 						Dir:  "/some/dir",
 					}, garden.ProcessIO{Stdout: GinkgoWriter})
 
-					Ω(err).ShouldNot(HaveOccurred())
+					Expect(err).ToNot(HaveOccurred())
 
 					_, err = process.Wait()
-					Ω(err).Should(MatchError(ContainSubstring("connection: failed to hijack stream ")))
+					Expect(err).To(MatchError(ContainSubstring("connection: failed to hijack stream ")))
 
 					close(done)
 				})
@@ -1355,7 +1355,7 @@ var _ = Describe("Connection", func() {
 							w.WriteHeader(http.StatusOK)
 
 							conn, _, err := w.(http.Hijacker).Hijack()
-							Ω(err).ShouldNot(HaveOccurred())
+							Expect(err).ToNot(HaveOccurred())
 
 							defer conn.Close()
 
@@ -1378,10 +1378,10 @@ var _ = Describe("Connection", func() {
 						Dir:  "/some/dir",
 					}, garden.ProcessIO{})
 
-					Ω(err).ShouldNot(HaveOccurred())
+					Expect(err).ToNot(HaveOccurred())
 
 					_, err = process.Wait()
-					Ω(err).Should(HaveOccurred())
+					Expect(err).To(HaveOccurred())
 				})
 			})
 		})
@@ -1419,11 +1419,11 @@ var _ = Describe("Connection", func() {
 						Dir:  "/some/dir",
 					}, garden.ProcessIO{})
 
-					Ω(err).ShouldNot(HaveOccurred())
+					Expect(err).ToNot(HaveOccurred())
 
 					_, err = process.Wait()
-					Ω(err).Should(HaveOccurred())
-					Ω(err.Error()).Should(ContainSubstring("oh no!"))
+					Expect(err).To(HaveOccurred())
+					Expect(err.Error()).To(ContainSubstring("oh no!"))
 				})
 			})
 		})
@@ -1443,7 +1443,7 @@ var _ = Describe("Connection", func() {
 					Dir:  "/some/dir",
 				}, garden.ProcessIO{})
 
-				Ω(err).Should(MatchError(ContainSubstring("an error occurred!")))
+				Expect(err).To(MatchError(ContainSubstring("an error occurred!")))
 			})
 		})
 	})
@@ -1459,7 +1459,7 @@ var _ = Describe("Connection", func() {
 							w.WriteHeader(http.StatusOK)
 
 							conn, br, err := w.(http.Hijacker).Hijack()
-							Ω(err).ShouldNot(HaveOccurred())
+							Expect(err).ToNot(HaveOccurred())
 
 							defer conn.Close()
 
@@ -1470,9 +1470,9 @@ var _ = Describe("Connection", func() {
 
 							var payload map[string]interface{}
 							err = json.NewDecoder(br).Decode(&payload)
-							Ω(err).ShouldNot(HaveOccurred())
+							Expect(err).ToNot(HaveOccurred())
 
-							Ω(payload).Should(Equal(map[string]interface{}{
+							Expect(payload).To(Equal(map[string]interface{}{
 								"process_id": "process-handle",
 								"source":     float64(transport.Stdin),
 								"data":       "stdin data",
@@ -1505,16 +1505,16 @@ var _ = Describe("Connection", func() {
 					Stderr: stderr,
 				})
 
-				Ω(err).ShouldNot(HaveOccurred())
-				Ω(process.ID()).Should(Equal("process-handle"))
+				Expect(err).ToNot(HaveOccurred())
+				Expect(process.ID()).To(Equal("process-handle"))
 
 				Eventually(stdout).Should(gbytes.Say("stdout data"))
 				Eventually(stderr).Should(gbytes.Say("stderr data"))
 				Eventually(stdout).Should(gbytes.Say("roundtripped stdin data"))
 
 				status, err := process.Wait()
-				Ω(err).ShouldNot(HaveOccurred())
-				Ω(status).Should(Equal(3))
+				Expect(err).ToNot(HaveOccurred())
+				Expect(status).To(Equal(3))
 			})
 
 			It("finishes streaming stdout and stderr before returning from .Wait", func() {
@@ -1527,11 +1527,11 @@ var _ = Describe("Connection", func() {
 					Stderr: stderr,
 				})
 
-				Ω(err).ShouldNot(HaveOccurred())
+				Expect(err).ToNot(HaveOccurred())
 
 				process.Wait()
-				Ω(stdout).Should(gbytes.Say("roundtripped stdin data"))
-				Ω(stderr).Should(gbytes.Say("stderr data"))
+				Expect(stdout).To(gbytes.Say("roundtripped stdin data"))
+				Expect(stderr).To(gbytes.Say("stderr data"))
 			})
 
 		})
@@ -1547,7 +1547,7 @@ var _ = Describe("Connection", func() {
 							w.WriteHeader(http.StatusOK)
 
 							conn, br, err := w.(http.Hijacker).Hijack()
-							Ω(err).ShouldNot(HaveOccurred())
+							Expect(err).ToNot(HaveOccurred())
 							defer conn.Close()
 
 							transport.WriteMessage(conn, map[string]interface{}{
@@ -1559,9 +1559,9 @@ var _ = Describe("Connection", func() {
 
 							var payload map[string]interface{}
 							err = decoder.Decode(&payload)
-							Ω(err).ShouldNot(HaveOccurred())
+							Expect(err).ToNot(HaveOccurred())
 
-							Ω(payload).Should(Equal(map[string]interface{}{
+							Expect(payload).To(Equal(map[string]interface{}{
 								"process_id": "process-handle",
 								"source":     float64(transport.Stdin),
 								"data":       "stdin data",
@@ -1579,7 +1579,7 @@ var _ = Describe("Connection", func() {
 				_, err := connection.Attach("foo-handle", "process-handle", garden.ProcessIO{
 					Stdin: stdinR,
 				})
-				Ω(err).ShouldNot(HaveOccurred())
+				Expect(err).ToNot(HaveOccurred())
 
 				stdinW.Write([]byte("stdin data"))
 				stdinW.CloseWithError(errors.New("connection broke"))
@@ -1625,12 +1625,12 @@ var _ = Describe("Connection", func() {
 				It("returns an error", func() {
 					process, err := connection.Attach("foo-handle", "process-handle", garden.ProcessIO{})
 
-					Ω(err).ShouldNot(HaveOccurred())
-					Ω(process.ID()).Should(Equal("process-handle"))
+					Expect(err).ToNot(HaveOccurred())
+					Expect(process.ID()).To(Equal("process-handle"))
 
 					_, err = process.Wait()
-					Ω(err).Should(HaveOccurred())
-					Ω(err.Error()).Should(ContainSubstring("oh no!"))
+					Expect(err).To(HaveOccurred())
+					Expect(err.Error()).To(ContainSubstring("oh no!"))
 				})
 			})
 		})
@@ -1644,7 +1644,7 @@ var _ = Describe("Connection", func() {
 							w.WriteHeader(http.StatusOK)
 
 							conn, _, err := w.(http.Hijacker).Hijack()
-							Ω(err).ShouldNot(HaveOccurred())
+							Expect(err).ToNot(HaveOccurred())
 
 							defer conn.Close()
 
@@ -1675,11 +1675,11 @@ var _ = Describe("Connection", func() {
 				It("returns an error", func() {
 					process, err := connection.Attach("foo-handle", "process-handle", garden.ProcessIO{})
 
-					Ω(err).ShouldNot(HaveOccurred())
-					Ω(process.ID()).Should(Equal("process-handle"))
+					Expect(err).ToNot(HaveOccurred())
+					Expect(process.ID()).To(Equal("process-handle"))
 
 					_, err = process.Wait()
-					Ω(err).Should(HaveOccurred())
+					Expect(err).To(HaveOccurred())
 				})
 			})
 		})
@@ -1699,7 +1699,7 @@ var _ = Describe("Connection", func() {
 
 			It("returns a ProcessNotFoundError", func() {
 				_, err := connection.Attach("foo-handle", "idontexist", garden.ProcessIO{})
-				Ω(err).Should(MatchError(garden.ProcessNotFoundError{
+				Expect(err).To(MatchError(garden.ProcessNotFoundError{
 					ProcessID: "idontexist",
 				}))
 			})
@@ -1715,9 +1715,9 @@ func verifyRequestBody(expectedMessage interface{}, emptyType interface{}) http.
 
 		received := emptyType
 		err := decoder.Decode(&received)
-		Ω(err).ShouldNot(HaveOccurred())
+		Expect(err).ToNot(HaveOccurred())
 
-		Ω(received).Should(Equal(expectedMessage))
+		Expect(received).To(Equal(expectedMessage))
 	}
 }
 
@@ -1725,7 +1725,7 @@ func marshalProto(messages ...interface{}) string {
 	result := new(bytes.Buffer)
 	for _, msg := range messages {
 		err := transport.WriteMessage(result, msg)
-		Ω(err).ShouldNot(HaveOccurred())
+		Expect(err).ToNot(HaveOccurred())
 	}
 
 	return result.String()
@@ -1761,7 +1761,7 @@ func stream(handle, route, processid string, attachid int, fn func(net.Conn)) ht
 			w.WriteHeader(http.StatusOK)
 
 			conn, _, err := w.(http.Hijacker).Hijack()
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).ToNot(HaveOccurred())
 			defer conn.Close()
 
 			fn(conn)
