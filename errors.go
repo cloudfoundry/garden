@@ -3,7 +3,6 @@ package garden
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 )
 
@@ -14,6 +13,7 @@ const (
 	serviceUnavailableErrType = "ServiceUnavailableError"
 	containerNotFoundErrType  = "ContainerNotFoundError"
 	processNotFoundErrType    = "ProcessNotFoundError"
+	executableNotFoundError   = "ExecutableNotFoundError"
 )
 
 type Error struct {
@@ -29,6 +29,7 @@ type marshalledError struct {
 	Message   string
 	Handle    string
 	ProcessID string
+	Binary    string
 }
 
 func (m Error) Error() string {
@@ -57,6 +58,8 @@ func (m Error) MarshalJSON() ([]byte, error) {
 	case ProcessNotFoundError:
 		errorType = processNotFoundErrType
 		processID = err.ProcessID
+	case ExecutableNotFoundError:
+		errorType = executableNotFoundError
 	case ServiceUnavailableError:
 		errorType = serviceUnavailableErrType
 	case UnrecoverableError:
@@ -87,6 +90,8 @@ func (m *Error) UnmarshalJSON(data []byte) error {
 		m.Err = ContainerNotFoundError{result.Handle}
 	case processNotFoundErrType:
 		m.Err = ProcessNotFoundError{ProcessID: result.ProcessID}
+	case executableNotFoundError:
+		m.Err = ExecutableNotFoundError{Message: result.Message}
 	default:
 		m.Err = errors.New(result.Message)
 	}
@@ -113,7 +118,7 @@ type ContainerNotFoundError struct {
 }
 
 func (err ContainerNotFoundError) Error() string {
-	return fmt.Sprintf("unknown handle: %s", err.Handle)
+	return "unknown handle: " + err.Handle
 }
 
 func NewServiceUnavailableError(cause string) error {
@@ -135,5 +140,13 @@ type ProcessNotFoundError struct {
 }
 
 func (err ProcessNotFoundError) Error() string {
-	return fmt.Sprintf("unknown process: %s", err.ProcessID)
+	return "unknown process: " + err.ProcessID
+}
+
+type ExecutableNotFoundError struct {
+	Message string
+}
+
+func (err ExecutableNotFoundError) Error() string {
+	return err.Message
 }
