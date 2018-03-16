@@ -92,21 +92,8 @@ var _ = Describe("Streamer", func() {
 		It("should not leak unused streams for longer than the grace time after streaming has been stopped", func() {
 			sid := str.Stream(stdoutChan, stderrChan)
 			str.Stop(sid)
-
-			Eventually(func() []byte {
-				buffer := gbytes.NewBuffer()
-				defer buffer.Close()
-				Expect(pprof.Lookup("goroutine").WriteTo(buffer, 1)).To(Succeed())
-
-				return buffer.Contents()
-			}, 10*graceTime).ShouldNot(ContainSubstring("streamer.go"))
-		})
-
-		It("should not leak unused streams for longer than the grace time after streaming has been stopped", func() {
-			sid := str.Stream(stdoutChan, stderrChan)
-			str.Stop(sid)
-			time.Sleep(graceTime)
-			Expect(func() { str.Stop(sid) }).To(Panic(), "stream was not removed")
+			Eventually(goroutines).Should(ContainSubstring("streamer.go"))
+			Eventually(goroutines, 10*graceTime).ShouldNot(ContainSubstring("streamer.go"))
 		})
 	})
 
@@ -157,4 +144,12 @@ func (sb *syncBuffer) String() string {
 	sb.mu.Lock()
 	defer sb.mu.Unlock()
 	return sb.Buffer.String()
+}
+
+func goroutines() []byte {
+	buffer := gbytes.NewBuffer()
+	defer buffer.Close()
+	Expect(pprof.Lookup("goroutine").WriteTo(buffer, 1)).To(Succeed())
+
+	return buffer.Contents()
 }

@@ -65,7 +65,10 @@ func (m *Streamer) ServeStderr(streamID StreamID, writer io.Writer) {
 }
 
 func (m *Streamer) serve(streamID StreamID, writer io.Writer, chanIndex stdoutOrErr) {
-	strm := m.streamFromID(streamID)
+	strm, ok := m.streamFromID(streamID)
+	if !ok {
+		return
+	}
 
 	ch := strm.ch[chanIndex]
 	for {
@@ -94,7 +97,11 @@ func drain(ch chan []byte, writer io.Writer) {
 
 // Stop stops streaming from the specified pair of channels.
 func (m *Streamer) Stop(streamID StreamID) {
-	strm := m.streamFromID(streamID)
+	strm, ok := m.streamFromID(streamID)
+	if !ok {
+		return
+	}
+
 	close(strm.done)
 
 	go func() {
@@ -108,8 +115,10 @@ func (m *Streamer) Stop(streamID StreamID) {
 	}()
 }
 
-func (m *Streamer) streamFromID(streamID StreamID) *stream {
+func (m *Streamer) streamFromID(streamID StreamID) (*stream, bool) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	return m.streams[streamID]
+
+	stream, ok := m.streams[streamID]
+	return stream, ok
 }
