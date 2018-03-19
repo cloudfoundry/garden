@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -15,14 +16,14 @@ func New(graceTime time.Duration) *Streamer {
 	return &Streamer{
 		graceTime: graceTime,
 		streams:   sync.Map{},
+		idGen:     new(syncStreamIDGenerator),
 	}
 }
 
 type Streamer struct {
-	mu           sync.RWMutex
-	nextStreamID uint64
-	graceTime    time.Duration
-	streams      sync.Map
+	idGen     *syncStreamIDGenerator
+	graceTime time.Duration
+	streams   sync.Map
 }
 
 type stream struct {
@@ -42,8 +43,7 @@ func newStream(stdout, stderr chan []byte) *stream {
 // Stream sets up streaming for the given pair of channels and returns a StreamID to identify the pair.
 // The caller must call Stop to avoid leaking memory.
 func (m *Streamer) Stream(stdout, stderr chan []byte) StreamID {
-
-	sid := m.getNextStreamID()
+	sid := m.idGen.next()
 	m.streams.Store(sid, newStream(stdout, stderr))
 
 	return sid
@@ -51,7 +51,7 @@ func (m *Streamer) Stream(stdout, stderr chan []byte) StreamID {
 
 // StreamStdout streams to the specified writer from the standard output channel of the specified pair of channels.
 func (m *Streamer) ServeStdout(streamID StreamID, writer io.Writer) {
-	strm, ok := m.load(streamID)
+	strm, ok := m.loadStream(streamID)
 	if !ok {
 		return
 	}
@@ -60,20 +60,11 @@ func (m *Streamer) ServeStdout(streamID StreamID, writer io.Writer) {
 
 // StreamStderr streams to the specified writer from the standard error channel of the specified pair of channels.
 func (m *Streamer) ServeStderr(streamID StreamID, writer io.Writer) {
-	strm, ok := m.load(streamID)
+	strm, ok := m.loadStream(streamID)
 	if !ok {
 		return
 	}
 	m.serve(writer, strm.stderr, strm.done)
-}
-
-func (m *Streamer) getNextStreamID() StreamID {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	sid := StreamID(fmt.Sprintf("%d", m.nextStreamID))
-	m.nextStreamID++
-
-	return sid
 }
 
 func (m *Streamer) serve(writer io.Writer, pipe chan []byte, done chan struct{}) {
@@ -103,7 +94,7 @@ func drain(ch chan []byte, writer io.Writer) {
 
 // Stop stops streaming from the specified pair of channels.
 func (m *Streamer) Stop(streamID StreamID) {
-	strm, ok := m.load(streamID)
+	strm, ok := m.loadStream(streamID)
 	if !ok {
 		return
 	}
@@ -119,10 +110,18 @@ func (m *Streamer) Stop(streamID StreamID) {
 	}()
 }
 
-func (m *Streamer) load(id StreamID) (*stream, bool) {
+func (m *Streamer) loadStream(id StreamID) (*stream, bool) {
 	strm, ok := m.streams.Load(id)
 	if !ok {
 		return nil, false
 	}
 	return strm.(*stream), true
+}
+
+type syncStreamIDGenerator struct {
+	current uint64
+}
+
+func (gen *syncStreamIDGenerator) next() StreamID {
+	return StreamID(fmt.Sprintf("%d", atomic.AddUint64(&gen.current, 1)))
 }
