@@ -26,38 +26,45 @@ type Streamer struct {
 }
 
 type stream struct {
-	ch   [2]chan []byte
-	done chan struct{}
+	stdout chan []byte
+	stderr chan []byte
+	done   chan struct{}
 }
 
-type stdoutOrErr int
-
-const (
-	stdout stdoutOrErr = 0
-	stderr stdoutOrErr = 1
-)
+func newStream(stdout, stderr chan []byte) *stream {
+	return &stream{
+		stdout: stdout,
+		stderr: stderr,
+		done:   make(chan struct{}),
+	}
+}
 
 // Stream sets up streaming for the given pair of channels and returns a StreamID to identify the pair.
 // The caller must call Stop to avoid leaking memory.
 func (m *Streamer) Stream(stdout, stderr chan []byte) StreamID {
 
 	sid := m.getNextStreamID()
-	m.streams.Store(sid, &stream{
-		ch:   [2]chan []byte{stdout, stderr},
-		done: make(chan struct{}),
-	})
+	m.streams.Store(sid, newStream(stdout, stderr))
 
 	return sid
 }
 
 // StreamStdout streams to the specified writer from the standard output channel of the specified pair of channels.
 func (m *Streamer) ServeStdout(streamID StreamID, writer io.Writer) {
-	m.serve(streamID, writer, stdout)
+	strm, ok := m.load(streamID)
+	if !ok {
+		return
+	}
+	m.serve(writer, strm.stdout, strm.done)
 }
 
 // StreamStderr streams to the specified writer from the standard error channel of the specified pair of channels.
 func (m *Streamer) ServeStderr(streamID StreamID, writer io.Writer) {
-	m.serve(streamID, writer, stderr)
+	strm, ok := m.load(streamID)
+	if !ok {
+		return
+	}
+	m.serve(writer, strm.stderr, strm.done)
 }
 
 func (m *Streamer) getNextStreamID() StreamID {
@@ -69,22 +76,15 @@ func (m *Streamer) getNextStreamID() StreamID {
 	return sid
 }
 
-func (m *Streamer) serve(streamID StreamID, writer io.Writer, chanIndex stdoutOrErr) {
-	s, ok := m.streams.Load(streamID)
-	if !ok {
-		return
-	}
-	strm := s.(*stream)
-
-	ch := strm.ch[chanIndex]
+func (m *Streamer) serve(writer io.Writer, pipe chan []byte, done chan struct{}) {
 	for {
 		select {
-		case b := <-ch:
+		case b := <-pipe:
 			if _, err := writer.Write(b); err != nil {
 				return
 			}
-		case <-strm.done:
-			drain(ch, writer)
+		case <-done:
+			drain(pipe, writer)
 			return
 		}
 	}
@@ -103,12 +103,12 @@ func drain(ch chan []byte, writer io.Writer) {
 
 // Stop stops streaming from the specified pair of channels.
 func (m *Streamer) Stop(streamID StreamID) {
-	strm, ok := m.streams.Load(streamID)
+	strm, ok := m.load(streamID)
 	if !ok {
 		return
 	}
 
-	close(strm.(*stream).done)
+	close(strm.done)
 
 	go func() {
 		// wait some time to ensure clients have connected, once they've
@@ -117,4 +117,12 @@ func (m *Streamer) Stop(streamID StreamID) {
 
 		m.streams.Delete(streamID)
 	}()
+}
+
+func (m *Streamer) load(id StreamID) (*stream, bool) {
+	strm, ok := m.streams.Load(id)
+	if !ok {
+		return nil, false
+	}
+	return strm.(*stream), true
 }
