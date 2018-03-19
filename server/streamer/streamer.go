@@ -14,7 +14,7 @@ type StreamID string
 func New(graceTime time.Duration) *Streamer {
 	return &Streamer{
 		graceTime: graceTime,
-		streams:   make(map[StreamID]*stream),
+		streams:   sync.Map{},
 	}
 }
 
@@ -22,7 +22,7 @@ type Streamer struct {
 	mu           sync.RWMutex
 	nextStreamID uint64
 	graceTime    time.Duration
-	streams      map[StreamID]*stream
+	streams      sync.Map
 }
 
 type stream struct {
@@ -40,16 +40,12 @@ const (
 // Stream sets up streaming for the given pair of channels and returns a StreamID to identify the pair.
 // The caller must call Stop to avoid leaking memory.
 func (m *Streamer) Stream(stdout, stderr chan []byte) StreamID {
-	m.mu.Lock()
-	defer m.mu.Unlock()
 
-	var sid StreamID = StreamID(fmt.Sprintf("%d", m.nextStreamID))
-	m.nextStreamID++
-
-	m.streams[sid] = &stream{
+	sid := m.getNextStreamID()
+	m.streams.Store(sid, &stream{
 		ch:   [2]chan []byte{stdout, stderr},
 		done: make(chan struct{}),
-	}
+	})
 
 	return sid
 }
@@ -64,11 +60,21 @@ func (m *Streamer) ServeStderr(streamID StreamID, writer io.Writer) {
 	m.serve(streamID, writer, stderr)
 }
 
+func (m *Streamer) getNextStreamID() StreamID {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	sid := StreamID(fmt.Sprintf("%d", m.nextStreamID))
+	m.nextStreamID++
+
+	return sid
+}
+
 func (m *Streamer) serve(streamID StreamID, writer io.Writer, chanIndex stdoutOrErr) {
-	strm, ok := m.streamFromID(streamID)
+	s, ok := m.streams.Load(streamID)
 	if !ok {
 		return
 	}
+	strm := s.(*stream)
 
 	ch := strm.ch[chanIndex]
 	for {
@@ -97,28 +103,18 @@ func drain(ch chan []byte, writer io.Writer) {
 
 // Stop stops streaming from the specified pair of channels.
 func (m *Streamer) Stop(streamID StreamID) {
-	strm, ok := m.streamFromID(streamID)
+	strm, ok := m.streams.Load(streamID)
 	if !ok {
 		return
 	}
 
-	close(strm.done)
+	close(strm.(*stream).done)
 
 	go func() {
 		// wait some time to ensure clients have connected, once they've
 		// retrieved the stream from the map it's safe to delete the key
 		time.Sleep(m.graceTime)
 
-		m.mu.Lock()
-		defer m.mu.Unlock()
-		delete(m.streams, streamID)
+		m.streams.Delete(streamID)
 	}()
-}
-
-func (m *Streamer) streamFromID(streamID StreamID) (*stream, bool) {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-
-	stream, ok := m.streams[streamID]
-	return stream, ok
 }
