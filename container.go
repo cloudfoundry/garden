@@ -62,7 +62,7 @@ type Container interface {
 	// pool.
 	//
 	// If a container port is not given, the port will be the same as the
-	// container port.
+	// host port.
 	//
 	// The resulting host and container ports are returned in that order.
 	//
