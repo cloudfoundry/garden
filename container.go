@@ -241,6 +241,7 @@ type Metrics struct {
 	CPUStat     ContainerCPUStat
 	DiskStat    ContainerDiskStat
 	NetworkStat ContainerNetworkStat
+	PidStat     ContainerPidStat
 }
 
 type ContainerMetricsEntry struct {
@@ -286,6 +287,11 @@ type ContainerCPUStat struct {
 	Usage  uint64
 	User   uint64
 	System uint64
+}
+
+type ContainerPidStat struct {
+	Current uint64
+	Max     uint64
 }
 
 type ContainerDiskStat struct {
