@@ -86,14 +86,14 @@ var _ = Describe("Streamer", func() {
 
 	Context("when a grace time has been set", func() {
 		BeforeEach(func() {
-			graceTime = 100 * time.Millisecond
+			graceTime = time.Second
 		})
 
 		It("should not leak unused streams for longer than the grace time after streaming has been stopped", func() {
 			sid := str.Stream(stdoutChan, stderrChan)
 			str.Stop(sid)
 			Eventually(goroutines).Should(ContainSubstring("streamer.go"))
-			Eventually(goroutines, 10*graceTime).ShouldNot(ContainSubstring("streamer.go"))
+			Eventually(goroutines, 3*graceTime).ShouldNot(ContainSubstring("streamer.go"))
 		})
 	})
 
