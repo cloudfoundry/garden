@@ -130,6 +130,8 @@ type Container interface {
 	// Errors:
 	// * None.
 	RemoveProperty(name string) error
+
+	UpdateLimits(limits Limits) error
 }
 
 // ProcessSpec contains parameters for running a script inside a container.
@@ -340,6 +342,8 @@ type MemoryLimits struct {
 
 type CPULimits struct {
 	LimitInShares uint64 `json:"limit_in_shares,omitempty"`
+	Quota         int64  `json:"quota,omitempty"`
+	Period        uint64 `json:"period,omitempty"`
 }
 
 type PidLimits struct {

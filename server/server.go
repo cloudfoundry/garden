@@ -101,6 +101,7 @@ func New(
 		routes.SetProperty:            http.HandlerFunc(s.handleSetProperty),
 		routes.RemoveProperty:         http.HandlerFunc(s.handleRemoveProperty),
 		routes.SetGraceTime:           http.HandlerFunc(s.handleSetGraceTime),
+		routes.UpdateLimits:           http.HandlerFunc(s.handleUpdateLimits),
 	}
 
 	mux, err := rata.NewRouter(routes.Routes, handlers)

@@ -720,6 +720,31 @@ func (s *GardenServer) handleSetGraceTime(w http.ResponseWriter, r *http.Request
 	s.writeSuccess(w)
 }
 
+func (s *GardenServer) handleUpdateLimits(w http.ResponseWriter, r *http.Request) {
+	handle := r.FormValue(":handle")
+
+	var limits garden.Limits
+	if !s.readRequest(&limits, w, r) {
+		return
+	}
+
+	hLog := s.logger.Session("update-limits", lager.Data{
+		"handle": handle,
+	})
+
+	container, err := s.backend.Lookup(handle)
+	if err != nil {
+		s.writeError(w, err, hLog)
+		return
+	}
+	if err = container.UpdateLimits(limits); err != nil {
+		s.writeError(w, err, hLog)
+		return
+	}
+
+	s.writeSuccess(w)
+}
+
 func (s *GardenServer) handleRun(w http.ResponseWriter, r *http.Request) {
 	handle := r.FormValue(":handle")
 

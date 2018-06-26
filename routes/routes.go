@@ -42,6 +42,8 @@ const (
 	Metrics = "Metrics"
 
 	RemoveProperty = "RemoveProperty"
+
+	UpdateLimits = "UpdateLimits"
 )
 
 var Routes = rata.Routes{
@@ -83,4 +85,5 @@ var Routes = rata.Routes{
 	{Path: "/containers/:handle/properties/:key", Method: "DELETE", Name: RemoveProperty},
 
 	{Path: "/containers/:handle/metrics", Method: "GET", Name: Metrics},
+	{Path: "/containers/:handle/limits", Method: "PUT", Name: UpdateLimits},
 }

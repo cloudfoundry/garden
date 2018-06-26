@@ -65,6 +65,7 @@ type Connection interface {
 
 	Metrics(handle string) (garden.Metrics, error)
 	RemoveProperty(handle string, name string) error
+	UpdateLimits(handle string, limits garden.Limits) error
 }
 
 //go:generate counterfeiter . HijackStreamer
@@ -133,6 +134,14 @@ func (c *connection) Create(spec garden.ContainerSpec) (string, error) {
 	}
 
 	return res.Handle, nil
+}
+
+func (c *connection) UpdateLimits(handle string, limits garden.Limits) error {
+	return c.do(routes.UpdateLimits,
+		limits,
+		&struct{}{},
+		rata.Params{"handle": handle},
+		nil)
 }
 
 func (c *connection) Stop(handle string, kill bool) error {

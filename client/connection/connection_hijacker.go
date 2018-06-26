@@ -115,7 +115,7 @@ func (c *hijackable) Stream(handler string, body io.Reader, params rata.Params, 
 		defer httpResp.Body.Close()
 
 		var result garden.Error
-		err := json.NewDecoder(httpResp.Body).Decode(&result)
+		err = json.NewDecoder(httpResp.Body).Decode(&result)
 		if err != nil {
 			return nil, fmt.Errorf("bad response: %s", err)
 		}

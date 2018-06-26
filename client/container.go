@@ -30,6 +30,10 @@ func (container *container) Stop(kill bool) error {
 	return container.connection.Stop(container.handle, kill)
 }
 
+func (container *container) UpdateLimits(limits garden.Limits) error {
+	return container.connection.UpdateLimits(container.handle, limits)
+}
+
 func (container *container) Info() (garden.ContainerInfo, error) {
 	return container.connection.Info(container.handle)
 }
