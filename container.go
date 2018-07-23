@@ -339,6 +339,8 @@ type MemoryLimits struct {
 }
 
 type CPULimits struct {
+	Weight uint64 `json:"weight,omitempty"`
+	// Deprecated: Use Weight instead.
 	LimitInShares uint64 `json:"limit_in_shares,omitempty"`
 }
 
