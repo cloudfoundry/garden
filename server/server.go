@@ -72,7 +72,7 @@ func New(
 		startMutex: new(sync.Mutex),
 	}
 
-	handlers := map[string]http.Handler{
+	handlers := rata.Handlers{
 		routes.Ping:                   http.HandlerFunc(s.handlePing),
 		routes.Capacity:               http.HandlerFunc(s.handleCapacity),
 		routes.Create:                 http.HandlerFunc(s.handleCreate),

@@ -239,6 +239,7 @@ type ContainerInfoEntry struct {
 type Metrics struct {
 	MemoryStat  ContainerMemoryStat
 	CPUStat     ContainerCPUStat
+	NewCPUStat  ContainerCPUStat
 	DiskStat    ContainerDiskStat
 	NetworkStat ContainerNetworkStat
 	PidStat     ContainerPidStat
