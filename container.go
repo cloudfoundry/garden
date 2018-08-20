@@ -242,7 +242,7 @@ type Metrics struct {
 	DiskStat    ContainerDiskStat
 	NetworkStat ContainerNetworkStat
 	PidStat     ContainerPidStat
-	Age         uint64
+	Age         time.Duration
 }
 
 type ContainerMetricsEntry struct {
