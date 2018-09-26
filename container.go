@@ -237,12 +237,13 @@ type ContainerInfoEntry struct {
 }
 
 type Metrics struct {
-	MemoryStat  ContainerMemoryStat
-	CPUStat     ContainerCPUStat
-	DiskStat    ContainerDiskStat
-	NetworkStat ContainerNetworkStat
-	PidStat     ContainerPidStat
-	Age         time.Duration
+	MemoryStat     ContainerMemoryStat
+	CPUStat        ContainerCPUStat
+	DiskStat       ContainerDiskStat
+	NetworkStat    ContainerNetworkStat
+	PidStat        ContainerPidStat
+	Age            time.Duration
+	CPUEntitlement uint64
 }
 
 type ContainerMetricsEntry struct {
