@@ -104,6 +104,8 @@ type ContainerSpec struct {
 	// * one or more of the mount points cannot be created.
 	BindMounts []BindMount `json:"bind_mounts,omitempty"`
 
+	Tmpfs []Tmpfs `json:"tmpfs,omitempty"`
+
 	// Network determines the subnet and IP address of a container.
 	//
 	// If not specified, a /30 subnet is allocated from a default network pool.
@@ -205,6 +207,10 @@ type BindMount struct {
 	// If origin is "Host", src_path denotes a path in the host.
 	// If origin is "Container", src_path denotes a path in the container.
 	Origin BindMountOrigin `json:"origin,omitempty"`
+}
+
+type Tmpfs struct {
+	Path string `json:"path,omitempty"`
 }
 
 type Capacity struct {
