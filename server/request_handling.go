@@ -767,6 +767,7 @@ func (s *GardenServer) handleRun(w http.ResponseWriter, r *http.Request) {
 	process, err := container.Run(request, processIO)
 	if err != nil {
 		s.writeError(w, err, hLog)
+		stdinW.Close()
 		return
 	}
 	hLog.Info("spawned", lager.Data{
