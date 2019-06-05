@@ -1,6 +1,6 @@
 ---
 image_resource:
-  type: docker-image
+  type: registry-image
   source:
     repository: cfgarden/garden-ci-xenial
     tag: '1.0.1'
