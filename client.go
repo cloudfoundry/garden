@@ -209,8 +209,12 @@ type BindMount struct {
 
 type Capacity struct {
 	MemoryInBytes uint64 `json:"memory_in_bytes,omitempty"`
-	DiskInBytes   uint64 `json:"disk_in_bytes,omitempty"`
-	MaxContainers uint64 `json:"max_containers,omitempty"`
+	// Total size of the image plugin store volume.
+	// NB: It is recommended to use `SchedulableDiskInBytes` for scheduling purposes
+	DiskInBytes uint64 `json:"disk_in_bytes,omitempty"`
+	// Total scratch space (in bytes) available to containers. This is the size the image plugin store get grow up to.
+	SchedulableDiskInBytes uint64 `json:"schedulable_disk_in_bytes,omitempty"`
+	MaxContainers          uint64 `json:"max_containers,omitempty"`
 }
 
 type Properties map[string]string
