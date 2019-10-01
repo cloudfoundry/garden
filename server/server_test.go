@@ -94,7 +94,6 @@ var _ = Describe("The Garden server", func() {
 
 		listenAndServe(apiServer, "unix", socketPath)
 
-		Ω(fakeBackend.DestroyCallCount()).Should(Equal(0))
 		Eventually(fakeBackend.DestroyCallCount).Should(Equal(1))
 
 		Ω(time.Since(before)).Should(BeNumerically(">", 100*time.Millisecond))
