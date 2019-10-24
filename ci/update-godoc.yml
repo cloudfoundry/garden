@@ -3,7 +3,7 @@ image_resource:
   type: registry-image
   source:
     repository: cfgarden/garden-ci
-    tag: '2.0.22'
+    tag: '2.0.23'
 
 platform: linux
 
