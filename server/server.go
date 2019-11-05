@@ -1,6 +1,7 @@
 package server
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -229,11 +230,11 @@ func (s *GardenServer) listen() (net.Listener, error) {
 	return listener, nil
 }
 
-func (s *GardenServer) Stop() {
+func (s *GardenServer) Stop() error {
 	s.startMutex.Lock()
 	defer s.startMutex.Unlock()
 	if !s.started {
-		return
+		return errors.New("server is not running")
 	}
 	s.started = false
 
@@ -258,9 +259,13 @@ func (s *GardenServer) Stop() {
 	s.handling.Wait()
 
 	s.logger.Info("stopping-backend")
-	s.backend.Stop()
+	err := s.backend.Stop()
+	if err != nil {
+		return err
+	}
 
 	s.logger.Info("stopped")
+	return nil
 }
 
 func (s *GardenServer) removeExistingSocket() error {

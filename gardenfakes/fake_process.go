@@ -10,23 +10,13 @@ import (
 type FakeProcess struct {
 	IDStub        func() string
 	iDMutex       sync.RWMutex
-	iDArgsForCall []struct{}
-	iDReturns     struct {
+	iDArgsForCall []struct {
+	}
+	iDReturns struct {
 		result1 string
 	}
 	iDReturnsOnCall map[int]struct {
 		result1 string
-	}
-	WaitStub        func() (int, error)
-	waitMutex       sync.RWMutex
-	waitArgsForCall []struct{}
-	waitReturns     struct {
-		result1 int
-		result2 error
-	}
-	waitReturnsOnCall map[int]struct {
-		result1 int
-		result2 error
 	}
 	SetTTYStub        func(garden.TTYSpec) error
 	setTTYMutex       sync.RWMutex
@@ -50,6 +40,18 @@ type FakeProcess struct {
 	signalReturnsOnCall map[int]struct {
 		result1 error
 	}
+	WaitStub        func() (int, error)
+	waitMutex       sync.RWMutex
+	waitArgsForCall []struct {
+	}
+	waitReturns struct {
+		result1 int
+		result2 error
+	}
+	waitReturnsOnCall map[int]struct {
+		result1 int
+		result2 error
+	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
@@ -57,7 +59,8 @@ type FakeProcess struct {
 func (fake *FakeProcess) ID() string {
 	fake.iDMutex.Lock()
 	ret, specificReturn := fake.iDReturnsOnCall[len(fake.iDArgsForCall)]
-	fake.iDArgsForCall = append(fake.iDArgsForCall, struct{}{})
+	fake.iDArgsForCall = append(fake.iDArgsForCall, struct {
+	}{})
 	fake.recordInvocation("ID", []interface{}{})
 	fake.iDMutex.Unlock()
 	if fake.IDStub != nil {
@@ -66,7 +69,8 @@ func (fake *FakeProcess) ID() string {
 	if specificReturn {
 		return ret.result1
 	}
-	return fake.iDReturns.result1
+	fakeReturns := fake.iDReturns
+	return fakeReturns.result1
 }
 
 func (fake *FakeProcess) IDCallCount() int {
@@ -75,7 +79,15 @@ func (fake *FakeProcess) IDCallCount() int {
 	return len(fake.iDArgsForCall)
 }
 
+func (fake *FakeProcess) IDCalls(stub func() string) {
+	fake.iDMutex.Lock()
+	defer fake.iDMutex.Unlock()
+	fake.IDStub = stub
+}
+
 func (fake *FakeProcess) IDReturns(result1 string) {
+	fake.iDMutex.Lock()
+	defer fake.iDMutex.Unlock()
 	fake.IDStub = nil
 	fake.iDReturns = struct {
 		result1 string
@@ -83,6 +95,8 @@ func (fake *FakeProcess) IDReturns(result1 string) {
 }
 
 func (fake *FakeProcess) IDReturnsOnCall(i int, result1 string) {
+	fake.iDMutex.Lock()
+	defer fake.iDMutex.Unlock()
 	fake.IDStub = nil
 	if fake.iDReturnsOnCall == nil {
 		fake.iDReturnsOnCall = make(map[int]struct {
@@ -92,49 +106,6 @@ func (fake *FakeProcess) IDReturnsOnCall(i int, result1 string) {
 	fake.iDReturnsOnCall[i] = struct {
 		result1 string
 	}{result1}
-}
-
-func (fake *FakeProcess) Wait() (int, error) {
-	fake.waitMutex.Lock()
-	ret, specificReturn := fake.waitReturnsOnCall[len(fake.waitArgsForCall)]
-	fake.waitArgsForCall = append(fake.waitArgsForCall, struct{}{})
-	fake.recordInvocation("Wait", []interface{}{})
-	fake.waitMutex.Unlock()
-	if fake.WaitStub != nil {
-		return fake.WaitStub()
-	}
-	if specificReturn {
-		return ret.result1, ret.result2
-	}
-	return fake.waitReturns.result1, fake.waitReturns.result2
-}
-
-func (fake *FakeProcess) WaitCallCount() int {
-	fake.waitMutex.RLock()
-	defer fake.waitMutex.RUnlock()
-	return len(fake.waitArgsForCall)
-}
-
-func (fake *FakeProcess) WaitReturns(result1 int, result2 error) {
-	fake.WaitStub = nil
-	fake.waitReturns = struct {
-		result1 int
-		result2 error
-	}{result1, result2}
-}
-
-func (fake *FakeProcess) WaitReturnsOnCall(i int, result1 int, result2 error) {
-	fake.WaitStub = nil
-	if fake.waitReturnsOnCall == nil {
-		fake.waitReturnsOnCall = make(map[int]struct {
-			result1 int
-			result2 error
-		})
-	}
-	fake.waitReturnsOnCall[i] = struct {
-		result1 int
-		result2 error
-	}{result1, result2}
 }
 
 func (fake *FakeProcess) SetTTY(arg1 garden.TTYSpec) error {
@@ -151,7 +122,8 @@ func (fake *FakeProcess) SetTTY(arg1 garden.TTYSpec) error {
 	if specificReturn {
 		return ret.result1
 	}
-	return fake.setTTYReturns.result1
+	fakeReturns := fake.setTTYReturns
+	return fakeReturns.result1
 }
 
 func (fake *FakeProcess) SetTTYCallCount() int {
@@ -160,13 +132,22 @@ func (fake *FakeProcess) SetTTYCallCount() int {
 	return len(fake.setTTYArgsForCall)
 }
 
+func (fake *FakeProcess) SetTTYCalls(stub func(garden.TTYSpec) error) {
+	fake.setTTYMutex.Lock()
+	defer fake.setTTYMutex.Unlock()
+	fake.SetTTYStub = stub
+}
+
 func (fake *FakeProcess) SetTTYArgsForCall(i int) garden.TTYSpec {
 	fake.setTTYMutex.RLock()
 	defer fake.setTTYMutex.RUnlock()
-	return fake.setTTYArgsForCall[i].arg1
+	argsForCall := fake.setTTYArgsForCall[i]
+	return argsForCall.arg1
 }
 
 func (fake *FakeProcess) SetTTYReturns(result1 error) {
+	fake.setTTYMutex.Lock()
+	defer fake.setTTYMutex.Unlock()
 	fake.SetTTYStub = nil
 	fake.setTTYReturns = struct {
 		result1 error
@@ -174,6 +155,8 @@ func (fake *FakeProcess) SetTTYReturns(result1 error) {
 }
 
 func (fake *FakeProcess) SetTTYReturnsOnCall(i int, result1 error) {
+	fake.setTTYMutex.Lock()
+	defer fake.setTTYMutex.Unlock()
 	fake.SetTTYStub = nil
 	if fake.setTTYReturnsOnCall == nil {
 		fake.setTTYReturnsOnCall = make(map[int]struct {
@@ -199,7 +182,8 @@ func (fake *FakeProcess) Signal(arg1 garden.Signal) error {
 	if specificReturn {
 		return ret.result1
 	}
-	return fake.signalReturns.result1
+	fakeReturns := fake.signalReturns
+	return fakeReturns.result1
 }
 
 func (fake *FakeProcess) SignalCallCount() int {
@@ -208,13 +192,22 @@ func (fake *FakeProcess) SignalCallCount() int {
 	return len(fake.signalArgsForCall)
 }
 
+func (fake *FakeProcess) SignalCalls(stub func(garden.Signal) error) {
+	fake.signalMutex.Lock()
+	defer fake.signalMutex.Unlock()
+	fake.SignalStub = stub
+}
+
 func (fake *FakeProcess) SignalArgsForCall(i int) garden.Signal {
 	fake.signalMutex.RLock()
 	defer fake.signalMutex.RUnlock()
-	return fake.signalArgsForCall[i].arg1
+	argsForCall := fake.signalArgsForCall[i]
+	return argsForCall.arg1
 }
 
 func (fake *FakeProcess) SignalReturns(result1 error) {
+	fake.signalMutex.Lock()
+	defer fake.signalMutex.Unlock()
 	fake.SignalStub = nil
 	fake.signalReturns = struct {
 		result1 error
@@ -222,6 +215,8 @@ func (fake *FakeProcess) SignalReturns(result1 error) {
 }
 
 func (fake *FakeProcess) SignalReturnsOnCall(i int, result1 error) {
+	fake.signalMutex.Lock()
+	defer fake.signalMutex.Unlock()
 	fake.SignalStub = nil
 	if fake.signalReturnsOnCall == nil {
 		fake.signalReturnsOnCall = make(map[int]struct {
@@ -233,17 +228,72 @@ func (fake *FakeProcess) SignalReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
+func (fake *FakeProcess) Wait() (int, error) {
+	fake.waitMutex.Lock()
+	ret, specificReturn := fake.waitReturnsOnCall[len(fake.waitArgsForCall)]
+	fake.waitArgsForCall = append(fake.waitArgsForCall, struct {
+	}{})
+	fake.recordInvocation("Wait", []interface{}{})
+	fake.waitMutex.Unlock()
+	if fake.WaitStub != nil {
+		return fake.WaitStub()
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	fakeReturns := fake.waitReturns
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *FakeProcess) WaitCallCount() int {
+	fake.waitMutex.RLock()
+	defer fake.waitMutex.RUnlock()
+	return len(fake.waitArgsForCall)
+}
+
+func (fake *FakeProcess) WaitCalls(stub func() (int, error)) {
+	fake.waitMutex.Lock()
+	defer fake.waitMutex.Unlock()
+	fake.WaitStub = stub
+}
+
+func (fake *FakeProcess) WaitReturns(result1 int, result2 error) {
+	fake.waitMutex.Lock()
+	defer fake.waitMutex.Unlock()
+	fake.WaitStub = nil
+	fake.waitReturns = struct {
+		result1 int
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *FakeProcess) WaitReturnsOnCall(i int, result1 int, result2 error) {
+	fake.waitMutex.Lock()
+	defer fake.waitMutex.Unlock()
+	fake.WaitStub = nil
+	if fake.waitReturnsOnCall == nil {
+		fake.waitReturnsOnCall = make(map[int]struct {
+			result1 int
+			result2 error
+		})
+	}
+	fake.waitReturnsOnCall[i] = struct {
+		result1 int
+		result2 error
+	}{result1, result2}
+}
+
 func (fake *FakeProcess) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
 	fake.iDMutex.RLock()
 	defer fake.iDMutex.RUnlock()
-	fake.waitMutex.RLock()
-	defer fake.waitMutex.RUnlock()
 	fake.setTTYMutex.RLock()
 	defer fake.setTTYMutex.RUnlock()
 	fake.signalMutex.RLock()
 	defer fake.signalMutex.RUnlock()
+	fake.waitMutex.RLock()
+	defer fake.waitMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value

@@ -8,7 +8,7 @@ type Backend interface {
 	Client
 
 	Start() error
-	Stop()
+	Stop() error
 
 	GraceTime(Container) time.Duration
 }
