@@ -2,6 +2,7 @@ package server_test
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -214,7 +215,7 @@ var _ = Describe("When a client connects", func() {
 		})
 
 		It("returns a container with the created handle", func() {
-			container, err := apiClient.Create(garden.ContainerSpec{
+			container, err := apiClient.Create(context.TODO(), garden.ContainerSpec{
 				Handle: "some-handle",
 			})
 			Expect(err).ToNot(HaveOccurred())
@@ -223,7 +224,7 @@ var _ = Describe("When a client connects", func() {
 		})
 
 		It("should not log any container spec properties", func() {
-			_, err := apiClient.Create(garden.ContainerSpec{
+			_, err := apiClient.Create(context.TODO(), garden.ContainerSpec{
 				Handle:     "some-handle",
 				Properties: garden.Properties{"CONTAINER_PROPERTY": "CONTAINER_SECRET"},
 			})
@@ -235,7 +236,7 @@ var _ = Describe("When a client connects", func() {
 		})
 
 		It("should not log any environment variables", func() {
-			_, err := apiClient.Create(garden.ContainerSpec{
+			_, err := apiClient.Create(context.TODO(), garden.ContainerSpec{
 				Handle: "some-handle",
 				Env:    []string{"PASSWORD=MY_SECRET"},
 			})
@@ -247,7 +248,7 @@ var _ = Describe("When a client connects", func() {
 		})
 
 		It("creates the container with the spec from the request", func() {
-			_, err := apiClient.Create(garden.ContainerSpec{
+			_, err := apiClient.Create(context.TODO(), garden.ContainerSpec{
 				Handle:     "some-handle",
 				GraceTime:  42 * time.Second,
 				Network:    "some-network",
@@ -346,7 +347,7 @@ var _ = Describe("When a client connects", func() {
 			It("destroys the container after it has been idle for the grace time", func() {
 				before := time.Now()
 
-				_, err := apiClient.Create(garden.ContainerSpec{})
+				_, err := apiClient.Create(context.TODO(), garden.ContainerSpec{})
 				Expect(err).ToNot(HaveOccurred())
 
 				Eventually(serverBackend.DestroyCallCount, 2*time.Second).Should(Equal(1))
@@ -374,7 +375,7 @@ var _ = Describe("When a client connects", func() {
 
 					apiClient = client.New(apiConnection)
 
-					container, err := apiClient.Create(garden.ContainerSpec{})
+					container, err := apiClient.Create(context.TODO(), garden.ContainerSpec{})
 					Expect(err).ToNot(HaveOccurred())
 
 					before := time.Now()
@@ -406,7 +407,7 @@ var _ = Describe("When a client connects", func() {
 				})
 
 				It("does not reap the container", func() {
-					_, err := apiClient.Create(garden.ContainerSpec{})
+					_, err := apiClient.Create(context.TODO(), garden.ContainerSpec{})
 					Expect(err).ToNot(HaveOccurred())
 
 					err = apiClient.Destroy("doomed-handle")
@@ -420,12 +421,12 @@ var _ = Describe("When a client connects", func() {
 
 		Context("when a grace time is not given", func() {
 			It("defaults it to the server's grace time", func() {
-				_, err := apiClient.Create(garden.ContainerSpec{
+				_, err := apiClient.Create(context.TODO(), garden.ContainerSpec{
 					Handle: "some-handle",
 				})
 				Expect(err).ToNot(HaveOccurred())
 
-				spec := serverBackend.CreateArgsForCall(0)
+				_, spec := serverBackend.CreateArgsForCall(0)
 				Expect(spec.GraceTime).To(Equal(serverContainerGraceTime))
 			})
 		})
@@ -436,7 +437,7 @@ var _ = Describe("When a client connects", func() {
 			})
 
 			It("returns an error", func() {
-				_, err := apiClient.Create(garden.ContainerSpec{
+				_, err := apiClient.Create(context.TODO(), garden.ContainerSpec{
 					Handle: "some-handle",
 				})
 				Expect(err).To(HaveOccurred())
@@ -449,7 +450,7 @@ var _ = Describe("When a client connects", func() {
 			BeforeEach(func() {
 				serverBackend.CreateReturns(nil, garden.NewServiceUnavailableError("special error"))
 
-				_, err = apiClient.Create(garden.ContainerSpec{
+				_, err = apiClient.Create(context.TODO(), garden.ContainerSpec{
 					Handle: "some-handle",
 				})
 			})
@@ -645,7 +646,7 @@ var _ = Describe("When a client connects", func() {
 		JustBeforeEach(func() {
 			var err error
 
-			container, err = apiClient.Create(garden.ContainerSpec{})
+			container, err = apiClient.Create(context.TODO(), garden.ContainerSpec{})
 			Expect(err).ToNot(HaveOccurred())
 		})
 

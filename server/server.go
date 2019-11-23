@@ -14,7 +14,9 @@ import (
 	"code.cloudfoundry.org/garden/server/bomberman"
 	"code.cloudfoundry.org/garden/server/streamer"
 	"code.cloudfoundry.org/lager"
+	"contrib.go.opencensus.io/exporter/stackdriver"
 	"github.com/tedsuo/rata"
+	"go.opencensus.io/trace"
 )
 
 type GardenServer struct {
@@ -72,6 +74,15 @@ func New(
 
 		startMutex: new(sync.Mutex),
 	}
+
+	exporter, err := stackdriver.NewExporter(stackdriver.Options{
+		ProjectID: "cf-garden-core",
+	})
+	if err != nil {
+		logger.Fatal("stackdriver error", err)
+	}
+	trace.RegisterExporter(exporter)
+	trace.ApplyConfig(trace.Config{DefaultSampler: trace.AlwaysSample()})
 
 	handlers := map[string]http.Handler{
 		routes.Ping:                   http.HandlerFunc(s.handlePing),

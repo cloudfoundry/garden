@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
@@ -12,6 +13,7 @@ import (
 	"code.cloudfoundry.org/garden"
 	"code.cloudfoundry.org/garden/transport"
 	"code.cloudfoundry.org/lager"
+	"go.opencensus.io/trace"
 )
 
 type processDebugInfo struct {
@@ -59,6 +61,9 @@ func (s *GardenServer) handleCapacity(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *GardenServer) handleCreate(w http.ResponseWriter, r *http.Request) {
+	ctx, span := trace.StartSpan(context.Background(), "garden.handleCreate")
+	defer span.End()
+
 	var spec garden.ContainerSpec
 	if !s.readRequest(&spec, w, r) {
 		return
@@ -82,7 +87,7 @@ func (s *GardenServer) handleCreate(w http.ResponseWriter, r *http.Request) {
 
 	hLog.Debug("creating")
 
-	container, err := s.backend.Create(spec)
+	container, err := s.backend.Create(ctx, spec)
 	if err != nil {
 		s.writeError(w, err, hLog)
 		return

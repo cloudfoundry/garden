@@ -1,6 +1,9 @@
 package garden
 
-import "time"
+import (
+	"context"
+	"time"
+)
 
 //go:generate counterfeiter . Client
 type Client interface {
@@ -23,7 +26,7 @@ type Client interface {
 	// * When the handle, if specified, is already taken.
 	// * When one of the bind_mount paths does not exist.
 	// * When resource allocations fail (subnet, user ID, etc).
-	Create(ContainerSpec) (Container, error)
+	Create(context.Context, ContainerSpec) (Container, error)
 
 	// Destroy destroys a container.
 	//

@@ -1,6 +1,8 @@
 package client
 
 import (
+	"context"
+
 	"code.cloudfoundry.org/garden"
 	"code.cloudfoundry.org/garden/client/connection"
 )
@@ -27,7 +29,7 @@ func (client *client) Capacity() (garden.Capacity, error) {
 	return client.connection.Capacity()
 }
 
-func (client *client) Create(spec garden.ContainerSpec) (garden.Container, error) {
+func (client *client) Create(_ context.Context, spec garden.ContainerSpec) (garden.Container, error) {
 	handle, err := client.connection.Create(spec)
 	if err != nil {
 		return nil, err

@@ -1,6 +1,7 @@
 package server_test
 
 import (
+	"context"
 	"errors"
 	"io/ioutil"
 	"os"
@@ -201,7 +202,7 @@ var _ = Describe("The Garden server", func() {
 				creating = make(chan struct{})
 				finishCreating = make(chan struct{})
 
-				fakeBackend.CreateStub = func(garden.ContainerSpec) (garden.Container, error) {
+				fakeBackend.CreateStub = func(context.Context, garden.ContainerSpec) (garden.Container, error) {
 					close(creating)
 					<-finishCreating
 					return new(fakes.FakeContainer), nil
@@ -214,7 +215,7 @@ var _ = Describe("The Garden server", func() {
 				go func() {
 					defer GinkgoRecover()
 
-					container, err := apiClient.Create(garden.ContainerSpec{})
+					container, err := apiClient.Create(context.TODO(), garden.ContainerSpec{})
 					Ω(err).ShouldNot(HaveOccurred())
 
 					created <- container
@@ -269,7 +270,7 @@ var _ = Describe("The Garden server", func() {
 
 				fakeBackend.CreateReturns(fakeContainer, nil)
 
-				clientContainer, err := apiClient.Create(garden.ContainerSpec{})
+				clientContainer, err := apiClient.Create(context.TODO(), garden.ContainerSpec{})
 				Ω(err).ShouldNot(HaveOccurred())
 
 				fakeBackend.LookupReturns(fakeContainer, nil)

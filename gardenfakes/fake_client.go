@@ -2,6 +2,7 @@
 package gardenfakes
 
 import (
+	"context"
 	"sync"
 
 	"code.cloudfoundry.org/garden"
@@ -59,10 +60,11 @@ type FakeClient struct {
 		result1 []garden.Container
 		result2 error
 	}
-	CreateStub        func(garden.ContainerSpec) (garden.Container, error)
+	CreateStub        func(context.Context, garden.ContainerSpec) (garden.Container, error)
 	createMutex       sync.RWMutex
 	createArgsForCall []struct {
-		arg1 garden.ContainerSpec
+		arg1 context.Context
+		arg2 garden.ContainerSpec
 	}
 	createReturns struct {
 		result1 garden.Container
@@ -364,16 +366,17 @@ func (fake *FakeClient) ContainersReturnsOnCall(i int, result1 []garden.Containe
 	}{result1, result2}
 }
 
-func (fake *FakeClient) Create(arg1 garden.ContainerSpec) (garden.Container, error) {
+func (fake *FakeClient) Create(arg1 context.Context, arg2 garden.ContainerSpec) (garden.Container, error) {
 	fake.createMutex.Lock()
 	ret, specificReturn := fake.createReturnsOnCall[len(fake.createArgsForCall)]
 	fake.createArgsForCall = append(fake.createArgsForCall, struct {
-		arg1 garden.ContainerSpec
-	}{arg1})
-	fake.recordInvocation("Create", []interface{}{arg1})
+		arg1 context.Context
+		arg2 garden.ContainerSpec
+	}{arg1, arg2})
+	fake.recordInvocation("Create", []interface{}{arg1, arg2})
 	fake.createMutex.Unlock()
 	if fake.CreateStub != nil {
-		return fake.CreateStub(arg1)
+		return fake.CreateStub(arg1, arg2)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
@@ -388,17 +391,17 @@ func (fake *FakeClient) CreateCallCount() int {
 	return len(fake.createArgsForCall)
 }
 
-func (fake *FakeClient) CreateCalls(stub func(garden.ContainerSpec) (garden.Container, error)) {
+func (fake *FakeClient) CreateCalls(stub func(context.Context, garden.ContainerSpec) (garden.Container, error)) {
 	fake.createMutex.Lock()
 	defer fake.createMutex.Unlock()
 	fake.CreateStub = stub
 }
 
-func (fake *FakeClient) CreateArgsForCall(i int) garden.ContainerSpec {
+func (fake *FakeClient) CreateArgsForCall(i int) (context.Context, garden.ContainerSpec) {
 	fake.createMutex.RLock()
 	defer fake.createMutex.RUnlock()
 	argsForCall := fake.createArgsForCall[i]
-	return argsForCall.arg1
+	return argsForCall.arg1, argsForCall.arg2
 }
 
 func (fake *FakeClient) CreateReturns(result1 garden.Container, result2 error) {

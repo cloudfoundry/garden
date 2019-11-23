@@ -2,6 +2,7 @@
 package gardenfakes
 
 import (
+	"context"
 	"sync"
 	"time"
 
@@ -60,10 +61,11 @@ type FakeBackend struct {
 		result1 []garden.Container
 		result2 error
 	}
-	CreateStub        func(garden.ContainerSpec) (garden.Container, error)
+	CreateStub        func(context.Context, garden.ContainerSpec) (garden.Container, error)
 	createMutex       sync.RWMutex
 	createArgsForCall []struct {
-		arg1 garden.ContainerSpec
+		arg1 context.Context
+		arg2 garden.ContainerSpec
 	}
 	createReturns struct {
 		result1 garden.Container
@@ -396,16 +398,17 @@ func (fake *FakeBackend) ContainersReturnsOnCall(i int, result1 []garden.Contain
 	}{result1, result2}
 }
 
-func (fake *FakeBackend) Create(arg1 garden.ContainerSpec) (garden.Container, error) {
+func (fake *FakeBackend) Create(arg1 context.Context, arg2 garden.ContainerSpec) (garden.Container, error) {
 	fake.createMutex.Lock()
 	ret, specificReturn := fake.createReturnsOnCall[len(fake.createArgsForCall)]
 	fake.createArgsForCall = append(fake.createArgsForCall, struct {
-		arg1 garden.ContainerSpec
-	}{arg1})
-	fake.recordInvocation("Create", []interface{}{arg1})
+		arg1 context.Context
+		arg2 garden.ContainerSpec
+	}{arg1, arg2})
+	fake.recordInvocation("Create", []interface{}{arg1, arg2})
 	fake.createMutex.Unlock()
 	if fake.CreateStub != nil {
-		return fake.CreateStub(arg1)
+		return fake.CreateStub(arg1, arg2)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
@@ -420,17 +423,17 @@ func (fake *FakeBackend) CreateCallCount() int {
 	return len(fake.createArgsForCall)
 }
 
-func (fake *FakeBackend) CreateCalls(stub func(garden.ContainerSpec) (garden.Container, error)) {
+func (fake *FakeBackend) CreateCalls(stub func(context.Context, garden.ContainerSpec) (garden.Container, error)) {
 	fake.createMutex.Lock()
 	defer fake.createMutex.Unlock()
 	fake.CreateStub = stub
 }
 
-func (fake *FakeBackend) CreateArgsForCall(i int) garden.ContainerSpec {
+func (fake *FakeBackend) CreateArgsForCall(i int) (context.Context, garden.ContainerSpec) {
 	fake.createMutex.RLock()
 	defer fake.createMutex.RUnlock()
 	argsForCall := fake.createArgsForCall[i]
-	return argsForCall.arg1
+	return argsForCall.arg1, argsForCall.arg2
 }
 
 func (fake *FakeBackend) CreateReturns(result1 garden.Container, result2 error) {

@@ -2,6 +2,7 @@ package client_test
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -35,7 +36,7 @@ var _ = Describe("Container", func() {
 
 		fakeConnection.CreateReturns("some-handle", nil)
 
-		container, err = client.Create(garden.ContainerSpec{})
+		container, err = client.Create(context.TODO(), garden.ContainerSpec{})
 		Ω(err).ShouldNot(HaveOccurred())
 	})
 

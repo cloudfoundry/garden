@@ -1,6 +1,7 @@
 package client_test
 
 import (
+	"context"
 	"errors"
 
 	. "github.com/onsi/ginkgo"
@@ -155,7 +156,7 @@ var _ = Describe("Client", func() {
 
 			fakeConnection.CreateReturns("some-handle", nil)
 
-			container, err := client.Create(spec)
+			container, err := client.Create(context.TODO(), spec)
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(container).ShouldNot(BeNil())
 
@@ -172,7 +173,7 @@ var _ = Describe("Client", func() {
 			})
 
 			It("returns it", func() {
-				_, err := client.Create(garden.ContainerSpec{})
+				_, err := client.Create(context.TODO(), garden.ContainerSpec{})
 				Ω(err).Should(Equal(disaster))
 			})
 		})
