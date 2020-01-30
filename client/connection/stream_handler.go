@@ -42,7 +42,11 @@ func (sh *streamHandler) streamIn(processWriter io.WriteCloser, stdin io.Reader)
 func (sh *streamHandler) streamOut(streamWriter io.Writer, streamReader io.Reader) {
 	sh.wg.Add(1)
 	go func() {
-		io.Copy(streamWriter, streamReader)
+		n, err := io.Copy(streamWriter, streamReader)
+		sh.log.Info("client-stream-handler", lager.Data{"bytes-copied": n})
+		if err != nil {
+			sh.log.Error("client-stream-handler", err)
+		}
 		sh.wg.Done()
 	}()
 }

@@ -11,6 +11,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 
@@ -961,6 +962,93 @@ var _ = Describe("Connection", func() {
 			spec         garden.ProcessSpec
 			stdInContent chan string
 		)
+
+		Context("when streaming massive amounts of data", func() {
+			var stdoutSize = 1_000_000_000
+			BeforeEach(func() {
+				spec = garden.ProcessSpec{
+					Path:   "lol",
+					Args:   []string{"arg1", "arg2"},
+					Dir:    "/some/dir",
+					User:   "root",
+					Limits: resourceLimits,
+				}
+
+				server.AppendHandlers(
+					ghttp.CombineHandlers(
+						ghttp.VerifyRequest("POST", "/containers/foo-handle/processes"),
+						ghttp.VerifyJSONRepresenting(spec),
+						func(w http.ResponseWriter, r *http.Request) {
+							w.WriteHeader(http.StatusOK)
+
+							conn, br, err := w.(http.Hijacker).Hijack()
+							Expect(err).ToNot(HaveOccurred())
+
+							defer conn.Close()
+
+							decoder := json.NewDecoder(br)
+
+							transport.WriteMessage(conn, map[string]interface{}{
+								"process_id": "process-handle",
+								"stream_id":  "123",
+							})
+
+							var payload map[string]interface{}
+							err = decoder.Decode(&payload)
+							Expect(err).ToNot(HaveOccurred())
+
+							Expect(payload).To(Equal(map[string]interface{}{
+								"process_id": "process-handle",
+								"source":     float64(transport.Stdin),
+								"data":       "stdin data",
+							}))
+
+							transport.WriteMessage(conn, map[string]interface{}{
+								"process_id":  "process-handle",
+								"exit_status": 3,
+							})
+						},
+					),
+					stdoutStream("foo-handle", "process-handle", 123, func(conn net.Conn) {
+						conn.Write(bytes.Repeat([]byte{'a'}, stdoutSize))
+					}),
+					stderrStream("foo-handle", "process-handle", 123, func(conn net.Conn) {
+						conn.Write([]byte("stderr data"))
+					}),
+				)
+			})
+
+			FIt("does not truncate the data", func() {
+				stdout, err := ioutil.TempFile("", "")
+				Expect(err).NotTo(HaveOccurred())
+				defer stdout.Close()
+				Expect(os.Remove(stdout.Name())).To(Succeed())
+				stderr := ioutil.Discard
+
+				process, err := connection.Run("foo-handle", spec, garden.ProcessIO{
+					Stdin:  bytes.NewBufferString("stdin data"),
+					Stdout: stdout,
+					Stderr: stderr,
+				})
+
+				Expect(err).ToNot(HaveOccurred())
+
+				// Eventually(func() int64 {
+				// 	stdoutInfo, err := stdout.Stat()
+				// 	Expect(err).NotTo(HaveOccurred())
+				// 	return stdoutInfo.Size()
+				// }).Should(Equal(int64(stdoutSize)))
+
+				status, err := process.Wait()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(status).To(Equal(3))
+
+				stdoutInfo, err := stdout.Stat()
+				Expect(err).NotTo(HaveOccurred())
+				Expect(stdoutInfo.Size()).To(Equal(int64(stdoutSize)))
+
+			})
+		})
 
 		Context("when streaming succeeds to completion", func() {
 			BeforeEach(func() {

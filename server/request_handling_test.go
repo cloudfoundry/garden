@@ -1865,14 +1865,16 @@ var _ = Describe("When a client connects", func() {
 							defer writing.Done()
 							defer GinkgoRecover()
 
-							_, err := fmt.Fprintf(io.Stdout, "stdout data")
+							// _, err := fmt.Fprintf(io.Stdout, "stdout data")
+							n, err := io.Stdout.Write(bytes.Repeat([]byte{'a'}, 1_000_000_000))
 							Expect(err).ToNot(HaveOccurred())
+							Expect(n).To(Equal(1_000_000_000))
 
-							in, err := ioutil.ReadAll(io.Stdin)
-							Expect(err).ToNot(HaveOccurred())
+							// in, err := ioutil.ReadAll(io.Stdin)
+							// Expect(err).ToNot(HaveOccurred())
 
-							_, err = fmt.Fprintf(io.Stdout, "mirrored %s", string(in))
-							Expect(err).ToNot(HaveOccurred())
+							// _, err = fmt.Fprintf(io.Stdout, "mirrored %s", string(in))
+							// Expect(err).ToNot(HaveOccurred())
 
 							_, err = fmt.Fprintf(io.Stderr, "stderr data")
 							Expect(err).ToNot(HaveOccurred())
@@ -1916,8 +1918,11 @@ var _ = Describe("When a client connects", func() {
 					Expect(buffer).ToNot(gbytes.Say("banana"))
 				})
 
-				It("runs the process and streams the output", func() {
-					stdout := gbytes.NewBuffer()
+				FIt("runs the process and streams the output", func() {
+					stdout, err := ioutil.TempFile("", "")
+					Expect(err).NotTo(HaveOccurred())
+					defer stdout.Close()
+					Expect(os.Remove(stdout.Name())).To(Succeed())
 					stderr := gbytes.NewBuffer()
 
 					processIO := garden.ProcessIO{
@@ -1932,14 +1937,18 @@ var _ = Describe("When a client connects", func() {
 					ranSpec, processIO := fakeContainer.RunArgsForCall(0)
 					Expect(ranSpec).To(Equal(processSpec))
 
-					Eventually(stdout).Should(gbytes.Say("stdout data"))
-					Eventually(stdout).Should(gbytes.Say("mirrored stdin data"))
-					Eventually(stderr).Should(gbytes.Say("stderr data"))
+					// Expect(stat.Size()).To(Equal(int64(1_000_000_000)))
+					// Eventually(stdout).Should(gbytes.Say("stdout data"))
+					// Eventually(stdout).Should(gbytes.Say("mirrored stdin data"))
+					// Eventually(stderr).Should(gbytes.Say("stderr data"))
 
 					status, err := process.Wait()
 					Expect(err).ToNot(HaveOccurred())
 					Expect(status).To(Equal(123))
 
+					stat, err := stdout.Stat()
+					Expect(err).NotTo(HaveOccurred())
+					Expect(stat.Size()).To(Equal(int64(1_000_000_000)))
 					_, err = processIO.Stdin.Read([]byte{})
 					Expect(err).To(Equal(io.EOF))
 				})
