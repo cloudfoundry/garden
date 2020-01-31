@@ -753,8 +753,8 @@ func (s *GardenServer) handleRun(w http.ResponseWriter, r *http.Request) {
 		"spec": info,
 	})
 
-	stdout := make(chan []byte, 1000)
-	stderr := make(chan []byte, 1000)
+	stdout := make(chan []byte, 4096)
+	stderr := make(chan []byte, 4096)
 
 	stdinR, stdinW := io.Pipe()
 
