@@ -42,7 +42,8 @@ func (sh *streamHandler) streamIn(processWriter io.WriteCloser, stdin io.Reader)
 func (sh *streamHandler) streamOut(streamWriter io.Writer, streamReader io.Reader) {
 	sh.wg.Add(1)
 	go func() {
-		io.Copy(streamWriter, streamReader)
+		buf := make([]byte, 4096)
+		io.CopyBuffer(streamWriter, streamReader, buf)
 		sh.wg.Done()
 	}()
 }
