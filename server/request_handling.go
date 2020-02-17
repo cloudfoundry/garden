@@ -278,7 +278,8 @@ func (s *GardenServer) handleStreamOut(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	n, err := io.Copy(w, reader)
+	buf := make([]byte, 4096)
+	n, err := io.CopyBuffer(w, reader, buf)
 	if err != nil {
 		if err := reader.Close(); err != nil {
 			hLog.Error("failed-to-close", err)
