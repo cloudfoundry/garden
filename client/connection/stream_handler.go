@@ -43,7 +43,10 @@ func (sh *streamHandler) streamOut(streamWriter io.Writer, streamReader io.Reade
 	sh.wg.Add(1)
 	go func() {
 		buf := make([]byte, 4096)
-		io.CopyBuffer(streamWriter, streamReader, buf)
+		n, err := io.CopyBuffer(streamWriter, streamReader, buf)
+		if err != nil {
+			sh.log.Error("io.CopyBuffer.failed", err, lager.Data{"bytes.written": n})
+		}
 		sh.wg.Done()
 	}()
 }
