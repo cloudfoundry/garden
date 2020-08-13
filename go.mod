@@ -1,6 +1,6 @@
 module code.cloudfoundry.org/garden
 
-go 1.12
+go 1.14
 
 require (
 	code.cloudfoundry.org/lager v2.0.0+incompatible
