@@ -12,13 +12,14 @@ github.com/fsnotify/fsnotify
 github.com/golang/protobuf/proto
 # github.com/kr/pretty v0.1.0
 ## explicit
-# github.com/nxadm/tail v1.4.4
+# github.com/nxadm/tail v1.4.8
+## explicit
 github.com/nxadm/tail
 github.com/nxadm/tail/ratelimiter
 github.com/nxadm/tail/util
 github.com/nxadm/tail/watch
 github.com/nxadm/tail/winfile
-# github.com/onsi/ginkgo v1.14.0
+# github.com/onsi/ginkgo v1.15.0
 ## explicit
 github.com/onsi/ginkgo
 github.com/onsi/ginkgo/config
@@ -39,7 +40,7 @@ github.com/onsi/ginkgo/reporters/stenographer
 github.com/onsi/ginkgo/reporters/stenographer/support/go-colorable
 github.com/onsi/ginkgo/reporters/stenographer/support/go-isatty
 github.com/onsi/ginkgo/types
-# github.com/onsi/gomega v1.10.1
+# github.com/onsi/gomega v1.10.5
 ## explicit
 github.com/onsi/gomega
 github.com/onsi/gomega/format
@@ -58,16 +59,16 @@ github.com/onsi/gomega/types
 # github.com/tedsuo/rata v1.0.0
 ## explicit
 github.com/tedsuo/rata
-# golang.org/x/net v0.0.0-20200707034311-ab3426394381
+# golang.org/x/net v0.0.0-20210119194325-5f4716e94777
 ## explicit
 golang.org/x/net/html
 golang.org/x/net/html/atom
 golang.org/x/net/html/charset
-# golang.org/x/sys v0.0.0-20200812155832-6a926be9bd1d
+# golang.org/x/sys v0.0.0-20210124154548-22da62e12c0c
 ## explicit
 golang.org/x/sys/internal/unsafeheader
 golang.org/x/sys/unix
-# golang.org/x/text v0.3.3
+# golang.org/x/text v0.3.5
 ## explicit
 golang.org/x/text/encoding
 golang.org/x/text/encoding/charmap
@@ -86,10 +87,6 @@ golang.org/x/text/internal/utf8internal
 golang.org/x/text/language
 golang.org/x/text/runes
 golang.org/x/text/transform
-# golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1
-## explicit
-golang.org/x/xerrors
-golang.org/x/xerrors/internal
 # google.golang.org/protobuf v1.23.0
 google.golang.org/protobuf/encoding/prototext
 google.golang.org/protobuf/encoding/protowire
@@ -122,5 +119,6 @@ google.golang.org/protobuf/runtime/protoimpl
 ## explicit
 # gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7
 gopkg.in/tomb.v1
-# gopkg.in/yaml.v2 v2.3.0
+# gopkg.in/yaml.v2 v2.4.0
+## explicit
 gopkg.in/yaml.v2
