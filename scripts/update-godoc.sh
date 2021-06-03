@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -e
-set -x
+set -ex
 
-go run garden/scripts/update-godoc/main.go
+cd garden
+go run scripts/update-godoc/main.go
