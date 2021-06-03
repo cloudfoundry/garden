@@ -7,7 +7,7 @@ require (
 	github.com/bmizerany/pat v0.0.0-20170815010413-6226ea591a40 // indirect
 	github.com/kr/pretty v0.1.0 // indirect
 	github.com/nxadm/tail v1.4.8 // indirect
-	github.com/onsi/ginkgo v1.15.0
+	github.com/onsi/ginkgo v1.16.4
 	github.com/onsi/gomega v1.10.5
 	github.com/tedsuo/rata v1.0.0
 	golang.org/x/net v0.0.0-20210119194325-5f4716e94777 // indirect
