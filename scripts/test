@@ -3,13 +3,5 @@
 
 set -e -x
 
-FIRST_GOPATH=`echo $GOPATH | cut -d':' -f1`
-
-mkdir -p $FIRST_GOPATH/bin
-export PATH=$FIRST_GOPATH/bin:$PATH
-
-go get -t -v ./...
-go get golang.org/x/tools/cmd/cover
-go install github.com/onsi/ginkgo/ginkgo
-
-ginkgo -mod vendor -p -nodes=8 -race -r -skipMeasurements -randomizeSuites -randomizeAllSpecs -failOnPending "$@"
+go vet -mod vendor ./...
+ginkgo -mod vendor -r -p --race --keepGoing --nodes="${GINKGO_NODES:-8}" --failOnPending --randomizeSuites --randomizeAllSpecs "$@"
