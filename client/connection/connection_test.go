@@ -1329,19 +1329,24 @@ var _ = Describe("Connection", func() {
 			})
 
 			Describe("waiting on the process", func() {
-				It("returns an error", func(done Done) {
-					process, err := connection.Run("foo-handle", garden.ProcessSpec{
-						Path: "lol",
-						Args: []string{"arg1", "arg2"},
-						Dir:  "/some/dir",
-					}, garden.ProcessIO{Stdout: GinkgoWriter})
+				It("returns an error", func() {
+					timeout := 5
+					done := make(chan interface{})
+					go func() {
+						process, err := connection.Run("foo-handle", garden.ProcessSpec{
+							Path: "lol",
+							Args: []string{"arg1", "arg2"},
+							Dir:  "/some/dir",
+						}, garden.ProcessIO{Stdout: GinkgoWriter})
 
-					Expect(err).ToNot(HaveOccurred())
+						Expect(err).ToNot(HaveOccurred())
 
-					_, err = process.Wait()
-					Expect(err).To(MatchError(ContainSubstring("connection: failed to hijack stream ")))
+						_, err = process.Wait()
+						Expect(err).To(MatchError(ContainSubstring("connection: failed to hijack stream ")))
 
-					close(done)
+						close(done)
+					}()
+					Eventually(done, timeout).Should(BeClosed())
 				})
 			})
 		})

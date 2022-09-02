@@ -241,57 +241,62 @@ var _ = Describe("The Garden server", func() {
 		})
 
 		Context("when a Run request is in-flight", func() {
-			It("does not wait for the request to complete", func(done Done) {
-				fakeContainer := new(fakes.FakeContainer)
+			It("does not wait for the request to complete", func() {
+				timeout := 5
+				done := make(chan interface{})
+				go func() {
+					fakeContainer := new(fakes.FakeContainer)
 
-				fakeContainer.RunStub = func(spec garden.ProcessSpec, io garden.ProcessIO) (garden.Process, error) {
-					process := new(fakes.FakeProcess)
+					fakeContainer.RunStub = func(spec garden.ProcessSpec, io garden.ProcessIO) (garden.Process, error) {
+						process := new(fakes.FakeProcess)
 
-					process.WaitStub = func() (int, error) {
-						time.Sleep(time.Minute)
-						return 0, nil
+						process.WaitStub = func() (int, error) {
+							time.Sleep(time.Minute)
+							return 0, nil
+						}
+
+						go func() {
+							defer GinkgoRecover()
+
+							_, err := io.Stdout.Write([]byte("msg 1\n"))
+							Ω(err).ShouldNot(HaveOccurred())
+
+							time.Sleep(time.Minute)
+
+							_, err = io.Stdout.Write([]byte("msg 2\n"))
+							Ω(err).ShouldNot(HaveOccurred())
+						}()
+
+						return process, nil
 					}
 
-					go func() {
-						defer GinkgoRecover()
+					fakeBackend.CreateReturns(fakeContainer, nil)
 
-						_, err := io.Stdout.Write([]byte("msg 1\n"))
-						Ω(err).ShouldNot(HaveOccurred())
+					clientContainer, err := apiClient.Create(garden.ContainerSpec{})
+					Ω(err).ShouldNot(HaveOccurred())
 
-						time.Sleep(time.Minute)
+					fakeBackend.LookupReturns(fakeContainer, nil)
 
-						_, err = io.Stdout.Write([]byte("msg 2\n"))
-						Ω(err).ShouldNot(HaveOccurred())
-					}()
+					stdout := gbytes.NewBuffer()
 
-					return process, nil
-				}
+					process, err := clientContainer.Run(garden.ProcessSpec{
+						Path: "some-path",
+						Args: []string{"arg1", "arg2"},
+					}, garden.ProcessIO{
+						Stdout: stdout,
+					})
+					Ω(err).ShouldNot(HaveOccurred())
 
-				fakeBackend.CreateReturns(fakeContainer, nil)
+					Eventually(stdout).Should(gbytes.Say("msg 1\n"))
 
-				clientContainer, err := apiClient.Create(garden.ContainerSpec{})
-				Ω(err).ShouldNot(HaveOccurred())
+					apiServer.Stop()
 
-				fakeBackend.LookupReturns(fakeContainer, nil)
+					_, err = process.Wait()
+					Ω(err).Should(HaveOccurred())
 
-				stdout := gbytes.NewBuffer()
-
-				process, err := clientContainer.Run(garden.ProcessSpec{
-					Path: "some-path",
-					Args: []string{"arg1", "arg2"},
-				}, garden.ProcessIO{
-					Stdout: stdout,
-				})
-				Ω(err).ShouldNot(HaveOccurred())
-
-				Eventually(stdout).Should(gbytes.Say("msg 1\n"))
-
-				apiServer.Stop()
-
-				_, err = process.Wait()
-				Ω(err).Should(HaveOccurred())
-
-				close(done)
+					close(done)
+				}()
+				Eventually(done, timeout).Should(BeClosed())
 			})
 		})
 	})
