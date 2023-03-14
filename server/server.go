@@ -13,7 +13,7 @@ import (
 	"code.cloudfoundry.org/garden/routes"
 	"code.cloudfoundry.org/garden/server/bomberman"
 	"code.cloudfoundry.org/garden/server/streamer"
-	"code.cloudfoundry.org/lager"
+	"code.cloudfoundry.org/lager/v3"
 	"github.com/tedsuo/rata"
 )
 
