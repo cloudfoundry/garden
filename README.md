@@ -111,6 +111,6 @@ cd $GOPATH/src/code.cloudfoundry.org
 git clone git@github.com:cloudfoundry/garden
 cd garden
 go get -t -u ./...
-go install github.com/onsi/ginkgo/ginkgo
+go install github.com/onsi/ginkgo/v2/ginkgo
 ginkgo -r
 ```
