@@ -11,7 +11,7 @@ import (
 
 	"code.cloudfoundry.org/garden"
 	"code.cloudfoundry.org/garden/transport"
-	"code.cloudfoundry.org/lager/v3"
+	"code.cloudfoundry.org/lager"
 )
 
 type processDebugInfo struct {

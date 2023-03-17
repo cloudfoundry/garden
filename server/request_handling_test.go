@@ -14,8 +14,9 @@ import (
 	"sync"
 	"time"
 
-	"code.cloudfoundry.org/lager/v3/lagertest"
-	. "github.com/onsi/ginkgo/v2"
+	"code.cloudfoundry.org/lager/lagertest"
+	. "github.com/onsi/ginkgo"
+	"github.com/onsi/ginkgo/config"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 
@@ -50,7 +51,7 @@ var _ = Describe("When connecting directly to the server", func() {
 		fakeContainer.HandleReturns("some-handle")
 
 		fakeBackend.CreateReturns(fakeContainer, nil)
-		port = 8000 + GinkgoParallelProcess()
+		port = 8000 + config.GinkgoConfig.ParallelNode
 		apiServer = server.New(
 			"tcp",
 			fmt.Sprintf(":%d", port),

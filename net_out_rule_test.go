@@ -4,7 +4,7 @@ import (
 	"net"
 
 	"code.cloudfoundry.org/garden"
-	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 

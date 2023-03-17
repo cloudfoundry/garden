@@ -7,7 +7,7 @@ updates:
     time: "11:00"
   open-pull-requests-limit: 10
   ignore:
-  - dependency-name: github.com/onsi/ginkgo/v2
+  - dependency-name: github.com/onsi/ginkgo
     versions:
     - 1.14.2
     - 1.15.0
