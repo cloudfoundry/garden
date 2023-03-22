@@ -7,13 +7,7 @@ updates:
     time: "11:00"
   open-pull-requests-limit: 10
   ignore:
-  - dependency-name: github.com/onsi/ginkgo
-    versions:
-    - 1.14.2
-    - 1.15.0
-    - 1.15.1
-    - 1.15.2
-    - 1.16.0
+  - dependency-name: github.com/onsi/ginkgo/v2
   - dependency-name: github.com/onsi/gomega
     versions:
     - 1.10.4
