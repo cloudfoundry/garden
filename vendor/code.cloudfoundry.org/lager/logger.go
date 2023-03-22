@@ -2,20 +2,12 @@ package lager
 
 import (
 	"fmt"
-	"net/http"
 	"runtime"
-	"strings"
 	"sync/atomic"
 	"time"
-
-	"github.com/openzipkin/zipkin-go/idgenerator"
-	"github.com/openzipkin/zipkin-go/model"
 )
 
-const (
-	StackTraceBufferSize = 1024 * 100
-	RequestIdHeader      = "X-Vcap-Request-Id"
-)
+const StackTraceBufferSize = 1024 * 100
 
 type Logger interface {
 	RegisterSink(Sink)
@@ -26,7 +18,6 @@ type Logger interface {
 	Error(action string, err error, data ...Data)
 	Fatal(action string, err error, data ...Data)
 	WithData(Data) Logger
-	WithTraceInfo(*http.Request) Logger
 }
 
 type logger struct {
@@ -83,21 +74,6 @@ func (l *logger) WithData(data Data) Logger {
 		sessionID: l.sessionID,
 		data:      l.baseData(data),
 	}
-}
-
-func (l *logger) WithTraceInfo(req *http.Request) Logger {
-	traceIDHeader := req.Header.Get(RequestIdHeader)
-	if traceIDHeader == "" {
-		return l.WithData(nil)
-	}
-	traceHex := strings.Replace(traceIDHeader, "-", "", -1)
-	traceID, err := model.TraceIDFromHex(traceHex)
-	if err != nil {
-		return l.WithData(nil)
-	}
-
-	spanID := idgenerator.NewRandom128().SpanID(traceID)
-	return l.WithData(Data{"trace-id": traceID.String(), "span-id": spanID.String()})
 }
 
 func (l *logger) Debug(action string, data ...Data) {

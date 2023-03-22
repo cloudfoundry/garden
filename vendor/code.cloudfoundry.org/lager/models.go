@@ -47,11 +47,8 @@ type rfc3339Time time.Time
 const rfc3339Nano = "2006-01-02T15:04:05.000000000Z07:00"
 
 func (t rfc3339Time) MarshalJSON() ([]byte, error) {
-	// Use AppendFormat to avoid slower string operations, instead we only
-	// operate on a byte slice
-	// Avoid creating a new copy of t with a cast, instead use type conversion
-	stamp := append((time.Time)(t).UTC().AppendFormat([]byte{'"'}, rfc3339Nano), '"')
-	return stamp, nil
+	stamp := fmt.Sprintf(`"%s"`, time.Time(t).UTC().Format(rfc3339Nano))
+	return []byte(stamp), nil
 }
 
 func (t *rfc3339Time) UnmarshalJSON(data []byte) error {
@@ -80,22 +77,20 @@ func (log LogFormat) ToJSON() []byte {
 	return content
 }
 
-type prettyLogFormat struct {
-	Timestamp rfc3339Time `json:"timestamp"`
-	Level     string      `json:"level"`
-	Source    string      `json:"source"`
-	Message   string      `json:"message"`
-	Data      Data        `json:"data"`
-	Error     error       `json:"-"`
-}
-
 func (log LogFormat) toPrettyJSON() []byte {
 	t := log.time
 	if t.IsZero() {
 		t = parseTimestamp(log.Timestamp)
 	}
 
-	prettyLog := prettyLogFormat{
+	prettyLog := struct {
+		Timestamp rfc3339Time `json:"timestamp"`
+		Level     string      `json:"level"`
+		Source    string      `json:"source"`
+		Message   string      `json:"message"`
+		Data      Data        `json:"data"`
+		Error     error       `json:"-"`
+	}{
 		Timestamp: rfc3339Time(t),
 		Level:     log.LogLevel.String(),
 		Source:    log.Source,

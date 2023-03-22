@@ -4,7 +4,6 @@ package lagerctx
 
 import (
 	"context"
-	"net/http"
 
 	"code.cloudfoundry.org/lager"
 )
@@ -51,4 +50,3 @@ func (*discardLogger) RegisterSink(lager.Sink)                      {}
 func (*discardLogger) SessionName() string                          { return "" }
 func (d *discardLogger) Session(string, ...lager.Data) lager.Logger { return d }
 func (d *discardLogger) WithData(lager.Data) lager.Logger           { return d }
-func (d *discardLogger) WithTraceInfo(*http.Request) lager.Logger   { return d }
