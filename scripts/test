@@ -4,4 +4,4 @@
 set -e -x
 
 go vet -mod vendor ./...
-ginkgo -mod vendor -r -p --race --keepGoing --nodes="${GINKGO_NODES:-8}" --failOnPending --randomizeSuites --randomizeAllSpecs "$@"
+ginkgo -mod vendor -r -p --race --keep-going --nodes="${GINKGO_NODES:-8}" --fail-on-pending --randomize-suites --randomize-all-specs "$@"
