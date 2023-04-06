@@ -8,7 +8,7 @@ import (
 	"sync"
 
 	"code.cloudfoundry.org/garden/transport"
-	"code.cloudfoundry.org/lager"
+	"code.cloudfoundry.org/lager/v3"
 )
 
 type hijackFunc func(streamType string) (net.Conn, io.Reader, error)

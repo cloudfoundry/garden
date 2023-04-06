@@ -11,7 +11,7 @@ Instantiate a logger with the name of your component.
 
 ```go
 import (
-  "code.cloudfoundry.org/lager"
+  "code.cloudfoundry.org/lager/v3"
 )
 
 logger := lager.NewLogger("my-app")
