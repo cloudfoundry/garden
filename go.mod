@@ -16,7 +16,7 @@ require (
 	github.com/go-task/slim-sprig v0.0.0-20230315185526-52ccab3ef572 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/google/go-cmp v0.5.9 // indirect
-	github.com/google/pprof v0.0.0-20230406165453-00490a63f317 // indirect
+	github.com/google/pprof v0.0.0-20230502171905-255e3b9b56de // indirect
 	github.com/kr/pretty v0.1.0 // indirect
 	github.com/openzipkin/zipkin-go v0.4.1 // indirect
 	golang.org/x/net v0.9.0 // indirect
