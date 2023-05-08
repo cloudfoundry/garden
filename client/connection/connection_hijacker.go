@@ -19,6 +19,12 @@ import (
 
 type DialerFunc func(network, address string) (net.Conn, error)
 
+var defaultDialerFunc = func(network, address string) DialerFunc {
+	return func(string, string) (net.Conn, error) {
+		return net.DialTimeout(network, address, 2*time.Second)
+	}
+}
+
 type hijackable struct {
 	req               *rata.RequestGenerator
 	noKeepaliveClient *http.Client
@@ -26,9 +32,7 @@ type hijackable struct {
 }
 
 func NewHijackStreamer(network, address string) HijackStreamer {
-	return NewHijackStreamerWithDialer(func(string, string) (net.Conn, error) {
-		return net.DialTimeout(network, address, 2*time.Second)
-	})
+	return NewHijackStreamerWithDialer(defaultDialerFunc(network, address))
 }
 
 func NewHijackStreamerWithDialer(dialFunc DialerFunc) HijackStreamer {
@@ -38,6 +42,22 @@ func NewHijackStreamerWithDialer(dialFunc DialerFunc) HijackStreamer {
 		noKeepaliveClient: &http.Client{
 			Transport: &http.Transport{
 				Dial:              dialFunc,
+				DisableKeepAlives: true,
+			},
+		},
+	}
+}
+
+func NewHijackStreamerWithHeaders(network string, address string, headers http.Header) HijackStreamer {
+	reqGen := rata.NewRequestGenerator("http://api", routes.Routes)
+	reqGen.Header = headers
+
+	return &hijackable{
+		req:    reqGen,
+		dialer: defaultDialerFunc(network, address),
+		noKeepaliveClient: &http.Client{
+			Transport: &http.Transport{
+				Dial:              defaultDialerFunc(network, address),
 				DisableKeepAlives: true,
 			},
 		},
