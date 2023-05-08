@@ -14,6 +14,7 @@ import (
 	"sync"
 	"time"
 
+	"code.cloudfoundry.org/lager/v3"
 	"code.cloudfoundry.org/lager/v3/lagertest"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -81,6 +82,8 @@ var _ = Describe("When connecting directly to the server", func() {
 })
 
 var _ = Describe("When a client connects", func() {
+	const traceId = "25f23d6a-f46d-460e-7135-7ddc0759a198"
+
 	var socketPath string
 	var tmpdir string
 
@@ -119,7 +122,9 @@ var _ = Describe("When a client connects", func() {
 
 		isRunning = true
 
-		apiClient = client.New(connection.New("unix", socketPath))
+		hijacker := connection.NewHijackStreamerWithHeaders("unix", socketPath, http.Header{lager.RequestIdHeader: []string{traceId}})
+		con := connection.NewWithHijacker(hijacker, logger)
+		apiClient = client.New(con)
 
 		Eventually(apiClient.Ping).Should(Succeed())
 	})
@@ -147,6 +152,11 @@ var _ = Describe("When a client connects", func() {
 
 			It("returns an error", func() {
 				Expect(apiClient.Ping()).To(HaveOccurred())
+			})
+
+			It("logs trace ID", func() {
+				buffer := sink.Buffer()
+				Expect(buffer).ToNot(gbytes.Say(`"trace-id":"` + traceId + `"`))
 			})
 		})
 
@@ -199,6 +209,11 @@ var _ = Describe("When a client connects", func() {
 				_, err := apiClient.Capacity()
 				Expect(err).To(HaveOccurred())
 			})
+
+			It("logs trace ID", func() {
+				buffer := sink.Buffer()
+				Expect(buffer).ToNot(gbytes.Say(`"trace-id":"` + traceId + `"`))
+			})
 		})
 	})
 
@@ -219,6 +234,11 @@ var _ = Describe("When a client connects", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			Expect(container.Handle()).To(Equal("some-handle"))
+		})
+
+		It("logs trace ID", func() {
+			buffer := sink.Buffer()
+			Expect(buffer).ToNot(gbytes.Say(`"trace-id":"` + traceId + `"`))
 		})
 
 		It("should not log any container spec properties", func() {
@@ -472,6 +492,11 @@ var _ = Describe("When a client connects", func() {
 			Expect(serverBackend.DestroyArgsForCall(0)).To(Equal("some-handle"))
 		})
 
+		It("logs trace ID", func() {
+			buffer := sink.Buffer()
+			Expect(buffer).ToNot(gbytes.Say(`"trace-id":"` + traceId + `"`))
+		})
+
 		Context("concurrent with other destroy requests", func() {
 			var destroying chan struct{}
 
@@ -568,6 +593,11 @@ var _ = Describe("When a client connects", func() {
 			Expect(handles).To(ContainElement("some-handle"))
 			Expect(handles).To(ContainElement("another-handle"))
 			Expect(handles).To(ContainElement("super-handle"))
+		})
+
+		It("logs trace ID", func() {
+			buffer := sink.Buffer()
+			Expect(buffer).ToNot(gbytes.Say(`"trace-id":"` + traceId + `"`))
 		})
 
 		Context("when getting the containers fails", func() {
@@ -1014,6 +1044,11 @@ var _ = Describe("When a client connects", func() {
 					Expect(err).To(HaveOccurred())
 				})
 			})
+
+			It("logs trace ID", func() {
+				buffer := sink.Buffer()
+				Expect(buffer).ToNot(gbytes.Say(`"trace-id":"` + traceId + `"`))
+			})
 		})
 
 		Describe("streaming out", func() {
@@ -1038,6 +1073,11 @@ var _ = Describe("When a client connects", func() {
 				Expect(string(streamedContent)).To(Equal("hello-world!"))
 
 				Expect(fakeContainer.StreamOutArgsForCall(0)).To(Equal(garden.StreamOutSpec{User: "frank", Path: "/src/path"}))
+			})
+
+			It("logs trace ID", func() {
+				buffer := sink.Buffer()
+				Expect(buffer).ToNot(gbytes.Say(`"trace-id":"` + traceId + `"`))
 			})
 
 			Context("when the connection dies as we're streaming", func() {
@@ -1104,6 +1144,11 @@ var _ = Describe("When a client connects", func() {
 				Expect(limits).To(Equal(effectiveLimits))
 			})
 
+			It("logs trace ID", func() {
+				buffer := sink.Buffer()
+				Expect(buffer).ToNot(gbytes.Say(`"trace-id":"` + traceId + `"`))
+			})
+
 			Context("when getting the current limits fails", func() {
 				BeforeEach(func() {
 					fakeContainer.CurrentBandwidthLimitsReturns(garden.BandwidthLimits{}, errors.New("oh no!"))
@@ -1126,6 +1171,11 @@ var _ = Describe("When a client connects", func() {
 				Expect(limits).ToNot(BeZero())
 
 				Expect(limits).To(Equal(effectiveLimits))
+			})
+
+			It("logs trace ID", func() {
+				buffer := sink.Buffer()
+				Expect(buffer).ToNot(gbytes.Say(`"trace-id":"` + traceId + `"`))
 			})
 
 			itFailsWhenTheContainerIsNotFound(func() error {
@@ -1163,6 +1213,11 @@ var _ = Describe("When a client connects", func() {
 				Expect(limits).To(Equal(currentLimits))
 			})
 
+			It("logs trace ID", func() {
+				buffer := sink.Buffer()
+				Expect(buffer).ToNot(gbytes.Say(`"trace-id":"` + traceId + `"`))
+			})
+
 			itFailsWhenTheContainerIsNotFound(func() error {
 				_, err := container.CurrentDiskLimits()
 				return err
@@ -1190,6 +1245,11 @@ var _ = Describe("When a client connects", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				Expect(limits).To(Equal(effectiveLimits))
+			})
+
+			It("logs trace ID", func() {
+				buffer := sink.Buffer()
+				Expect(buffer).ToNot(gbytes.Say(`"trace-id":"` + traceId + `"`))
 			})
 
 			itFailsWhenTheContainerIsNotFound(func() error {
@@ -1242,6 +1302,11 @@ var _ = Describe("When a client connects", func() {
 				Expect(containerPort).To(Equal(uint32(222)))
 			})
 
+			It("logs trace ID", func() {
+				buffer := sink.Buffer()
+				Expect(buffer).ToNot(gbytes.Say(`"trace-id":"` + traceId + `"`))
+			})
+
 			itResetsGraceTimeWhenHandling(func(timeToSleep time.Duration) {
 				fakeContainer.NetInStub = func(uint32, uint32) (uint32, uint32, error) { time.Sleep(timeToSleep); return 0, 0, nil }
 				_, _, err := container.NetIn(123, 456)
@@ -1277,6 +1342,11 @@ var _ = Describe("When a client connects", func() {
 					Expect(rule.ICMPs).To(BeNil())
 					Expect(rule.Log).To(Equal(false))
 				})
+			})
+
+			It("logs trace ID", func() {
+				buffer := sink.Buffer()
+				Expect(buffer).ToNot(gbytes.Say(`"trace-id":"` + traceId + `"`))
 			})
 
 			Context("when protocol is specified", func() {
@@ -1561,6 +1631,11 @@ var _ = Describe("When a client connects", func() {
 				Expect(serverBackend.BulkInfoArgsForCall(0)).To(BeEmpty())
 			})
 
+			It("logs trace ID", func() {
+				buffer := sink.Buffer()
+				Expect(buffer).ToNot(gbytes.Say(`"trace-id":"` + traceId + `"`))
+			})
+
 			It("reports information about containers by list of handles", func() {
 				serverBackend.BulkInfoReturns(expectedBulkInfo, nil)
 
@@ -1631,6 +1706,11 @@ var _ = Describe("When a client connects", func() {
 				bulkMetrics, err := apiClient.BulkMetrics(handles)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(bulkMetrics).To(Equal(expectedBulkMetrics))
+			})
+
+			It("logs trace ID", func() {
+				buffer := sink.Buffer()
+				Expect(buffer).ToNot(gbytes.Say(`"trace-id":"` + traceId + `"`))
 			})
 
 			It("calls BulkMetrics with empty slice when handles is empty", func() {
@@ -1913,6 +1993,11 @@ var _ = Describe("When a client connects", func() {
 					Expect(buffer).ToNot(gbytes.Say("MY_SECRET"))
 					Expect(buffer).ToNot(gbytes.Say("-username"))
 					Expect(buffer).ToNot(gbytes.Say("banana"))
+				})
+
+				It("logs trace ID", func() {
+					buffer := sink.Buffer()
+					Expect(buffer).ToNot(gbytes.Say(`"trace-id":"` + traceId + `"`))
 				})
 
 				It("runs the process and streams the output", func() {
