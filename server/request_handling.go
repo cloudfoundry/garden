@@ -35,7 +35,7 @@ type containerDebugInfo struct {
 var ErrConcurrentDestroy = errors.New("container already being destroyed")
 
 func (s *GardenServer) handlePing(w http.ResponseWriter, r *http.Request) {
-	hLog := s.logger.Session("ping")
+	hLog := s.logger.Session("ping").WithTraceInfo(r)
 
 	err := s.backend.Ping()
 	if err != nil {
@@ -47,7 +47,7 @@ func (s *GardenServer) handlePing(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *GardenServer) handleCapacity(w http.ResponseWriter, r *http.Request) {
-	hLog := s.logger.Session("capacity")
+	hLog := s.logger.Session("capacity").WithTraceInfo(r)
 
 	capacity, err := s.backend.Capacity()
 	if err != nil {
@@ -74,7 +74,7 @@ func (s *GardenServer) handleCreate(w http.ResponseWriter, r *http.Request) {
 			Privileged: spec.Privileged,
 			Limits:     spec.Limits,
 		},
-	})
+	}).WithTraceInfo(r)
 
 	if spec.GraceTime == 0 {
 		spec.GraceTime = s.containerGraceTime
@@ -105,7 +105,7 @@ func (s *GardenServer) handleList(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	hLog := s.logger.Session("list")
+	hLog := s.logger.Session("list").WithTraceInfo(r)
 	hLog.Debug("started")
 
 	containers, err := s.backend.Containers(properties)
@@ -130,7 +130,7 @@ func (s *GardenServer) handleDestroy(w http.ResponseWriter, r *http.Request) {
 
 	hLog := s.logger.Session("destroy", lager.Data{
 		"handle": handle,
-	})
+	}).WithTraceInfo(r)
 
 	s.destroysL.Lock()
 
@@ -173,7 +173,7 @@ func (s *GardenServer) handleStop(w http.ResponseWriter, r *http.Request) {
 
 	hLog := s.logger.Session("stop", lager.Data{
 		"handle": handle,
-	})
+	}).WithTraceInfo(r)
 
 	var request struct {
 		Kill bool `json:"kill"`
@@ -214,7 +214,7 @@ func (s *GardenServer) handleStreamIn(w http.ResponseWriter, r *http.Request) {
 		"handle":      handle,
 		"user":        user,
 		"destination": dstPath,
-	})
+	}).WithTraceInfo(r)
 
 	container, err := s.backend.Lookup(handle)
 	if err != nil {
@@ -256,7 +256,7 @@ func (s *GardenServer) handleStreamOut(w http.ResponseWriter, r *http.Request) {
 		"handle": handle,
 		"user":   user,
 		"source": srcPath,
-	})
+	}).WithTraceInfo(r)
 
 	container, err := s.backend.Lookup(handle)
 	if err != nil {
@@ -299,7 +299,7 @@ func (s *GardenServer) handleCurrentBandwidthLimits(w http.ResponseWriter, r *ht
 
 	hLog := s.logger.Session("current-bandwidth-limits", lager.Data{
 		"handle": handle,
-	})
+	}).WithTraceInfo(r)
 
 	container, err := s.backend.Lookup(handle)
 	if err != nil {
@@ -330,7 +330,7 @@ func (s *GardenServer) handleCurrentMemoryLimits(w http.ResponseWriter, r *http.
 
 	hLog := s.logger.Session("current-memory-limits", lager.Data{
 		"handle": handle,
-	})
+	}).WithTraceInfo(r)
 
 	container, err := s.backend.Lookup(handle)
 	if err != nil {
@@ -361,7 +361,7 @@ func (s *GardenServer) handleCurrentDiskLimits(w http.ResponseWriter, r *http.Re
 
 	hLog := s.logger.Session("current-disk-limits", lager.Data{
 		"handle": handle,
-	})
+	}).WithTraceInfo(r)
 
 	container, err := s.backend.Lookup(handle)
 	if err != nil {
@@ -392,7 +392,7 @@ func (s *GardenServer) handleCurrentCPULimits(w http.ResponseWriter, r *http.Req
 
 	hLog := s.logger.Session("current-cpu-limits", lager.Data{
 		"handle": handle,
-	})
+	}).WithTraceInfo(r)
 
 	container, err := s.backend.Lookup(handle)
 	if err != nil {
@@ -423,7 +423,7 @@ func (s *GardenServer) handleNetIn(w http.ResponseWriter, r *http.Request) {
 
 	hLog := s.logger.Session("net-in", lager.Data{
 		"handle": handle,
-	})
+	}).WithTraceInfo(r)
 
 	var request transport.NetInRequest
 	if !s.readRequest(&request, w, r) {
@@ -469,7 +469,7 @@ func (s *GardenServer) handleNetOut(w http.ResponseWriter, r *http.Request) {
 
 	hLog := s.logger.Session("net-out", lager.Data{
 		"handle": handle,
-	})
+	}).WithTraceInfo(r)
 
 	var rule garden.NetOutRule
 	if !s.readRequest(&rule, w, r) {
@@ -508,7 +508,7 @@ func (s *GardenServer) handleBulkNetOut(w http.ResponseWriter, r *http.Request) 
 
 	hLog := s.logger.Session("bulk-net-out", lager.Data{
 		"handle": handle,
-	})
+	}).WithTraceInfo(r)
 
 	var rules []garden.NetOutRule
 	if !s.readRequest(&rules, w, r) {
@@ -547,7 +547,7 @@ func (s *GardenServer) handleMetrics(w http.ResponseWriter, r *http.Request) {
 
 	hLog := s.logger.Session("get-metrics", lager.Data{
 		"handle": handle,
-	})
+	}).WithTraceInfo(r)
 
 	container, err := s.backend.Lookup(handle)
 	if err != nil {
@@ -572,7 +572,7 @@ func (s *GardenServer) handleProperties(w http.ResponseWriter, r *http.Request) 
 
 	hLog := s.logger.Session("get-properties", lager.Data{
 		"handle": handle,
-	})
+	}).WithTraceInfo(r)
 
 	container, err := s.backend.Lookup(handle)
 	if err != nil {
@@ -600,7 +600,7 @@ func (s *GardenServer) handleProperty(w http.ResponseWriter, r *http.Request) {
 
 	hLog := s.logger.Session("get-property", lager.Data{
 		"handle": handle,
-	})
+	}).WithTraceInfo(r)
 
 	container, err := s.backend.Lookup(handle)
 	if err != nil {
@@ -632,7 +632,7 @@ func (s *GardenServer) handleSetProperty(w http.ResponseWriter, r *http.Request)
 
 	hLog := s.logger.Session("set-property", lager.Data{
 		"handle": handle,
-	})
+	}).WithTraceInfo(r)
 
 	var request struct {
 		Value string `json:"value"`
@@ -671,7 +671,7 @@ func (s *GardenServer) handleRemoveProperty(w http.ResponseWriter, r *http.Reque
 
 	hLog := s.logger.Session("remove-property", lager.Data{
 		"handle": handle,
-	})
+	}).WithTraceInfo(r)
 
 	container, err := s.backend.Lookup(handle)
 	if err != nil {
@@ -705,7 +705,7 @@ func (s *GardenServer) handleSetGraceTime(w http.ResponseWriter, r *http.Request
 
 	hLog := s.logger.Session("set-grace-time", lager.Data{
 		"handle": handle,
-	})
+	}).WithTraceInfo(r)
 
 	container, err := s.backend.Lookup(handle)
 	if err != nil {
@@ -725,7 +725,7 @@ func (s *GardenServer) handleRun(w http.ResponseWriter, r *http.Request) {
 
 	hLog := s.logger.Session("run", lager.Data{
 		"handle": handle,
-	})
+	}).WithTraceInfo(r)
 
 	var request garden.ProcessSpec
 	if !s.readRequest(&request, w, r) {
@@ -807,7 +807,7 @@ func (s *GardenServer) handleAttach(w http.ResponseWriter, r *http.Request) {
 
 	hLog := s.logger.Session("attach", lager.Data{
 		"handle": handle,
-	})
+	}).WithTraceInfo(r)
 
 	processID := r.FormValue(":pid")
 
@@ -878,7 +878,7 @@ func (s *GardenServer) handleInfo(w http.ResponseWriter, r *http.Request) {
 
 	hLog := s.logger.Session("info", lager.Data{
 		"handle": handle,
-	})
+	}).WithTraceInfo(r)
 
 	container, err := s.backend.Lookup(handle)
 	if err != nil {
@@ -907,7 +907,7 @@ func (s *GardenServer) handleBulkInfo(w http.ResponseWriter, r *http.Request) {
 
 	hLog := s.logger.Session("bulk_info", lager.Data{
 		"handles": handles,
-	})
+	}).WithTraceInfo(r)
 	hLog.Debug("getting-bulkinfo")
 
 	bulkInfo, err := s.backend.BulkInfo(handles)
@@ -926,7 +926,7 @@ func (s *GardenServer) handleBulkMetrics(w http.ResponseWriter, r *http.Request)
 
 	hLog := s.logger.Session("bulk_metrics", lager.Data{
 		"handles": handles,
-	})
+	}).WithTraceInfo(r)
 	hLog.Debug("getting-bulkmetrics")
 
 	bulkMetrics, err := s.backend.BulkMetrics(handles)
