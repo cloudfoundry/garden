@@ -36,14 +36,16 @@ type logger struct {
 	sessionID   string
 	nextSession uint32
 	data        Data
+	idGenerator idgenerator.IDGenerator
 }
 
 func NewLogger(component string) Logger {
 	return &logger{
-		component: component,
-		task:      component,
-		sinks:     []Sink{},
-		data:      Data{},
+		component:   component,
+		task:        component,
+		sinks:       []Sink{},
+		data:        Data{},
+		idGenerator: idgenerator.NewRandom128(),
 	}
 }
 
@@ -67,21 +69,23 @@ func (l *logger) Session(task string, data ...Data) Logger {
 	}
 
 	return &logger{
-		component: l.component,
-		task:      fmt.Sprintf("%s.%s", l.task, task),
-		sinks:     l.sinks,
-		sessionID: sessionIDstr,
-		data:      l.baseData(data...),
+		component:   l.component,
+		task:        fmt.Sprintf("%s.%s", l.task, task),
+		sinks:       l.sinks,
+		sessionID:   sessionIDstr,
+		data:        l.baseData(data...),
+		idGenerator: l.idGenerator,
 	}
 }
 
 func (l *logger) WithData(data Data) Logger {
 	return &logger{
-		component: l.component,
-		task:      l.task,
-		sinks:     l.sinks,
-		sessionID: l.sessionID,
-		data:      l.baseData(data),
+		component:   l.component,
+		task:        l.task,
+		sinks:       l.sinks,
+		sessionID:   l.sessionID,
+		data:        l.baseData(data),
+		idGenerator: l.idGenerator,
 	}
 }
 
@@ -96,7 +100,7 @@ func (l *logger) WithTraceInfo(req *http.Request) Logger {
 		return l.WithData(nil)
 	}
 
-	spanID := idgenerator.NewRandom128().SpanID(traceID)
+	spanID := l.idGenerator.SpanID(model.TraceID{})
 	return l.WithData(Data{"trace-id": traceID.String(), "span-id": spanID.String()})
 }
 
