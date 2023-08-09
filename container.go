@@ -240,7 +240,7 @@ type Metrics struct {
 	MemoryStat     ContainerMemoryStat
 	CPUStat        ContainerCPUStat
 	DiskStat       ContainerDiskStat
-	NetworkStat    ContainerNetworkStat
+	NetworkStat    *ContainerNetworkStat
 	PidStat        ContainerPidStat
 	Age            time.Duration
 	CPUEntitlement uint64
