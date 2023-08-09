@@ -99,6 +99,59 @@ var _ = Describe("The Garden server", func() {
 		Ω(time.Since(before)).Should(BeNumerically(">", 100*time.Millisecond))
 	})
 
+	Describe("using Listen() seperately from Serve()", func() {
+		var (
+			apiServer  *server.GardenServer
+			socketPath string
+		)
+		BeforeEach(func() {
+			var err error
+			tmpdir, err = ioutil.TempDir(os.TempDir(), "api-server-test")
+			Expect(err).ShouldNot(HaveOccurred())
+
+			socketPath = path.Join(tmpdir, "api.sock")
+
+			fakeBackend := new(fakes.FakeBackend)
+
+			apiServer = server.New("unix", socketPath, 0, fakeBackend, logger)
+		})
+		It("listens on the requested backend", func() {
+			listener, err := apiServer.Listen()
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(listener.Addr().String()).To(Equal(socketPath))
+		})
+		It("returns an error if listening fails", func() {
+			os.Remove(tmpdir)
+			listener, err := apiServer.Listen()
+
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError(MatchRegexp("bind: no such file or directory")))
+			Expect(listener).To(BeNil())
+		})
+		It("doesn't start serving requests until Serve() is called", func() {
+			listener, err := apiServer.Listen()
+			Expect(err).ToNot(HaveOccurred())
+
+			done := make(chan struct{})
+			go func() {
+				defer GinkgoRecover()
+				apiClient := client.New(connection.New("unix", socketPath))
+				Expect(apiClient.Ping()).Should(Succeed())
+				close(done)
+			}()
+			Consistently(done, "200ms").ShouldNot(BeClosed())
+
+			go func() {
+				defer GinkgoRecover()
+				err = apiServer.Serve(listener)
+				Expect(err).ToNot(HaveOccurred())
+			}()
+
+			Eventually(done, "200ms").Should(BeClosed())
+		})
+	})
+
 	Describe("using the deprecated Start() method", func() {
 		It("starts the backend", func() {
 			var err error

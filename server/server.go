@@ -148,7 +148,7 @@ func New(
 }
 
 func (s *GardenServer) ListenAndServe() error {
-	listener, err := s.listen()
+	listener, err := s.Listen()
 	if err != nil {
 		return err
 	}
@@ -181,7 +181,7 @@ func (s *GardenServer) Start() error {
 		return err
 	}
 
-	listener, err := s.listen()
+	listener, err := s.Listen()
 	if err != nil {
 		return err
 	}
@@ -206,7 +206,7 @@ func (s *GardenServer) SetupBomberman() error {
 	return nil
 }
 
-func (s *GardenServer) listen() (net.Listener, error) {
+func (s *GardenServer) Listen() (net.Listener, error) {
 	if err := s.removeExistingSocket(); err != nil {
 		return nil, err
 	}
