@@ -17,6 +17,30 @@ import (
 logger := lager.NewLogger("my-app")
 ```
 
+### Lager and [`log/slog`](https://pkg.go.dev/log/slog)
+Lager was written long before Go 1.21 introduced structured logging in the standard library.
+There are some wrapper functions for interoperability between Lager and `slog`,
+which are only available when using Go 1.21 and higher.
+
+Lager can be used as an [`slog.Handler`](https://pkg.go.dev/log/slog#Handler) using the `NewHandler()` function:
+
+```go
+func codeThatAcceptsSlog(l *slog.Logger) { ... }
+
+lagerLogger := lager.NewLogger("my-lager-logger")
+
+codeThatAcceptsSlog(slog.New(lager.NewHandler(lagerLogger)))
+```
+
+An `slog.Logger` can be used as a Lager `Sink` using the `NewSlogSink()` function:
+```go
+var *slog.Logger l = codeThatReturnsSlog()
+
+lagerLogger := lager.NewLogger("my-lager-logger")
+
+lagerLogger.RegisterSink(lager.NewSlogSink(l))
+```
+
 ### Sinks
 
 Lager can write logs to a variety of destinations. You can specify the destinations
