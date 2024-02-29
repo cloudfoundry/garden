@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
@@ -73,7 +72,7 @@ var _ = Describe("When connecting directly to the server", func() {
 			response, err := client.Do(request)
 			Expect(err).NotTo(HaveOccurred())
 
-			body, err := ioutil.ReadAll(response.Body)
+			body, err := io.ReadAll(response.Body)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(string(body)).To(ContainSubstring("some-handle"))
 			Expect(response.StatusCode).To(Equal(http.StatusOK))
@@ -104,7 +103,7 @@ var _ = Describe("When a client connects", func() {
 		logger.RegisterSink(sink)
 
 		var err error
-		tmpdir, err = ioutil.TempDir(os.TempDir(), "api-server-test")
+		tmpdir, err = os.MkdirTemp(os.TempDir(), "api-server-test")
 		Expect(err).ToNot(HaveOccurred())
 
 		socketPath = path.Join(tmpdir, "api.sock")
@@ -1020,7 +1019,7 @@ var _ = Describe("When a client connects", func() {
 				fakeContainer.StreamInStub = func(spec garden.StreamInSpec) error {
 					Expect(spec.Path).To(Equal("/dst/path"))
 					Expect(spec.User).To(Equal("frank"))
-					Expect(ioutil.ReadAll(spec.TarStream)).To(Equal([]byte("chunk-1;chunk-2;chunk-3;")))
+					Expect(io.ReadAll(spec.TarStream)).To(Equal([]byte("chunk-1;chunk-2;chunk-3;")))
 					return nil
 				}
 
@@ -1055,7 +1054,7 @@ var _ = Describe("When a client connects", func() {
 			var streamOut io.ReadCloser
 
 			BeforeEach(func() {
-				streamOut = ioutil.NopCloser(bytes.NewBuffer([]byte("hello-world!")))
+				streamOut = io.NopCloser(bytes.NewBuffer([]byte("hello-world!")))
 			})
 
 			JustBeforeEach(func() {
@@ -1067,7 +1066,7 @@ var _ = Describe("When a client connects", func() {
 				Expect(err).ToNot(HaveOccurred())
 				Expect(reader).ToNot(BeZero())
 
-				streamedContent, err := ioutil.ReadAll(reader)
+				streamedContent, err := io.ReadAll(reader)
 				Expect(err).ToNot(HaveOccurred())
 
 				Expect(string(streamedContent)).To(Equal("hello-world!"))
@@ -1108,7 +1107,7 @@ var _ = Describe("When a client connects", func() {
 				reader, err := container.StreamOut(garden.StreamOutSpec{User: "frank", Path: "/src/path"})
 				Expect(err).ToNot(HaveOccurred())
 
-				_, err = ioutil.ReadAll(reader)
+				_, err = io.ReadAll(reader)
 				Expect(err).ToNot(HaveOccurred())
 			})
 
@@ -1771,7 +1770,7 @@ var _ = Describe("When a client connects", func() {
 							_, err := fmt.Fprintf(io.Stdout, "stdout data")
 							Expect(err).ToNot(HaveOccurred())
 
-							in, err := ioutil.ReadAll(io.Stdin)
+							in, err := io.ReadAll(io.Stdin)
 							Expect(err).ToNot(HaveOccurred())
 
 							_, err = fmt.Fprintf(io.Stdout, "mirrored %s", string(in))
@@ -1947,7 +1946,7 @@ var _ = Describe("When a client connects", func() {
 							_, err := fmt.Fprintf(io.Stdout, "stdout data")
 							Expect(err).ToNot(HaveOccurred())
 
-							in, err := ioutil.ReadAll(io.Stdin)
+							in, err := io.ReadAll(io.Stdin)
 							Expect(err).ToNot(HaveOccurred())
 
 							_, err = fmt.Fprintf(io.Stdout, "mirrored %s", string(in))
@@ -2085,7 +2084,7 @@ var _ = Describe("When a client connects", func() {
 
 					readExited := make(chan struct{})
 					go func() {
-						_, err = ioutil.ReadAll(processIO.Stdin)
+						_, err = io.ReadAll(processIO.Stdin)
 						close(readExited)
 					}()
 

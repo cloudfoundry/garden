@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"net/url"
@@ -848,7 +847,7 @@ var _ = Describe("Connection", func() {
 					ghttp.CombineHandlers(
 						ghttp.VerifyRequest("PUT", "/containers/foo-handle/files", "user=alice&destination=%2Fbar"),
 						func(w http.ResponseWriter, r *http.Request) {
-							body, err := ioutil.ReadAll(r.Body)
+							body, err := io.ReadAll(r.Body)
 							Expect(err).ToNot(HaveOccurred())
 
 							Expect(string(body)).To(Equal("chunk-1chunk-2"))
@@ -925,7 +924,7 @@ var _ = Describe("Connection", func() {
 				reader, err := connection.StreamOut("foo-handle", garden.StreamOutSpec{User: "frank", Path: "/bar"})
 				Expect(err).ToNot(HaveOccurred())
 
-				readBytes, err := ioutil.ReadAll(reader)
+				readBytes, err := io.ReadAll(reader)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(readBytes).To(Equal([]byte("hello-world!")))
 
@@ -949,7 +948,7 @@ var _ = Describe("Connection", func() {
 				reader, err := connection.StreamOut("foo-handle", garden.StreamOutSpec{User: "deandra", Path: "/bar"})
 				Expect(err).ToNot(HaveOccurred())
 
-				_, err = ioutil.ReadAll(reader)
+				_, err = io.ReadAll(reader)
 				reader.Close()
 				Expect(err).To(HaveOccurred())
 			})
