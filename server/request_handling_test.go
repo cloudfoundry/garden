@@ -1759,7 +1759,7 @@ var _ = Describe("When a client connects", func() {
 		Describe("attaching", func() {
 			Context("when attaching succeeds", func() {
 				BeforeEach(func() {
-					fakeContainer.AttachStub = func(processID string, io garden.ProcessIO) (garden.Process, error) {
+					fakeContainer.AttachStub = func(processID string, pio garden.ProcessIO) (garden.Process, error) {
 						writing := new(sync.WaitGroup)
 						writing.Add(1)
 
@@ -1767,16 +1767,16 @@ var _ = Describe("When a client connects", func() {
 							defer writing.Done()
 							defer GinkgoRecover()
 
-							_, err := fmt.Fprintf(io.Stdout, "stdout data")
+							_, err := fmt.Fprintf(pio.Stdout, "stdout data")
 							Expect(err).ToNot(HaveOccurred())
 
-							in, err := io.ReadAll(io.Stdin)
+							in, err := io.ReadAll(pio.Stdin)
 							Expect(err).ToNot(HaveOccurred())
 
-							_, err = fmt.Fprintf(io.Stdout, "mirrored %s", string(in))
+							_, err = fmt.Fprintf(pio.Stdout, "mirrored %s", string(in))
 							Expect(err).ToNot(HaveOccurred())
 
-							_, err = fmt.Fprintf(io.Stderr, "stderr data")
+							_, err = fmt.Fprintf(pio.Stderr, "stderr data")
 							Expect(err).ToNot(HaveOccurred())
 						}()
 
@@ -1935,7 +1935,7 @@ var _ = Describe("When a client connects", func() {
 
 			Context("when running succeeds", func() {
 				BeforeEach(func() {
-					fakeContainer.RunStub = func(spec garden.ProcessSpec, io garden.ProcessIO) (garden.Process, error) {
+					fakeContainer.RunStub = func(spec garden.ProcessSpec, pio garden.ProcessIO) (garden.Process, error) {
 						writing := new(sync.WaitGroup)
 						writing.Add(1)
 
@@ -1943,16 +1943,16 @@ var _ = Describe("When a client connects", func() {
 							defer writing.Done()
 							defer GinkgoRecover()
 
-							_, err := fmt.Fprintf(io.Stdout, "stdout data")
+							_, err := fmt.Fprintf(pio.Stdout, "stdout data")
 							Expect(err).ToNot(HaveOccurred())
 
-							in, err := io.ReadAll(io.Stdin)
+							in, err := io.ReadAll(pio.Stdin)
 							Expect(err).ToNot(HaveOccurred())
 
-							_, err = fmt.Fprintf(io.Stdout, "mirrored %s", string(in))
+							_, err = fmt.Fprintf(pio.Stdout, "mirrored %s", string(in))
 							Expect(err).ToNot(HaveOccurred())
 
-							_, err = fmt.Fprintf(io.Stderr, "stderr data")
+							_, err = fmt.Fprintf(pio.Stderr, "stderr data")
 							Expect(err).ToNot(HaveOccurred())
 						}()
 
