@@ -2,7 +2,6 @@ package server_test
 
 import (
 	"errors"
-	"io/ioutil"
 	"os"
 	"path"
 	"time"
@@ -36,7 +35,7 @@ var _ = Describe("The Garden server", func() {
 	Context("when passed a socket", func() {
 		It("listens on the given socket path and chmods it to 0777", func() {
 			var err error
-			tmpdir, err = ioutil.TempDir(os.TempDir(), "api-server-test")
+			tmpdir, err = os.MkdirTemp(os.TempDir(), "api-server-test")
 			Ω(err).ShouldNot(HaveOccurred())
 
 			socketPath := path.Join(tmpdir, "api.sock")
@@ -52,7 +51,7 @@ var _ = Describe("The Garden server", func() {
 
 		It("listens on the given socket path, recreating it if it's already present", func() {
 			var err error
-			tmpdir, err = ioutil.TempDir(os.TempDir(), "api-server-test")
+			tmpdir, err = os.MkdirTemp(os.TempDir(), "api-server-test")
 			Ω(err).ShouldNot(HaveOccurred())
 
 			socketPath := path.Join(tmpdir, "api.sock")
@@ -76,7 +75,7 @@ var _ = Describe("The Garden server", func() {
 
 	It("destroys containers that have been idle for their grace time", func() {
 		var err error
-		tmpdir, err = ioutil.TempDir(os.TempDir(), "api-server-test")
+		tmpdir, err = os.MkdirTemp(os.TempDir(), "api-server-test")
 		Ω(err).ShouldNot(HaveOccurred())
 
 		socketPath := path.Join(tmpdir, "api.sock")
@@ -106,7 +105,7 @@ var _ = Describe("The Garden server", func() {
 		)
 		BeforeEach(func() {
 			var err error
-			tmpdir, err = ioutil.TempDir(os.TempDir(), "api-server-test")
+			tmpdir, err = os.MkdirTemp(os.TempDir(), "api-server-test")
 			Expect(err).ShouldNot(HaveOccurred())
 
 			socketPath = path.Join(tmpdir, "api.sock")
@@ -155,7 +154,7 @@ var _ = Describe("The Garden server", func() {
 	Describe("using the deprecated Start() method", func() {
 		It("starts the backend", func() {
 			var err error
-			tmpdir, err = ioutil.TempDir(os.TempDir(), "api-server-test")
+			tmpdir, err = os.MkdirTemp(os.TempDir(), "api-server-test")
 			Ω(err).ShouldNot(HaveOccurred())
 
 			socketPath := path.Join(tmpdir, "api.sock")
@@ -174,7 +173,7 @@ var _ = Describe("The Garden server", func() {
 
 			It("fails to start", func() {
 				var err error
-				tmpdir, err = ioutil.TempDir(os.TempDir(), "api-server-test")
+				tmpdir, err = os.MkdirTemp(os.TempDir(), "api-server-test")
 				Ω(err).ShouldNot(HaveOccurred())
 
 				socketPath := path.Join(tmpdir, "api.sock")
@@ -190,7 +189,7 @@ var _ = Describe("The Garden server", func() {
 
 	Context("when listening on the socket fails", func() {
 		It("fails to start", func() {
-			tmpfile, err := ioutil.TempFile(os.TempDir(), "api-server-test")
+			tmpfile, err := os.CreateTemp(os.TempDir(), "api-server-test")
 			Ω(err).ShouldNot(HaveOccurred())
 
 			apiServer := server.New(
@@ -218,7 +217,7 @@ var _ = Describe("The Garden server", func() {
 
 		BeforeEach(func() {
 			var err error
-			tmpdir, err = ioutil.TempDir("", "api-server-test")
+			tmpdir, err = os.MkdirTemp("", "api-server-test")
 			Ω(err).ShouldNot(HaveOccurred())
 
 			socketPath = path.Join(tmpdir, "api.sock")
