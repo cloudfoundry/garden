@@ -82,6 +82,7 @@ func (h *hijackable) Hijack(handler string, body io.Reader, params rata.Params, 
 		return nil, nil, err
 	}
 
+	//lint:ignore SA1019 - there isn't really a way to hijack http responses client-side aside from the deprecated httputil function
 	client := httputil.NewClientConn(conn, nil)
 
 	httpResp, err := client.Do(request)
