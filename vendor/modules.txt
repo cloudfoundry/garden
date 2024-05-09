@@ -23,7 +23,7 @@ github.com/google/go-cmp/cmp/internal/diff
 github.com/google/go-cmp/cmp/internal/flags
 github.com/google/go-cmp/cmp/internal/function
 github.com/google/go-cmp/cmp/internal/value
-# github.com/google/pprof v0.0.0-20240508145209-1db217f89380
+# github.com/google/pprof v0.0.0-20240509144519-723abb6459b7
 ## explicit; go 1.19
 github.com/google/pprof/profile
 # github.com/kr/pretty v0.1.0
