@@ -4,7 +4,7 @@ go 1.20
 
 require (
 	code.cloudfoundry.org/lager/v3 v3.0.3
-	github.com/onsi/ginkgo/v2 v2.19.0
+	github.com/onsi/ginkgo/v2 v2.19.1
 	github.com/onsi/gomega v1.34.0
 	github.com/tedsuo/rata v1.0.0
 )
