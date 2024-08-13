@@ -13,21 +13,20 @@ type redactingSink struct {
 // data field.  The old behavior of NewRedactingWriterSink (which was removed
 // in v2) can be obtained using the following code:
 //
-//    redactingSink, err := NewRedactingSink(
-//    	NewWriterSink(writer, minLogLevel),
-//    	keyPatterns,
-//    	valuePatterns,
-//    )
+//	redactingSink, err := NewRedactingSink(
+//		NewWriterSink(writer, minLogLevel),
+//		keyPatterns,
+//		valuePatterns,
+//	)
 //
-//    if err != nil {
-//    	return nil, err
-//    }
+//	if err != nil {
+//		return nil, err
+//	}
 //
-//    return NewReconfigurableSink(
-//    	redactingSink,
-//    	minLogLevel,
-//    ), nil
-//
+//	return NewReconfigurableSink(
+//		redactingSink,
+//		minLogLevel,
+//	), nil
 func NewRedactingSink(sink Sink, keyPatterns []string, valuePatterns []string) (Sink, error) {
 	jsonRedacter, err := NewJSONRedacter(keyPatterns, valuePatterns)
 	if err != nil {

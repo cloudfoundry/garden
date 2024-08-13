@@ -10,11 +10,12 @@ type truncatingSink struct {
 // NewTruncatingSink returns a sink that truncates strings longer than the max
 // data string length
 // Example:
-//   writerSink := lager.NewWriterSink(os.Stdout, lager.INFO)
-//   sink := lager.NewTruncatingSink(testSink, 20)
-//   logger := lager.NewLogger("test")
-//   logger.RegisterSink(sink)
-//   logger.Info("message", lager.Data{"A": strings.Repeat("a", 25)})
+//
+//	writerSink := lager.NewWriterSink(os.Stdout, lager.INFO)
+//	sink := lager.NewTruncatingSink(testSink, 20)
+//	logger := lager.NewLogger("test")
+//	logger.RegisterSink(sink)
+//	logger.Info("message", lager.Data{"A": strings.Repeat("a", 25)})
 func NewTruncatingSink(sink Sink, maxDataStringLength int) Sink {
 	return &truncatingSink{
 		sink:                sink,

@@ -7,9 +7,10 @@ import (
 // Value recursively walks through the value provided by `v` and truncates
 // any strings longer than `maxLength`.
 // Example:
-//	 type foobar struct{A string; B string}
-//   truncate.Value(foobar{A:"foo",B:"bar"}, 20) == foobar{A:"foo",B:"bar"}
-//   truncate.Value(foobar{A:strings.Repeat("a", 25),B:"bar"}, 20) == foobar{A:"aaaaaaaa-(truncated)",B:"bar"}
+//
+//		 type foobar struct{A string; B string}
+//	  truncate.Value(foobar{A:"foo",B:"bar"}, 20) == foobar{A:"foo",B:"bar"}
+//	  truncate.Value(foobar{A:strings.Repeat("a", 25),B:"bar"}, 20) == foobar{A:"aaaaaaaa-(truncated)",B:"bar"}
 func Value(v interface{}, maxLength int) interface{} {
 	rv := reflect.ValueOf(v)
 	tv := truncateValue(rv, maxLength)
@@ -158,9 +159,10 @@ const lenTruncated = len(truncated)
 // If the string is shorter than the string "-(truncated)" and the string
 // exceeds `maxLength`, the output will not be truncated.
 // Example:
-//   truncate.String(strings.Repeat("a", 25), 20) == "aaaaaaaa-(truncated)"
-//   truncate.String("foobar", 20) == "foobar"
-//   truncate.String("foobar", 5) == "foobar"
+//
+//	truncate.String(strings.Repeat("a", 25), 20) == "aaaaaaaa-(truncated)"
+//	truncate.String("foobar", 20) == "foobar"
+//	truncate.String("foobar", 5) == "foobar"
 func String(s string, maxLength int) string {
 	if maxLength <= 0 || len(s) < lenTruncated || len(s) <= maxLength {
 		return s
