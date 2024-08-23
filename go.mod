@@ -3,7 +3,7 @@ module code.cloudfoundry.org/garden
 go 1.20
 
 require (
-	code.cloudfoundry.org/lager/v3 v3.2.0
+	code.cloudfoundry.org/lager/v3 v3.3.0
 	github.com/onsi/ginkgo/v2 v2.20.1
 	github.com/onsi/gomega v1.34.1
 	github.com/tedsuo/rata v1.0.0
@@ -19,7 +19,7 @@ require (
 	github.com/kr/pretty v0.1.0 // indirect
 	github.com/onsi/ginkgo v1.16.5 // indirect
 	github.com/openzipkin/zipkin-go v0.4.3 // indirect
-	golang.org/x/exp v0.0.0-20240822175202-778ce7bba035 // indirect
+	golang.org/x/exp v0.0.0-20240823005443-9b4947da3948 // indirect
 	golang.org/x/net v0.28.0 // indirect
 	golang.org/x/sys v0.24.0 // indirect
 	golang.org/x/text v0.17.0 // indirect
