@@ -30,8 +30,8 @@ github.com/google/pprof/profile
 ## explicit
 # github.com/onsi/ginkgo v1.16.5
 ## explicit; go 1.16
-# github.com/onsi/ginkgo/v2 v2.20.1
-## explicit; go 1.20
+# github.com/onsi/ginkgo/v2 v2.20.2
+## explicit; go 1.22
 github.com/onsi/ginkgo/v2
 github.com/onsi/ginkgo/v2/config
 github.com/onsi/ginkgo/v2/formatter
@@ -52,8 +52,8 @@ github.com/onsi/ginkgo/v2/internal/parallel_support
 github.com/onsi/ginkgo/v2/internal/testingtproxy
 github.com/onsi/ginkgo/v2/reporters
 github.com/onsi/ginkgo/v2/types
-# github.com/onsi/gomega v1.34.1
-## explicit; go 1.20
+# github.com/onsi/gomega v1.34.2
+## explicit; go 1.22
 github.com/onsi/gomega
 github.com/onsi/gomega/format
 github.com/onsi/gomega/gbytes
@@ -73,10 +73,6 @@ github.com/openzipkin/zipkin-go/model
 # github.com/tedsuo/rata v1.0.0
 ## explicit
 github.com/tedsuo/rata
-# golang.org/x/exp v0.0.0-20240823005443-9b4947da3948
-## explicit; go 1.20
-golang.org/x/exp/constraints
-golang.org/x/exp/slices
 # golang.org/x/net v0.28.0
 ## explicit; go 1.18
 golang.org/x/net/context
