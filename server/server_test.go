@@ -76,7 +76,7 @@ var _ = Describe("The Garden server", func() {
 		})
 	})
 
-	FIt("closes requests when their header write exceeds readHeaderTimeout", func() {
+	It("closes requests when their header write exceeds readHeaderTimeout", func() {
 		var err error
 		tmpdir, err = os.MkdirTemp(os.TempDir(), "api-server-test")
 		Ω(err).ShouldNot(HaveOccurred())
