@@ -1,7 +1,10 @@
 package server_test
 
 import (
+	"bufio"
 	"errors"
+	"fmt"
+	"net"
 	"os"
 	"path"
 	"time"
@@ -40,7 +43,7 @@ var _ = Describe("The Garden server", func() {
 
 			socketPath := path.Join(tmpdir, "api.sock")
 
-			apiServer := server.New("unix", socketPath, 0, new(fakes.FakeBackend), logger)
+			apiServer := server.New("unix", socketPath, 0, 0, new(fakes.FakeBackend), logger)
 			listenAndServe(apiServer, "unix", socketPath)
 
 			stat, err := os.Stat(socketPath)
@@ -61,16 +64,55 @@ var _ = Describe("The Garden server", func() {
 			socket.WriteString("oops")
 			socket.Close()
 
-			apiServer := server.New("unix", socketPath, 0, new(fakes.FakeBackend), logger)
+			apiServer := server.New("unix", socketPath, 0, 0, new(fakes.FakeBackend), logger)
 			listenAndServe(apiServer, "unix", socketPath)
 		})
 	})
 
 	Context("when passed a tcp addr", func() {
 		It("listens on the given addr", func() {
-			apiServer := server.New("tcp", ":60123", 0, new(fakes.FakeBackend), logger)
+			apiServer := server.New("tcp", ":60123", 0, 0, new(fakes.FakeBackend), logger)
 			listenAndServe(apiServer, "tcp", "127.0.0.1:60123")
 		})
+	})
+
+	It("closes requests when their header write exceeds readHeaderTimeout", func() {
+		var err error
+		tmpdir, err = os.MkdirTemp(os.TempDir(), "api-server-test")
+		Ω(err).ShouldNot(HaveOccurred())
+
+		socketPath := path.Join(tmpdir, "api.sock")
+
+		apiServer := server.New("unix", socketPath, 0, 200*time.Millisecond, new(fakes.FakeBackend), logger)
+		listenAndServe(apiServer, "unix", socketPath)
+
+		conn, err := net.Dial("unix", socketPath)
+		Expect(err).NotTo(HaveOccurred())
+		defer conn.Close()
+
+		writer := bufio.NewWriter(conn)
+
+		fmt.Fprintf(writer, "GET /ping HTTP/1.1\r\n")
+
+		// started writing headers
+		fmt.Fprintf(writer, "Host: localhost\r\n")
+		writer.Flush()
+
+		time.Sleep(300 * time.Millisecond)
+
+		fmt.Fprintf(writer, "User-Agent: CustomClient/1.0\r\n")
+		writer.Flush()
+
+		time.Sleep(300 * time.Millisecond)
+
+		// done
+		fmt.Fprintf(writer, "\r\n")
+		writer.Flush()
+
+		resp := bufio.NewReader(conn)
+		_, err = resp.ReadString('\n')
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(Equal("EOF"))
 	})
 
 	It("destroys containers that have been idle for their grace time", func() {
@@ -87,7 +129,7 @@ var _ = Describe("The Garden server", func() {
 		fakeBackend.ContainersReturns([]garden.Container{doomedContainer}, nil)
 		fakeBackend.GraceTimeReturns(100 * time.Millisecond)
 
-		apiServer := server.New("unix", socketPath, 0, fakeBackend, logger)
+		apiServer := server.New("unix", socketPath, 0, 0, fakeBackend, logger)
 
 		before := time.Now()
 
@@ -112,7 +154,7 @@ var _ = Describe("The Garden server", func() {
 
 			fakeBackend := new(fakes.FakeBackend)
 
-			apiServer = server.New("unix", socketPath, 0, fakeBackend, logger)
+			apiServer = server.New("unix", socketPath, 0, 0, fakeBackend, logger)
 		})
 		It("listens on the requested backend", func() {
 			listener, err := apiServer.Listen()
@@ -161,7 +203,7 @@ var _ = Describe("The Garden server", func() {
 
 			fakeBackend := new(fakes.FakeBackend)
 
-			apiServer := server.New("unix", socketPath, 0, fakeBackend, logger)
+			apiServer := server.New("unix", socketPath, 0, 0, fakeBackend, logger)
 			// listenAndServe(apiServer, "unix", socketPath)
 			Expect(apiServer.Start()).To(Succeed())
 
@@ -181,7 +223,7 @@ var _ = Describe("The Garden server", func() {
 				fakeBackend := new(fakes.FakeBackend)
 				fakeBackend.StartReturns(disaster)
 
-				apiServer := server.New("unix", socketPath, 0, fakeBackend, logger)
+				apiServer := server.New("unix", socketPath, 0, 0, fakeBackend, logger)
 				Expect(apiServer.Start()).To(MatchError(disaster))
 			})
 		})
@@ -196,6 +238,7 @@ var _ = Describe("The Garden server", func() {
 				"unix",
 				// weird scenario: /foo/X/api.sock with X being a file
 				path.Join(tmpfile.Name(), "api.sock"),
+				0,
 				0,
 				new(fakes.FakeBackend),
 				logger,
@@ -229,7 +272,7 @@ var _ = Describe("The Garden server", func() {
 		})
 
 		JustBeforeEach(func() {
-			apiServer = server.New("unix", socketPath, 0, serverBackend, logger)
+			apiServer = server.New("unix", socketPath, 0, 0, serverBackend, logger)
 			listenAndServe(apiServer, "unix", socketPath)
 		})
 
