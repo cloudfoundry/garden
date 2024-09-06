@@ -25,7 +25,6 @@ type GardenServer struct {
 	listenAddr    string
 
 	containerGraceTime time.Duration
-	readHeaderTimeout  time.Duration
 	backend            garden.Backend
 
 	listener net.Listener
