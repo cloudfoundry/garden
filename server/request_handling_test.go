@@ -44,6 +44,7 @@ var _ = Describe("When connecting directly to the server", func() {
 		logger.RegisterSink(sink)
 		fakeBackend = new(fakes.FakeBackend)
 		serverContainerGraceTime = 42 * time.Second
+		readHeaderTimeout := 2 * time.Second
 		client = &http.Client{}
 
 		fakeContainer = new(fakes.FakeContainer)
@@ -55,6 +56,7 @@ var _ = Describe("When connecting directly to the server", func() {
 			"tcp",
 			fmt.Sprintf(":%d", port),
 			serverContainerGraceTime,
+			readHeaderTimeout,
 			fakeBackend,
 			logger,
 		)
@@ -109,11 +111,13 @@ var _ = Describe("When a client connects", func() {
 		socketPath = path.Join(tmpdir, "api.sock")
 		serverBackend = new(fakes.FakeBackend)
 		serverContainerGraceTime = 42 * time.Second
+		readHeaderTimeout := 2 * time.Second
 
 		apiServer = server.New(
 			"unix",
 			socketPath,
 			serverContainerGraceTime,
+			readHeaderTimeout,
 			serverBackend,
 			logger,
 		)

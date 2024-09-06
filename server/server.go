@@ -25,6 +25,7 @@ type GardenServer struct {
 	listenAddr    string
 
 	containerGraceTime time.Duration
+	readHeaderTimeout  time.Duration
 	backend            garden.Backend
 
 	listener net.Listener
@@ -48,6 +49,7 @@ type GardenServer struct {
 func New(
 	listenNetwork, listenAddr string,
 	containerGraceTime time.Duration,
+	readHeaderTimeout time.Duration,
 	backend garden.Backend,
 	logger lager.Logger,
 ) *GardenServer {
@@ -115,6 +117,8 @@ func New(
 		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			mux.ServeHTTP(w, r)
 		}),
+
+		ReadHeaderTimeout: readHeaderTimeout,
 
 		ConnState: func(conn net.Conn, state http.ConnState) {
 			switch state {
