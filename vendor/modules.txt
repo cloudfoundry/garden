@@ -1,5 +1,5 @@
-# code.cloudfoundry.org/lager/v3 v3.3.0
-## explicit; go 1.20
+# code.cloudfoundry.org/lager/v3 v3.4.0
+## explicit; go 1.22
 code.cloudfoundry.org/lager/v3
 code.cloudfoundry.org/lager/v3/internal/truncate
 code.cloudfoundry.org/lager/v3/lagerctx
@@ -101,8 +101,8 @@ golang.org/x/text/internal/utf8internal
 golang.org/x/text/language
 golang.org/x/text/runes
 golang.org/x/text/transform
-# golang.org/x/tools v0.24.0
-## explicit; go 1.19
+# golang.org/x/tools v0.25.0
+## explicit; go 1.22.0
 golang.org/x/tools/cover
 golang.org/x/tools/go/ast/inspector
 # google.golang.org/protobuf v1.34.2
