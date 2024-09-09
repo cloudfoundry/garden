@@ -1,5 +1,5 @@
-# code.cloudfoundry.org/lager/v3 v3.4.0
-## explicit; go 1.22
+# code.cloudfoundry.org/lager/v3 v3.5.0
+## explicit; go 1.22.0
 code.cloudfoundry.org/lager/v3
 code.cloudfoundry.org/lager/v3/internal/truncate
 code.cloudfoundry.org/lager/v3/lagerctx
