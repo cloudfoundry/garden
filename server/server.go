@@ -225,6 +225,7 @@ func (s *GardenServer) Listen() (net.Listener, error) {
 		// deployments, garden server and diego rep always run as different users.
 		// https://www.pivotaltracker.com/story/show/151245015 addresses this
 		// issue.
+		// #nosec G302
 		if err := os.Chmod(s.listenAddr, 0777); err != nil {
 			return nil, err
 		}
