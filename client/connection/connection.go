@@ -248,7 +248,10 @@ func (c *connection) streamProcess(handle string, processIO garden.ProcessIO, hi
 		if err != nil {
 			werr := fmt.Errorf("connection: failed to hijack stream %s: %s", routes.Stdout, err)
 			process.exited(0, werr)
-			hijackedConn.Close()
+			err := hijackedConn.Close()
+			if err != nil {
+				c.log.Debug("failed-to-close-hijacked-connection", lager.Data{"error": err})
+			}
 			return process, nil
 		}
 		streamHandler.streamOut(processIO.Stdout, stdout)
@@ -264,7 +267,10 @@ func (c *connection) streamProcess(handle string, processIO garden.ProcessIO, hi
 		if err != nil {
 			werr := fmt.Errorf("connection: failed to hijack stream %s: %s", routes.Stderr, err)
 			process.exited(0, werr)
-			hijackedConn.Close()
+			err := hijackedConn.Close()
+			if err != nil {
+				c.log.Debug("failed-to-close-hijacked-connection", lager.Data{"error": err})
+			}
 			return process, nil
 		}
 		streamHandler.streamOut(processIO.Stderr, stderr)

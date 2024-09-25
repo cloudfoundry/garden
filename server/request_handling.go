@@ -713,7 +713,10 @@ func (s *GardenServer) handleSetGraceTime(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	container.SetGraceTime(graceTime)
+	err = container.SetGraceTime(graceTime)
+	if err != nil {
+		s.logger.Debug("failed-to-set-grace-time", lager.Data{"error": err})
+	}
 
 	s.bomberman.Reset(container)
 
@@ -767,7 +770,10 @@ func (s *GardenServer) handleRun(w http.ResponseWriter, r *http.Request) {
 	process, err := container.Run(request, processIO)
 	if err != nil {
 		s.writeError(w, err, hLog)
-		stdinW.Close()
+		err := stdinW.Close()
+		if err != nil {
+			s.logger.Debug("failed-to-close-stdin-writer", lager.Data{"error": err})
+		}
 		return
 	}
 	hLog.Info("spawned", lager.Data{
@@ -784,16 +790,27 @@ func (s *GardenServer) handleRun(w http.ResponseWriter, r *http.Request) {
 	conn, br, err := w.(http.Hijacker).Hijack()
 	if err != nil {
 		s.writeError(w, err, hLog)
-		stdinW.Close()
+		err := stdinW.Close()
+		if err != nil {
+			s.logger.Debug("failed-to-close-stdin-writer", lager.Data{"error": err})
+		}
 		return
 	}
 
-	defer conn.Close()
+	defer func() {
+		err := conn.Close()
+		if err != nil {
+			s.logger.Debug("failed-to-close-connection", lager.Data{"error": err, "remote_addr": conn.RemoteAddr()})
+		}
+	}()
 
-	transport.WriteMessage(conn, &transport.ProcessPayload{
+	err = transport.WriteMessage(conn, &transport.ProcessPayload{
 		ProcessID: process.ID(),
 		StreamID:  string(streamID),
 	})
+	if err != nil {
+		s.logger.Debug("failed-to-close-transport", lager.Data{"error": err})
+	}
 
 	connCloseCh := make(chan struct{}, 1)
 
@@ -838,7 +855,10 @@ func (s *GardenServer) handleAttach(w http.ResponseWriter, r *http.Request) {
 	process, err := container.Attach(processID, processIO)
 	if err != nil {
 		s.writeError(w, err, hLog)
-		stdinW.Close()
+		err := stdinW.Close()
+		if err != nil {
+			s.logger.Debug("failed-to-close-stdin-writer", lager.Data{"error": err})
+		}
 		return
 	}
 
@@ -855,16 +875,27 @@ func (s *GardenServer) handleAttach(w http.ResponseWriter, r *http.Request) {
 	conn, br, err := w.(http.Hijacker).Hijack()
 	if err != nil {
 		s.writeError(w, err, hLog)
-		stdinW.Close()
+		err := stdinW.Close()
+		if err != nil {
+			s.logger.Debug("failed-to-close-stdin-writer", lager.Data{"error": err})
+		}
 		return
 	}
 
-	defer conn.Close()
+	defer func() {
+		err := conn.Close()
+		if err != nil {
+			s.logger.Debug("failed-to-close-connection", lager.Data{"error": err, "remote_addr": conn.RemoteAddr()})
+		}
+	}()
 
-	transport.WriteMessage(conn, &transport.ProcessPayload{
+	err = transport.WriteMessage(conn, &transport.ProcessPayload{
 		ProcessID: process.ID(),
 		StreamID:  string(streamID),
 	})
+	if err != nil {
+		s.logger.Debug("failed-to-write-to-transport", lager.Data{"error": err})
+	}
 
 	connCloseCh := make(chan struct{}, 1)
 
@@ -957,11 +988,13 @@ func (s *GardenServer) writeError(w http.ResponseWriter, err error, logger lager
 	merr := &garden.Error{Err: err}
 
 	w.WriteHeader(merr.StatusCode())
+	// #nosec G104 - ignore errors when writing HTTP responses so we don't spam our logs during a DoS
 	json.NewEncoder(w).Encode(merr)
 }
 
 func (s *GardenServer) writeResponse(w http.ResponseWriter, msg interface{}) {
 	w.Header().Set("Content-Type", "application/json")
+	// #nosec G104 - ignore errors when writing HTTP responses so we don't spam our logs during a DoS
 	transport.WriteMessage(w, msg)
 }
 
@@ -987,11 +1020,17 @@ func (s *GardenServer) streamInput(decoder *json.Decoder, in *io.PipeWriter, pro
 
 		switch {
 		case payload.TTY != nil:
-			process.SetTTY(*payload.TTY)
+			err := process.SetTTY(*payload.TTY)
+			if err != nil {
+				s.logger.Debug("failed-to-set-tty", lager.Data{"error": err})
+			}
 
 		case payload.Source != nil:
 			if payload.Data == nil {
-				in.Close()
+				err := in.Close()
+				if err != nil {
+					s.logger.Debug("failed-to-close-pipe", lager.Data{"error": err})
+				}
 				return
 			} else {
 				_, err := in.Write([]byte(*payload.Data))
@@ -1016,13 +1055,19 @@ func (s *GardenServer) streamInput(decoder *json.Decoder, in *io.PipeWriter, pro
 				}
 			default:
 				s.logger.Error("stream-input-unknown-process-payload-signal", nil, lager.Data{"payload": payload})
-				in.Close()
+				err := in.Close()
+				if err != nil {
+					s.logger.Debug("failed-to-close-pipe", lager.Data{"error": err})
+				}
 				return
 			}
 
 		default:
 			s.logger.Error("stream-input-unknown-process-payload", nil, lager.Data{"payload": payload})
-			in.Close()
+			err := in.Close()
+			if err != nil {
+				s.logger.Debug("failed-to-close-pipe", lager.Data{"error": err})
+			}
 			return
 		}
 	}
@@ -1054,22 +1099,34 @@ func (s *GardenServer) streamProcess(logger lager.Logger, conn net.Conn, process
 		select {
 
 		case status := <-statusCh:
-			transport.WriteMessage(conn, &transport.ProcessPayload{
+			err := transport.WriteMessage(conn, &transport.ProcessPayload{
 				ProcessID:  process.ID(),
 				ExitStatus: &status,
 			})
+			if err != nil {
+				logger.Debug("failed-to-write-status-to-transport", lager.Data{"error": err})
+			}
 
-			stdinPipe.Close()
+			err = stdinPipe.Close()
+			if err != nil {
+				logger.Debug("failed-to-close-stdin", lager.Data{"error": err})
+			}
 			return
 
 		case err := <-errCh:
 			e := err.Error()
-			transport.WriteMessage(conn, &transport.ProcessPayload{
+			err = transport.WriteMessage(conn, &transport.ProcessPayload{
 				ProcessID: process.ID(),
 				Error:     &e,
 			})
+			if err != nil {
+				logger.Debug("failed-to-write-error-to-transport", lager.Data{"error": err})
+			}
 
-			stdinPipe.Close()
+			err = stdinPipe.Close()
+			if err != nil {
+				logger.Debug("failed-to-close-stdin", lager.Data{"error": err})
+			}
 			return
 
 		case <-s.stopping:

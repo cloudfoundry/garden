@@ -85,6 +85,7 @@ func drain(ch chan []byte, writer io.Writer) {
 	for {
 		select {
 		case b := <-ch:
+			// #nosec G104 - make a best effort attempt to drain the pipe when closing the stream, but since we only return on errors (without propagating or logging) in the serve() function, do the same here
 			writer.Write(b)
 		default:
 			return
