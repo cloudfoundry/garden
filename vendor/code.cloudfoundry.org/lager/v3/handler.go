@@ -145,7 +145,11 @@ func processAttr(attr slog.Attr, target map[string]any) {
 	case attr.Key == "":
 		// skip
 	default:
-		target[attr.Key] = rv.Any()
+		if rvAsError, isError := rv.Any().(error); isError {
+			target[attr.Key] = rvAsError.Error()
+		} else {
+			target[attr.Key] = rv.Any()
+		}
 	}
 }
 
