@@ -26,6 +26,7 @@ const (
 	ProtocolTCP
 	ProtocolUDP
 	ProtocolICMP
+	ProtocolICMPv6
 )
 
 type IPRange struct {
