@@ -1383,6 +1383,16 @@ var _ = Describe("When a client connects", func() {
 					})
 				})
 
+				Context("as ICMPv6", func() {
+					It("permits ICMPv6 traffic", func() {
+						Expect(container.NetOut(garden.NetOutRule{
+							Protocol: garden.ProtocolICMPv6,
+						})).To(Succeed())
+						rule := fakeContainer.NetOutArgsForCall(0)
+						Expect(rule.Protocol).To(Equal(garden.ProtocolICMPv6))
+					})
+				})
+
 				Context("as ALL", func() {
 					It("permits ALL traffic", func() {
 						Expect(container.NetOut(garden.NetOutRule{
