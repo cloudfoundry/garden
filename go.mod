@@ -17,7 +17,7 @@ require (
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-task/slim-sprig/v3 v3.0.0 // indirect
 	github.com/google/go-cmp v0.6.0 // indirect
-	github.com/google/pprof v0.0.0-20250128161936-077ca0a936bf // indirect
+	github.com/google/pprof v0.0.0-20250202011525-fc3143867406 // indirect
 	github.com/kr/pretty v0.1.0 // indirect
 	github.com/onsi/ginkgo v1.16.5 // indirect
 	github.com/openzipkin/zipkin-go v0.4.3 // indirect
