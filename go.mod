@@ -4,6 +4,8 @@ go 1.22.0
 
 toolchain go1.22.3
 
+replace github.com/opencontainers/runc => github.com/opencontainers/runc v1.2.4
+
 require (
 	code.cloudfoundry.org/lager/v3 v3.27.0
 	github.com/onsi/ginkgo/v2 v2.22.2
