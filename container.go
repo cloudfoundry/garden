@@ -224,6 +224,7 @@ type ContainerInfo struct {
 	Events        []string      // List of events that occurred for the container. It currently includes only "oom" (Out Of Memory) event if it occurred.
 	HostIP        string        // The IP address of the gateway which controls the host side of the container's virtual ethernet pair.
 	ContainerIP   string        // The IP address of the container side of the container's virtual ethernet pair.
+	ContainerIPv6 string        // The IPv6 address of the container side of the container's virtual ethernet pair.
 	ExternalIP    string        //
 	ContainerPath string        // The path to the directory holding the container's files (both its control scripts and filesystem).
 	ProcessIDs    []string      // List of running processes.
