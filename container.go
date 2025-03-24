@@ -283,6 +283,9 @@ type ContainerMemoryStat struct {
 	// A memory usage total which reports memory usage in the same way that limits are enforced.
 	// This value includes memory consumed by nested containers.
 	TotalUsageTowardLimit uint64
+	Anon                  uint64 `json:"anon"`
+	File                  uint64 `json:"file"`
+	SwapCached            uint64 `json:"swapcached"`
 }
 
 type ContainerCPUStat struct {
