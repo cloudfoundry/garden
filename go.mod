@@ -7,7 +7,7 @@ toolchain go1.23.6
 replace github.com/opencontainers/runc => github.com/opencontainers/runc v1.2.4
 
 require (
-	code.cloudfoundry.org/lager/v3 v3.30.0
+	code.cloudfoundry.org/lager/v3 v3.31.0
 	github.com/onsi/ginkgo/v2 v2.23.3
 	github.com/onsi/gomega v1.36.3
 	github.com/tedsuo/rata v1.0.0
