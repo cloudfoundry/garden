@@ -143,4 +143,3 @@ google.golang.org/protobuf/runtime/protoimpl
 # gopkg.in/yaml.v3 v3.0.1
 ## explicit
 gopkg.in/yaml.v3
-# github.com/opencontainers/runc => github.com/opencontainers/runc v1.2.4
