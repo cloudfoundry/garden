@@ -1,4 +1,4 @@
-# code.cloudfoundry.org/lager/v3 v3.37.0
+# code.cloudfoundry.org/lager/v3 v3.38.0
 ## explicit; go 1.23.0
 code.cloudfoundry.org/lager/v3
 code.cloudfoundry.org/lager/v3/internal/truncate
@@ -9,7 +9,7 @@ code.cloudfoundry.org/lager/v3/lagertest
 github.com/bmizerany/pat
 # github.com/fsnotify/fsnotify v1.5.1
 ## explicit; go 1.13
-# github.com/go-logr/logr v1.4.2
+# github.com/go-logr/logr v1.4.3
 ## explicit; go 1.18
 github.com/go-logr/logr
 github.com/go-logr/logr/funcr
@@ -23,7 +23,7 @@ github.com/google/go-cmp/cmp/internal/diff
 github.com/google/go-cmp/cmp/internal/flags
 github.com/google/go-cmp/cmp/internal/function
 github.com/google/go-cmp/cmp/internal/value
-# github.com/google/pprof v0.0.0-20250501235452-c0086092b71a
+# github.com/google/pprof v0.0.0-20250602020802-c6617b811d0e
 ## explicit; go 1.23.0
 github.com/google/pprof/profile
 # github.com/onsi/ginkgo v1.16.5
