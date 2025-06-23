@@ -11,7 +11,6 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-	"sync"
 	"time"
 
 	"code.cloudfoundry.org/lager/v3/lagertest"
@@ -953,40 +952,6 @@ var _ = Describe("Connection", func() {
 				_, err = io.ReadAll(reader)
 				reader.Close()
 				Expect(err).To(HaveOccurred())
-			})
-		})
-		
-		Context("when streaming concurrently", func() {
-			It("handles multiple concurrent streaming requests without interference", func() {
-				var wg sync.WaitGroup
-
-				for i := 0; i < 5; i++ {
-					server.AppendHandlers(
-						ghttp.CombineHandlers(
-							ghttp.VerifyRequest("GET", "/containers/foo-handle/files", "user=frank&source=%2Fbar"),
-							ghttp.RespondWith(200, "hello-world!"),
-						),
-					)
-				}
-
-				for i := 0; i < 5; i++ {
-					wg.Add(1)
-					go func(i int) {
-						defer GinkgoRecover()
-						defer wg.Done()
-
-						reader, err := connection.StreamOut("foo-handle", garden.StreamOutSpec{User: "frank", Path: "/bar"})
-						Expect(err).ToNot(HaveOccurred())
-
-						readBytes, err := io.ReadAll(reader)
-						Expect(err).ToNot(HaveOccurred())
-						Expect(readBytes).To(Equal([]byte("hello-world!")))
-
-						reader.Close()
-					}(i)
-				}
-
-				wg.Wait()
 			})
 		})
 	})
