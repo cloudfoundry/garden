@@ -25,7 +25,7 @@ var _ = Describe("streamHandler (Internal)", func() {
 			sharedWriter := new(bytes.Buffer)
 
 			var testWg sync.WaitGroup
-			numGoroutines := 50
+			numGoroutines := 120
 			dataChunk := "abcdefghijklmnopqrstuvwxyz"
 
 			for i := 0; i < numGoroutines; i++ {
