@@ -7,7 +7,7 @@ toolchain go1.23.6
 require (
 	code.cloudfoundry.org/lager/v3 v3.41.0
 	github.com/onsi/ginkgo/v2 v2.23.4
-	github.com/onsi/gomega v1.37.0
+	github.com/onsi/gomega v1.38.0
 	github.com/tedsuo/rata v1.0.0
 )
 
