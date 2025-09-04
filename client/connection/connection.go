@@ -273,7 +273,7 @@ func (c *connection) streamProcess(handle string, processIO garden.ProcessIO, hi
 			}
 			return process, nil
 		}
-		streamHandler.streamOut(processIO.Stderr, stderr)
+		streamHandler.streamErr(processIO.Stderr, stderr)
 	}
 
 	go func() {
