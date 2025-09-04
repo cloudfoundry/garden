@@ -3,6 +3,7 @@ package connection
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"strings"
 	"sync"
 	"time"
@@ -10,6 +11,7 @@ import (
 	"code.cloudfoundry.org/lager/v3/lagertest"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gbytes"
 )
 
 var _ = Describe("streamHandler (Internal)", func() {
@@ -59,6 +61,28 @@ var _ = Describe("streamHandler (Internal)", func() {
 			}
 
 			Expect(len(finalOutput)).To(Equal(expectedLength), "Final output should have the combined length of all chunks")
+		})
+	})
+
+	Context("when both streamOut and streamErr are called", func() {
+		It("streams messages to both, without delaying either until the other finishes", func() {
+			stdout := gbytes.NewBuffer()
+			stderr := gbytes.NewBuffer()
+
+			toStreamOutReader, toStreamOutWriter := io.Pipe()
+			toStreamErrReader, toStreamErrWriter := io.Pipe()
+
+			sh.streamOut(stdout, toStreamOutReader)
+			sh.streamErr(stderr, toStreamErrReader)
+
+			go toStreamOutWriter.Write([]byte("this is stdout"))
+			go toStreamErrWriter.Write([]byte("this is stderr"))
+
+			Eventually(stdout).Should(gbytes.Say("this is stdout"))
+			Eventually(stderr).Should(gbytes.Say("this is stderr"))
+
+			toStreamOutWriter.Close()
+			toStreamErrWriter.Close()
 		})
 	})
 })
