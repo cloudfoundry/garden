@@ -1,6 +1,6 @@
 module code.cloudfoundry.org/garden
 
-go 1.24.9
+go 1.25.0
 
 require (
 	code.cloudfoundry.org/lager/v3 v3.61.0
@@ -21,7 +21,7 @@ require (
 	github.com/openzipkin/zipkin-go v0.4.3 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/mod v0.33.0 // indirect
-	golang.org/x/net v0.50.0 // indirect
+	golang.org/x/net v0.51.0 // indirect
 	golang.org/x/sync v0.19.0 // indirect
 	golang.org/x/sys v0.41.0 // indirect
 	golang.org/x/text v0.34.0 // indirect
