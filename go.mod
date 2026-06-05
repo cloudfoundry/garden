@@ -3,7 +3,7 @@ module code.cloudfoundry.org/garden
 go 1.25.0
 
 require (
-	code.cloudfoundry.org/lager/v3 v3.71.0
+	code.cloudfoundry.org/lager/v3 v3.72.0
 	github.com/onsi/ginkgo/v2 v2.29.0
 	github.com/onsi/gomega v1.41.0
 	github.com/tedsuo/rata v1.0.0

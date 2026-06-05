@@ -1,5 +1,5 @@
-code.cloudfoundry.org/lager/v3 v3.71.0 h1:Jm2vkbp2daadOwWrDWmdRqFN0lPy6fkEicAEP1lsPZo=
-code.cloudfoundry.org/lager/v3 v3.71.0/go.mod h1:4ZEDdXpEDs64bd5kTxQwQMCNeWSFd+5bnL9UeDObNug=
+code.cloudfoundry.org/lager/v3 v3.72.0 h1:RgVZB62Axo97i+Yf3evoE3Vbu5zohN27ks+q8osqZjI=
+code.cloudfoundry.org/lager/v3 v3.72.0/go.mod h1:4ZEDdXpEDs64bd5kTxQwQMCNeWSFd+5bnL9UeDObNug=
 github.com/Masterminds/semver/v3 v3.5.0 h1:kQceYJfbupGfZOKZQg0kou0DgAKhzDg2NZPAwZ/2OOE=
 github.com/Masterminds/semver/v3 v3.5.0/go.mod h1:4V+yj/TJE1HU9XfppCwVMZq3I84lprf4nC11bSS5beM=
 github.com/bmizerany/pat v0.0.0-20210406213842-e4b6760bdd6f h1:gOO/tNZMjjvTKZWpY7YnXC72ULNLErRtp94LountVE8=
