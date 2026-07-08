@@ -1,4 +1,4 @@
-# code.cloudfoundry.org/lager/v3 v3.76.0
+# code.cloudfoundry.org/lager/v3 v3.77.0
 ## explicit; go 1.25.0
 code.cloudfoundry.org/lager/v3
 code.cloudfoundry.org/lager/v3/internal/truncate
@@ -94,7 +94,7 @@ golang.org/x/sync/errgroup
 # golang.org/x/sys v0.46.0
 ## explicit; go 1.25.0
 golang.org/x/sys/unix
-# golang.org/x/text v0.38.0
+# golang.org/x/text v0.39.0
 ## explicit; go 1.25.0
 golang.org/x/text/encoding
 golang.org/x/text/encoding/charmap
