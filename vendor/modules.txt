@@ -1,4 +1,4 @@
-# code.cloudfoundry.org/lager/v3 v3.78.0
+# code.cloudfoundry.org/lager/v3 v3.79.0
 ## explicit; go 1.25.0
 code.cloudfoundry.org/lager/v3
 code.cloudfoundry.org/lager/v3/internal/truncate
@@ -12,7 +12,7 @@ github.com/Masterminds/semver/v3
 github.com/bmizerany/pat
 # github.com/fsnotify/fsnotify v1.5.1
 ## explicit; go 1.13
-# github.com/go-logr/logr v1.4.3
+# github.com/go-logr/logr v1.4.4
 ## explicit; go 1.18
 github.com/go-logr/logr
 github.com/go-logr/logr/funcr
