@@ -2,6 +2,7 @@ package connection
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -40,7 +41,7 @@ func NewHijackStreamerWithDialer(dialFunc DialerFunc) HijackStreamer {
 		dialer: dialFunc,
 		noKeepaliveClient: &http.Client{
 			Transport: &http.Transport{
-				Dial:              dialFunc,
+				DialContext:       func(ctx context.Context, network, addr string) (net.Conn, error) { return dialFunc(network, addr) },
 				DisableKeepAlives: true,
 			},
 		},
@@ -51,12 +52,13 @@ func NewHijackStreamerWithHeaders(network string, address string, headers http.H
 	reqGen := rata.NewRequestGenerator("http://api", routes.Routes)
 	reqGen.Header = headers
 
+	dialFunc := defaultDialerFunc(network, address)
 	return &hijackable{
 		req:    reqGen,
-		dialer: defaultDialerFunc(network, address),
+		dialer: dialFunc,
 		noKeepaliveClient: &http.Client{
 			Transport: &http.Transport{
-				Dial:              defaultDialerFunc(network, address),
+				DialContext:       func(ctx context.Context, network, addr string) (net.Conn, error) { return dialFunc(network, addr) },
 				DisableKeepAlives: true,
 			},
 		},

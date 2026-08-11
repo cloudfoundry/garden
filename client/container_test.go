@@ -261,7 +261,7 @@ var _ = Describe("Container", func() {
 
 	Describe("CurrentCPULimits", func() {
 		It("sends an empty limit request and returns its response", func() {
-			limitsToReturn := garden.CPULimits{
+			limitsToReturn := garden.CPULimits{ //nolint:SA1019
 				LimitInShares: 1,
 			}
 
