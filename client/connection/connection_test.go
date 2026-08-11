@@ -330,7 +330,7 @@ var _ = Describe("Connection", func() {
 				server.AppendHandlers(
 					ghttp.CombineHandlers(
 						ghttp.VerifyRequest("GET", "/containers/foo/limits/cpu"),
-						ghttp.RespondWith(200, marshalProto(&garden.CPULimits{
+						ghttp.RespondWith(200, marshalProto(&garden.CPULimits{ //nolint:SA1019
 							LimitInShares: 40,
 						})),
 					),
