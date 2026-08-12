@@ -302,7 +302,8 @@ var _ = Describe("When a client connects", func() {
 					Memory: garden.MemoryLimits{
 						LimitInBytes: 1024,
 					},
-					CPU: garden.CPULimits{ //nolint:SA1019
+					CPU: garden.CPULimits{
+						//lint:ignore SA1019 - we still specify this to make the deprecated logic work until we get rid of the code in garden
 						LimitInShares: 5,
 					},
 				},
@@ -342,7 +343,8 @@ var _ = Describe("When a client connects", func() {
 					Memory: garden.MemoryLimits{
 						LimitInBytes: 1024,
 					},
-					CPU: garden.CPULimits{ //nolint:SA1019
+					CPU: garden.CPULimits{
+						//lint:ignore SA1019 - we still specify this to make the deprecated logic work until we get rid of the code in garden
 						LimitInShares: 5,
 					},
 				},
@@ -1239,7 +1241,8 @@ var _ = Describe("When a client connects", func() {
 		})
 
 		Describe("get the current cpu limits", func() {
-			effectiveLimits := garden.CPULimits{LimitInShares: 456} //nolint:SA1019
+			//lint:ignore SA1019 - we still specify this to make the deprecated logic work until we get rid of the code in garden
+			effectiveLimits := garden.CPULimits{LimitInShares: 456}
 
 			It("gets the current limits", func() {
 				fakeContainer.CurrentCPULimitsReturns(effectiveLimits, nil)
