@@ -331,6 +331,7 @@ var _ = Describe("Connection", func() {
 					ghttp.CombineHandlers(
 						ghttp.VerifyRequest("GET", "/containers/foo/limits/cpu"),
 						ghttp.RespondWith(200, marshalProto(&garden.CPULimits{
+							//lint:ignore SA1019 - we still specify this to make the deprecated logic work until we get rid of the code in garden
 							LimitInShares: 40,
 						})),
 					),
