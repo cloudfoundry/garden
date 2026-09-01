@@ -43,31 +43,23 @@ cd ~/workspace
 git clone https://github.com/cloudfoundry/wg-app-platform-runtime-ci.git
 
 # clone repo
-git clone https://github.com/cloudfoundry/garden-runc-release.git --recursive
-cd garden-runc-release
+git clone https://github.com/cloudfoundry/<THIS_REPO>.git --recursive
+cd <THIS_REPO>
 ```
-
-- Concourse and fly cli
 
 Running Tests
 ---------------
 
-> [!IMPORTANT]
-> The following scripts is ran against a Concourse worker. Set `FLY_TARGET` (Defaults to `shared`) environment variable to target your installation instead
 
-- `./scripts/create-docker-container.bash`: This will create a docker container with appropriate mounts. This
-script can be used for interactive development with a long running container. Not all tests pass in docker and that's why we recommend running tests in Concourse before submitting a PR.
-- `./scripts/test-in-docker.bash`: Create docker container and run linters and template tests in a single script.
-- `./scripts/test-in-concourse.bash <package>`: Create concourse on-off job and test all components or a single package. Optional `CLEAN_CACHE=yes` environment variable is recommended to be set when submitting a PR to make sure cache is cleared.
+- `./scripts/create-docker-container.bash`: This will create a docker container with appropriate mounts.
+- `./scripts/test-in-docker.bash`: Create docker container and run all tests and setup in a single script.
+  - `./scripts/test-in-docker.bash <package> <sub-package>`: For running tests under a specific package and/or sub-package
+
+> [!TIP]
+> If Running tests for this repo requires a DB flavor. The above scripts will default to mysql DB. Set DB environment variable for alternate DBs. Valid Options: mysql-8.0(or mysql),mysql-5.7,postgres
 
 When inside docker container:
 
-- `/repo/scripts/docker/build-binaries.bash`: (REQUIRED) This will build required binaries for running tests.
-- `/repo/scripts/docker/test.bash`: This will run all tests in this repo.
+- `/repo/scripts/docker/test.bash`: This will run all tests in this repo
 - `/repo/scripts/docker/test.bash <package>`: This will only run a package's tests
 - `/repo/scripts/docker/test.bash <package> <sub-package>`: This will only run sub-package tests for package
-- `/repo/scripts/docker/tests-template.bash`: This will test bosh-spec templates.
-- `/repo/scripts/docker/lint.bash`: This will run required linters.
-
-> [!IMPORTANT]
-> If you are about to submit a PR, please make sure to run `CLEAN_CACHE=yes ./scripts/test-in-concourse.bash` to ensure everything is tested with a rebuild of required binaries. If you are developing, you can create create a docker container first, then the only required script to run before testing your specific component is `build-binaries.bash`. Most tests for this release pass in docker .
