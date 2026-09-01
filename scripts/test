@@ -1,7 +1,0 @@
-#!/bin/bash
-# vim: set ft=sh
-
-set -e -x
-
-go vet -mod vendor ./...
-ginkgo -mod vendor -r -p --race --keepGoing --nodes="${GINKGO_NODES:-8}" --failOnPending --randomizeSuites --randomizeAllSpecs "$@"
