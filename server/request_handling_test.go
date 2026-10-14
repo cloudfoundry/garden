@@ -1058,9 +1058,11 @@ var _ = Describe("When a client connects", func() {
 
 		Describe("streaming out", func() {
 			var streamOut io.ReadCloser
+			var closer *closeChecker
 
 			BeforeEach(func() {
-				streamOut = io.NopCloser(bytes.NewBuffer([]byte("hello-world!")))
+				closer = &closeChecker{reader: strings.NewReader("hello-world!")}
+				streamOut = closer
 			})
 
 			JustBeforeEach(func() {
@@ -1076,6 +1078,7 @@ var _ = Describe("When a client connects", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				Expect(string(streamedContent)).To(Equal("hello-world!"))
+				Expect(closer.CloseCallCount()).To(Equal(1))
 
 				Expect(fakeContainer.StreamOutArgsForCall(0)).To(Equal(garden.StreamOutSpec{User: "frank", Path: "/src/path"}))
 			})
@@ -1083,6 +1086,25 @@ var _ = Describe("When a client connects", func() {
 			It("logs trace ID", func() {
 				buffer := sink.Buffer()
 				Expect(buffer).ToNot(gbytes.Say(`"trace-id":"` + traceId + `"`))
+			})
+
+			Context("when closing the backend's stream fails", func() {
+				BeforeEach(func() {
+					closer.closeErr = errors.New("close failed")
+				})
+
+				It("logs the error without changing the streamed content", func() {
+					reader, err := container.StreamOut(garden.StreamOutSpec{User: "frank", Path: "/src/path"})
+					Expect(err).ToNot(HaveOccurred())
+					defer reader.Close()
+
+					streamedContent, err := io.ReadAll(reader)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(string(streamedContent)).To(Equal("hello-world!"))
+					Expect(closer.CloseCallCount()).To(Equal(1))
+					Expect(sink.Buffer()).To(gbytes.Say("failed-to-close"))
+					Expect(sink.Buffer()).To(gbytes.Say("close failed"))
+				})
 			})
 
 			Context("when the connection dies as we're streaming", func() {
@@ -1101,7 +1123,7 @@ var _ = Describe("When a client connects", func() {
 					err = reader.Close()
 					Expect(err).ToNot(HaveOccurred())
 
-					Eventually(closer.Closed).Should(BeTrue())
+					Eventually(closer.CloseCallCount).Should(Equal(1))
 				})
 			})
 
@@ -2239,24 +2261,29 @@ var _ = Describe("When a client connects", func() {
 })
 
 type closeChecker struct {
-	closed bool
+	reader     io.Reader
+	closeErr   error
+	closeCalls int
 	sync.Mutex
 }
 
 func (checker *closeChecker) Read(b []byte) (int, error) {
+	if checker.reader != nil {
+		return checker.reader.Read(b)
+	}
 	b[0] = 'x'
 	return 1, nil
 }
 
 func (checker *closeChecker) Close() error {
 	checker.Lock()
-	checker.closed = true
-	checker.Unlock()
-	return nil
+	defer checker.Unlock()
+	checker.closeCalls++
+	return checker.closeErr
 }
 
-func (checker *closeChecker) Closed() bool {
+func (checker *closeChecker) CloseCallCount() int {
 	checker.Lock()
 	defer checker.Unlock()
-	return checker.closed
+	return checker.closeCalls
 }
