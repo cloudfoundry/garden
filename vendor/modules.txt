@@ -1,4 +1,4 @@
-# code.cloudfoundry.org/lager/v3 v3.91.0
+# code.cloudfoundry.org/lager/v3 v3.92.0
 ## explicit; go 1.26.0
 code.cloudfoundry.org/lager/v3
 code.cloudfoundry.org/lager/v3/internal/truncate
@@ -26,7 +26,7 @@ github.com/google/go-cmp/cmp/internal/diff
 github.com/google/go-cmp/cmp/internal/flags
 github.com/google/go-cmp/cmp/internal/function
 github.com/google/go-cmp/cmp/internal/value
-# github.com/google/pprof v0.0.0-20261012231050-2af12c3f4d87
+# github.com/google/pprof v0.0.0-20261016150608-1facf8f91b50
 ## explicit; go 1.26.0
 github.com/google/pprof/profile
 # github.com/onsi/ginkgo v1.16.5
