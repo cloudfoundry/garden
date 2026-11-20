@@ -278,12 +278,14 @@ func (s *GardenServer) handleStreamOut(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	n, err := io.Copy(w, reader)
-	if err != nil {
+	defer func() {
 		if err := reader.Close(); err != nil {
 			hLog.Error("failed-to-close", err)
 		}
+	}()
 
+	n, err := io.Copy(w, reader)
+	if err != nil {
 		if n == 0 {
 			s.writeError(w, err, hLog)
 		}
